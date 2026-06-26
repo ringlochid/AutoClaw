@@ -15,7 +15,7 @@ from autoclaw.persistence import (
     TaskEventModel,
 )
 from autoclaw.runtime.contracts import HumanRequestOpenRequest
-from autoclaw.runtime.human_requests import open_human_request
+from autoclaw.runtime.human_request.service import open_human_request
 from autoclaw.runtime.projection.runtime_state import current_runtime_state
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -457,7 +457,8 @@ async def allow_human_request_kind(
         )
         assert policy_revision is not None
         content = dict(policy_revision.content_json)
-        capabilities = dict(content.get("capabilities") or {})
+        raw_capabilities = content.get("capabilities")
+        capabilities = dict(raw_capabilities) if isinstance(raw_capabilities, dict) else {}
         capabilities["human_request"] = {"mode": "allow", "allowed_kinds": [kind]}
         capabilities.setdefault("command_run", "deny")
         content["capabilities"] = capabilities
@@ -540,6 +541,7 @@ async def assert_answered_resolution_state(
             "request_id": request_id,
             "status": "resolved",
             "resolution_kind": "answered",
+            "resolved_by_actor_ref": _CONTROL_API_ACTOR_REF,
         }
 
 

@@ -29,7 +29,7 @@ from autoclaw.runtime.contracts import (
 )
 from autoclaw.runtime.errors import invalid_request_shape_error
 from autoclaw.runtime.flow.service import runtime_flow_read
-from autoclaw.runtime.human_requests import list_human_requests, resolve_human_request
+from autoclaw.runtime.human_request.service import list_human_requests, resolve_human_request
 from autoclaw.runtime.observability import operator_snapshot, operator_trace
 from autoclaw.runtime.post_commit.operations import write_runtime_operation
 from autoclaw.runtime.task_events import (

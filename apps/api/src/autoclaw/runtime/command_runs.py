@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import cast
 
 from sqlalchemy import and_, func, or_, select
@@ -16,7 +16,7 @@ from autoclaw.runtime.capabilities import (
     resolve_effective_capabilities,
 )
 from autoclaw.runtime.clock import utc_now
-from autoclaw.runtime.command_run_continuation import (
+from autoclaw.runtime.command_run_records import (
     command_run_record_from_model,
     terminal_result_from_model,
 )
@@ -40,7 +40,6 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.dispatch.control import fence_foreground_dispatch
 from autoclaw.runtime.errors import RuntimeOperationError, illegal_state_error
 from autoclaw.runtime.flow.queries import require_flow_for_task
-from autoclaw.runtime.flow.timestamps import coerce_datetime_to_utc
 from autoclaw.runtime.ids import command_run_id
 from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState
 from autoclaw.runtime.task_events import append_task_event
@@ -78,56 +77,30 @@ async def start_command_run(
 
     created_at = utc_now()
     run_id = await _next_command_run_id(session, task_id=task_id)
-    command_run = CommandRunModel(
-        run_id=run_id,
+    command_run = _build_command_run_for_start(
         task_id=task_id,
-        flow_id=state.flow.flow_id,
-        flow_revision_id=state.flow_revision.flow_revision_id,
-        flow_node_id=state.current_node.flow_node_id,
-        assignment_id=state.current_assignment.assignment_id,
-        attempt_id=state.current_attempt.attempt_id,
-        dispatch_id=dispatch.dispatch_id,
-        requester_node_key=state.current_node.node_key,
-        command=request.command,
-        description=request.description,
-        workdir=request.workdir,
-        timeout_seconds=request.timeout_seconds,
-        state=CommandRunState.PENDING_START.value,
+        run_id=run_id,
+        request=request,
+        state=state,
+        dispatch=dispatch,
         created_at=created_at,
-        updated_at=created_at,
     )
     session.add(command_run)
     await session.flush((command_run,))
 
     session.add(
-        FlowWaitStateModel(
-            flow_id=state.flow.flow_id,
-            task_id=task_id,
-            waiting_cause=WaitingCause.WAITING_FOR_COMMAND_RUN.value,
-            command_run_id=run_id,
-            created_by_dispatch_id=dispatch.dispatch_id,
-            created_at=created_at,
-            updated_at=created_at,
+        _build_command_run_wait_state(
+            task_id=task_id, run_id=run_id, state=state, dispatch=dispatch, created_at=created_at
         )
     )
-    await append_task_event(
+    await _append_command_run_started_event(
         session,
         task_id=task_id,
-        event_type=TaskEventType.COMMAND_RUN_STARTED,
-        event_source=TaskEventSource.NODE,
-        occurred_at=created_at,
-        flow_revision_id=state.flow_revision.flow_revision_id,
-        dispatch_id=dispatch.dispatch_id,
-        attempt_id=state.current_attempt.attempt_id,
-        node_key=state.current_node.node_key,
-        payload={
-            "run_id": run_id,
-            "command": request.command,
-            "description": request.description,
-            "workdir": request.workdir,
-            "state": CommandRunState.PENDING_START.value,
-            "timeout_seconds": request.timeout_seconds,
-        },
+        run_id=run_id,
+        request=request,
+        state=state,
+        dispatch=dispatch,
+        created_at=created_at,
     )
     state.flow.updated_at = created_at
     await fence_foreground_dispatch(
@@ -292,6 +265,8 @@ async def record_command_run_terminal_result(
     *,
     task_id: str,
     result: CommandRunTerminalResultRead,
+    event_source: TaskEventSource = TaskEventSource.CONTROLLER,
+    actor_ref: str | None = None,
 ) -> CommandRunRecord:
     flow = await require_flow_for_task(session, task_id)
     command_run = await _command_run_for_task(
@@ -320,31 +295,121 @@ async def record_command_run_terminal_result(
     command_run.terminal_log_ref = result.log_ref
     command_run.latest_update = result.summary
     command_run.latest_log_ref = result.log_ref
+    if terminal_state == CommandRunState.CANCELLED:
+        command_run.cancellation_requested_at = command_run.cancellation_requested_at or ended_at
+        command_run.cancellation_requested_by_actor_ref = (
+            command_run.cancellation_requested_by_actor_ref or actor_ref
+        )
     command_run.updated_at = ended_at
     await session.delete(wait_state)
     flow.updated_at = ended_at
+    payload = {
+        "run_id": result.run_id,
+        "state": terminal_state.value,
+        "summary": result.summary,
+        "exit_code": result.exit_code,
+        "signal": result.signal,
+        "ended_at": ended_at.isoformat(),
+        "log_ref": result.log_ref,
+    }
+    if terminal_state == CommandRunState.CANCELLED:
+        initiated_by_actor_ref = actor_ref or command_run.cancellation_requested_by_actor_ref
+        if initiated_by_actor_ref is not None:
+            payload["initiated_by_actor_ref"] = initiated_by_actor_ref
     await append_task_event(
         session,
         task_id=task_id,
         event_type=COMMAND_RUN_TERMINAL_EVENT_TYPES[terminal_state],
-        event_source=TaskEventSource.CONTROLLER,
+        event_source=event_source,
         occurred_at=ended_at,
         flow_revision_id=command_run.flow_revision_id,
         dispatch_id=command_run.dispatch_id,
         attempt_id=command_run.attempt_id,
         node_key=command_run.requester_node_key,
-        payload={
-            "run_id": result.run_id,
-            "state": terminal_state.value,
-            "summary": result.summary,
-            "exit_code": result.exit_code,
-            "signal": result.signal,
-            "ended_at": ended_at.isoformat(),
-            "log_ref": result.log_ref,
-        },
+        actor_ref=actor_ref,
+        payload=payload,
     )
     await session.flush()
     return command_run_record_from_model(command_run)
+
+
+def _build_command_run_for_start(
+    *,
+    task_id: str,
+    run_id: str,
+    request: CommandRunStartRequest,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    created_at: datetime,
+) -> CommandRunModel:
+    return CommandRunModel(
+        run_id=run_id,
+        task_id=task_id,
+        flow_id=state.flow.flow_id,
+        flow_revision_id=state.flow_revision.flow_revision_id,
+        flow_node_id=state.current_node.flow_node_id,
+        assignment_id=state.current_assignment.assignment_id,
+        attempt_id=state.current_attempt.attempt_id,
+        dispatch_id=dispatch.dispatch_id,
+        requester_node_key=state.current_node.node_key,
+        command=request.command,
+        description=request.description,
+        workdir=request.workdir,
+        timeout_seconds=request.timeout_seconds,
+        state=CommandRunState.PENDING_START.value,
+        created_at=created_at,
+        updated_at=created_at,
+    )
+
+
+def _build_command_run_wait_state(
+    *,
+    task_id: str,
+    run_id: str,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    created_at: datetime,
+) -> FlowWaitStateModel:
+    return FlowWaitStateModel(
+        flow_id=state.flow.flow_id,
+        task_id=task_id,
+        waiting_cause=WaitingCause.WAITING_FOR_COMMAND_RUN.value,
+        command_run_id=run_id,
+        created_by_dispatch_id=dispatch.dispatch_id,
+        created_at=created_at,
+        updated_at=created_at,
+    )
+
+
+async def _append_command_run_started_event(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    run_id: str,
+    request: CommandRunStartRequest,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    created_at: datetime,
+) -> None:
+    await append_task_event(
+        session,
+        task_id=task_id,
+        event_type=TaskEventType.COMMAND_RUN_STARTED,
+        event_source=TaskEventSource.NODE,
+        occurred_at=created_at,
+        flow_revision_id=state.flow_revision.flow_revision_id,
+        dispatch_id=dispatch.dispatch_id,
+        attempt_id=state.current_attempt.attempt_id,
+        node_key=state.current_node.node_key,
+        payload={
+            "run_id": run_id,
+            "command": request.command,
+            "description": request.description,
+            "workdir": request.workdir,
+            "state": CommandRunState.PENDING_START.value,
+            "timeout_seconds": request.timeout_seconds,
+        },
+    )
 
 
 async def _ensure_command_run_start_is_current(
@@ -487,7 +552,7 @@ def _command_run_list_item_from_model(row: CommandRunModel) -> CommandRunListIte
         command=row.command,
         description=row.description,
         workdir=row.workdir,
-        created_at=coerce_datetime_to_utc(row.created_at),
+        created_at=_coerce_datetime_to_utc(row.created_at),
         started_at=_optional_datetime(row.started_at),
         ended_at=_optional_datetime(row.ended_at),
         timeout_seconds=row.timeout_seconds,
@@ -501,7 +566,13 @@ def _command_run_list_item_from_model(row: CommandRunModel) -> CommandRunListIte
 def _optional_datetime(value: datetime | None) -> datetime | None:
     if value is None:
         return None
-    return coerce_datetime_to_utc(value)
+    return _coerce_datetime_to_utc(value)
+
+
+def _coerce_datetime_to_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 __all__ = [

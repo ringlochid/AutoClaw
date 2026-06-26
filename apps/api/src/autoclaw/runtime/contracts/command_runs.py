@@ -21,6 +21,13 @@ TERMINAL_COMMAND_RUN_STATES = frozenset(
     }
 )
 
+type CommandRunTerminalState = Literal[
+    CommandRunState.SUCCEEDED,
+    CommandRunState.FAILED,
+    CommandRunState.TIMED_OUT,
+    CommandRunState.CANCELLED,
+]
+
 COMMAND_RUN_TERMINAL_EVENT_TYPES = {
     CommandRunState.SUCCEEDED: TaskEventType.COMMAND_RUN_SUCCEEDED,
     CommandRunState.FAILED: TaskEventType.COMMAND_RUN_FAILED,
@@ -100,12 +107,7 @@ class CommandRunTerminalResultRead(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
     run_id: RuntimeSchemaText
-    state: Literal[
-        CommandRunState.SUCCEEDED,
-        CommandRunState.FAILED,
-        CommandRunState.TIMED_OUT,
-        CommandRunState.CANCELLED,
-    ]
+    state: CommandRunTerminalState
     summary: RuntimeSchemaText
     exit_code: int | None = None
     signal: RuntimeSchemaText | None = None
@@ -158,4 +160,5 @@ __all__ = [
     "CommandRunStartResponse",
     "CommandRunTerminalResult",
     "CommandRunTerminalResultRead",
+    "CommandRunTerminalState",
 ]

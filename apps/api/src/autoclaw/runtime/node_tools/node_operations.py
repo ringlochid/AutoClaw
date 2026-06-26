@@ -23,7 +23,7 @@ from autoclaw.runtime.contracts import (
     ParentToolSuccess,
 )
 from autoclaw.runtime.dispatch.authority import validate_node_session_key
-from autoclaw.runtime.human_requests import open_human_request
+from autoclaw.runtime.human_request.service import open_human_request
 from autoclaw.runtime.node_tools.parent_tools import call_parent_tool, validate_parent_tool_call
 from autoclaw.runtime.post_commit.writes import DeferredRuntimeWrite, commit_runtime_write
 from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState, dispatch_runtime_state

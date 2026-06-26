@@ -11,7 +11,10 @@ from autoclaw.runtime.command_run_continuation import (
     command_run_continuation_context_for_dispatch,
 )
 from autoclaw.runtime.contracts import (
+    AssignmentProjection,
     CheckpointProjection,
+    CommandRunRecord,
+    HumanRequestRead,
     ManifestProjection,
     PersistedPromptRecord,
     PromptFamily,
@@ -19,6 +22,11 @@ from autoclaw.runtime.contracts import (
     PromptSendMode,
     PromptTransportRequest,
     RenderedPromptBundle,
+    TaskRootPaths,
+)
+from autoclaw.runtime.contracts.capabilities import EffectiveCapabilitySet
+from autoclaw.runtime.human_request.continuation import (
+    human_request_continuation_context_for_dispatch,
 )
 from autoclaw.runtime.projection.manifest.context import (
     checkpoint_attempt_id_from_path,
@@ -30,7 +38,7 @@ from autoclaw.runtime.projection.projection_mappers import (
     checkpoint_projection_from_model,
     resolved_node_context,
 )
-from autoclaw.runtime.projection.runtime_state import dispatch_runtime_state
+from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState, dispatch_runtime_state
 from autoclaw.runtime.prompt.bundle import render_prompt_bundle
 from autoclaw.runtime.task_root import (
     load_task_root_paths,
@@ -84,7 +92,10 @@ async def build_dispatch_prompt(
             paths=paths,
             checkpoint=checkpoint,
         )
-    command_run_continuation_context = await command_run_continuation_context_for_dispatch(
+    (
+        human_request_continuation_context,
+        command_run_continuation_context,
+    ) = await _dispatch_prompt_continuation_contexts(
         session,
         task_id=task_id,
         previous_dispatch_id=dispatch.previous_dispatch_id,
@@ -100,7 +111,66 @@ async def build_dispatch_prompt(
         state=state,
         execution_scope="dispatch",
     )
-    bundle = render_prompt_bundle(
+    bundle = _build_dispatch_prompt_bundle(
+        dispatch=dispatch,
+        task_id=task_id,
+        state=state,
+        manifest=manifest,
+        assignment_projection=assignment_projection,
+        checkpoint=checkpoint,
+        send_mode=send_mode,
+        session_key=session_key,
+        human_request_continuation_context=human_request_continuation_context,
+        command_run_continuation_context=command_run_continuation_context,
+        effective_capabilities=effective_capabilities,
+    )
+    record = _build_persisted_prompt_record(
+        dispatch=dispatch,
+        attempt_id=attempt.attempt_id,
+        assignment_key=assignment_projection.assignment_key,
+        send_mode=send_mode,
+        paths=paths,
+        bundle=bundle,
+    )
+    return bundle, record
+
+
+async def _dispatch_prompt_continuation_contexts(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    previous_dispatch_id: str | None,
+) -> tuple[HumanRequestRead | None, CommandRunRecord | None]:
+    human_request_continuation_context: HumanRequestRead | None
+    command_run_continuation_context: CommandRunRecord | None
+    human_request_continuation_context = await human_request_continuation_context_for_dispatch(
+        session,
+        task_id=task_id,
+        previous_dispatch_id=previous_dispatch_id,
+    )
+    command_run_continuation_context = await command_run_continuation_context_for_dispatch(
+        session,
+        task_id=task_id,
+        previous_dispatch_id=previous_dispatch_id,
+    )
+    return human_request_continuation_context, command_run_continuation_context
+
+
+def _build_dispatch_prompt_bundle(
+    *,
+    dispatch: DispatchTurnModel,
+    task_id: str,
+    state: CurrentRuntimeState,
+    manifest: ManifestProjection,
+    assignment_projection: AssignmentProjection,
+    checkpoint: CheckpointProjection | None,
+    send_mode: PromptSendMode,
+    session_key: str | None,
+    human_request_continuation_context: HumanRequestRead | None,
+    command_run_continuation_context: CommandRunRecord | None,
+    effective_capabilities: EffectiveCapabilitySet,
+) -> RenderedPromptBundle:
+    return render_prompt_bundle(
         PromptRenderRequest(
             prompt_family=PromptFamily(dispatch.prompt_name),
             send_mode=send_mode,
@@ -110,20 +180,32 @@ async def build_dispatch_prompt(
             manifest=manifest,
             assignment=assignment_projection,
             latest_checkpoint=checkpoint,
+            human_request_continuation_context=human_request_continuation_context,
             command_run_continuation_context=command_run_continuation_context,
             effective_capabilities=effective_capabilities,
         )
     )
+
+
+def _build_persisted_prompt_record(
+    *,
+    dispatch: DispatchTurnModel,
+    attempt_id: str,
+    assignment_key: str,
+    send_mode: PromptSendMode,
+    paths: TaskRootPaths,
+    bundle: RenderedPromptBundle,
+) -> PersistedPromptRecord:
     transport_request = PromptTransportRequest(
         send_mode=send_mode,
         instructions_text=bundle.instructions_text,
         input_text=bundle.input_text,
     )
-    record = PersistedPromptRecord(
+    return PersistedPromptRecord(
         dispatch_id=dispatch.dispatch_id,
         node_key=dispatch.node_key,
-        attempt_id=attempt.attempt_id,
-        assignment_key=assignment_projection.assignment_key,
+        attempt_id=attempt_id,
+        assignment_key=assignment_key,
         prompt_name=PromptFamily(dispatch.prompt_name),
         send_mode=send_mode,
         rendered_markdown_path=prompt_markdown_path(paths=paths, dispatch_id=dispatch.dispatch_id),
@@ -136,7 +218,6 @@ async def build_dispatch_prompt(
         rendered_at=dispatch.rendered_at,
         transport_request=transport_request,
     )
-    return bundle, record
 
 
 async def _checkpoint_row_for_path(

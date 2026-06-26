@@ -57,7 +57,7 @@ This list reflects the shipped CLI surface.
 - `configure` is the current targeted re-entry command for local, runtime, service, definitions, web, or OpenClaw integration sections; `definitions` re-seeds the packaged registry defaults, `web` refreshes the default `console_origins` allowlist, `service` can persist an explicit local API `--port` override, and when the requested section includes OpenClaw or managed-service reconciliation it fail-fast checks OpenClaw support before local runtime or service work
 - `doctor` checks local AutoClaw config, DB, packaged resources, managed-service visibility, and the AutoClaw-owned OpenClaw integration slice, with the OpenClaw integration check reported first; `--fix` now fail-fast checks OpenClaw support before local or wrapper repair
 - `config path` prints the current resolved AutoClaw config path
-- `config show` prints the current resolved config-shaped payload with secret redaction
+- `config show` prints the current resolved config-shaped payload
 
 ### Service
 

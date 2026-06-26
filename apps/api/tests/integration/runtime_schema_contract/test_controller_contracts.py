@@ -22,6 +22,7 @@ from autoclaw.runtime.contracts import (
     ProviderResolution,
     TaskEventListResponse,
     TaskEventRecord,
+    TaskEventSource,
     TaskEventType,
     WaitingCause,
 )
@@ -258,8 +259,8 @@ def test_task_event_contracts_expose_replay_cursor_shape() -> None:
         event_id="event.1",
         event_seq=1,
         task_id="task.1",
-        event_type="human_request_opened",
-        event_source="controller",
+        event_type=TaskEventType.HUMAN_REQUEST_OPENED,
+        event_source=TaskEventSource.CONTROLLER,
         occurred_at=now,
         flow_revision_id="flow-revision.1",
         dispatch_id="dispatch.1",

@@ -13,6 +13,7 @@ from autoclaw.persistence.models import DispatchTurnModel, FlowModel
 from autoclaw.runtime.contracts import FlowStatus
 from autoclaw.runtime.dispatch.openclaw.lifecycle import close_dispatch_runtime
 from autoclaw.runtime.flow.queries import require_flow_for_task
+from autoclaw.runtime.human_request.records import reconcile_timed_out_human_request_wait
 from autoclaw.runtime.post_commit.dispatch_progression import auto_open_next_running_dispatch
 from autoclaw.runtime.post_commit.queue import clear_post_commit_actions, pop_post_commit_actions
 from autoclaw.runtime.post_commit.task_reconcile import (
@@ -334,6 +335,12 @@ async def _reconcile_task(
                 has_pending_runtime_work=pending,
                 has_changed_runtime_truth=changed,
             )
+            if await reconcile_timed_out_human_request_wait(
+                session,
+                task_id=task_id,
+                flow=flow,
+            ):
+                changed = True
             if await auto_open_next_running_dispatch(
                 session,
                 task_id=task_id,

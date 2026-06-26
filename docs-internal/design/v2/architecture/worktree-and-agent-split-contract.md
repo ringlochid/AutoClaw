@@ -31,7 +31,7 @@ The recommended split is explicit. Each slice owns one contract boundary and con
 | `v2-contract-base` | shared lifecycle states, boundary state transitions, task event family names, core schemas, promotion docs | V2 contract docs | feature implementation behavior |
 | `v2-event-store` | persisted `task_event` records, `event_seq`, hash chain, cursorable query substrate | contract base, audit rules | REST/SSE transport semantics, task source truth |
 | `v2-sse-api` | `GET /control/tasks/{task_id}/events`, SSE stream, replay/backfill/reset behavior | event store | event persistence shape, task event family names |
-| `v2-capability-audit` | effective capability resolution, denial explanations, provenance, redaction, per-task auth checks | contract base, role/policy schema | feature-specific business behavior |
+| `v2-capability-audit` | effective capability resolution, denial explanations, provenance, per-task auth checks | contract base, role/policy schema | feature-specific business behavior |
 | `v2-human-request-node-tool` | node MCP human-request tool, policy gate, pending request creation | capability/audit, human request schema, event store | control resolve API, task-continue control semantics, generic chat |
 | `v2-human-request-control-api` | pending request reads, answered-resolution API, controller-owned terminal outcome readback, resolution provenance | human-request node tool, capability/audit, event store | node MCP creation path, caller-authored timeout/cancel semantics |
 | `v2-command-run-core` | long-running command-run records, state machine, timeout/cancel/result truth, terminal continuation state | capability/audit, event store | concrete command runner |

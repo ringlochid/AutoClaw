@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from autoclaw.definitions.contracts.workflow import NodeKind
 from autoclaw.runtime.contracts.capabilities import EffectiveCapabilitySet
 from autoclaw.runtime.contracts.command_runs import CommandRunRecord
+from autoclaw.runtime.contracts.human_requests import HumanRequestRead
 from autoclaw.runtime.contracts.primitives import RuntimeText, TaskIdentifier
 from autoclaw.runtime.contracts.projection import (
     AssignmentProjection,
@@ -47,6 +48,7 @@ class PromptRenderRequest(BaseModel):
     manifest: ManifestProjection
     assignment: AssignmentProjection
     latest_checkpoint: CheckpointProjection | None = None
+    human_request_continuation_context: HumanRequestRead | None = None
     command_run_continuation_context: CommandRunRecord | None = None
     effective_capabilities: EffectiveCapabilitySet = Field(
         default_factory=lambda: EffectiveCapabilitySet(execution_scope="dispatch")

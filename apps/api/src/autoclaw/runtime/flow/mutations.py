@@ -4,12 +4,24 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.persistence.models import AttemptModel, DispatchDeliveryStateModel, DispatchTurnModel
+from autoclaw.persistence.models import (
+    AttemptModel,
+    CommandRunModel,
+    DispatchDeliveryStateModel,
+    DispatchTurnModel,
+    FlowWaitStateModel,
+)
 from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.command_runs import record_command_run_terminal_result
 from autoclaw.runtime.contracts import (
+    CommandRunState,
+    CommandRunTerminalResultRead,
     FlowStatus,
+    HumanRequestResolutionKind,
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,
+    TaskEventSource,
+    WaitingCause,
 )
 from autoclaw.runtime.dispatch.control import (
     dispatch_deadline_expired,
@@ -35,9 +47,12 @@ from autoclaw.runtime.flow.resume import (
     ensure_flow_resumeable,
     resolve_flow_resume_target,
 )
+from autoclaw.runtime.human_request.records import record_human_request_terminal_result
 from autoclaw.runtime.post_commit.cases import stage_operator_outputs
 from autoclaw.runtime.projection.runtime_state import current_runtime_state
 from autoclaw.runtime.workspace_leases import release_workspace_root_lease
+
+_CONTROL_API_ACTOR_REF = "control_api"
 
 
 async def continue_runtime_flow(
@@ -234,6 +249,7 @@ async def cancel_runtime_flow(
             flow.current_open_dispatch_id = None
         else:
             await _mark_dispatch_cancel_requested(session, dispatch)
+    await _cancel_active_external_wait(session, task_id=task_id, flow=flow)
     return await _finish_cancelled_flow(session, task_id, flow, cancelled_dispatch_id)
 
 
@@ -269,6 +285,57 @@ async def _finish_cancelled_flow(
     if cancelled_dispatch_id is not None:
         stage_operator_outputs(session, task_id=task_id, dispatch_id=cancelled_dispatch_id)
     return await runtime_flow_read(session, task_id)
+
+
+async def _cancel_active_external_wait(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: Any,
+) -> None:
+    wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
+    if wait_state is None:
+        return
+
+    cancelled_at = utc_now()
+    if (
+        wait_state.waiting_cause == WaitingCause.WAITING_FOR_HUMAN_REQUEST.value
+        and wait_state.pending_human_request_id is not None
+    ):
+        await record_human_request_terminal_result(
+            session,
+            task_id=task_id,
+            request_id=wait_state.pending_human_request_id,
+            resolution_kind=HumanRequestResolutionKind.CANCELLED,
+            event_source=TaskEventSource.CONTROL_API,
+            actor_ref=_CONTROL_API_ACTOR_REF,
+            resolved_by_actor_ref=_CONTROL_API_ACTOR_REF,
+            resolved_at=cancelled_at,
+        )
+        return
+
+    if (
+        wait_state.waiting_cause == WaitingCause.WAITING_FOR_COMMAND_RUN.value
+        and wait_state.command_run_id is not None
+    ):
+        command_run = await session.get(CommandRunModel, wait_state.command_run_id)
+        if command_run is None:
+            return
+        await record_command_run_terminal_result(
+            session,
+            task_id=task_id,
+            result=CommandRunTerminalResultRead(
+                run_id=command_run.run_id,
+                state=CommandRunState.CANCELLED,
+                summary="command run cancelled because the task was cancelled",
+                exit_code=None,
+                signal=None,
+                log_ref=command_run.latest_log_ref,
+                ended_at=cancelled_at,
+            ),
+            event_source=TaskEventSource.CONTROL_API,
+            actor_ref=_CONTROL_API_ACTOR_REF,
+        )
 
 
 __all__ = [

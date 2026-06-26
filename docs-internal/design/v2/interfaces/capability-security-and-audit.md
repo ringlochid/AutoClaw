@@ -174,23 +174,6 @@ Rules:
 - adapter-local auth success does not automatically authorize controller writes
 - controller writes from adapter callbacks or adapter-normalized human requests must still pass task-lineage and capability checks
 
-## Redaction rule
-
-Raw secrets, tokens, and irreversible credentials must never be persisted in:
-
-- task event records
-- pending human requests
-- command-run summaries
-- prompt artifacts
-- UI event payloads
-
-Allowed alternatives are:
-
-- redacted placeholders
-- stable secret refs or ids
-- correlation ids
-- machine-local provider-config references outside controller truth
-
 ## Related contracts
 
 - [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)

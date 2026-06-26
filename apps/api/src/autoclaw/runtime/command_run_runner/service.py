@@ -19,6 +19,7 @@ from autoclaw.runtime.contracts import (
     CommandRunState,
     CommandRunTerminalResultRead,
 )
+from autoclaw.runtime.contracts.command_runs import CommandRunTerminalState
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.post_commit.operations import write_runtime_operation
 
@@ -427,7 +428,7 @@ async def _wait_for_process_terminal_state(
     process: asyncio.subprocess.Process,
     *,
     deadline: float | None,
-) -> tuple[CommandRunState, str | None]:
+) -> tuple[CommandRunTerminalState, str | None]:
     wait_task = asyncio.create_task(process.wait(), name=f"command-run-wait:{record.run_id}")
     while True:
         if deadline is not None and asyncio.get_running_loop().time() >= deadline:
@@ -508,7 +509,7 @@ async def _record_terminal_without_process(
     session_factory: async_sessionmaker[AsyncSession],
     record: CurrentCommandRun,
     *,
-    state: CommandRunState,
+    state: CommandRunTerminalState,
     summary: str,
     signal_name: str | None,
 ) -> None:
@@ -534,7 +535,7 @@ async def _record_command_run_terminal(
     session_factory: async_sessionmaker[AsyncSession],
     record: CurrentCommandRun,
     *,
-    state: CommandRunState,
+    state: CommandRunTerminalState,
     summary: str,
     exit_code: int | None,
     signal_name: str | None,

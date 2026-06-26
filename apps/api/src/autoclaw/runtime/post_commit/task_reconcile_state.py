@@ -14,6 +14,9 @@ from autoclaw.runtime.contracts import FlowStatus
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.flow.reads import latest_fenced_dispatch
 from autoclaw.runtime.flow.resume import resolve_flow_resume_target
+from autoclaw.runtime.human_request.continuation import (
+    human_request_terminal_continuation_matches_current_target,
+)
 from autoclaw.runtime.post_commit.dispatch_reconcile import dispatch_requires_lifecycle_reconcile
 
 
@@ -82,7 +85,15 @@ async def task_can_auto_open_dispatch(
                     previous_dispatch=previous_dispatch,
                 )
             )
-            if not can_continue_from_command_run:
+            can_continue_from_human_request = (
+                await human_request_terminal_continuation_matches_current_target(
+                    session,
+                    task_id=task_id,
+                    flow=flow,
+                    previous_dispatch=previous_dispatch,
+                )
+            )
+            if not can_continue_from_command_run and not can_continue_from_human_request:
                 return False
         resume_target = await resolve_flow_resume_target(
             session,

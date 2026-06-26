@@ -1,21 +1,19 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import CommandRunModel, DispatchTurnModel, FlowModel
+from autoclaw.runtime.command_run_records import (
+    command_run_record_from_model,
+    terminal_result_from_model,
+)
 from autoclaw.runtime.contracts import (
     TERMINAL_COMMAND_RUN_STATES,
     CommandRunRecord,
-    CommandRunState,
-    CommandRunTerminalResult,
 )
-from autoclaw.runtime.errors import illegal_state_error
-from autoclaw.runtime.flow.queries import current_semantic_flow_target
-from autoclaw.runtime.flow.timestamps import coerce_datetime_to_utc
 
 _SEMANTIC_TARGET_INCOMPLETE_SUMMARY = "current semantic target is incomplete"
 _SEMANTIC_TARGET_REPAIR_NEXT_STEP = (
@@ -49,6 +47,8 @@ async def command_run_terminal_continuation_matches_current_target(
     flow: FlowModel,
     previous_dispatch: DispatchTurnModel,
 ) -> bool:
+    from autoclaw.runtime.flow.queries import current_semantic_flow_target
+
     command_run = await terminal_command_run_for_dispatch(
         session,
         task_id=task_id,
@@ -102,45 +102,6 @@ async def terminal_command_run_for_dispatch(
             .limit(1)
         ),
     )
-
-
-def command_run_record_from_model(row: CommandRunModel) -> CommandRunRecord:
-    return CommandRunRecord(
-        run_id=row.run_id,
-        task_id=row.task_id,
-        dispatch_id=row.dispatch_id,
-        attempt_id=row.attempt_id,
-        command=row.command,
-        description=row.description,
-        workdir=row.workdir,
-        state=CommandRunState(row.state),
-        created_at=coerce_datetime_to_utc(row.created_at),
-        started_at=_optional_datetime(row.started_at),
-        ended_at=_optional_datetime(row.ended_at),
-        timeout_seconds=row.timeout_seconds,
-        latest_update=row.latest_update,
-        latest_log_ref=row.latest_log_ref,
-        terminal_result=terminal_result_from_model(row),
-    )
-
-
-def terminal_result_from_model(row: CommandRunModel) -> CommandRunTerminalResult | None:
-    if CommandRunState(row.state) not in TERMINAL_COMMAND_RUN_STATES:
-        return None
-    if row.terminal_summary is None or row.ended_at is None:
-        raise illegal_state_error(f"terminal command run '{row.run_id}' is missing result truth")
-    return CommandRunTerminalResult(
-        summary=row.terminal_summary,
-        exit_code=row.terminal_exit_code,
-        signal=row.terminal_signal,
-        log_ref=row.terminal_log_ref,
-    )
-
-
-def _optional_datetime(value: datetime | None) -> datetime | None:
-    if value is None:
-        return None
-    return coerce_datetime_to_utc(value)
 
 
 __all__ = [

@@ -14,6 +14,9 @@ from autoclaw.runtime.dispatch.control import (
 from autoclaw.runtime.errors import illegal_state_error
 from autoclaw.runtime.flow.reads import latest_fenced_dispatch
 from autoclaw.runtime.flow.resume import resolve_flow_resume_target
+from autoclaw.runtime.human_request.continuation import (
+    human_request_terminal_continuation_matches_current_target,
+)
 
 SEMANTIC_TARGET_INCOMPLETE_SUMMARY = "current semantic target is incomplete"
 SEMANTIC_TARGET_REPAIR_NEXT_STEP = (
@@ -41,6 +44,12 @@ async def auto_open_next_running_dispatch(
     if (
         resolved_previous_dispatch.accepted_boundary is None
         and not await command_run_terminal_continuation_matches_current_target(
+            session,
+            task_id=task_id,
+            flow=flow,
+            previous_dispatch=resolved_previous_dispatch,
+        )
+        and not await human_request_terminal_continuation_matches_current_target(
             session,
             task_id=task_id,
             flow=flow,

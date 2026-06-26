@@ -9,6 +9,7 @@ from autoclaw.runtime.command_run_runner import (
     drive_command_run_runner_once,
     start_command_run_runner,
     stop_command_run_runner,
+    wait_for_command_run_runner_idle,
 )
 from tests.integration.runtime.command_run_runner_support import (
     assert_command_run_continues_task,
@@ -325,6 +326,71 @@ async def test_command_runner_cancels_process_after_control_request_without_nois
         assert [event.payload["summary"] for event in progress_events] == [
             "command process started"
         ]
+
+
+async def test_command_runner_stops_live_process_after_whole_task_cancel(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_command_runner_task_cancel",
+            task_root_name="task-root",
+        )
+        await start_command_run_runner()
+        command = python_command(
+            "import signal\n"
+            "import time\n"
+            "from pathlib import Path\n"
+            "def handle(signum, _frame):\n"
+            "    Path('task-cancel-signal.txt').write_text("
+            "signal.Signals(signum).name, encoding='utf-8')\n"
+            "    raise SystemExit(0)\n"
+            "signal.signal(signal.SIGTERM, handle)\n"
+            "signal.signal(signal.SIGINT, handle)\n"
+            "print('RUNNER_TASK_CANCEL_READY', flush=True)\n"
+            "while True:\n"
+            "    time.sleep(0.1)\n"
+        )
+        run_id = await start_runner_command_run(
+            context,
+            task,
+            command=command,
+            workdir=None,
+            timeout_seconds=120,
+        )
+        await wait_for_command_run_state(
+            context,
+            task_id=task.task_id,
+            run_id=run_id,
+            expected_state="running",
+        )
+
+        response = await context.client.post(
+            f"/runtime/tasks/{task.task_id}/cancel",
+            headers=context.operator_headers,
+            params={"expected_active_flow_revision_id": task.active_flow_revision_id},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "cancelled"
+
+        await wait_for_command_run_runner_idle()
+        command_run = await read_command_run(context, run_id)
+        signal_path = task.task_root / "workspace" / "task-cancel-signal.txt"
+
+        assert command_run.state == "cancelled"
+        assert (
+            command_run.terminal_summary == "command run cancelled because the task was cancelled"
+        )
+        assert signal_path.read_text(encoding="utf-8") == "SIGTERM"
+        assert (
+            await command_run_event_count(
+                context.session_factory,
+                task_id=task.task_id,
+                event_type="command_run_cancelled",
+            )
+            == 1
+        )
 
 
 async def test_command_runner_reconcile_skips_run_that_no_longer_owns_wait(

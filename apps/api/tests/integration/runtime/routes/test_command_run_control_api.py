@@ -23,9 +23,11 @@ from autoclaw.runtime.contracts import (
     CommandRunProgressUpdate,
     CommandRunRecord,
     CommandRunStartRequest,
+    CommandRunState,
     CommandRunTerminalResultRead,
     OperationFailureCode,
 )
+from autoclaw.runtime.contracts.command_runs import CommandRunTerminalState
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.post_commit import drive_runtime_until, write_runtime_operation
 from autoclaw.runtime.projection.runtime_state import current_runtime_state
@@ -163,7 +165,7 @@ async def test_control_command_run_cancel_rejects_terminal_and_duplicate_request
             context,
             terminal_task,
             run_id=terminal_run_id,
-            state="failed",
+            state=CommandRunState.FAILED,
         )
 
         terminal_cancel = await context.client.post(
@@ -205,15 +207,17 @@ async def test_command_run_progress_and_terminal_outcomes_persist_continuation_t
     tmp_path: Path,
 ) -> None:
     async with runtime_route_context(tmp_path) as context:
-        for terminal_state, exit_code, signal in (
-            ("failed", 1, None),
-            ("timed_out", None, "SIGTERM"),
-            ("cancelled", None, "SIGINT"),
-        ):
+        terminal_cases: tuple[tuple[CommandRunTerminalState, int | None, str | None], ...] = (
+            (CommandRunState.FAILED, 1, None),
+            (CommandRunState.TIMED_OUT, None, "SIGTERM"),
+            (CommandRunState.CANCELLED, None, "SIGINT"),
+        )
+        for terminal_state, exit_code, signal in terminal_cases:
+            terminal_state_value = terminal_state.value
             task = await launch_route_task(
                 context,
-                task_id=f"task_control_command_run_{terminal_state}",
-                task_root_name=f"{terminal_state}-task-root",
+                task_id=f"task_control_command_run_{terminal_state_value}",
+                task_root_name=f"{terminal_state_value}-task-root",
             )
             command_run_dispatch_id = task.current_open_dispatch_id
             run_id = await start_route_command_run(context, task)
@@ -225,8 +229,8 @@ async def test_command_run_progress_and_terminal_outcomes_persist_continuation_t
                 context,
                 task,
                 run_id=run_id,
-                summary=f"{terminal_state} command reached test execution",
-                log_ref=f"logs/{terminal_state}.progress.txt",
+                summary=f"{terminal_state_value} command reached test execution",
+                log_ref=f"logs/{terminal_state_value}.progress.txt",
             )
             terminal_record = await finish_command_run(
                 context,
@@ -235,13 +239,13 @@ async def test_command_run_progress_and_terminal_outcomes_persist_continuation_t
                 state=terminal_state,
                 exit_code=exit_code,
                 signal=signal,
-                log_ref=f"logs/{terminal_state}.terminal.txt",
+                log_ref=f"logs/{terminal_state_value}.terminal.txt",
             )
 
             assert progress_record.run_id == run_id
             assert progress_record.state == "running"
             assert progress_record.latest_update == (
-                f"{terminal_state} command reached test execution"
+                f"{terminal_state_value} command reached test execution"
             )
             assert terminal_record.run_id == run_id
             assert terminal_record.command == _command_run_start_payload()["command"]
@@ -250,11 +254,13 @@ async def test_command_run_progress_and_terminal_outcomes_persist_continuation_t
             assert terminal_record.timeout_seconds == 900
             assert terminal_record.state == terminal_state
             assert terminal_record.terminal_result is not None
-            assert terminal_record.terminal_result.summary == (f"{terminal_state} command finished")
+            assert terminal_record.terminal_result.summary == (
+                f"{terminal_state_value} command finished"
+            )
             assert terminal_record.terminal_result.exit_code == exit_code
             assert terminal_record.terminal_result.signal == signal
             assert terminal_record.terminal_result.log_ref == (
-                f"logs/{terminal_state}.terminal.txt"
+                f"logs/{terminal_state_value}.terminal.txt"
             )
             await assert_command_run_terminal_state(
                 context,
@@ -264,21 +270,22 @@ async def test_command_run_progress_and_terminal_outcomes_persist_continuation_t
                 exit_code=exit_code,
                 signal=signal,
             )
-            continued_dispatch_id, continued_prompt_path = (
-                await assert_command_run_terminal_continues_task(
-                    context,
-                    task,
-                    command_run_dispatch_id=command_run_dispatch_id,
-                )
+            (
+                continued_dispatch_id,
+                continued_prompt_path,
+            ) = await assert_command_run_terminal_continues_task(
+                context,
+                task,
+                command_run_dispatch_id=command_run_dispatch_id,
             )
             assert continued_dispatch_id != command_run_dispatch_id
             prompt_text = continued_prompt_path.read_text(encoding="utf-8")
             assert "## Command Run Continuation Context" in prompt_text
             assert f"- run_id: {run_id}" in prompt_text
-            assert f"- state: {terminal_state}" in prompt_text
-            assert f"- summary: {terminal_state} command finished" in prompt_text
-            assert f"- log_ref: logs/{terminal_state}.terminal.txt" in prompt_text
-            assert f"logs/{terminal_state}.progress.txt" not in prompt_text
+            assert f"- state: {terminal_state_value}" in prompt_text
+            assert f"- summary: {terminal_state_value} command finished" in prompt_text
+            assert f"- log_ref: logs/{terminal_state_value}.terminal.txt" in prompt_text
+            assert f"logs/{terminal_state_value}.progress.txt" not in prompt_text
 
 
 async def test_command_run_terminal_rejects_noncurrent_run_without_continuing_task(
@@ -298,7 +305,7 @@ async def test_command_run_terminal_rejects_noncurrent_run_without_continuing_ta
                 context,
                 task,
                 run_id=run_id,
-                state="failed",
+                state=CommandRunState.FAILED,
                 exit_code=1,
                 log_ref="logs/stale-terminal.txt",
             )
@@ -426,7 +433,7 @@ async def finish_command_run(
     task: SeededRouteTask,
     *,
     run_id: str,
-    state: str,
+    state: CommandRunTerminalState,
     exit_code: int | None = None,
     signal: str | None = None,
     log_ref: str | None = None,
@@ -438,7 +445,7 @@ async def finish_command_run(
             result=CommandRunTerminalResultRead(
                 run_id=run_id,
                 state=state,
-                summary=f"{state} command finished",
+                summary=f"{state.value} command finished",
                 exit_code=exit_code,
                 signal=signal,
                 log_ref=log_ref,
@@ -601,11 +608,12 @@ async def assert_command_run_terminal_state(
     task: SeededRouteTask,
     *,
     run_id: str,
-    terminal_state: str,
+    terminal_state: CommandRunTerminalState,
     exit_code: int | None,
     signal: str | None,
 ) -> None:
     async with context.session_factory() as session:
+        terminal_state_value = terminal_state.value
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task.task_id))
         command_run = await session.get(CommandRunModel, run_id)
         wait_state = None if flow is None else await session.get(FlowWaitStateModel, flow.flow_id)
@@ -613,22 +621,22 @@ async def assert_command_run_terminal_state(
         terminal_events = await command_run_events(
             session,
             task.task_id,
-            f"command_run_{terminal_state}",
+            f"command_run_{terminal_state_value}",
         )
 
         assert flow is not None
         assert command_run is not None
         assert wait_state is None
-        assert command_run.state == terminal_state
-        assert command_run.terminal_summary == f"{terminal_state} command finished"
+        assert command_run.state == terminal_state_value
+        assert command_run.terminal_summary == f"{terminal_state_value} command finished"
         assert command_run.terminal_exit_code == exit_code
         assert command_run.terminal_signal == signal
-        assert command_run.terminal_log_ref == f"logs/{terminal_state}.terminal.txt"
+        assert command_run.terminal_log_ref == f"logs/{terminal_state_value}.terminal.txt"
         assert len(progress_events) == 1
         assert progress_events[0].payload == {
             "run_id": run_id,
-            "summary": f"{terminal_state} command reached test execution",
-            "log_ref": f"logs/{terminal_state}.progress.txt",
+            "summary": f"{terminal_state_value} command reached test execution",
+            "log_ref": f"logs/{terminal_state_value}.progress.txt",
             "occurred_at": "2026-06-25T12:00:00+00:00",
             "state": "running",
         }
@@ -637,12 +645,12 @@ async def assert_command_run_terminal_state(
         assert terminal_event.event_source == "controller"
         assert terminal_event.payload == {
             "run_id": run_id,
-            "state": terminal_state,
-            "summary": f"{terminal_state} command finished",
+            "state": terminal_state_value,
+            "summary": f"{terminal_state_value} command finished",
             "exit_code": exit_code,
             "signal": signal,
             "ended_at": "2026-06-25T12:05:00+00:00",
-            "log_ref": f"logs/{terminal_state}.terminal.txt",
+            "log_ref": f"logs/{terminal_state_value}.terminal.txt",
         }
 
 

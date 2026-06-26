@@ -109,7 +109,6 @@ provider_runtime_config:
 
 Rules:
 
-- config output must redact secrets and auth material
 - `runtime.default_provider` must be one of `runtime.enabled_providers`
 - provider-local sections may carry additional machine-local keys, but portable workflow schema must not read those keys directly
 - support-profile details are owned by the provider support pages and verified by doctor

@@ -8,6 +8,16 @@ from autoclaw.runtime.contracts import (
     CommandRunRecord,
     CommandRunState,
     CommandRunTerminalResult,
+    HumanRequestItem,
+    HumanRequestItemResponse,
+    HumanRequestKind,
+    HumanRequestOption,
+    HumanRequestRead,
+    HumanRequestResolution,
+    HumanRequestResolutionKind,
+    HumanRequestStatus,
+    HumanRequestTimeout,
+    PendingHumanRequest,
 )
 from autoclaw.runtime.prompt import render_prompt_bundle
 
@@ -164,6 +174,74 @@ def test_worker_prompt_surfaces_terminal_command_run_context_without_raw_logs(
     assert "exit_code: 1" in command_run_section
     assert "log_ref: logs/pytest-terminal.txt" in command_run_section
     assert "logs/raw-output.txt" not in command_run_section
+
+
+def test_worker_prompt_surfaces_terminal_human_request_context(
+    tmp_path: Path,
+) -> None:
+    request = worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    bundle = render_prompt_bundle(
+        request.model_copy(
+            update={
+                "human_request_continuation_context": HumanRequestRead(
+                    request=PendingHumanRequest(
+                        request_id="human-request.task_2026_0042.01",
+                        task_id=request.task_id,
+                        title="Review the scoped fix",
+                        summary="A human review is required before the worker continues.",
+                        kind=HumanRequestKind.REVIEW,
+                        requester_node="root",
+                        items=(
+                            HumanRequestItem(
+                                item_id="review_choice",
+                                prompt="Should the worker proceed with the fix?",
+                                options=(
+                                    HumanRequestOption(id="approve", title="Approve"),
+                                    HumanRequestOption(id="revise", title="Revise"),
+                                ),
+                                recommended_option="approve",
+                            ),
+                        ),
+                        timeout=HumanRequestTimeout(
+                            due_at=datetime(2026, 6, 25, 12, 5, tzinfo=UTC),
+                            default_behavior="Proceed with the recommended review option.",
+                        ),
+                        suggested_human_instruction="Inspect the patch before answering.",
+                        opened_at=datetime(2026, 6, 25, 12, 0, tzinfo=UTC),
+                        status=HumanRequestStatus.RESOLVED,
+                    ),
+                    resolution=HumanRequestResolution(
+                        request_id="human-request.task_2026_0042.01",
+                        task_id=request.task_id,
+                        resolution_kind=HumanRequestResolutionKind.ANSWERED,
+                        item_responses=(
+                            HumanRequestItemResponse(
+                                item_id="review_choice",
+                                selected_option="approve",
+                                extra_notes="Looks good.",
+                            ),
+                        ),
+                        resolved_at=datetime(2026, 6, 25, 12, 2, tzinfo=UTC),
+                        resolved_by_actor_ref="control_api",
+                    ),
+                )
+            }
+        )
+    )
+
+    human_request_section = extract_section(
+        bundle.full_markdown,
+        "## Human Request Continuation Context",
+        "## Consumed Durable Refs",
+    )
+
+    assert "human-request.task_2026_0042.01" in human_request_section
+    assert "resolution_kind: answered" in human_request_section
+    assert "resolved_by_actor_ref: control_api" in human_request_section
+    assert "selected_option: approve" in human_request_section
+    assert "timeout_default_behavior: Proceed with the recommended review option." in (
+        human_request_section
+    )
 
 
 def test_parent_prompt_surfaces_current_decision_criteria_and_artifact_refs(

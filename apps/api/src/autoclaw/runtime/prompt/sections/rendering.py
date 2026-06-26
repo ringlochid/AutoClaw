@@ -45,6 +45,9 @@ def render_prompt_sections(request: PromptRenderRequest) -> list[tuple[str, str]
         ("current_assignment", render_current_assignment(request)),
         ("latest_checkpoint_context", render_latest_checkpoint_context(request)),
     ]
+    human_request_context = render_human_request_continuation_context(request)
+    if human_request_context is not None:
+        sections.append(("human_request_continuation_context", human_request_context))
     command_run_context = render_command_run_continuation_context(request)
     if command_run_context is not None:
         sections.append(("command_run_continuation_context", command_run_context))
@@ -204,6 +207,44 @@ def render_current_assignment(request: PromptRenderRequest) -> str:
         for hint in assignment.task_memory_search_hints:
             lines.append(f"  - {hint}")
     return render_markdown_section("Current Assignment", lines)
+
+
+def render_human_request_continuation_context(
+    request: PromptRenderRequest,
+) -> str | None:
+    human_request = request.human_request_continuation_context
+    if human_request is None or human_request.resolution is None:
+        return None
+
+    request_record = human_request.request
+    resolution = human_request.resolution
+    lines = [
+        "- source: controller-owned terminal human-request truth",
+        f"- request_id: {request_record.request_id}",
+        f"- kind: {request_record.kind.value}",
+        f"- title: {request_record.title}",
+        f"- summary: {request_record.summary}",
+        f"- requester_node: {request_record.requester_node}",
+        f"- status: {request_record.status.value}",
+        f"- opened_at: {request_record.opened_at.isoformat()}",
+        f"- timeout_due_at: {_optional_datetime(request_record.timeout.due_at)}",
+        f"- timeout_default_behavior: {request_record.timeout.default_behavior}",
+        f"- suggested_human_instruction: {request_record.suggested_human_instruction}",
+        f"- resolution_kind: {resolution.resolution_kind.value}",
+        f"- resolved_at: {resolution.resolved_at.isoformat()}",
+        f"- resolved_by_actor_ref: {resolution.resolved_by_actor_ref}",
+    ]
+    for item in request_record.items:
+        lines.append(f"- item {item.item_id}: {item.prompt}")
+    if resolution.item_responses:
+        lines.append("- item_responses:")
+        for item_response in resolution.item_responses:
+            lines.append(f"  - item_id: {item_response.item_id}")
+            lines.append(f"    selected_option: {item_response.selected_option}")
+            lines.append(f"    freeform_answer: {item_response.freeform_answer}")
+            lines.append(f"    extra_notes: {item_response.extra_notes}")
+            lines.append(f"    response_payload: {item_response.response_payload}")
+    return render_markdown_section("Human Request Continuation Context", lines)
 
 
 def render_command_run_continuation_context(
