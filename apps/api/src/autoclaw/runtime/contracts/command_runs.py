@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
 from autoclaw.runtime.contracts.primitives import (
     CommandRunState,
+    TaskEventSource,
     TaskEventType,
     TaskIdentifier,
 )
@@ -79,7 +80,11 @@ class CommandRunRecord(BaseModel):
     timeout_seconds: int | None = Field(default=None, ge=1)
     latest_update: RuntimeSchemaText | None = None
     latest_log_ref: RuntimeSchemaText | None = None
+    cancellation_requested_at: datetime | None = None
+    cancellation_requested_by_actor_ref: RuntimeSchemaText | None = None
     terminal_result: CommandRunTerminalResult | None = None
+    terminal_event_source: TaskEventSource | None = None
+    terminal_actor_ref: RuntimeSchemaText | None = None
 
     @model_validator(mode="after")
     def validate_terminal_result(self) -> CommandRunRecord:
@@ -88,9 +93,13 @@ class CommandRunRecord(BaseModel):
                 raise ValueError("terminal command run states require terminal_result")
             if self.ended_at is None:
                 raise ValueError("terminal command run states require ended_at")
+            if self.terminal_event_source is None:
+                raise ValueError("terminal command run states require terminal_event_source")
             return self
         if self.terminal_result is not None:
             raise ValueError("non-terminal command run states must not set terminal_result")
+        if self.terminal_event_source is not None:
+            raise ValueError("non-terminal command run states must not set terminal_event_source")
         return self
 
 
@@ -146,6 +155,19 @@ class CommandRunCancelResponse(BaseModel):
 
     task_id: TaskIdentifier
     run: CommandRunListItem
+
+
+for _command_run_contract in (
+    CommandRunStartResponse,
+    CommandRunTerminalResult,
+    CommandRunRecord,
+    CommandRunProgressUpdate,
+    CommandRunTerminalResultRead,
+    CommandRunListItem,
+    CommandRunListResponse,
+    CommandRunCancelResponse,
+):
+    _command_run_contract.model_rebuild(_types_namespace=globals())
 
 
 __all__ = [

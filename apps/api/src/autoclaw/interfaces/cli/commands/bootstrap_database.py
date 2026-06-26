@@ -11,6 +11,14 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection, make_url
 
 from autoclaw.definitions.registry import seed_definition_registry
+from autoclaw.interfaces.cli.commands.bootstrap_database_legacy_copy import (
+    copy_postgres_runtime_terminal_table,
+    copy_sqlite_runtime_terminal_table,
+    postgres_command_run_row,
+    postgres_pending_human_request_row,
+    sqlite_command_run_row,
+    sqlite_pending_human_request_row,
+)
 from autoclaw.persistence.session import (
     dispose_db_engine,
     ensure_database_schema,
@@ -214,6 +222,20 @@ def _copy_sqlite_legacy_data(database_path: Path, backup_path: Path) -> tuple[li
         connection.execute("PRAGMA foreign_keys = OFF")
         migrated_tables, skipped_tables = _sqlite_copyable_tables(connection)
         for table_name in migrated_tables:
+            if table_name == "pending_human_requests":
+                copy_sqlite_runtime_terminal_table(
+                    connection,
+                    table_name=table_name,
+                    build_row=sqlite_pending_human_request_row,
+                )
+                continue
+            if table_name == "command_runs":
+                copy_sqlite_runtime_terminal_table(
+                    connection,
+                    table_name=table_name,
+                    build_row=sqlite_command_run_row,
+                )
+                continue
             current_info = _sqlite_table_info(connection, "main", table_name)
             legacy_info = _sqlite_table_info(connection, "legacy", table_name)
             legacy_columns = {str(row[1]) for row in legacy_info}
@@ -308,6 +330,22 @@ def _copy_postgres_legacy_data(
 ) -> tuple[list[str], list[str]]:
     migrated_tables, skipped_tables = _postgres_copyable_tables(connection, backup_schema)
     for table_name in migrated_tables:
+        if table_name == "pending_human_requests":
+            copy_postgres_runtime_terminal_table(
+                connection,
+                backup_schema=backup_schema,
+                table_name=table_name,
+                build_row=postgres_pending_human_request_row,
+            )
+            continue
+        if table_name == "command_runs":
+            copy_postgres_runtime_terminal_table(
+                connection,
+                backup_schema=backup_schema,
+                table_name=table_name,
+                build_row=postgres_command_run_row,
+            )
+            continue
         current_columns = {
             str(column["name"])
             for column in inspect(connection).get_columns(table_name)

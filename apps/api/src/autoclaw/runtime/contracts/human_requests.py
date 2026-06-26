@@ -171,6 +171,23 @@ class HumanRequestListResponse(BaseModel):
     items: tuple[HumanRequestRead, ...]
 
 
+for _human_request_contract in (
+    HumanRequestOption,
+    HumanRequestItem,
+    HumanRequestTimeout,
+    HumanRequestOpenRequest,
+    HumanRequestOpenResponse,
+    PendingHumanRequest,
+    HumanRequestItemResponse,
+    HumanRequestResolution,
+    HumanRequestResolveRequest,
+    HumanRequestResolveResponse,
+    HumanRequestRead,
+    HumanRequestListResponse,
+):
+    _human_request_contract.model_rebuild(_types_namespace=globals())
+
+
 def _validate_items_match_kind(
     *,
     kind: HumanRequestKind,

@@ -134,6 +134,13 @@ class HumanRequestResolutionKind(StrEnum):
     CANCELLED = "cancelled"
 
 
+class HumanRequestResolutionSurface(StrEnum):
+    CONTROL_API = "control_api"
+    CONTROL_UI = "control_ui"
+    OPERATOR_MCP = "operator_mcp"
+    CONTROLLER = "controller"
+
+
 class CommandRunState(StrEnum):
     PENDING_START = "pending_start"
     RUNNING = "running"

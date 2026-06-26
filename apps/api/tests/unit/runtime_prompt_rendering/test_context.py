@@ -154,6 +154,7 @@ def test_worker_prompt_surfaces_terminal_command_run_context_without_raw_logs(
                         signal=None,
                         log_ref="logs/pytest-terminal.txt",
                     ),
+                    terminal_event_source="controller",
                 )
             }
         )
@@ -222,7 +223,7 @@ def test_worker_prompt_surfaces_terminal_human_request_context(
                             ),
                         ),
                         resolved_at=datetime(2026, 6, 25, 12, 2, tzinfo=UTC),
-                        resolved_by_actor_ref="control_api",
+                        resolved_by_actor_ref=None,
                     ),
                 )
             }
@@ -237,7 +238,7 @@ def test_worker_prompt_surfaces_terminal_human_request_context(
 
     assert "human-request.task_2026_0042.01" in human_request_section
     assert "resolution_kind: answered" in human_request_section
-    assert "resolved_by_actor_ref: control_api" in human_request_section
+    assert "resolved_by_actor_ref: None" in human_request_section
     assert "selected_option: approve" in human_request_section
     assert "timeout_default_behavior: Proceed with the recommended review option." in (
         human_request_section

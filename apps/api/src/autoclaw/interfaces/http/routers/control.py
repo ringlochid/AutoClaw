@@ -22,13 +22,20 @@ from autoclaw.runtime.contracts import (
     OperatorFlowSnapshotResponse,
     OperatorFlowTraceQuery,
     OperatorFlowTraceResponse,
+    RuntimeFlowControlQuery,
+    RuntimeFlowPauseResponse,
     RuntimeFlowRead,
     TaskEventListQuery,
     TaskEventListResponse,
     TaskEventRecord,
 )
 from autoclaw.runtime.errors import invalid_request_shape_error
-from autoclaw.runtime.flow.service import runtime_flow_read
+from autoclaw.runtime.flow.service import (
+    cancel_runtime_flow,
+    continue_runtime_flow,
+    pause_runtime_flow,
+    runtime_flow_read,
+)
 from autoclaw.runtime.human_request.service import list_human_requests, resolve_human_request
 from autoclaw.runtime.observability import operator_snapshot, operator_trace
 from autoclaw.runtime.post_commit.operations import write_runtime_operation
@@ -42,6 +49,7 @@ router = APIRouter(prefix="/control", tags=["control"], dependencies=[Depends(re
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 type OperatorTraceParams = Annotated[OperatorFlowTraceQuery, Query()]
 type TaskEventListParams = Annotated[TaskEventListQuery, Query()]
+type RuntimeFlowControlParams = Annotated[RuntimeFlowControlQuery, Query()]
 type CommandRunCursor = Annotated[str | None, Query(min_length=1)]
 type CommandRunLimit = Annotated[int, Query(ge=1, le=250)]
 type TaskEventStreamCursor = Annotated[str | None, Query(min_length=1)]
@@ -58,6 +66,63 @@ async def get_control_task(
 ) -> RuntimeFlowRead:
     try:
         return await runtime_flow_read(session, task_id)
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.post("/tasks/{task_id}/pause", response_model=RuntimeFlowPauseResponse)
+async def pause_control_task(
+    task_id: str,
+    session: DBSession,
+    query: RuntimeFlowControlParams,
+) -> RuntimeFlowPauseResponse:
+    try:
+        return await write_runtime_operation(
+            lambda active_session: pause_runtime_flow(
+                active_session,
+                task_id,
+                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+            ),
+            session=session,
+        )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.post("/tasks/{task_id}/continue", response_model=RuntimeFlowRead)
+async def continue_control_task(
+    task_id: str,
+    session: DBSession,
+    query: RuntimeFlowControlParams,
+) -> RuntimeFlowRead:
+    try:
+        return await write_runtime_operation(
+            lambda active_session: continue_runtime_flow(
+                active_session,
+                task_id,
+                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+            ),
+            session=session,
+        )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.post("/tasks/{task_id}/cancel", response_model=RuntimeFlowRead)
+async def cancel_control_task(
+    task_id: str,
+    session: DBSession,
+    query: RuntimeFlowControlParams,
+) -> RuntimeFlowRead:
+    try:
+        return await write_runtime_operation(
+            lambda active_session: cancel_runtime_flow(
+                active_session,
+                task_id,
+                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+            ),
+            session=session,
+        )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
 

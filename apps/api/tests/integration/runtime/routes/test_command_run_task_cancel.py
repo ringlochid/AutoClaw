@@ -27,8 +27,6 @@ from tests.integration.runtime.routes.support import (
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
-_CONTROL_API_ACTOR_REF = "control_api"
-
 
 def _command_run_start_payload() -> dict[str, object]:
     return {
@@ -51,13 +49,31 @@ async def test_cancel_task_closes_active_command_run_wait_as_cancelled(
         run_id = await start_route_command_run(context, task)
 
         cancel_response = await context.client.post(
-            f"/runtime/tasks/{task.task_id}/cancel",
+            f"/control/tasks/{task.task_id}/cancel",
             headers=context.operator_headers,
             params={"expected_active_flow_revision_id": task.active_flow_revision_id},
         )
 
         assert cancel_response.status_code == 200
         assert cancel_response.json()["status"] == "cancelled"
+        event_response = await context.client.get(
+            f"/control/tasks/{task.task_id}/events",
+            headers=context.operator_headers,
+        )
+        assert event_response.status_code == 200
+        control_events = [
+            event
+            for event in event_response.json()["items"]
+            if event["event_type"] in {"command_run_cancelled", "task_cancelled"}
+        ]
+        assert [event["event_type"] for event in control_events] == [
+            "command_run_cancelled",
+            "task_cancelled",
+        ]
+        assert control_events[0]["event_source"] == "control_api"
+        assert control_events[1]["event_source"] == "control_api"
+        assert control_events[1]["actor_ref"] is None
+        assert control_events[1]["payload"] == {"status": "cancelled"}
         async with context.session_factory() as session:
             command_run = await session.get(CommandRunModel, run_id)
             wait_state = await current_wait_state(session, task.task_id)
@@ -66,6 +82,11 @@ async def test_cancel_task_closes_active_command_run_wait_as_cancelled(
                 task.task_id,
                 "command_run_cancelled",
             )
+            task_cancelled_events = await command_run_events(
+                session,
+                task.task_id,
+                "task_cancelled",
+            )
             assert command_run is not None
             assert command_run.state == "cancelled"
             assert (
@@ -73,13 +94,15 @@ async def test_cancel_task_closes_active_command_run_wait_as_cancelled(
                 == "command run cancelled because the task was cancelled"
             )
             assert command_run.cancellation_requested_at is not None
-            assert command_run.cancellation_requested_by_actor_ref == _CONTROL_API_ACTOR_REF
+            assert command_run.cancellation_requested_by_actor_ref is None
             assert command_run.ended_at is not None
+            assert command_run.terminal_event_source == "control_api"
+            assert command_run.terminal_actor_ref is None
             assert wait_state is None
             assert len(cancelled_events) == 1
             cancelled_event = cancelled_events[0]
             assert cancelled_event.event_source == "control_api"
-            assert cancelled_event.actor_ref == _CONTROL_API_ACTOR_REF
+            assert cancelled_event.actor_ref is None
             assert cancelled_event.payload == {
                 "run_id": run_id,
                 "state": "cancelled",
@@ -88,8 +111,11 @@ async def test_cancel_task_closes_active_command_run_wait_as_cancelled(
                 "signal": None,
                 "ended_at": coerce_datetime_to_utc(command_run.ended_at).isoformat(),
                 "log_ref": None,
-                "initiated_by_actor_ref": _CONTROL_API_ACTOR_REF,
             }
+            assert len(task_cancelled_events) == 1
+            assert task_cancelled_events[0].event_source == "control_api"
+            assert task_cancelled_events[0].actor_ref is None
+            assert task_cancelled_events[0].payload == {"status": "cancelled"}
 
 
 async def start_route_command_run(

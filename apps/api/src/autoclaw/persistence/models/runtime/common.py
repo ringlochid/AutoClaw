@@ -62,6 +62,12 @@ PROVIDER_EVENT_KIND_VALUES = (
 HUMAN_REQUEST_KIND_VALUES = ("direction", "approval", "input", "review")
 HUMAN_REQUEST_STATUS_VALUES = ("open", "resolved", "timed_out", "cancelled")
 HUMAN_REQUEST_RESOLUTION_KIND_VALUES = ("answered", "timed_out", "cancelled")
+HUMAN_REQUEST_RESOLUTION_SURFACE_VALUES = (
+    "control_api",
+    "control_ui",
+    "operator_mcp",
+    "controller",
+)
 COMMAND_RUN_STATE_VALUES = (
     "pending_start",
     "running",
@@ -92,6 +98,7 @@ __all__ = [
     "FLOW_STATUS_VALUES",
     "HUMAN_REQUEST_KIND_VALUES",
     "HUMAN_REQUEST_RESOLUTION_KIND_VALUES",
+    "HUMAN_REQUEST_RESOLUTION_SURFACE_VALUES",
     "HUMAN_REQUEST_STATUS_VALUES",
     "NODE_KIND_VALUES",
     "NODE_STATE_VALUES",

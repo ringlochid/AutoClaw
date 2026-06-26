@@ -129,7 +129,7 @@ async def wait_for_command_run_runner_idle(*, max_wait_seconds: float = 5.0) -> 
     if state is None:
         return
     state.idle.clear()
-    notify_command_run_runner()
+    state.wakeup.set()
     try:
         await asyncio.wait_for(state.idle.wait(), timeout=max_wait_seconds)
     except TimeoutError:
@@ -569,6 +569,9 @@ async def _record_command_run_terminal(
 
 async def _stop_active_command_runs(state: CommandRunRunnerState) -> None:
     active_tasks = [execution.task for execution in tuple(state.active_runs.values())]
+    for task in active_tasks:
+        if not task.done():
+            task.cancel()
     if active_tasks:
         await asyncio.gather(*active_tasks, return_exceptions=True)
 

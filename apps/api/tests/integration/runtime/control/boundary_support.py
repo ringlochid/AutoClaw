@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from autoclaw.persistence import DispatchTurnModel, FlowModel
+from autoclaw.persistence import DispatchTurnModel, FlowModel, FlowWaitStateModel
 from autoclaw.runtime import pause_runtime_flow, runtime_flow_read
 from autoclaw.runtime.post_commit import drive_runtime_once, drive_runtime_until
 from sqlalchemy import select
@@ -177,10 +177,14 @@ async def assert_pause_wait_state(
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        wait_state = None if flow is None else await session.get(FlowWaitStateModel, flow.flow_id)
         assert flow is not None
         assert dispatch is not None
+        assert wait_state is not None
         assert flow.status == "paused"
         assert flow.current_open_dispatch_id == dispatch_id
+        assert wait_state.waiting_cause == "paused_by_operator"
+        assert wait_state.created_by_dispatch_id == dispatch_id
         assert dispatch.control_state == "abort_requested"
         assert dispatch.fenced_at is None
 
@@ -195,8 +199,10 @@ async def assert_pause_resumption_state(
     async with session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         prior_dispatch = await session.get(DispatchTurnModel, dispatch_id)
+        wait_state = None if flow is None else await session.get(FlowWaitStateModel, flow.flow_id)
         assert flow is not None
         assert prior_dispatch is not None
+        assert wait_state is None
         assert flow.status == "running"
         assert flow.current_open_dispatch_id is not None
         replacement = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)

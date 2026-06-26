@@ -22,6 +22,7 @@ from autoclaw.runtime.contracts import (
     HumanRequestRead,
     HumanRequestResolution,
     HumanRequestResolutionKind,
+    HumanRequestResolutionSurface,
     HumanRequestStatus,
     HumanRequestTimeout,
     OperationFailureCode,
@@ -92,6 +93,9 @@ async def reconcile_timed_out_human_request_wait(
         event_source=TaskEventSource.CONTROLLER,
         actor_ref=_CONTROLLER_ACTOR_REF,
         resolved_by_actor_ref=_CONTROLLER_ACTOR_REF,
+        resolved_by_surface=HumanRequestResolutionSurface.CONTROLLER,
+        policy_basis="human_request_timeout_default_behavior",
+        note="human request timed out before a human answered",
         resolved_at=terminal_commit_at,
     )
     return True
@@ -107,6 +111,9 @@ async def record_human_request_terminal_result(
     event_source: TaskEventSource,
     actor_ref: str | None = None,
     resolved_by_actor_ref: str | None = None,
+    resolved_by_surface: HumanRequestResolutionSurface,
+    policy_basis: str,
+    note: str | None = None,
     resolved_at: datetime | None = None,
 ) -> HumanRequestResolution:
     from autoclaw.runtime.flow.queries import require_flow_for_task
@@ -147,6 +154,9 @@ async def record_human_request_terminal_result(
     pending_request.item_responses_json = item_responses_json
     pending_request.resolved_at = terminal_at
     pending_request.resolved_by_actor_ref = terminal_actor_ref
+    pending_request.resolved_by_surface = resolved_by_surface.value
+    pending_request.resolution_policy_basis = policy_basis
+    pending_request.resolution_note = note
     pending_request.updated_at = terminal_at
 
     await session.delete(wait_state)

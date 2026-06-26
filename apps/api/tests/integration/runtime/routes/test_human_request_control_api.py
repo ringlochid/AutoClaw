@@ -19,6 +19,12 @@ from autoclaw.runtime.human_request.service import open_human_request
 from autoclaw.runtime.projection.runtime_state import current_runtime_state
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.integration.runtime.routes.request_api_support import (
+    answer_payload,
+    input_request_payload,
+    review_request_payload,
+    structured_input_answer_payload,
+)
 from tests.integration.runtime.routes.support import (
     RuntimeRouteContext,
     SeededRouteTask,
@@ -27,88 +33,6 @@ from tests.integration.runtime.routes.support import (
 )
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
-
-_CONTROL_API_ACTOR_REF = "control_api"
-
-
-def _review_request_payload() -> dict[str, Any]:
-    return {
-        "kind": "review",
-        "title": "Review implementation patch",
-        "summary": "The node needs a human review before continuing.",
-        "items": [
-            {
-                "item_id": "review_choice",
-                "prompt": "Should the node proceed with this patch?",
-                "options": [
-                    {"id": "approve", "title": "Approve"},
-                    {"id": "revise", "title": "Revise"},
-                ],
-                "recommended_option": "approve",
-            }
-        ],
-        "timeout": {"due_at": None, "default_behavior": None},
-        "suggested_human_instruction": "Inspect the patch before answering.",
-    }
-
-
-def _input_request_payload() -> dict[str, Any]:
-    return {
-        "kind": "input",
-        "title": "Provide launch details",
-        "summary": "The node needs structured launch inputs before continuing.",
-        "items": [
-            {
-                "item_id": "launch_details",
-                "prompt": "Provide the launch name and retry limit.",
-                "input_payload_schema": {
-                    "type": "object",
-                    "required": ["name", "retry_limit"],
-                    "properties": {
-                        "name": {"type": "string", "minLength": 1},
-                        "retry_limit": {"type": "integer", "minimum": 0},
-                    },
-                    "additionalProperties": False,
-                },
-            }
-        ],
-        "timeout": {"due_at": None, "default_behavior": None},
-        "suggested_human_instruction": "Fill in the structured launch input.",
-    }
-
-
-def _answer_payload(
-    *, item_id: str = "review_choice", option_id: str = "approve"
-) -> dict[str, Any]:
-    return {
-        "item_responses": [
-            {
-                "item_id": item_id,
-                "selected_option": option_id,
-                "freeform_answer": None,
-                "extra_notes": "Looks good.",
-                "response_payload": None,
-            }
-        ]
-    }
-
-
-def _structured_input_answer_payload(
-    response_payload: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    return {
-        "item_responses": [
-            {
-                "item_id": "launch_details",
-                "selected_option": None,
-                "freeform_answer": None,
-                "extra_notes": "Use these launch values.",
-                "response_payload": response_payload
-                if response_payload is not None
-                else {"name": "alpha", "retry_limit": 2},
-            }
-        ]
-    }
 
 
 async def test_control_human_requests_read_exposes_open_request_without_resolution(
@@ -156,7 +80,7 @@ async def test_control_human_request_resolve_persists_answer_and_clears_wait(
         response = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
             headers=context.operator_headers,
-            json=_answer_payload(),
+            json=answer_payload(),
         )
 
         assert response.status_code == 200
@@ -164,9 +88,9 @@ async def test_control_human_request_resolve_persists_answer_and_clears_wait(
         assert resolution["request_id"] == request_id
         assert resolution["task_id"] == task.task_id
         assert resolution["resolution_kind"] == "answered"
-        assert resolution["resolved_by_actor_ref"] == _CONTROL_API_ACTOR_REF
+        assert resolution["resolved_by_actor_ref"] is None
         assert resolution["resolved_at"] is not None
-        assert resolution["item_responses"] == _answer_payload()["item_responses"]
+        assert resolution["item_responses"] == answer_payload()["item_responses"]
         await assert_answered_resolution_state(context, task, request_id)
 
         readback = await context.client.get(
@@ -189,7 +113,7 @@ async def test_control_human_request_resolve_accepts_structured_input_payload(
             task_root_name="task-root",
         )
         request_id = await open_input_human_request(context, task)
-        answer_payload = _structured_input_answer_payload()
+        answer_payload = structured_input_answer_payload()
 
         response = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
@@ -234,7 +158,7 @@ async def test_control_human_request_resolve_rejects_schema_invalid_input_withou
         response = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
             headers=context.operator_headers,
-            json=_structured_input_answer_payload({"name": 17, "retry_limit": -1}),
+            json=structured_input_answer_payload({"name": 17, "retry_limit": -1}),
         )
 
         assert response.status_code == 400
@@ -256,7 +180,7 @@ async def test_control_human_request_resolve_rejects_missing_request_without_sid
         response = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/human-request.missing/resolve",
             headers=context.operator_headers,
-            json=_answer_payload(),
+            json=answer_payload(),
         )
 
         assert response.status_code == 409
@@ -279,7 +203,7 @@ async def test_control_human_request_resolve_rejects_non_current_request_without
         response = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
             headers=context.operator_headers,
-            json=_answer_payload(),
+            json=answer_payload(),
         )
 
         assert response.status_code == 409
@@ -305,14 +229,14 @@ async def test_control_human_request_resolve_rejects_terminal_request_without_du
         resolved = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
             headers=context.operator_headers,
-            json=_answer_payload(),
+            json=answer_payload(),
         )
         assert resolved.status_code == 200
 
         duplicate = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
             headers=context.operator_headers,
-            json=_answer_payload(option_id="revise"),
+            json=answer_payload(option_id="revise"),
         )
 
         assert duplicate.status_code == 409
@@ -322,7 +246,7 @@ async def test_control_human_request_resolve_rejects_terminal_request_without_du
             resolved_event_count = await resolved_event_count_for_task(session, task.task_id)
             assert pending_request is not None
             assert pending_request.status == "resolved"
-            assert pending_request.item_responses_json == _answer_payload()["item_responses"]
+            assert pending_request.item_responses_json == answer_payload()["item_responses"]
             assert resolved_event_count == 1
 
 
@@ -340,12 +264,12 @@ async def test_control_human_request_resolve_rejects_unknown_item_or_option_with
         unknown_item = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
             headers=context.operator_headers,
-            json=_answer_payload(item_id="missing_item"),
+            json=answer_payload(item_id="missing_item"),
         )
         unknown_option = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
             headers=context.operator_headers,
-            json=_answer_payload(option_id="missing_option"),
+            json=answer_payload(option_id="missing_option"),
         )
 
         assert unknown_item.status_code == 400
@@ -353,6 +277,46 @@ async def test_control_human_request_resolve_rejects_unknown_item_or_option_with
         assert unknown_option.status_code == 400
         assert unknown_option.json()["detail"]["code"] == "invalid_request_shape"
         await assert_open_request_unchanged(context, task, request_id, wait_owner_id=request_id)
+
+
+async def test_pause_then_continue_rejects_open_human_request_wait(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_human_request_pause_wait",
+            task_root_name="task-root",
+        )
+        request_id = await open_review_human_request(context, task)
+
+        pause_response = await context.client.post(
+            f"/control/tasks/{task.task_id}/pause",
+            headers=context.operator_headers,
+            params={"expected_active_flow_revision_id": task.active_flow_revision_id},
+        )
+
+        assert pause_response.status_code == 200
+        assert pause_response.json()["flow"]["status"] == "paused"
+
+        continue_response = await context.client.post(
+            f"/control/tasks/{task.task_id}/continue",
+            headers=context.operator_headers,
+            params={"expected_active_flow_revision_id": task.active_flow_revision_id},
+        )
+
+        assert continue_response.status_code == 422
+        assert continue_response.json()["detail"]["code"] == "illegal_state"
+        assert "human request wait is still active" in continue_response.json()["detail"]["summary"]
+
+        async with context.session_factory() as session:
+            flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task.task_id))
+            assert flow is not None
+            wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
+            assert wait_state is not None
+            assert flow.status == "paused"
+            assert wait_state.waiting_cause == "waiting_for_human_request"
+            assert wait_state.pending_human_request_id == request_id
 
 
 async def test_control_human_requests_require_operator_auth_and_existing_task(
@@ -373,7 +337,7 @@ async def test_control_human_requests_require_operator_auth_and_existing_task(
         missing_resolve = await context.client.post(
             "/control/tasks/task_missing/human-requests/human-request.missing/resolve",
             headers=context.operator_headers,
-            json=_answer_payload(),
+            json=answer_payload(),
         )
 
         assert unauthorized.status_code == 401
@@ -392,7 +356,7 @@ async def open_review_human_request(
         context,
         task,
         kind="review",
-        request_payload=_review_request_payload(),
+        request_payload=review_request_payload(),
     )
 
 
@@ -404,7 +368,7 @@ async def open_input_human_request(
         context,
         task,
         kind="input",
-        request_payload=_input_request_payload(),
+        request_payload=input_request_payload(),
     )
 
 
@@ -518,7 +482,7 @@ async def assert_answered_resolution_state(
         expected_responses = (
             expected_item_responses
             if expected_item_responses is not None
-            else _answer_payload()["item_responses"]
+            else answer_payload()["item_responses"]
         )
 
         assert flow is not None
@@ -528,11 +492,16 @@ async def assert_answered_resolution_state(
         assert pending_request.resolution_kind == "answered"
         assert pending_request.item_responses_json == expected_responses
         assert pending_request.resolved_at is not None
-        assert pending_request.resolved_by_actor_ref == _CONTROL_API_ACTOR_REF
+        assert pending_request.resolved_by_actor_ref is None
+        assert pending_request.resolved_by_surface == "control_api"
+        assert pending_request.resolution_policy_basis == (
+            "task_authorized_human_request_resolution"
+        )
+        assert pending_request.resolution_note is None
         assert len(resolved_events) == 1
         event = resolved_events[0]
         assert event.event_source == "control_api"
-        assert event.actor_ref == _CONTROL_API_ACTOR_REF
+        assert event.actor_ref is None
         assert event.flow_revision_id == pending_request.flow_revision_id
         assert event.dispatch_id == pending_request.dispatch_id
         assert event.attempt_id == pending_request.attempt_id
@@ -541,7 +510,6 @@ async def assert_answered_resolution_state(
             "request_id": request_id,
             "status": "resolved",
             "resolution_kind": "answered",
-            "resolved_by_actor_ref": _CONTROL_API_ACTOR_REF,
         }
 
 
@@ -566,6 +534,9 @@ async def assert_open_request_unchanged(
         assert pending_request.item_responses_json is None
         assert pending_request.resolved_at is None
         assert pending_request.resolved_by_actor_ref is None
+        assert pending_request.resolved_by_surface is None
+        assert pending_request.resolution_policy_basis is None
+        assert pending_request.resolution_note is None
         assert wait_state.waiting_cause == "waiting_for_human_request"
         assert wait_state.pending_human_request_id == wait_owner_id
         assert resolved_event_count == 0

@@ -31,7 +31,6 @@ from tests.integration.runtime.routes.support import (
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
-_CONTROL_API_ACTOR_REF = "control_api"
 _CONTROLLER_ACTOR_REF = "controller"
 
 
@@ -103,7 +102,7 @@ async def test_resolved_human_request_continues_task_and_backfills_real_events(
         assert "## Human Request Continuation Context" in prompt_text
         assert f"- request_id: {request_id}" in prompt_text
         assert "- resolution_kind: answered" in prompt_text
-        assert "- resolved_by_actor_ref: control_api" in prompt_text
+        assert "- resolved_by_actor_ref: None" in prompt_text
         assert "selected_option: approve" in prompt_text
         assert "extra_notes: Looks good." in prompt_text
 
@@ -128,12 +127,11 @@ async def test_resolved_human_request_continues_task_and_backfills_real_events(
             "status": "open",
         }
         assert human_request_events[1]["event_source"] == "control_api"
-        assert human_request_events[1]["actor_ref"] == _CONTROL_API_ACTOR_REF
+        assert human_request_events[1]["actor_ref"] is None
         assert human_request_events[1]["payload"] == {
             "request_id": request_id,
             "status": "resolved",
             "resolution_kind": "answered",
-            "resolved_by_actor_ref": _CONTROL_API_ACTOR_REF,
         }
 
 
@@ -183,6 +181,13 @@ async def test_timed_out_human_request_continues_task_and_surfaces_timeout_conte
             assert pending_request.status == "timed_out"
             assert pending_request.resolution_kind == "timed_out"
             assert pending_request.resolved_by_actor_ref == _CONTROLLER_ACTOR_REF
+            assert pending_request.resolved_by_surface == "controller"
+            assert pending_request.resolution_policy_basis == (
+                "human_request_timeout_default_behavior"
+            )
+            assert pending_request.resolution_note == (
+                "human request timed out before a human answered"
+            )
             assert pending_request.resolved_at is not None
             assert coerce_datetime_to_utc(pending_request.resolved_at) > timeout_due_at
             assert coerce_datetime_to_utc(flow.updated_at) > timeout_due_at
@@ -212,7 +217,7 @@ async def test_cancel_task_closes_open_human_request_as_cancelled(
         request_id = await open_review_human_request(context, task)
 
         cancel_response = await context.client.post(
-            f"/runtime/tasks/{task.task_id}/cancel",
+            f"/control/tasks/{task.task_id}/cancel",
             headers=context.operator_headers,
             params={"expected_active_flow_revision_id": task.active_flow_revision_id},
         )
@@ -227,21 +232,34 @@ async def test_cancel_task_closes_open_human_request_as_cancelled(
                 task.task_id,
                 "human_request_cancelled",
             )
+            task_cancelled_events = await human_request_events(
+                session,
+                task.task_id,
+                "task_cancelled",
+            )
             assert pending_request is not None
             assert pending_request.status == "cancelled"
             assert pending_request.resolution_kind == "cancelled"
-            assert pending_request.resolved_by_actor_ref == _CONTROL_API_ACTOR_REF
+            assert pending_request.resolved_by_actor_ref is None
+            assert pending_request.resolved_by_surface == "control_api"
+            assert pending_request.resolution_policy_basis == "task_cancelled"
+            assert pending_request.resolution_note == (
+                "human request cancelled because the task was cancelled"
+            )
             assert wait_state is None
             assert len(cancelled_events) == 1
             cancelled_event = cancelled_events[0]
             assert cancelled_event.event_source == "control_api"
-            assert cancelled_event.actor_ref == _CONTROL_API_ACTOR_REF
+            assert cancelled_event.actor_ref is None
             assert cancelled_event.payload == {
                 "request_id": request_id,
                 "status": "cancelled",
                 "resolution_kind": "cancelled",
-                "resolved_by_actor_ref": _CONTROL_API_ACTOR_REF,
             }
+            assert len(task_cancelled_events) == 1
+            assert task_cancelled_events[0].event_source == "control_api"
+            assert task_cancelled_events[0].actor_ref is None
+            assert task_cancelled_events[0].payload == {"status": "cancelled"}
 
         stale_response = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",

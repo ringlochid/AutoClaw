@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import TypedDict, cast
 
 import pytest
-from autoclaw.persistence import AssignmentModel, FlowModel, FlowNodeModel
+from autoclaw.persistence import AssignmentModel, FlowModel, FlowNodeModel, TaskEventModel
 from autoclaw.runtime.post_commit import drive_runtime_once
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -102,6 +102,7 @@ async def test_runtime_routes_surface_paused_snapshot_continue_action(
             == paused_snapshot_json["current_paths"]
         )
         assert_operator_current_paths(paused_snapshot_json["current_paths"])
+        assert await task_event_types_for_task(context, task_id=task.task_id) == ["task_paused"]
 
 
 async def test_runtime_routes_reject_continue_for_running_flow(
@@ -115,7 +116,7 @@ async def test_runtime_routes_reject_continue_for_running_flow(
         )
 
         running_continue = await context.client.post(
-            f"/runtime/tasks/{task.task_id}/continue",
+            f"/control/tasks/{task.task_id}/continue",
             headers=context.operator_headers,
             params={"expected_active_flow_revision_id": task.active_flow_revision_id},
         )
@@ -213,7 +214,7 @@ async def pause_route_task(
     task: SeededRouteTask,
 ) -> SeededRouteTask:
     pause_response = await context.client.post(
-        f"/runtime/tasks/{task.task_id}/pause",
+        f"/control/tasks/{task.task_id}/pause",
         headers=context.operator_headers,
         params={"expected_active_flow_revision_id": task.active_flow_revision_id},
     )
@@ -260,6 +261,21 @@ async def block_route_task(
     assert blocked.status_code == 200
     await drive_runtime_once(task_id=task.task_id)
     return task
+
+
+async def task_event_types_for_task(
+    context: RuntimeRouteContext,
+    *,
+    task_id: str,
+) -> list[str]:
+    async with context.session_factory() as session:
+        return list(
+            await session.scalars(
+                select(TaskEventModel.event_type)
+                .where(TaskEventModel.task_id == task_id)
+                .order_by(TaskEventModel.event_seq.asc())
+            )
+        )
 
 
 async def set_assignment_produces(

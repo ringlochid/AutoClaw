@@ -253,6 +253,9 @@ CURRENTNESS_COLUMN_EXPECTATIONS = (
             "item_responses_json",
             "resolved_at",
             "resolved_by_actor_ref",
+            "resolved_by_surface",
+            "resolution_policy_basis",
+            "resolution_note",
         },
     ),
     (
@@ -280,6 +283,8 @@ CURRENTNESS_COLUMN_EXPECTATIONS = (
             "terminal_exit_code",
             "terminal_signal",
             "terminal_log_ref",
+            "terminal_event_source",
+            "terminal_actor_ref",
             "cancellation_requested_at",
             "cancellation_requested_by_actor_ref",
             "created_at",

@@ -8,9 +8,11 @@ from autoclaw.persistence import DispatchTurnModel, FlowModel
 from autoclaw.persistence.session import dispose_db_engine
 from autoclaw.runtime import continue_runtime_flow
 from autoclaw.runtime.post_commit import drive_runtime_until
+from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
+from tests.helpers.operator_auth_headers import OPERATOR_HEADERS
 from tests.helpers.runtime_dispatch_support import current_open_dispatch_id, stage_child_yield
 from tests.helpers.runtime_support import (
     bootstrap_parent_runtime,
@@ -97,6 +99,9 @@ async def test_pause_waits_for_inactivity_proof_before_reopening_dispatch(
                 task_id=task_id,
                 dispatch_id=dispatch_id,
             )
+            assert await control_task_events(api.client, task_id=task_id) == [
+                expected_control_task_event("task_paused", "paused")
+            ]
             openclaw_gateway_test_server.set_default_method_payload(
                 "agent.wait",
                 await _wait_ok_payload_for_dispatch(
@@ -128,8 +133,46 @@ async def test_pause_waits_for_inactivity_proof_before_reopening_dispatch(
                 dispatch_id=dispatch_id,
                 root_attempt_id=root_attempt_id,
             )
+            assert await control_task_events(api.client, task_id=task_id) == [
+                expected_control_task_event("task_paused", "paused"),
+                expected_control_task_event("task_resumed", "running"),
+            ]
     finally:
         await dispose_db_engine()
+
+
+async def control_task_events(
+    client: AsyncClient,
+    *,
+    task_id: str,
+) -> list[dict[str, object]]:
+    response = await client.get(
+        f"/control/tasks/{task_id}/events",
+        headers=OPERATOR_HEADERS,
+    )
+    assert response.status_code == 200
+    return [
+        {
+            "event_type": event["event_type"],
+            "event_source": event["event_source"],
+            "actor_ref": event["actor_ref"],
+            "payload": event["payload"],
+        }
+        for event in response.json()["items"]
+        if event["event_type"] in {"task_paused", "task_resumed", "task_cancelled"}
+    ]
+
+
+def expected_control_task_event(
+    event_type: str,
+    status: str,
+) -> dict[str, object]:
+    return {
+        "event_type": event_type,
+        "event_source": "control_api",
+        "actor_ref": None,
+        "payload": {"status": status},
+    }
 
 
 @pytest.mark.asyncio

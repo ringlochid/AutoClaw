@@ -22,6 +22,7 @@ from autoclaw.runtime.contracts import (
     HumanRequestResolutionKind,
     HumanRequestResolveRequest,
     HumanRequestResolveResponse,
+    HumanRequestResolutionSurface,
     HumanRequestStatus,
     OperationFailureCode,
     TaskEventSource,
@@ -37,8 +38,6 @@ from autoclaw.runtime.human_request.records import (
 from autoclaw.runtime.ids import human_request_id
 from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState
 from autoclaw.runtime.task_events import append_task_event
-
-_CONTROL_API_ACTOR_REF = "control_api"
 
 
 async def open_human_request(
@@ -146,8 +145,8 @@ async def resolve_human_request(
         resolution_kind=HumanRequestResolutionKind.ANSWERED,
         item_responses=request.item_responses,
         event_source=TaskEventSource.CONTROL_API,
-        actor_ref=_CONTROL_API_ACTOR_REF,
-        resolved_by_actor_ref=_CONTROL_API_ACTOR_REF,
+        resolved_by_surface=HumanRequestResolutionSurface.CONTROL_API,
+        policy_basis="task_authorized_human_request_resolution",
     )
     return HumanRequestResolveResponse(task_id=task_id, resolution=resolution)
 

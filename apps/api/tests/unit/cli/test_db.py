@@ -13,6 +13,10 @@ from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL, get_settings
 from autoclaw.interfaces.cli.commands.bootstrap import (
     ensure_database_ready_with_legacy_sqlite_repair,
 )
+from autoclaw.interfaces.cli.commands.bootstrap_database_legacy_copy import (
+    postgres_command_run_row,
+    postgres_pending_human_request_row,
+)
 from autoclaw.persistence.session import dispose_db_engine, get_async_engine
 from sqlalchemy import inspect, text
 
@@ -40,7 +44,7 @@ async def test_db_reset_recreates_sqlite_database(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_db_upgrade_rejects_stale_sqlite_schema_that_cannot_be_retrofitted(
+async def test_db_upgrade_repairs_stale_sqlite_schema_through_shipped_path(
     tmp_path: Path,
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
@@ -69,13 +73,15 @@ async def test_db_upgrade_rejects_stale_sqlite_schema_that_cannot_be_retrofitted
             )
             connection.commit()
 
-        with pytest.raises(RuntimeError, match="autoclaw db reset"):
-            await asyncio.to_thread(
-                cli.cmd_db_upgrade,
-                argparse.Namespace(config=str(config_path)),
-            )
+        upgrade_result = await asyncio.to_thread(
+            cli.cmd_db_upgrade,
+            argparse.Namespace(config=str(config_path)),
+        )
     finally:
         await dispose_db_engine()
+
+    assert upgrade_result == 0
+    assert_seeded_registry_is_bootstrapped(database_path)
 
 
 @pytest.mark.asyncio
@@ -160,3 +166,45 @@ async def test_legacy_postgres_schema_repair_moves_tables_to_backup_schema(
     assert "flows" in public_tables
     assert "flow_revisions" in public_tables
     assert "flows" in backup_tables
+
+
+def test_legacy_postgres_terminal_row_builders_keep_surface_and_clear_unknown_actor() -> None:
+    human_request_columns = [
+        "resolved_by_actor_ref",
+        "resolved_by_surface",
+        "resolution_policy_basis",
+        "resolution_note",
+    ]
+    human_request_values = postgres_pending_human_request_row(
+        {
+            "resolution_kind": "answered",
+            "resolved_by_actor_ref": "control_api",
+        },
+        human_request_columns,
+    )
+    human_request_row = dict(zip(human_request_columns, human_request_values, strict=True))
+
+    assert human_request_row == {
+        "resolved_by_actor_ref": None,
+        "resolved_by_surface": "control_api",
+        "resolution_policy_basis": "task_authorized_human_request_resolution",
+        "resolution_note": None,
+    }
+
+    command_run_columns = [
+        "terminal_event_source",
+        "terminal_actor_ref",
+    ]
+    command_run_values = postgres_command_run_row(
+        {
+            "state": "cancelled",
+            "terminal_summary": "command run cancelled because the task was cancelled",
+        },
+        command_run_columns,
+    )
+    command_run_row = dict(zip(command_run_columns, command_run_values, strict=True))
+
+    assert command_run_row == {
+        "terminal_event_source": "control_api",
+        "terminal_actor_ref": None,
+    }

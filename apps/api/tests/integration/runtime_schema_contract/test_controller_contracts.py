@@ -175,6 +175,7 @@ def test_command_run_contracts_validate_terminal_state_shape() -> None:
             signal=None,
             log_ref=None,
         ),
+        terminal_event_source=TaskEventSource.CONTROLLER,
     )
 
     assert record.state == "succeeded"

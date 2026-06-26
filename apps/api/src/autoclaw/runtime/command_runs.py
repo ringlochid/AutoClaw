@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import cast
 
 from sqlalchemy import and_, func, or_, select
@@ -17,14 +17,13 @@ from autoclaw.runtime.capabilities import (
 )
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.command_run_records import (
+    command_run_list_item_from_model,
     command_run_record_from_model,
-    terminal_result_from_model,
 )
 from autoclaw.runtime.contracts import (
     COMMAND_RUN_TERMINAL_EVENT_TYPES,
     TERMINAL_COMMAND_RUN_STATES,
     CommandRunCancelResponse,
-    CommandRunListItem,
     CommandRunListResponse,
     CommandRunProgressUpdate,
     CommandRunRecord,
@@ -44,7 +43,6 @@ from autoclaw.runtime.ids import command_run_id
 from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState
 from autoclaw.runtime.task_events import append_task_event
 
-_CONTROL_API_ACTOR_REF = "control_api"
 _COMMAND_RUN_CONFLICT_NEXT_STEP = (
     "Reread the current command-run list for this task before retrying the command-run action."
 )
@@ -156,7 +154,7 @@ async def list_command_runs(
     next_cursor = page_rows[-1].run_id if len(rows) > page_limit else None
     return CommandRunListResponse(
         task_id=task_id,
-        items=tuple(_command_run_list_item_from_model(row) for row in page_rows),
+        items=tuple(command_run_list_item_from_model(row) for row in page_rows),
         next_cursor=next_cursor,
     )
 
@@ -180,7 +178,6 @@ async def cancel_command_run(
     cancelled_at = utc_now()
     command_run.state = CommandRunState.CANCELLATION_REQUESTED.value
     command_run.cancellation_requested_at = cancelled_at
-    command_run.cancellation_requested_by_actor_ref = _CONTROL_API_ACTOR_REF
     command_run.latest_update = _COMMAND_RUN_CANCEL_REQUESTED_SUMMARY
     command_run.updated_at = cancelled_at
     flow.updated_at = cancelled_at
@@ -194,7 +191,6 @@ async def cancel_command_run(
         dispatch_id=command_run.dispatch_id,
         attempt_id=command_run.attempt_id,
         node_key=command_run.requester_node_key,
-        actor_ref=_CONTROL_API_ACTOR_REF,
         payload={
             "run_id": run_id,
             "state": CommandRunState.CANCELLATION_REQUESTED.value,
@@ -205,7 +201,7 @@ async def cancel_command_run(
     await session.flush()
     return CommandRunCancelResponse(
         task_id=task_id,
-        run=_command_run_list_item_from_model(command_run),
+        run=command_run_list_item_from_model(command_run),
     )
 
 
@@ -293,6 +289,8 @@ async def record_command_run_terminal_result(
     command_run.terminal_exit_code = result.exit_code
     command_run.terminal_signal = result.signal
     command_run.terminal_log_ref = result.log_ref
+    command_run.terminal_event_source = event_source.value
+    command_run.terminal_actor_ref = actor_ref
     command_run.latest_update = result.summary
     command_run.latest_log_ref = result.log_ref
     if terminal_state == CommandRunState.CANCELLED:
@@ -542,37 +540,6 @@ def _command_run_conflict(summary: str) -> RuntimeOperationError:
         suggested_next_step=_COMMAND_RUN_CONFLICT_NEXT_STEP,
         status_code_override=409,
     )
-
-
-def _command_run_list_item_from_model(row: CommandRunModel) -> CommandRunListItem:
-    terminal_result = terminal_result_from_model(row)
-    return CommandRunListItem(
-        run_id=row.run_id,
-        state=CommandRunState(row.state),
-        command=row.command,
-        description=row.description,
-        workdir=row.workdir,
-        created_at=_coerce_datetime_to_utc(row.created_at),
-        started_at=_optional_datetime(row.started_at),
-        ended_at=_optional_datetime(row.ended_at),
-        timeout_seconds=row.timeout_seconds,
-        summary=terminal_result.summary if terminal_result is not None else row.latest_update,
-        exit_code=terminal_result.exit_code if terminal_result is not None else None,
-        signal=terminal_result.signal if terminal_result is not None else None,
-        log_ref=terminal_result.log_ref if terminal_result is not None else row.latest_log_ref,
-    )
-
-
-def _optional_datetime(value: datetime | None) -> datetime | None:
-    if value is None:
-        return None
-    return _coerce_datetime_to_utc(value)
-
-
-def _coerce_datetime_to_utc(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value.astimezone(UTC)
 
 
 __all__ = [

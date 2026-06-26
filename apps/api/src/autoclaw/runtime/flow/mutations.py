@@ -18,9 +18,11 @@ from autoclaw.runtime.contracts import (
     CommandRunTerminalResultRead,
     FlowStatus,
     HumanRequestResolutionKind,
+    HumanRequestResolutionSurface,
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,
     TaskEventSource,
+    TaskEventType,
     WaitingCause,
 )
 from autoclaw.runtime.dispatch.control import (
@@ -50,9 +52,8 @@ from autoclaw.runtime.flow.resume import (
 from autoclaw.runtime.human_request.records import record_human_request_terminal_result
 from autoclaw.runtime.post_commit.cases import stage_operator_outputs
 from autoclaw.runtime.projection.runtime_state import current_runtime_state
+from autoclaw.runtime.task_events import append_task_event
 from autoclaw.runtime.workspace_leases import release_workspace_root_lease
-
-_CONTROL_API_ACTOR_REF = "control_api"
 
 
 async def continue_runtime_flow(
@@ -73,6 +74,7 @@ async def continue_runtime_flow(
                 "dispatch is proven inactive; use continue only to resume a paused flow."
             ),
         )
+    pause_wait_state = await _require_pause_resume_wait_state(session, flow=flow)
     resolved_previous_dispatch = await resolve_foreground_dispatch_gate(
         session,
         task_id=task_id,
@@ -98,8 +100,18 @@ async def continue_runtime_flow(
                 "the incomplete semantic target before continuing this task."
             ),
         )
+    if pause_wait_state is not None:
+        await session.delete(pause_wait_state)
     flow.status = FlowStatus.RUNNING.value
     flow.updated_at = utc_now()
+    await _append_task_control_event(
+        session,
+        task_id=task_id,
+        event_type=TaskEventType.TASK_RESUMED,
+        flow=flow,
+        attempt_id=resume_target.attempt.attempt_id,
+        node_key=resume_target.node.node_key,
+    )
     await session.flush()
     if flow.current_open_dispatch_id is None and dispatch_open_inputs is not None:
         node, assignment, attempt, previous_dispatch_id, staged_child_assignment_id = (
@@ -142,58 +154,29 @@ async def pause_runtime_flow(
     await ensure_flow_interruptible(session, state.current_attempt, action="pause")
     paused_dispatch_id = flow.current_open_dispatch_id
     if paused_dispatch_id is not None:
-        dispatch = await session.get(DispatchTurnModel, paused_dispatch_id)
-        if dispatch is None:
-            raise missing_resource_error(f"missing dispatch '{paused_dispatch_id}'")
-        paused_at = utc_now()
-        delivery_state = await session.get(DispatchDeliveryStateModel, paused_dispatch_id)
-        if dispatch_inactivity_proven(dispatch) and (
-            dispatch_waiting_for_inactivity(dispatch) or dispatch.control_state == "abort_requested"
-        ):
-            await fence_foreground_dispatch(
-                session,
-                task_id=task_id,
-                flow=flow,
-                dispatch=dispatch,
-            )
-        elif dispatch_deadline_expired(dispatch):
-            if dispatch.control_state == "live":
-                await request_dispatch_abort_after_close_timeout(
-                    session,
-                    task_id=task_id,
-                    dispatch=dispatch,
-                )
-            else:
-                await fence_foreground_dispatch_after_timeout(
-                    session,
-                    task_id=task_id,
-                    flow=flow,
-                    dispatch=dispatch,
-                )
-        elif dispatch.control_state == "ambiguous":
-            await fence_foreground_dispatch(
-                session,
-                task_id=task_id,
-                flow=flow,
-                dispatch=dispatch,
-                reason=dispatch.control_state_reason or "pause_requested:cleanup",
-                delivery_status=dispatch.delivery_status,
-            )
-        elif dispatch.control_state == "fenced":
-            flow.current_open_dispatch_id = None
-        else:
-            dispatch.closed_at = dispatch.closed_at or paused_at
-            if dispatch.accepted_boundary is None:
-                await mark_dispatch_abort_requested(
-                    session,
-                    dispatch=dispatch,
-                    reason="pause_requested",
-                    requested_at=paused_at,
-                )
-            if delivery_state is not None:
-                delivery_state.updated_at = paused_at
+        await _pause_active_dispatch(
+            session,
+            task_id=task_id,
+            flow=flow,
+            paused_dispatch_id=paused_dispatch_id,
+        )
     flow.status = FlowStatus.PAUSED.value
     flow.updated_at = utc_now()
+    await _record_pause_wait_state(
+        session,
+        task_id=task_id,
+        flow=flow,
+        paused_dispatch_id=paused_dispatch_id,
+    )
+    await _append_task_control_event(
+        session,
+        task_id=task_id,
+        event_type=TaskEventType.TASK_PAUSED,
+        flow=flow,
+        attempt_id=state.current_attempt.attempt_id,
+        node_key=state.current_node.node_key,
+        dispatch_id=paused_dispatch_id,
+    )
     await session.flush()
     if paused_dispatch_id is not None:
         stage_operator_outputs(session, task_id=task_id, dispatch_id=paused_dispatch_id)
@@ -253,6 +236,68 @@ async def cancel_runtime_flow(
     return await _finish_cancelled_flow(session, task_id, flow, cancelled_dispatch_id)
 
 
+async def _pause_active_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: Any,
+    paused_dispatch_id: str,
+) -> None:
+    dispatch = await session.get(DispatchTurnModel, paused_dispatch_id)
+    if dispatch is None:
+        raise missing_resource_error(f"missing dispatch '{paused_dispatch_id}'")
+    paused_at = utc_now()
+    delivery_state = await session.get(DispatchDeliveryStateModel, paused_dispatch_id)
+    if dispatch_inactivity_proven(dispatch) and (
+        dispatch_waiting_for_inactivity(dispatch) or dispatch.control_state == "abort_requested"
+    ):
+        await fence_foreground_dispatch(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+        )
+        return
+    if dispatch_deadline_expired(dispatch):
+        if dispatch.control_state == "live":
+            await request_dispatch_abort_after_close_timeout(
+                session,
+                task_id=task_id,
+                dispatch=dispatch,
+            )
+            return
+        await fence_foreground_dispatch_after_timeout(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+        )
+        return
+    if dispatch.control_state == "ambiguous":
+        await fence_foreground_dispatch(
+            session,
+            task_id=task_id,
+            flow=flow,
+            dispatch=dispatch,
+            reason=dispatch.control_state_reason or "pause_requested:cleanup",
+            delivery_status=dispatch.delivery_status,
+        )
+        return
+    if dispatch.control_state == "fenced":
+        flow.current_open_dispatch_id = None
+        return
+    dispatch.closed_at = dispatch.closed_at or paused_at
+    if dispatch.accepted_boundary is None:
+        await mark_dispatch_abort_requested(
+            session,
+            dispatch=dispatch,
+            reason="pause_requested",
+            requested_at=paused_at,
+        )
+    if delivery_state is not None:
+        delivery_state.updated_at = paused_at
+
+
 async def _mark_dispatch_cancel_requested(
     session: AsyncSession,
     dispatch: DispatchTurnModel,
@@ -279,6 +324,15 @@ async def _finish_cancelled_flow(
 ) -> RuntimeFlowRead:
     flow.status = FlowStatus.CANCELLED.value
     flow.updated_at = utc_now()
+    await _append_task_control_event(
+        session,
+        task_id=task_id,
+        event_type=TaskEventType.TASK_CANCELLED,
+        flow=flow,
+        attempt_id=None,
+        node_key=flow.current_node_key,
+        dispatch_id=cancelled_dispatch_id,
+    )
     if flow.current_open_dispatch_id is None:
         await release_workspace_root_lease(session, task_id=task_id)
     await session.flush()
@@ -308,8 +362,9 @@ async def _cancel_active_external_wait(
             request_id=wait_state.pending_human_request_id,
             resolution_kind=HumanRequestResolutionKind.CANCELLED,
             event_source=TaskEventSource.CONTROL_API,
-            actor_ref=_CONTROL_API_ACTOR_REF,
-            resolved_by_actor_ref=_CONTROL_API_ACTOR_REF,
+            resolved_by_surface=HumanRequestResolutionSurface.CONTROL_API,
+            policy_basis="task_cancelled",
+            note="human request cancelled because the task was cancelled",
             resolved_at=cancelled_at,
         )
         return
@@ -334,8 +389,91 @@ async def _cancel_active_external_wait(
                 ended_at=cancelled_at,
             ),
             event_source=TaskEventSource.CONTROL_API,
-            actor_ref=_CONTROL_API_ACTOR_REF,
         )
+        return
+    await session.delete(wait_state)
+
+
+async def _append_task_control_event(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    event_type: TaskEventType,
+    flow: Any,
+    attempt_id: str | None,
+    node_key: str | None,
+    dispatch_id: str | None = None,
+) -> None:
+    await append_task_event(
+        session,
+        task_id=task_id,
+        event_type=event_type,
+        event_source=TaskEventSource.CONTROL_API,
+        occurred_at=flow.updated_at,
+        flow_revision_id=flow.active_flow_revision_id,
+        dispatch_id=dispatch_id,
+        attempt_id=attempt_id,
+        node_key=node_key,
+        payload={"status": flow.status},
+    )
+
+
+async def _record_pause_wait_state(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: Any,
+    paused_dispatch_id: str | None,
+) -> None:
+    wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
+    if wait_state is None:
+        session.add(
+            FlowWaitStateModel(
+                flow_id=flow.flow_id,
+                task_id=task_id,
+                waiting_cause=WaitingCause.PAUSED_BY_OPERATOR.value,
+                created_by_dispatch_id=paused_dispatch_id,
+                created_at=flow.updated_at,
+                updated_at=flow.updated_at,
+            )
+        )
+        return
+    if wait_state.waiting_cause != WaitingCause.PAUSED_BY_OPERATOR.value:
+        return
+    wait_state.created_by_dispatch_id = wait_state.created_by_dispatch_id or paused_dispatch_id
+    wait_state.updated_at = flow.updated_at
+
+
+async def _require_pause_resume_wait_state(
+    session: AsyncSession,
+    *,
+    flow: Any,
+) -> FlowWaitStateModel | None:
+    wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
+    if wait_state is None:
+        return None
+    if wait_state.waiting_cause == WaitingCause.PAUSED_BY_OPERATOR.value:
+        return wait_state
+    if wait_state.waiting_cause == WaitingCause.WAITING_FOR_HUMAN_REQUEST.value:
+        raise illegal_state_error(
+            "continue is illegal while a human request wait is still active",
+            suggested_next_step=(
+                "Resolve or cancel the active human request through its dedicated control "
+                "surface before using continue."
+            ),
+        )
+    if wait_state.waiting_cause == WaitingCause.WAITING_FOR_COMMAND_RUN.value:
+        raise illegal_state_error(
+            "continue is illegal while a command run wait is still active",
+            suggested_next_step=(
+                "Wait for the active command run to finish or cancel it through the "
+                "dedicated control surface before using continue."
+            ),
+        )
+    raise illegal_state_error(
+        f"continue is illegal while the task is waiting for {wait_state.waiting_cause}",
+        suggested_next_step="Wait for the current controller-owned wait to clear first.",
+    )
 
 
 __all__ = [

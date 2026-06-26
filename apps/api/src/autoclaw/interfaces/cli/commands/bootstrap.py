@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import secrets
+from typing import Any
 
 import uvicorn
 
@@ -84,7 +85,14 @@ def cmd_db_upgrade(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
     with command_env(config_path=config_path):
         settings = load_settings()
-        asyncio.run(ensure_database_ready(settings.database_url))
+        repair_result = asyncio.run(
+            ensure_database_ready_with_legacy_sqlite_repair(settings.database_url)
+        )
+    payload = _db_upgrade_payload(settings.database_url, repair_result)
+    if getattr(args, "json", False):
+        print_json(payload)
+    elif repair_result is not None:
+        _print_db_upgrade_repair_summary(repair_result)
     return 0
 
 
@@ -124,6 +132,34 @@ def cmd_serve(args: argparse.Namespace) -> int:
             reload=False,
         )
     return 0
+
+
+def _db_upgrade_payload(
+    database_url: str,
+    repair_result: DatabaseRepairResult | None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "ok": True,
+        "database_url": database_url,
+        "repaired": repair_result is not None,
+    }
+    if repair_result is None:
+        return payload
+    payload.update(
+        {
+            "backup_path": repair_result.backup_path,
+            "migrated_tables": list(repair_result.migrated_tables),
+            "skipped_tables": list(repair_result.skipped_tables),
+        }
+    )
+    return payload
+
+
+def _print_db_upgrade_repair_summary(repair_result: DatabaseRepairResult) -> None:
+    print("Database repair: legacy schema backed up and reconciled")
+    print(f"Database backup: {repair_result.backup_path}")
+    print(f"Migrated tables: {', '.join(repair_result.migrated_tables) or 'none'}")
+    print(f"Skipped tables: {', '.join(repair_result.skipped_tables) or 'none'}")
 
 
 __all__ = [
