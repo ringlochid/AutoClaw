@@ -4,6 +4,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -46,6 +47,13 @@ _UNOWNED_RUNNING_GRACE_SECONDS = 30.0
 class CommandRunExecution:
     task: asyncio.Task[None]
     process: asyncio.subprocess.Process | None = None
+
+
+@dataclass(frozen=True)
+class CommandRunLaunchContext:
+    log_ref: str
+    log_path: Path
+    workdir: Path
 
 
 @dataclass
@@ -266,108 +274,151 @@ async def _execute_command_run(
     execution = state.active_runs[record.run_id]
     log_ref = command_run_log_ref(record.run_id)
     try:
-        workdir, log_path = await resolve_command_run_paths(
+        launch_context = await _prepare_command_run_launch(
             state.session_factory,
-            task_id=record.task_id,
-            workdir=record.workdir,
+            record,
             log_ref=log_ref,
         )
-        await write_command_run_log_line(log_path, f"$ {record.command}")
-        if not await asyncio.to_thread(workdir.is_dir):
-            await write_command_run_log_line(log_path, f"workdir does not exist: {workdir}")
-            await _record_command_run_terminal(
-                state.session_factory,
-                record,
-                state=CommandRunState.FAILED,
-                summary=f"command failed to launch because workdir does not exist: {workdir}",
-                exit_code=None,
-                signal_name=None,
-                log_ref=log_ref,
-            )
+        if launch_context is None:
             return
-
-        process = await asyncio.create_subprocess_shell(
-            record.command,
-            cwd=str(workdir),
-            stdin=asyncio.subprocess.DEVNULL,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-            start_new_session=True,
-        )
+        process = await _start_command_run_process(record, launch_context)
         execution.process = process
-        process_started_at = utc_now()
-        process_deadline = (
-            asyncio.get_running_loop().time() + record.timeout_seconds
-            if record.timeout_seconds is not None
-            else None
-        )
-        reader_task = asyncio.create_task(
-            copy_process_output_to_log(process, log_path),
-            name=f"command-run-log:{record.run_id}",
-        )
-        progress_task = asyncio.create_task(
-            _record_command_run_progress(
-                state.session_factory,
-                record,
-                summary="command process started",
-                log_ref=log_ref,
-                occurred_at=process_started_at,
-            ),
-            name=f"command-run-progress:{record.run_id}",
-        )
-        terminal_state, signal_name = await _wait_for_process_terminal_state(
-            state,
-            record,
-            process,
-            deadline=process_deadline,
-        )
-        await reader_task
-        progress_recorded = await progress_task
-        if not progress_recorded and terminal_state not in {
-            CommandRunState.CANCELLED,
-            CommandRunState.TIMED_OUT,
-        }:
-            return
-        returncode = process.returncode
-        summary = command_run_terminal_summary(
-            terminal_state,
-            returncode=returncode,
-            signal_name=signal_name,
-            timeout_seconds=record.timeout_seconds,
-        )
-        await _record_command_run_terminal(
-            state.session_factory,
-            record,
-            state=terminal_state,
-            summary=summary,
-            exit_code=command_run_terminal_exit_code(terminal_state, returncode),
-            signal_name=signal_name,
-            log_ref=log_ref,
-        )
+        await _record_process_command_run_result(state, record, process, launch_context)
     except asyncio.CancelledError:
         if execution.process is not None:
             await stop_process(execution.process)
         raise
     except Exception as exc:
-        LOGGER.exception("command-run runner failed for run %s", record.run_id)
-        log_path = await best_effort_command_log_path(
-            state.session_factory,
-            task_id=record.task_id,
-            log_ref=log_ref,
-        )
-        await write_command_run_log_line(log_path, f"command runner error: {exc}")
-        await _record_command_run_terminal(
-            state.session_factory,
-            record,
-            state=CommandRunState.FAILED,
-            summary=f"command runner failed before completion: {_bounded_summary(str(exc))}",
-            exit_code=None,
-            signal_name=None,
-            log_ref=log_ref,
-        )
+        await _record_command_runner_failure(state.session_factory, record, exc, log_ref=log_ref)
     finally:
         state.active_runs.pop(record.run_id, None)
         state.wakeup.set()
+
+
+async def _prepare_command_run_launch(
+    session_factory: async_sessionmaker[AsyncSession],
+    record: CurrentCommandRun,
+    *,
+    log_ref: str,
+) -> CommandRunLaunchContext | None:
+    workdir, log_path = await resolve_command_run_paths(
+        session_factory,
+        task_id=record.task_id,
+        workdir=record.workdir,
+        log_ref=log_ref,
+    )
+    await write_command_run_log_line(log_path, f"$ {record.command}")
+    if await asyncio.to_thread(workdir.is_dir):
+        return CommandRunLaunchContext(log_ref=log_ref, log_path=log_path, workdir=workdir)
+
+    await write_command_run_log_line(log_path, f"workdir does not exist: {workdir}")
+    await _record_command_run_terminal(
+        session_factory,
+        record,
+        state=CommandRunState.FAILED,
+        summary=f"command failed to launch because workdir does not exist: {workdir}",
+        exit_code=None,
+        signal_name=None,
+        log_ref=log_ref,
+    )
+    return None
+
+
+async def _start_command_run_process(
+    record: CurrentCommandRun,
+    launch_context: CommandRunLaunchContext,
+) -> asyncio.subprocess.Process:
+    return await asyncio.create_subprocess_shell(
+        record.command,
+        cwd=str(launch_context.workdir),
+        stdin=asyncio.subprocess.DEVNULL,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+        start_new_session=True,
+    )
+
+
+async def _record_process_command_run_result(
+    state: CommandRunRunnerState,
+    record: CurrentCommandRun,
+    process: asyncio.subprocess.Process,
+    launch_context: CommandRunLaunchContext,
+) -> None:
+    process_started_at = utc_now()
+    process_deadline = (
+        asyncio.get_running_loop().time() + record.timeout_seconds
+        if record.timeout_seconds is not None
+        else None
+    )
+    reader_task = asyncio.create_task(
+        copy_process_output_to_log(process, launch_context.log_path),
+        name=f"command-run-log:{record.run_id}",
+    )
+    progress_task = asyncio.create_task(
+        _record_command_run_progress(
+            state.session_factory,
+            record,
+            summary="command process started",
+            log_ref=launch_context.log_ref,
+            occurred_at=process_started_at,
+        ),
+        name=f"command-run-progress:{record.run_id}",
+    )
+    terminal_state, signal_name = await _wait_for_process_terminal_state(
+        state,
+        record,
+        process,
+        deadline=process_deadline,
+    )
+    await reader_task
+    progress_recorded = await progress_task
+    if not progress_recorded and terminal_state not in {
+        CommandRunState.CANCELLED,
+        CommandRunState.TIMED_OUT,
+    }:
+        return
+
+    returncode = process.returncode
+    summary = command_run_terminal_summary(
+        terminal_state,
+        returncode=returncode,
+        signal_name=signal_name,
+        timeout_seconds=record.timeout_seconds,
+    )
+    await _record_command_run_terminal(
+        state.session_factory,
+        record,
+        state=terminal_state,
+        summary=summary,
+        exit_code=command_run_terminal_exit_code(terminal_state, returncode),
+        signal_name=signal_name,
+        log_ref=launch_context.log_ref,
+    )
+
+
+async def _record_command_runner_failure(
+    session_factory: async_sessionmaker[AsyncSession],
+    record: CurrentCommandRun,
+    exc: Exception,
+    *,
+    log_ref: str,
+) -> None:
+    LOGGER.exception("command-run runner failed for run %s", record.run_id)
+    log_path = await best_effort_command_log_path(
+        session_factory,
+        task_id=record.task_id,
+        log_ref=log_ref,
+    )
+    await write_command_run_log_line(log_path, f"command runner error: {exc}")
+    await _record_command_run_terminal(
+        session_factory,
+        record,
+        state=CommandRunState.FAILED,
+        summary=f"command runner failed before completion: {_bounded_summary(str(exc))}",
+        exit_code=None,
+        signal_name=None,
+        log_ref=log_ref,
+    )
 
 
 async def _wait_for_process_terminal_state(
