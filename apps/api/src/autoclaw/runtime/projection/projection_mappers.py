@@ -83,6 +83,7 @@ def resolved_node_context(node: FlowNodeModel) -> ResolvedNodeContext:
         node_key=node.node_key,
         node_kind=NodeKind(node.structural_kind),
         node_description=node.description,
+        node_instruction=node.node_instruction,
         role_key=node.role_key,
         role_revision_no=node.role_revision_no,
         role_description=node.role_description,

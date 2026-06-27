@@ -119,6 +119,7 @@ def worker_request(tmp_path: Path, *, send_mode: PromptSendMode) -> PromptRender
             node_key="implement_fix",
             node_kind=NodeKind.WORKER,
             node_description="Repair the bounded auth-refresh defect.",
+            node_instruction="Inspect the failing auth path before patching.",
             role_key="engineer",
             role_revision_no=44,
             role_description="Worker for one bounded engineering assignment.",

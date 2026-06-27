@@ -188,6 +188,18 @@ def test_workflow_nodes_accept_portable_provider_preference() -> None:
     assert workflow.root.children[0].provider_preference == "openclaw"
 
 
+def test_workflow_nodes_accept_authored_node_instruction() -> None:
+    payload = minimal_workflow_payload()
+    payload["root"]["instruction"] = "Coordinate the current task lineage."
+    payload["root"]["children"][0]["instruction"] = "Patch only the bounded slice."
+
+    workflow = WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
+
+    assert workflow.root.instruction == "Coordinate the current task lineage."
+    assert workflow.root.children is not None
+    assert workflow.root.children[0].instruction == "Patch only the bounded slice."
+
+
 def test_workflow_nodes_reject_unknown_provider_preference() -> None:
     payload = minimal_workflow_payload()
     payload["root"]["children"][0]["provider_preference"] = "local-shell"
@@ -224,6 +236,8 @@ def test_portable_workflow_node_contract_accepts_authored_execution_intent() -> 
             "role_id": "engineer",
             "policy_id": "standard-worker",
             "provider_preference": "codex",
+            "description": "Implement the bounded slice.",
+            "instruction": "Read the current criteria before patching.",
         }
     )
 
@@ -234,6 +248,8 @@ def test_portable_workflow_node_contract_accepts_authored_execution_intent() -> 
         "role_id": "engineer",
         "policy_id": "standard-worker",
         "provider_preference": "codex",
+        "description": "Implement the bounded slice.",
+        "instruction": "Read the current criteria before patching.",
     }
 
 
@@ -255,6 +271,7 @@ def test_portable_workflow_node_contract_rejects_non_portable_fields(
         "kind": "worker",
         "role_id": "engineer",
         "policy_id": "standard-worker",
+        "description": "Implement the bounded slice.",
     }
     payload[field_name] = field_value
 
@@ -269,5 +286,6 @@ def test_portable_workflow_node_contract_requires_policy_reference() -> None:
                 "node_key": "implement_slice",
                 "kind": "worker",
                 "role_id": "engineer",
+                "description": "Implement the bounded slice.",
             }
         )

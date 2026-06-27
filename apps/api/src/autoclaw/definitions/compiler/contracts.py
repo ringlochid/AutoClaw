@@ -100,6 +100,7 @@ class NormalizedCompiledNode(BaseModel):
     policy_revision_no: int | None = Field(default=None, ge=1)
     provider_preference: ProviderPreference | None = None
     description: CompilerText
+    node_instruction: CompilerText | None = None
     consumes: NormalizedConsumeBuckets | None = None
     produces: NormalizedProduceBuckets | None = None
     criteria: tuple[NormalizedCriteriaDeclaration, ...] = ()

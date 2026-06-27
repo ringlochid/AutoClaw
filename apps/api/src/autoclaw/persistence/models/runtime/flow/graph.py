@@ -98,6 +98,7 @@ class FlowNodeModel(RuntimeBase):
     policy_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     policy_instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
     description: Mapped[str] = mapped_column(Text)
+    node_instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
     child_node_keys_json: Mapped[list[str]] = mapped_column(JSON)
     consumes_json: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     produces_json: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-from autoclaw.runtime import EvidenceKind, EvidenceRef, PromptSendMode
+from autoclaw.runtime import EvidenceKind, EvidenceRef, NodeKind, PromptSendMode
 from autoclaw.runtime.contracts import (
     CommandRunRecord,
     CommandRunState,
@@ -17,16 +17,44 @@ from autoclaw.runtime.contracts import (
     HumanRequestResolutionKind,
     HumanRequestStatus,
     HumanRequestTimeout,
+    ManifestNodeProjection,
     PendingHumanRequest,
     TaskEventSource,
 )
 from autoclaw.runtime.prompt import render_prompt_bundle
+from autoclaw.runtime.prompt.bundle import render_manifest_markdown
 
 from .support import (
     extract_section,
     parent_request,
     worker_request,
 )
+
+
+def test_manifest_markdown_renders_source_disambiguated_node_instruction(
+    tmp_path: Path,
+) -> None:
+    manifest = parent_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT).manifest
+    manifest = manifest.model_copy(
+        update={
+            "node_tree": (
+                ManifestNodeProjection(
+                    node_key="implementation_subtree",
+                    node_kind=NodeKind.PARENT,
+                    role="planning_lead",
+                    policy="standard-parent-planning",
+                    description="Coordinate the implementation subtree.",
+                    node_instruction="Review child evidence before assigning more work.",
+                ),
+            )
+        }
+    )
+
+    manifest_markdown = render_manifest_markdown(manifest)
+
+    assert "- node_instruction: Review child evidence before assigning more work." in (
+        manifest_markdown
+    )
 
 
 def test_current_assignment_renders_reduced_claims_and_consumed_refs_keep_exact_paths(

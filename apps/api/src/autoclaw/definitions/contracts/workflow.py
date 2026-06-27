@@ -85,6 +85,8 @@ class WorkflowNodeInput(BaseModel):
     role_id: WorkflowIdentifier
     policy_id: WorkflowIdentifier
     provider_preference: ProviderPreference | None = None
+    description: NonEmptyText
+    instruction: NonEmptyText | None = None
 
 
 class NodeDefinitionInput(BaseModel):
@@ -96,6 +98,7 @@ class NodeDefinitionInput(BaseModel):
     policy: WorkflowIdentifier | None = None
     provider_preference: ProviderPreference | None = None
     description: NonEmptyText
+    instruction: NonEmptyText | None = None
     consumes: ConsumeBuckets | None = None
     produces: ProduceBuckets | None = None
     criteria: list[CriteriaDeclaration] | None = None
@@ -112,6 +115,7 @@ class RootNodeDefinition(BaseModel):
     policy: WorkflowIdentifier | None = None
     provider_preference: ProviderPreference | None = None
     description: NonEmptyText
+    instruction: NonEmptyText | None = None
     produces: ProduceBuckets | None = None
     criteria: list[CriteriaDeclaration] | None = None
     child_defaults: ChildDefaults | None = None

@@ -172,6 +172,7 @@ def _manifest_node_projection(
         role=node.role_key,
         policy=node.policy_key,
         description=node.description,
+        node_instruction=node.node_instruction,
         consumes=_node_consumes(
             node=node,
             dependency_descriptions=dependency_descriptions,

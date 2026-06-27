@@ -208,7 +208,8 @@ CURRENTNESS_COLUMN_EXPECTATIONS = (
             "adopted_at",
         },
     ),
-    ("flow_nodes", {"flow_id", "node_kind", "state"}),
+    ("flow_nodes", {"flow_id", "node_kind", "state", "node_instruction"}),
+    ("compiled_plan_nodes", {"node_instruction"}),
     ("assignments", {"flow_id", "flow_revision_id", "superseded_at"}),
     ("artifact_publications", {"flow_node_id"}),
     (

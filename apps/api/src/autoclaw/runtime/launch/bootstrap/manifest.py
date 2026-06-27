@@ -160,6 +160,7 @@ def _build_manifest_node_projection(
         role=compiled_node.role,
         policy=compiled_node.policy,
         description=compiled_node.description,
+        node_instruction=compiled_node.node_instruction,
         consumes=tuple(consumes),
         produces=produces,
         criteria=criteria,

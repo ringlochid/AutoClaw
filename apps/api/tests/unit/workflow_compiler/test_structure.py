@@ -126,6 +126,48 @@ def test_compile_preserves_portable_provider_preference() -> None:
     assert implementation.provider_preference == "claude"
 
 
+def test_compile_preserves_node_instruction_as_source_disambiguated_field() -> None:
+    workflow = WorkflowDefinitionFile.model_validate(
+        {
+            "kind": "workflow",
+            "id": "node-instruction-preservation",
+            "description": "Preserve node-local prompt guidance separately.",
+            "root": {
+                "id": "root",
+                "role": "root_planning_lead",
+                "policy": "standard-root-planning",
+                "description": "Root coordinator.",
+                "instruction": "Coordinate only the current root decision.",
+                "children": [
+                    {
+                        "id": "implementation",
+                        "role": "engineer",
+                        "policy": "standard-worker",
+                        "description": "Worker with node-local guidance.",
+                        "instruction": "Read criteria before editing source.",
+                    }
+                ],
+            },
+        }
+    )
+
+    plan = compile_workflow(
+        workflow=workflow,
+        workflow_revision=WorkflowRevisionMetadata(
+            workflow_key=workflow.id,
+            definition_revision_no=2,
+        ),
+        compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
+        lookup=load_packaged_seed_lookup(),
+    )
+
+    root = node_by_key(plan, "root")
+    implementation = node_by_key(plan, "implementation")
+
+    assert root.node_instruction == "Coordinate only the current root decision."
+    assert implementation.node_instruction == "Read criteria before editing source."
+
+
 def test_compile_workflow_expands_child_defaults_only_to_direct_children() -> None:
     workflow = WorkflowDefinitionFile.model_validate(
         {

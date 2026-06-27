@@ -44,6 +44,17 @@ Scenario:
 - model-visible node tool ids use the `autoclaw-node__*` prefix; use the exact prefixed tool ids surfaced below when calling node tools.
 - When calling node tools, include the exact `task_id` and `session_key` shown here. Do not print them in normal output, checkpoint prose, or artifacts.
 
+## Capabilities Now
+- controller-owned effective capability set for this dispatch is authoritative
+- adapter, local-tool, or UI restrictions may narrow it but must not widen it
+- human_request and command_run are controller capabilities, not generic adapter approval prompts
+- execution_scope: dispatch
+- human_request.direction: deny; reason: current node policy does not allow human_request.direction from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
+- human_request.approval: deny; reason: current node policy does not allow human_request.approval from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
+- human_request.input: deny; reason: current node policy does not allow human_request.input from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
+- human_request.review: deny; reason: current node policy does not allow human_request.review from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
+- command_run: deny; reason: current node policy does not allow controller-managed command_run from this node; next legal action: run_short_command_inline_or_record_checkpoint_or_close_boundary
+
 ## Workflow Manifest
 - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
 - description: whole-workflow visible contract for the current task
@@ -187,6 +198,17 @@ Scenario:
 - session_key for node tools: sess_worker_dispatch_01
 - model-visible node tool ids use the `autoclaw-node__*` prefix; use the exact prefixed tool ids surfaced below when calling node tools.
 - When calling node tools, include the exact `task_id` and `session_key` shown here. Do not print them in normal output, checkpoint prose, or artifacts.
+
+## Capabilities Now
+- controller-owned effective capability set for this dispatch is authoritative
+- adapter, local-tool, or UI restrictions may narrow it but must not widen it
+- human_request and command_run are controller capabilities, not generic adapter approval prompts
+- execution_scope: dispatch
+- human_request.direction: deny; reason: current node policy does not allow human_request.direction from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
+- human_request.approval: deny; reason: current node policy does not allow human_request.approval from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
+- human_request.input: deny; reason: current node policy does not allow human_request.input from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
+- human_request.review: deny; reason: current node policy does not allow human_request.review from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
+- command_run: deny; reason: current node policy does not allow controller-managed command_run from this node; next legal action: run_short_command_inline_or_record_checkpoint_or_close_boundary
 
 ## Workflow Manifest
 - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md

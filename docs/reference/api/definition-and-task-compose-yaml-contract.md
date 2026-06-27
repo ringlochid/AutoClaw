@@ -105,6 +105,7 @@ Current root node shape is:
 - `policy`
 - `provider_preference`
 - `description`
+- `instruction`
 - `produces`
 - `criteria`
 - `child_defaults`
@@ -118,13 +119,14 @@ Current non-root node shape is:
 - `policy`
 - `provider_preference`
 - `description`
+- `instruction`
 - `consumes`
 - `produces`
 - `criteria`
 - `child_defaults`
 - `children`
 
-`title` is optional node display metadata. `provider_preference`, when present, must be one of `openclaw`, `codex`, or `claude`; omission means runtime resolves through the machine-local default provider.
+`title` is optional node display metadata. `instruction` is optional node-local prompt guidance. `provider_preference`, when present, must be one of `openclaw`, `codex`, or `claude`; omission means runtime resolves through the machine-local default provider.
 
 ### Consume, produce, criteria, and child-default shapes
 
@@ -233,6 +235,7 @@ root:
   id: root
   role: planning_lead
   description: Verify one bounded engineering worker and release when current evidence is sufficient.
+  instruction: Keep release decisions tied to current controller evidence.
   criteria:
     - slot: implementation_rules
       description: Parent acceptance criteria.
@@ -243,6 +246,7 @@ root:
       role: engineer
       policy: standard-worker
       description: Implement the current bounded change.
+      instruction: Read the criteria before editing and keep the patch scoped.
       produces:
         artifacts:
           - slot: change_patch

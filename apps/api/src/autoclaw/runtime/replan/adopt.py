@@ -211,6 +211,7 @@ def _persist_adopted_nodes(
             policy_description=node["policy_description"],
             policy_instruction=node["policy_instruction"],
             description=str(node["description"]),
+            node_instruction=node["node_instruction"],
             child_node_keys_json=list(node["child_node_keys_json"]),
             consumes_json=node["consumes_json"],
             produces_json=node["produces_json"],

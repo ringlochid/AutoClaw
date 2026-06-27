@@ -125,6 +125,19 @@ Prompt text must surface whether the current node may:
 
 These capability overlays are derived from effective controller capabilities, not from raw UI toggles or adapter permissions.
 
+## Source-disambiguated instruction rule
+
+Authored reusable guidance keeps the local field name `instruction` on the object that owns it.
+
+Rules:
+
+- workflow-node authored `instruction` compiles and projects as `node_instruction`
+- role authored `instruction` resolves and projects as `role_instruction`
+- policy authored `instruction` resolves and projects as `policy_instruction`
+- task-compose task instruction and runtime assignment instruction keep their existing task and assignment ownership
+- prompt labels must preserve that source boundary as `node instruction`, `role instruction`, and `policy instruction`
+- node `description` remains node-purpose text and must not be overloaded as imperative execution guidance
+
 ## Truth boundary
 
 V2 prompt artifacts must not treat these as ordinary prompt truth:

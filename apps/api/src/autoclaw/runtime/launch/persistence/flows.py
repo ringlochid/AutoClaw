@@ -84,6 +84,7 @@ def build_flow_node_row(
         policy_description=policy_description,
         policy_instruction=policy_instruction,
         description=node.description,
+        node_instruction=node.node_instruction,
         child_node_keys_json=list(node.child_node_keys),
         consumes_json=(node.consumes.model_dump(mode="json") if node.consumes else None),
         produces_json=(node.produces.model_dump(mode="json") if node.produces else None),

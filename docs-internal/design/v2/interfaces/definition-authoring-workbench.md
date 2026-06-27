@@ -37,6 +37,8 @@ The workbench should separate these authored concerns clearly:
 - validation readback
 - explicit draft save versus apply or publish actions
 
+Workflow-node editing should expose `description` and `instruction` as separate authored fields: `description` is node-purpose text, while `instruction` is optional node-local prompt guidance.
+
 The workbench may collapse these into one page or switcher, but it must not blur saved draft state into stored current truth.
 
 The workbench talks to backend-owned draft-set folders under AutoClaw's configured data dir. Browser state may cache editor input transiently, but it is not the authoritative saved-draft surface.

@@ -228,6 +228,7 @@ def _resolve_node_context(
         node_key=compiled_node.node_key,
         node_kind=compiled_node.structural_kind,
         node_description=compiled_node.description,
+        node_instruction=compiled_node.node_instruction,
         role_key=compiled_node.role,
         role_revision_no=compiled_node.role_revision_no,
         role_description=role_revision.definition.description,
@@ -299,6 +300,8 @@ def _build_launch_assignment(
     if bootstrap_input.task_compose.task.instruction is not None:
         instruction_parts.append(bootstrap_input.task_compose.task.instruction)
     instruction_parts.append(f"Node purpose: {current_node.node_description}")
+    if current_node.node_instruction is not None:
+        instruction_parts.append(f"Node instruction: {current_node.node_instruction}")
     instruction_parts.append(f"Role guidance: {current_node.role_description}")
     if current_node.role_instruction is not None:
         instruction_parts.append(current_node.role_instruction)

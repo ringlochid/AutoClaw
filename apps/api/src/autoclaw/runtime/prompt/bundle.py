@@ -174,6 +174,8 @@ def _render_manifest_node(node: ManifestNodeProjection) -> list[str]:
         f"  - role: {node.role}",
         f"  - description: {node.description}",
     ]
+    if node.node_instruction is not None:
+        lines.append(f"  - node_instruction: {node.node_instruction}")
     if node.policy is not None:
         lines.append(f"  - policy: {node.policy}")
     if node.parent_node_key is not None:

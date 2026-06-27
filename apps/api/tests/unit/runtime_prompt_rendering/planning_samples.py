@@ -277,6 +277,7 @@ def root_node_context() -> ResolvedNodeContext:
         node_key="root",
         node_kind=NodeKind.ROOT,
         node_description="Coordinate the whole flow and decide the next bounded child step.",
+        node_instruction="Keep planning bounded to the current task evidence.",
         role_key="planning_lead",
         role_revision_no=12,
         role_description="Parent/root coordinator for one owned subtree.",
@@ -301,6 +302,7 @@ def parent_node_context() -> ResolvedNodeContext:
         node_description=(
             "Coordinate the implementation subtree and decide the next bounded child step."
         ),
+        node_instruction="Review current child evidence before creating more work.",
         role_key="planning_lead",
         role_revision_no=12,
         role_description="Parent coordinator for one owned subtree.",

@@ -81,6 +81,8 @@ def _render_node_guidance_block(request: PromptRenderRequest) -> str:
         f"- role: {node.role_key}",
         f"- role description: {node.role_description}",
     ]
+    if node.node_instruction is not None:
+        lines.append(f"- node instruction: {node.node_instruction}")
     if node.role_instruction is not None:
         lines.append(f"- role instruction: {node.role_instruction}")
     if node.policy_key is not None:

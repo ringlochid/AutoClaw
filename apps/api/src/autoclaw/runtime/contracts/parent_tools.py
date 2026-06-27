@@ -64,6 +64,7 @@ class ChildNodeDraft(BaseModel):
     role: RuntimeSchemaText
     policy: RuntimeSchemaText | None = None
     description: RuntimeSchemaText
+    instruction: RuntimeSchemaText | None = None
     consumes: ConsumeBuckets | None = None
     produces: ProduceBuckets | None = None
     criteria: list[CriteriaDeclaration] | None = None
@@ -77,6 +78,7 @@ class ChildNodePatch(BaseModel):
     role: RuntimeSchemaText | None = None
     policy: RuntimeSchemaText | None = None
     description: RuntimeSchemaText | None = None
+    instruction: RuntimeSchemaText | None = None
     consumes: ConsumeBuckets | None = None
     produces: ProduceBuckets | None = None
     criteria: list[CriteriaDeclaration] | None = None

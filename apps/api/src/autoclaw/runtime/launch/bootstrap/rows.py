@@ -197,6 +197,7 @@ async def _stage_compiled_plan_graph_rows(
                 policy_description=policy.definition.description if policy else None,
                 policy_instruction=policy.definition.instruction if policy else None,
                 description=node.description,
+                node_instruction=node.node_instruction,
                 child_node_keys_json=list(node.child_node_keys),
                 consumes_json=(node.consumes.model_dump(mode="json") if node.consumes else None),
                 produces_json=(node.produces.model_dump(mode="json") if node.produces else None),

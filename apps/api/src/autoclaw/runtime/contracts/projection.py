@@ -114,6 +114,7 @@ class ManifestNodeProjection(BaseModel):
     role: RuntimeText
     policy: RuntimeText | None = None
     description: RuntimeText
+    node_instruction: RuntimeText | None = None
     consumes: tuple[ManifestNodeConsumeProjection, ...] = ()
     produces: tuple[ManifestNodeProduceProjection, ...] = ()
     criteria: tuple[ManifestNodeCriteriaProjection, ...] = ()
@@ -233,6 +234,7 @@ class ResolvedNodeContext(BaseModel):
     node_key: RuntimeText
     node_kind: NodeKind
     node_description: RuntimeText
+    node_instruction: RuntimeText | None = None
     role_key: RuntimeText
     role_revision_no: int = Field(ge=1)
     role_description: RuntimeText

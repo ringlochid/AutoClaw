@@ -111,6 +111,12 @@ def test_render_prompt_bundle_keeps_canonical_section_order(tmp_path: Path) -> N
     ] == sorted(section_index(full_prompt.full_markdown, heading) for heading in ordered_headings)
     assert full_prompt.input_text == full_prompt.full_markdown
     assert full_prompt.full_markdown.startswith("## Operating Model")
+    node_purpose = extract_section(
+        full_prompt.full_markdown,
+        "## Node Purpose",
+        "## Current Dispatch",
+    )
+    assert "- node instruction: Inspect the failing auth path before patching." in node_purpose
 
 
 def test_capabilities_now_overlay_surfaces_explicit_decisions(tmp_path: Path) -> None:
@@ -200,10 +206,20 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
         "- node description: Repair the bounded auth-refresh defect."
         in worker_bundle.instructions_text
     )
+    assert "- node instruction: Inspect the failing auth path before patching." in (
+        worker_bundle.instructions_text
+    )
+    assert "- role instruction: Complete only the current assignment." in (
+        worker_bundle.instructions_text
+    )
     assert (
         "- node description: Coordinate the whole flow and decide the next bounded child step."
         in parent_bundle.instructions_text
     )
+    assert "- node instruction: Keep planning bounded to the current task evidence." in (
+        parent_bundle.instructions_text
+    )
+    assert "- policy instruction: Root owns final closure" in parent_bundle.instructions_text
     assert "registry read lane" not in normalized_parent_instructions
     assert "definition registry/tool read surface" not in normalized_parent_instructions
     _assert_worker_checkpoint_guidance(worker_bundle.instructions_text)

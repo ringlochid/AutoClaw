@@ -132,6 +132,7 @@ def insert_flow_nodes(connection: sqlite3.Connection, timestamp: str) -> None:
             policy_description,
             policy_instruction,
             description,
+            node_instruction,
             child_node_keys_json,
             consumes_json,
             produces_json,
@@ -140,7 +141,7 @@ def insert_flow_nodes(connection: sqlite3.Connection, timestamp: str) -> None:
             state,
             current_assignment_id,
             order_index
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             flow_node_row(
@@ -183,6 +184,7 @@ def flow_node_row(
         None,
         None,
         description,
+        None,
         "[]",
         None,
         None,

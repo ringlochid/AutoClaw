@@ -97,6 +97,53 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
     )
 
 
+def test_bootstrap_renders_node_instruction_through_launch_projection(
+    tmp_path: Path,
+) -> None:
+    workflow_definition = load_workflow_definition("minimal_implement_change")
+    workflow_definition = workflow_definition.model_copy(
+        update={
+            "root": workflow_definition.root.model_copy(
+                update={"instruction": "Review task evidence before assigning child work."}
+            )
+        }
+    )
+    compiled_plan = compile_workflow_fixture(workflow_definition, revision_no=4)
+
+    result = bootstrap_task_runtime_projection(
+        RuntimeBootstrapProjectionInput(
+            task_id="task_2026_node_instruction_bootstrap",
+            active_flow_revision_id="flowrev_node_instruction_bootstrap",
+            attempt_id="attempt.root.01",
+            assignment_key="root.assign-01",
+            dispatch_id="dispatch.root.01",
+            task_root=tmp_path / "task-root",
+            task_compose=task_compose_payload("minimal-implement-change"),
+            workflow_definition=workflow_definition,
+            compiled_plan=compiled_plan,
+            role_policy_lookup=load_seeded_lookup(),
+        )
+    )
+
+    root_node = next(node for node in result.manifest.node_tree if node.node_key == "root")
+    assert result.prompt_bundle.instructions_text is not None
+    manifest_markdown = (result.paths.runtime_path / "workflow-manifest.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert root_node.node_instruction == "Review task evidence before assigning child work."
+    assert (
+        "- node instruction: Review task evidence before assigning child work."
+        in result.prompt_bundle.instructions_text
+    )
+    assert "Node instruction: Review task evidence before assigning child work." in (
+        result.assignment.instruction or ""
+    )
+    assert "node_instruction: Review task evidence before assigning child work." in (
+        manifest_markdown
+    )
+
+
 def test_bootstrap_rejects_non_root_automatic_assignment_without_explicit_projection(
     tmp_path: Path,
 ) -> None:
@@ -189,8 +236,7 @@ def test_bootstrap_honors_custom_root_bindings_and_localizes_external_resource(
     assert result.assignment.criteria[0].path == criteria_projection_path
     assert result.manifest.node_tree[0].criteria[0].path == criteria_projection_path
     assert (
-        result.manifest.current_context.current_relevant_paths[0].path
-        == criteria_projection_path
+        result.manifest.current_context.current_relevant_paths[0].path == criteria_projection_path
     )
     assert criteria_projection_path.is_file()
     assert str(criteria_projection_path) in result.prompt_bundle.full_markdown

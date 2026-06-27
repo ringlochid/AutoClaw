@@ -102,6 +102,7 @@ def normalize_node(
             policy_revision_no=resolved_policy.revision_no if resolved_policy else None,
             provider_preference=authored_node.provider_preference,
             description=authored_node.description,
+            node_instruction=authored_node.instruction,
             consumes=expand_consumes(
                 parent_child_defaults=parent_node.child_defaults if parent_node else None,
                 local_consumes=flattened_node.consumes,

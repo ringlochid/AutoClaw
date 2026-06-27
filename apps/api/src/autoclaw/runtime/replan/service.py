@@ -92,6 +92,8 @@ async def update_child_in_current_flow(
         target["policy_instruction"] = policy.definition.instruction
     if patch.description is not None:
         target["description"] = patch.description
+    if patch.instruction is not None:
+        target["node_instruction"] = patch.instruction
     if patch.consumes is not None:
         target["consumes_json"] = patch.consumes.model_dump(mode="json")
     if patch.produces is not None:
@@ -176,6 +178,7 @@ async def _draft_subtree_nodes(
         "policy_description": policy.definition.description if policy else None,
         "policy_instruction": policy.definition.instruction if policy else None,
         "description": draft.description,
+        "node_instruction": draft.instruction,
         "child_node_keys_json": [],
         "consumes_json": draft.consumes.model_dump(mode="json") if draft.consumes else None,
         "produces_json": draft.produces.model_dump(mode="json") if draft.produces else None,

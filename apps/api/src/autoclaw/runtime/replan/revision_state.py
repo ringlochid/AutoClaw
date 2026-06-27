@@ -60,6 +60,7 @@ def _node_snapshot(
         "policy_description": node.policy_description,
         "policy_instruction": node.policy_instruction,
         "description": node.description,
+        "node_instruction": node.node_instruction,
         "child_node_keys_json": child_node_keys_json,
         "consumes_json": node.consumes_json,
         "produces_json": node.produces_json,

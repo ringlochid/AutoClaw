@@ -31,6 +31,8 @@ title: string | optional
 role_id: string
 policy_id: string
 provider_preference: openclaw | codex | claude | optional
+description: string
+instruction: string | optional
 ```
 
 Field meaning:
@@ -41,15 +43,19 @@ Field meaning:
 - `role_id` points to the portable role definition the node should resolve at launch or adopt time
 - `policy_id` points to the portable policy definition the node should resolve at launch or adopt time
 - `provider_preference` is an optional portable logical preference for provider selection
+- `description` is reusable node-purpose text and remains distinct from guidance layers
+- `instruction` is optional node-local prompt guidance for how this node should execute its role
 
 ## Validation rules
 
 Validation must enforce:
 
-- `node_key`, `kind`, `role_id`, and `policy_id` are required
+- `node_key`, `kind`, `role_id`, `policy_id`, and `description` are required
 - `kind` accepts only `root`, `parent`, or `worker`
 - `provider_preference`, when present, accepts only `openclaw`, `codex`, or `claude`
 - `provider_preference` is optional and omission means runtime will resolve through the machine-local default provider
+- `instruction`, when present, is non-empty prompt guidance authored on the node itself
+- runtime and projection fields disambiguate this source as `node_instruction`, separate from `role_instruction`, `policy_instruction`, task instruction, and assignment instruction
 
 ## Separation rule
 

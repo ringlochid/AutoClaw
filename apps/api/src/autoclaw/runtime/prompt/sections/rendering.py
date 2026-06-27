@@ -97,14 +97,17 @@ def render_task_identity(request: PromptRenderRequest) -> str:
 
 def render_node_purpose(request: PromptRenderRequest) -> str:
     node = request.current_node
+    lines = [
+        f"- node key: {node.node_key}",
+        f"- node kind: {node.node_kind.value}",
+        f"- role: {node.role_key}",
+        f"- description: {node.node_description}",
+    ]
+    if node.node_instruction is not None:
+        lines.append(f"- node instruction: {node.node_instruction}")
     return render_markdown_section(
         "Node Purpose",
-        (
-            f"- node key: {node.node_key}",
-            f"- node kind: {node.node_kind.value}",
-            f"- role: {node.role_key}",
-            f"- description: {node.node_description}",
-        ),
+        lines,
     )
 
 
