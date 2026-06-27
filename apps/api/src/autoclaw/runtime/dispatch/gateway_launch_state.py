@@ -13,6 +13,7 @@ from autoclaw.persistence.models import (
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
+    DispatchWatchdogStateModel,
     FlowModel,
     NodeSessionModel,
 )
@@ -23,6 +24,10 @@ from autoclaw.runtime.dispatch.gateway import (
     AcceptedGatewayRunCleanupResult,
     abort_gateway_run_with_fallback,
     cleanup_accepted_gateway_run,
+)
+from autoclaw.runtime.dispatch.launch_retry import (
+    record_post_send_launch_failure_provenance,
+    record_pre_send_launch_retry_state,
 )
 from autoclaw.runtime.dispatch.openclaw.models import OpenClawDispatchLaunchLease
 from autoclaw.runtime.dispatch.provider_events import append_provider_event
@@ -135,6 +140,7 @@ async def record_gateway_dispatch_post_send_failure(
     dispatch = context.dispatch
     dispatch.gateway_session_key = session_key
     dispatch.gateway_run_id = None
+    record_post_send_launch_failure_provenance(dispatch, error=error)
     await dispatch_control.mark_dispatch_ambiguous(
         session,
         dispatch=dispatch,
@@ -191,6 +197,12 @@ async def record_gateway_dispatch_launch_failure(
     failed_at = utc_now()
     reason = f"gateway_launch_failed:{type(error).__name__}"
     dispatch = context.dispatch
+    await record_pre_send_launch_retry_state(
+        session,
+        dispatch=dispatch,
+        error=error,
+        failed_at=failed_at,
+    )
     await dispatch_control.mark_dispatch_fenced(
         session,
         dispatch=dispatch,
@@ -213,10 +225,25 @@ async def record_gateway_dispatch_launch_failure(
         event_kind="transport_failed",
         summary="OpenClaw dispatch launch failed before acceptance.",
         detail=str(error),
-        event_payload_json=_transport_payload(error_type=type(error).__name__),
+        event_payload_json=_transport_payload(
+            error_type=type(error).__name__,
+            launch_phase="pre_send",
+            launch_retry_count=dispatch.launch_retry_count,
+            next_launch_retry_at=(
+                None
+                if dispatch.next_launch_retry_at is None
+                else dispatch.next_launch_retry_at.isoformat()
+            ),
+            launch_retry_exhausted=dispatch.launch_retry_exhausted_at is not None,
+        ),
     )
     if context.flow.current_open_dispatch_id == dispatch.dispatch_id:
         context.flow.current_open_dispatch_id = None
+    await _clear_failed_launch_supersession(
+        session,
+        previous_dispatch_id=dispatch.previous_dispatch_id,
+        failed_dispatch_id=dispatch.dispatch_id,
+    )
     context.flow.updated_at = failed_at
 
 
@@ -386,6 +413,40 @@ async def _invalidate_superseded_dispatch_continuity(
         continuity_state.session_key_present = False
         continuity_state.invalidation_reason = invalidation_reason
         continuity_state.updated_at = invalidated_at
+
+
+async def _clear_failed_launch_supersession(
+    session: AsyncSession,
+    *,
+    previous_dispatch_id: str | None,
+    failed_dispatch_id: str,
+) -> None:
+    if previous_dispatch_id is None:
+        return
+    previous_dispatch = await session.get(DispatchTurnModel, previous_dispatch_id)
+    if (
+        previous_dispatch is not None
+        and previous_dispatch.superseded_by_dispatch_id == failed_dispatch_id
+    ):
+        previous_dispatch.superseded_by_dispatch_id = None
+    previous_delivery_state = await session.get(
+        DispatchDeliveryStateModel,
+        previous_dispatch_id,
+    )
+    if (
+        previous_delivery_state is not None
+        and previous_delivery_state.superseded_by_dispatch_id == failed_dispatch_id
+    ):
+        previous_delivery_state.superseded_by_dispatch_id = None
+    previous_watchdog_state = await session.get(
+        DispatchWatchdogStateModel,
+        previous_dispatch_id,
+    )
+    if (
+        previous_watchdog_state is not None
+        and previous_watchdog_state.superseded_by_dispatch_id == failed_dispatch_id
+    ):
+        previous_watchdog_state.superseded_by_dispatch_id = None
 
 
 def _transport_payload(**extra: object) -> dict[str, object]:

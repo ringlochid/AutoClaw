@@ -42,6 +42,9 @@ class RuntimeSettings(BaseModel):
     )
 
     dispatch_drain_timeout_seconds: int = 30
+    dispatch_launch_retry_max_attempts: int = Field(default=3, ge=1)
+    dispatch_launch_retry_initial_backoff_seconds: float = Field(default=1.0, ge=0.0)
+    dispatch_launch_retry_max_backoff_seconds: float = Field(default=30.0, ge=0.0)
     post_commit_reconcile_interval_seconds: float = 1
     openclaw_event_poll_timeout_seconds: float = 1
     provider_wait_timeout_slice_ms: int = 5000

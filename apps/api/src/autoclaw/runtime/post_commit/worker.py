@@ -43,6 +43,17 @@ class RuntimeLifecycleManagerState:
     task: asyncio.Task[None] | None
 
 
+@dataclass(frozen=True, slots=True)
+class TaskReconcileResult:
+    has_pending_provider_work: bool = False
+    has_changed_runtime_truth: bool = False
+    has_scheduled_launch_retry: bool = False
+
+    @property
+    def has_pending_runtime_work(self) -> bool:
+        return self.has_pending_provider_work or self.has_scheduled_launch_retry
+
+
 async def wait_for_runtime_effects(
     *,
     task_id: str | None = None,
@@ -109,7 +120,8 @@ async def drive_runtime_once(*, task_id: str | None = None) -> bool:
     async with state.reconcile_lock:
         if task_id is None:
             return await _reconcile_pending_runtime_truth(state.session_factory)
-        return await _reconcile_task(state.session_factory, task_id)
+        result = await _reconcile_task(state.session_factory, task_id)
+        return result.has_pending_runtime_work
 
 
 async def start_runtime_effect_runner() -> None:
@@ -230,7 +242,7 @@ def _ensure_manager_started() -> RuntimeLifecycleManagerState:
 async def _run_runtime_lifecycle_manager(state: RuntimeLifecycleManagerState) -> None:
     try:
         state.started.set()
-        pending = False
+        has_more_runtime_work = False
         reconcile_interval_seconds = _post_commit_reconcile_interval_seconds()
         state.idle.set()
         while not state.should_stop:
@@ -238,7 +250,7 @@ async def _run_runtime_lifecycle_manager(state: RuntimeLifecycleManagerState) ->
                 if not state.wakeup.is_set():
                     await asyncio.wait_for(
                         state.wakeup.wait(),
-                        timeout=(reconcile_interval_seconds if pending else None),
+                        timeout=(reconcile_interval_seconds if has_more_runtime_work else None),
                     )
             except TimeoutError:
                 pass
@@ -248,11 +260,13 @@ async def _run_runtime_lifecycle_manager(state: RuntimeLifecycleManagerState) ->
                 break
             state.idle.clear()
             async with state.reconcile_lock:
-                pending = await _reconcile_pending_runtime_truth(state.session_factory)
+                has_more_runtime_work = await _reconcile_pending_runtime_truth(
+                    state.session_factory
+                )
             completed_cycle = state.cycle_completed
             state.cycle_completed = asyncio.Event()
             completed_cycle.set()
-            if not pending:
+            if not has_more_runtime_work:
                 state.idle.set()
     except Exception:  # pragma: no cover - background safety net
         LOGGER.exception("runtime lifecycle manager stopped unexpectedly")
@@ -292,74 +306,89 @@ async def _reconcile_pending_runtime_truth(
 
         task_ids = (await session.scalars(stmt)).all()
 
-    pending = False
+    has_more_runtime_work = False
 
     for task_id in task_ids:
-        changed = await _reconcile_task(session_factory, task_id)
-        pending = changed or pending
+        result = await _reconcile_task(session_factory, task_id)
+        has_more_runtime_work = result.has_pending_runtime_work or has_more_runtime_work
 
-    return pending
+    return has_more_runtime_work
 
 
 async def _reconcile_task(
     session_factory: async_sessionmaker[AsyncSession],
     task_id: str,
-) -> bool:
+) -> TaskReconcileResult:
     try:
         async with session_factory() as session:
             flow = await require_flow_for_task(session, task_id)
-            pending = False
-            changed = False
+            has_pending_provider_work = False
+            has_changed_runtime_truth = False
+            has_scheduled_launch_retry = False
             dispatch: DispatchTurnModel | None = None
             dispatch, repaired_current_dispatch = await load_current_dispatch(
                 session,
                 flow=flow,
                 task_id=task_id,
             )
-            changed = repaired_current_dispatch
+            has_changed_runtime_truth = repaired_current_dispatch
             if flow.current_open_dispatch_id is not None and dispatch is None:
-                return False
-            pending, changed = await reconcile_lingering_boundary_dispatch(
+                return TaskReconcileResult()
+            (
+                has_pending_provider_work,
+                has_changed_runtime_truth,
+            ) = await reconcile_lingering_boundary_dispatch(
                 session,
                 flow=flow,
                 task_id=task_id,
                 current_open_dispatch_id=flow.current_open_dispatch_id,
-                has_pending_runtime_work=pending,
-                has_changed_runtime_truth=changed,
+                has_pending_runtime_work=has_pending_provider_work,
+                has_changed_runtime_truth=has_changed_runtime_truth,
             )
-            pending, changed = await reconcile_current_dispatch(
+            (
+                has_pending_provider_work,
+                has_changed_runtime_truth,
+            ) = await reconcile_current_dispatch(
                 session,
                 flow=flow,
                 task_id=task_id,
                 dispatch=dispatch,
-                has_pending_runtime_work=pending,
-                has_changed_runtime_truth=changed,
+                has_pending_runtime_work=has_pending_provider_work,
+                has_changed_runtime_truth=has_changed_runtime_truth,
             )
             if await reconcile_timed_out_human_request_wait(
                 session,
                 task_id=task_id,
                 flow=flow,
             ):
-                changed = True
-            if await auto_open_next_running_dispatch(
+                has_changed_runtime_truth = True
+            open_result = await auto_open_next_running_dispatch(
                 session,
                 task_id=task_id,
                 flow=flow,
                 previous_dispatch=dispatch,
-            ):
-                changed = True
-            if changed:
+            )
+            has_changed_runtime_truth = (
+                open_result.has_changed_runtime_truth or has_changed_runtime_truth
+            )
+            has_scheduled_launch_retry = open_result.has_scheduled_launch_retry
+            if has_changed_runtime_truth:
                 await commit_runtime_session(session)
                 if dispatch is not None and dispatch.control_state in {"fenced", "ambiguous"}:
                     await close_dispatch_runtime(dispatch.dispatch_id)
-            return pending
+            return TaskReconcileResult(
+                has_pending_provider_work=has_pending_provider_work,
+                has_changed_runtime_truth=has_changed_runtime_truth,
+                has_scheduled_launch_retry=has_scheduled_launch_retry,
+            )
     except Exception:
         LOGGER.exception("foreground lifecycle reconciliation failed for task %s", task_id)
-        return False
+        return TaskReconcileResult()
 
 
 __all__ = [
     "RuntimeLifecycleManagerState",
+    "TaskReconcileResult",
     "commit_runtime_session",
     "drive_runtime_once",
     "drive_runtime_until",

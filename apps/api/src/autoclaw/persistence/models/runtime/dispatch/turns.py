@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -62,6 +63,15 @@ class DispatchTurnModel(RuntimeBase):
             "accepted_boundary IS NULL OR "
             f"accepted_boundary IN ('yield', {sql_in(CHECKPOINT_OUTCOME_VALUES)})",
             name="ck_dispatch_turns_accepted_boundary",
+        ),
+        CheckConstraint(
+            "launch_failure_phase IS NULL OR "
+            "launch_failure_phase IN ('pre_send', 'post_send')",
+            name="ck_dispatch_turns_launch_failure_phase",
+        ),
+        CheckConstraint(
+            "launch_retry_count >= 0",
+            name="ck_dispatch_turns_launch_retry_count",
         ),
         CheckConstraint(
             "flow_node_id IS NULL OR flow_revision_id IS NOT NULL",
@@ -160,6 +170,19 @@ class DispatchTurnModel(RuntimeBase):
     control_state: Mapped[str] = mapped_column(String(64))
     gateway_session_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     gateway_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    launch_retry_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    next_launch_retry_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    launch_retry_exhausted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    launch_failure_phase: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    launch_request_sent: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    launch_error_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    launch_error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     control_state_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     control_deadline_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

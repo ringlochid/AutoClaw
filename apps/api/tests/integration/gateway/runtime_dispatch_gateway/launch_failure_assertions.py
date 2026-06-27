@@ -42,6 +42,9 @@ def assert_transport_failed_launch_snapshot(
     assert snapshot.dispatch.control_state == "fenced"
     assert snapshot.dispatch.gateway_session_key is None
     assert snapshot.dispatch.gateway_run_id is None
+    assert snapshot.dispatch.launch_failure_phase == "pre_send"
+    assert snapshot.dispatch.launch_request_sent is False
+    assert snapshot.dispatch.launch_retry_count >= 1
     if expect_transport_family:
         assert snapshot.delivery_state.transport_family == "openclaw_gateway_ws_rpc"
     assert snapshot.delivery_state.transport_state == "transport_failed"
@@ -68,6 +71,9 @@ def assert_transport_ambiguous_launch_snapshot(
     assert snapshot.dispatch.control_state == "ambiguous"
     assert snapshot.dispatch.gateway_session_key is not None
     assert snapshot.dispatch.gateway_run_id is None
+    assert snapshot.dispatch.launch_failure_phase == "post_send"
+    assert snapshot.dispatch.launch_request_sent is True
+    assert snapshot.dispatch.next_launch_retry_at is None
     if expect_transport_family:
         assert snapshot.delivery_state.transport_family == "openclaw_gateway_ws_rpc"
     assert snapshot.delivery_state.transport_state == "transport_ambiguous"

@@ -200,6 +200,40 @@ These all stay transport outcomes until a controller-owned write or watchdog act
 
 Current adapter compatibility also accepts current Gateway terminal metadata on `agent.wait`, including string `error` plus fields such as `stopReason`, `livenessState`, `aborted`, and `yielded`. Only a bare `status=timeout` without terminal metadata remains the non-terminal polling outcome.
 
+## Current launch retry and ambiguity behavior
+
+Current dispatch launch failure is explicit controller state, not an accepted
+boundary and not a generic lifecycle wakeup.
+
+Pre-send launch failure means the Gateway `agent` request was not sent. Current
+runtime records the dispatch as fenced with `delivery_status =
+transport_failed`, `launch_failure_phase = pre_send`, `launch_request_sent =
+false`, an incremented `launch_retry_count`, error provenance, and
+`next_launch_retry_at` when attempts remain. The lifecycle may reopen the same
+current semantic target after that backoff, using the original continuation
+source rather than the failed launch dispatch as the semantic boundary.
+
+Post-send launch failure means the controller cannot prove whether the Gateway
+received the `agent` request or started work. Current runtime records
+`delivery_status = transport_ambiguous`, `control_state = ambiguous`,
+`launch_failure_phase = post_send`, `launch_request_sent = true`, and no
+`next_launch_retry_at`. The controller may request cleanup by session key, but
+it must not open a blind replacement without abort confirmation or other proof
+that no live Gateway work remains.
+
+Rules:
+
+- `pending` provider reconciliation means poll existing provider work by
+  `gateway_run_id`; it does not mean retry launch.
+- a failed pre-send launch dispatch is audit evidence, not a semantic
+  continuation source
+- retry-failed launch dispatches do not supersede the accepted or terminal
+  boundary they attempted to reopen
+- exhausted pre-send launch retries stop automatic reopen and leave operator
+  recovery over controller truth
+- post-send no-run-id ambiguity is replacement-blocking until cleanup proof or
+  operator recovery
+
 ## Current dispatch return-shape note
 
 Current repo-visible code and routes use detached/background Gateway handoff plus controller-owned acceptance, progress, and observability state.
@@ -237,6 +271,7 @@ root dispatch accepted with Gateway session key S1
 - inspected code in `apps/api/src/autoclaw/runtime/dispatch/authority.py`
 - inspected code in `apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py`
 - inspected code in `apps/api/src/autoclaw/runtime/dispatch/gateway_launch_state.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/launch_retry.py`
 - inspected code in `apps/api/src/autoclaw/runtime/dispatch/opening.py`
 - inspected code in `apps/api/src/autoclaw/runtime/node_tools/node_operations.py`
 - inspected code in `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py`
@@ -249,6 +284,7 @@ root dispatch accepted with Gateway session key S1
 - inspected tests in `apps/api/tests/integration/bootstrap/test_dispatch.py`
 - inspected tests in `apps/api/tests/integration/gateway/test_foreground_lifecycle_gateway.py`
 - inspected tests in `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_ingest_integration.py`
+- inspected tests in `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_retry_integration.py`
 - inspected tests in `apps/api/tests/integration/mcp/node_server`
 
 ## Related current pages

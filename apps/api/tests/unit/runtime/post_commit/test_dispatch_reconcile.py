@@ -4,10 +4,12 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import cast
 
+import pytest
 from autoclaw.config import RuntimeSettings
-from autoclaw.persistence.models import DispatchTurnModel
+from autoclaw.persistence.models import DispatchTurnModel, FlowModel
 from autoclaw.runtime.post_commit import dispatch_reconcile
 from pytest import MonkeyPatch
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def _runtime_settings(
@@ -57,3 +59,39 @@ def test_gateway_wait_timeout_caps_wait_to_remaining_deadline(
     )
 
     assert dispatch_reconcile.gateway_wait_timeout_ms(dispatch) == 400
+
+
+@pytest.mark.asyncio
+async def test_gateway_dispatch_without_run_id_is_not_provider_poll_pending(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    async def no_terminal_truth(*_args: object, **_kwargs: object) -> bool:
+        return False
+
+    async def fail_if_wait_called(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("agent.wait must not run without a gateway_run_id")
+
+    monkeypatch.setattr(
+        dispatch_reconcile,
+        "_fence_if_terminal_truth_committed",
+        no_terminal_truth,
+    )
+    monkeypatch.setattr(
+        dispatch_reconcile.dispatch_gateway,
+        "wait_for_gateway_dispatch",
+        fail_if_wait_called,
+    )
+    dispatch = cast(
+        DispatchTurnModel,
+        SimpleNamespace(control_state="live", gateway_run_id=None),
+    )
+
+    pending, changed = await dispatch_reconcile.reconcile_gateway_dispatch(
+        cast(AsyncSession, object()),
+        task_id="task-no-run-id",
+        flow=cast(FlowModel, object()),
+        dispatch=dispatch,
+    )
+
+    assert pending is False
+    assert changed is False

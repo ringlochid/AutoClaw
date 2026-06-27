@@ -89,7 +89,7 @@ async def reconcile_gateway_dispatch(
     ):
         return False, True
     if dispatch.gateway_run_id is None:
-        return True, changed
+        return False, changed
     try:
         wait_result = await dispatch_gateway.wait_for_gateway_dispatch(
             dispatch=dispatch,
@@ -129,6 +129,7 @@ async def reconcile_gateway_dispatch(
     )
     await close_dispatch_runtime(dispatch.dispatch_id)
     return False, True
+
 
 def gateway_wait_timeout_ms(dispatch: DispatchTurnModel) -> int:
     configured_slice_timeout_ms = max(1, get_settings().runtime.provider_wait_timeout_slice_ms)

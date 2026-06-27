@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 
 import pytest
+from autoclaw.config import get_settings
 from autoclaw.integrations.openclaw.gateway import (
     OpenClawCompatibilityError,
     OpenClawTransportError,
@@ -16,6 +17,7 @@ from autoclaw.integrations.openclaw.gateway.fixtures import (
 )
 from autoclaw.integrations.openclaw.gateway.request_builders import build_openclaw_agent_request
 from autoclaw.integrations.openclaw.gateway.runtime_handle import OpenClawRequestDispatchError
+from autoclaw.runtime.post_commit import stop_runtime_effect_runner
 from pydantic import ValidationError
 from tests.helpers.openclaw_gateway_support import (
     LocalGatewayTestServer,
@@ -23,7 +25,10 @@ from tests.helpers.openclaw_gateway_support import (
     recv_json,
     send_json,
 )
-from tests.helpers.runtime_support import runtime_bootstrap_context
+from tests.helpers.runtime_support import (
+    runtime_bootstrap_context,
+    set_dispatch_launch_retry_policy,
+)
 from tests.helpers.seeded_runtime_support import launch_seeded_runtime, task_compose_payload
 from tests.integration.gateway.dispatch_gateway_support import (
     load_latest_dispatch_snapshot,
@@ -146,6 +151,12 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
     config_path: Path | None = None
     async with runtime_bootstrap_context(tmp_path) as runtime:
         config_path = runtime.paths.config_path
+        set_dispatch_launch_retry_policy(
+            config_path,
+            max_attempts=1,
+            initial_backoff_seconds=0,
+        )
+        get_settings.cache_clear()
         with override_gateway_base_url("http://127.0.0.1:1"):
             async with runtime.session_factory() as session:
                 with pytest.raises(OpenClawTransportError):
@@ -158,6 +169,7 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
                     )
                 await session.rollback()
                 await session.close()
+                await stop_runtime_effect_runner()
     assert config_path is not None
     snapshot = await load_dispatch_snapshot_from_config(config_path=config_path, task_id=task_id)
     assert_transport_failed_launch_snapshot(
@@ -197,6 +209,12 @@ async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_fa
     async with gateway_server(handler) as base_url:
         async with runtime_bootstrap_context(tmp_path) as runtime:
             config_path = runtime.paths.config_path
+            set_dispatch_launch_retry_policy(
+                config_path,
+                max_attempts=1,
+                initial_backoff_seconds=0,
+            )
+            get_settings.cache_clear()
             with override_gateway_base_url(base_url):
                 async with runtime.session_factory() as session:
                     with pytest.raises(OpenClawCompatibilityError, match="maxPayload=128"):
@@ -209,6 +227,7 @@ async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_fa
                         )
                     await session.rollback()
                     await session.close()
+                    await stop_runtime_effect_runner()
         assert config_path is not None
         snapshot = await load_dispatch_snapshot_from_config(
             config_path=config_path,
@@ -245,6 +264,12 @@ async def test_launch_runtime_pre_send_transport_failure_stays_transport_failed(
     )
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
+        set_dispatch_launch_retry_policy(
+            runtime.paths.config_path,
+            max_attempts=1,
+            initial_backoff_seconds=0,
+        )
+        get_settings.cache_clear()
         async with runtime.session_factory() as session:
             with pytest.raises(OpenClawTransportError, match="synthetic pre-send failure"):
                 await launch_seeded_runtime(
@@ -255,6 +280,7 @@ async def test_launch_runtime_pre_send_transport_failure_stays_transport_failed(
                     compiler_version="gateway-send-failure",
                 )
             await session.rollback()
+            await stop_runtime_effect_runner()
 
         async with runtime.session_factory() as session:
             snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)

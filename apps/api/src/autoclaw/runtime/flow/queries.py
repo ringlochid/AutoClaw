@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
@@ -14,6 +14,7 @@ from autoclaw.persistence.models import (
     FlowModel,
     FlowNodeModel,
 )
+from autoclaw.runtime.dispatch.launch_retry import PRE_SEND_LAUNCH_FAILURE_PHASE
 from autoclaw.runtime.errors import illegal_state_error, missing_resource_error
 
 
@@ -136,6 +137,10 @@ async def latest_resumable_dispatch_for_attempt(
             DispatchTurnModel.attempt_id == attempt_id,
             DispatchTurnModel.accepted_boundary.is_(None),
             DispatchTurnModel.closed_at.is_not(None),
+            or_(
+                DispatchTurnModel.launch_failure_phase.is_(None),
+                DispatchTurnModel.launch_failure_phase != PRE_SEND_LAUNCH_FAILURE_PHASE,
+            ),
         )
         .order_by(DispatchTurnModel.rendered_at.desc())
     )

@@ -86,6 +86,11 @@ async def test_watchdog_classifies_bootstrap_callback_timeout(
             dispatch_id=dispatch_id,
             replacement_dispatch_id=replacement_dispatch_id,
         )
+        async with context.api.session_factory() as session:
+            original_dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            assert original_dispatch is not None
+            assert original_dispatch.launch_failure_phase is None
+            assert original_dispatch.next_launch_retry_at is None
         assert_watchdog_state_payload(
             task_root=context.task_root,
             dispatch_id=dispatch_id,

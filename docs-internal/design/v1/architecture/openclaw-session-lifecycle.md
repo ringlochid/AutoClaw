@@ -185,6 +185,37 @@ See [Install and onboard](../how-to/install-and-onboard.md) for the canonical co
 
 There is no `parent_gate` resume path in this lifecycle, and there is no canonical "resume the stopped run" path in v1.
 
+## Launch Retry And Ambiguity Rule
+
+Launch retry is foreground controller behavior over committed dispatch truth.
+It is separate from same-attempt watchdog recovery, worker semantic retry, and
+boundary normalization.
+
+Pre-send launch failure is safely retryable only when the controller proves the
+Gateway `agent` request was not sent. The controller records explicit launch
+failure provenance, retry count, next retry time, and max-attempt exhaustion.
+The retry opens a fresh dispatch for the same current semantic target and uses
+the original continuation source or previous boundary as its semantic basis.
+The failed launch dispatch remains audit evidence only and must not become the
+boundary that authorizes continuation.
+
+Post-send launch failure without a returned `runId` is ambiguous. The request
+may have reached Gateway and may have created live provider work. The controller
+must not blindly send another `agent` request unless abort confirmation,
+Gateway/session proof, or another controller-owned recovery path proves no live
+work remains. Without that proof, the slot is ambiguous and recovery is
+operator-owned.
+
+Rules:
+
+- `pending` provider reconciliation means keep polling existing provider work,
+  not retry launch
+- pre-send retry state belongs on controller-owned dispatch truth, not in the
+  OpenClaw adapter
+- retry backoff and max attempts are runtime/controller config knobs under
+  `[runtime]`
+- post-send ambiguity blocks replacement until cleanup proof or escalation
+
 ## Reserved Provider Continuity Detail
 
 Canonical v1 parent/root redispatch does not depend on provider-native continuity fields such as `same_session_continue` or `previous_response_id`.

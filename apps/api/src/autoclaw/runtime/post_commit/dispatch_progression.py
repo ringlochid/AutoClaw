@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import DispatchTurnModel, FlowModel
@@ -10,6 +12,14 @@ from autoclaw.runtime.contracts import FlowStatus
 from autoclaw.runtime.dispatch.control import (
     open_dispatch_for_attempt,
     stage_previous_dispatch_outputs,
+)
+from autoclaw.runtime.dispatch.launch_retry import (
+    LaunchRetryCandidate,
+    active_launch_retry_candidate_for_current_target,
+    dispatch_is_pre_send_launch_failure,
+    launch_retry_attempts_remaining,
+    launch_retry_due,
+    launch_retry_scheduled,
 )
 from autoclaw.runtime.errors import illegal_state_error
 from autoclaw.runtime.flow.reads import latest_fenced_dispatch
@@ -25,22 +35,39 @@ SEMANTIC_TARGET_REPAIR_NEXT_STEP = (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class DispatchAutoOpenResult:
+    has_changed_runtime_truth: bool = False
+    has_scheduled_launch_retry: bool = False
+
+
 async def auto_open_next_running_dispatch(
     session: AsyncSession,
     *,
     task_id: str,
     flow: FlowModel,
     previous_dispatch: DispatchTurnModel | None,
-) -> bool:
+) -> DispatchAutoOpenResult:
     if flow.status != FlowStatus.RUNNING.value or flow.current_open_dispatch_id is not None:
-        return False
+        return DispatchAutoOpenResult()
+    launch_retry_candidate = await active_launch_retry_candidate_for_current_target(
+        session,
+        flow=flow,
+    )
+    if launch_retry_candidate is not None:
+        return await _auto_open_launch_retry_dispatch(
+            session,
+            task_id=task_id,
+            flow=flow,
+            retry_candidate=launch_retry_candidate,
+        )
     resolved_previous_dispatch = await _resolved_previous_dispatch(
         session,
         task_id=task_id,
         previous_dispatch=previous_dispatch,
     )
     if resolved_previous_dispatch is None:
-        return False
+        return DispatchAutoOpenResult()
     if (
         resolved_previous_dispatch.accepted_boundary is None
         and not await command_run_terminal_continuation_matches_current_target(
@@ -56,11 +83,50 @@ async def auto_open_next_running_dispatch(
             previous_dispatch=resolved_previous_dispatch,
         )
     ):
-        return False
+        return DispatchAutoOpenResult()
+    await _open_dispatch_from_semantic_source(
+        session,
+        task_id=task_id,
+        flow=flow,
+        semantic_source_dispatch=resolved_previous_dispatch,
+    )
+    return DispatchAutoOpenResult(has_changed_runtime_truth=True)
+
+
+async def _auto_open_launch_retry_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    retry_candidate: LaunchRetryCandidate,
+) -> DispatchAutoOpenResult:
+    failed_dispatch = retry_candidate.failed_dispatch
+    if not launch_retry_attempts_remaining(failed_dispatch):
+        return DispatchAutoOpenResult()
+    if launch_retry_scheduled(failed_dispatch):
+        return DispatchAutoOpenResult(has_scheduled_launch_retry=True)
+    if not launch_retry_due(failed_dispatch):
+        return DispatchAutoOpenResult(has_scheduled_launch_retry=True)
+    await _open_dispatch_from_semantic_source(
+        session,
+        task_id=task_id,
+        flow=flow,
+        semantic_source_dispatch=retry_candidate.semantic_source_dispatch,
+    )
+    return DispatchAutoOpenResult(has_changed_runtime_truth=True)
+
+
+async def _open_dispatch_from_semantic_source(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: FlowModel,
+    semantic_source_dispatch: DispatchTurnModel | None,
+) -> None:
     resume_target = await resolve_flow_resume_target(
         session,
         flow=flow,
-        previous_dispatch=resolved_previous_dispatch,
+        previous_dispatch=semantic_source_dispatch,
     )
     dispatch_open_inputs = resume_target.dispatch_open_inputs()
     if dispatch_open_inputs is None:
@@ -86,7 +152,6 @@ async def auto_open_next_running_dispatch(
             task_id=task_id,
             previous_dispatch_id=previous_dispatch_id,
         )
-    return True
 
 
 async def _resolved_previous_dispatch(
@@ -100,8 +165,21 @@ async def _resolved_previous_dispatch(
         and previous_dispatch.task_id == task_id
         and previous_dispatch.control_state == "fenced"
     ):
-        return previous_dispatch
-    return await latest_fenced_dispatch(session, task_id=task_id)
+        return await _semantic_source_dispatch(session, previous_dispatch)
+    latest_dispatch = await latest_fenced_dispatch(session, task_id=task_id)
+    return await _semantic_source_dispatch(session, latest_dispatch)
 
 
-__all__ = ["auto_open_next_running_dispatch"]
+async def _semantic_source_dispatch(
+    session: AsyncSession,
+    dispatch: DispatchTurnModel | None,
+) -> DispatchTurnModel | None:
+    if not dispatch_is_pre_send_launch_failure(dispatch):
+        return dispatch
+    assert dispatch is not None
+    if dispatch.previous_dispatch_id is None:
+        return None
+    return await session.get(DispatchTurnModel, dispatch.previous_dispatch_id)
+
+
+__all__ = ["DispatchAutoOpenResult", "auto_open_next_running_dispatch"]

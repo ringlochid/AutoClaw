@@ -48,6 +48,7 @@ from .http_api_support import (
 )
 from .runtime_config_support import (
     set_dispatch_drain_timeout,
+    set_dispatch_launch_retry_policy,
     set_runtime_watchdog_enabled,
 )
 from .runtime_template_support import (
@@ -93,6 +94,7 @@ __all__ = [
     "runtime_bootstrap_paths",
     "runtime_read_json",
     "set_dispatch_drain_timeout",
+    "set_dispatch_launch_retry_policy",
     "set_runtime_watchdog_enabled",
     "stage_child_dispatch",
     "write_workspace_file",

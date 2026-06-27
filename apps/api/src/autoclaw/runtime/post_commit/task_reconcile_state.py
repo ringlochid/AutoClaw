@@ -11,6 +11,13 @@ from autoclaw.runtime.command_run_continuation import (
     command_run_terminal_continuation_matches_current_target,
 )
 from autoclaw.runtime.contracts import FlowStatus
+from autoclaw.runtime.dispatch.launch_retry import (
+    active_launch_retry_candidate_for_current_target,
+    dispatch_is_pre_send_launch_failure,
+    launch_retry_attempts_remaining,
+    launch_retry_due,
+    launch_retry_scheduled,
+)
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.flow.reads import latest_fenced_dispatch
 from autoclaw.runtime.flow.resume import resolve_flow_resume_target
@@ -29,11 +36,13 @@ async def task_pending_reconcile(
         if flow is None:
             return False
         if flow.current_open_dispatch_id is None:
-            return flow.status == FlowStatus.RUNNING.value and await task_can_auto_open_dispatch(
+            if flow.status != FlowStatus.RUNNING.value:
+                return False
+            return await task_can_auto_open_dispatch(
                 session,
                 task_id=task_id,
                 flow=flow,
-            )
+            ) or await task_has_scheduled_launch_retry(session, flow=flow)
         dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
         if dispatch is None:
             return True
@@ -72,7 +81,26 @@ async def task_can_auto_open_dispatch(
     task_id: str,
     flow: FlowModel,
 ) -> bool:
-    previous_dispatch = await latest_fenced_dispatch(session, task_id=task_id)
+    launch_retry_candidate = await active_launch_retry_candidate_for_current_target(
+        session,
+        flow=flow,
+    )
+    if launch_retry_candidate is not None:
+        failed_dispatch = launch_retry_candidate.failed_dispatch
+        if not launch_retry_attempts_remaining(failed_dispatch) or not launch_retry_due(
+            failed_dispatch
+        ):
+            return False
+        return await _dispatch_open_inputs_available(
+            session,
+            flow=flow,
+            previous_dispatch=launch_retry_candidate.semantic_source_dispatch,
+        )
+
+    previous_dispatch = await _latest_semantic_continuation_dispatch(
+        session,
+        task_id=task_id,
+    )
     if previous_dispatch is None:
         return False
     try:
@@ -95,6 +123,40 @@ async def task_can_auto_open_dispatch(
             )
             if not can_continue_from_command_run and not can_continue_from_human_request:
                 return False
+    except RuntimeOperationError as exc:
+        if exc.summary == "current semantic target is incomplete":
+            return False
+        raise
+    return await _dispatch_open_inputs_available(
+        session,
+        flow=flow,
+        previous_dispatch=previous_dispatch,
+    )
+
+
+async def task_has_scheduled_launch_retry(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+) -> bool:
+    launch_retry_candidate = await active_launch_retry_candidate_for_current_target(
+        session,
+        flow=flow,
+    )
+    return (
+        launch_retry_candidate is not None
+        and launch_retry_attempts_remaining(launch_retry_candidate.failed_dispatch)
+        and launch_retry_scheduled(launch_retry_candidate.failed_dispatch)
+    )
+
+
+async def _dispatch_open_inputs_available(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+    previous_dispatch: DispatchTurnModel | None,
+) -> bool:
+    try:
         resume_target = await resolve_flow_resume_target(
             session,
             flow=flow,
@@ -105,6 +167,20 @@ async def task_can_auto_open_dispatch(
             return False
         raise
     return resume_target.dispatch_open_inputs() is not None
+
+
+async def _latest_semantic_continuation_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+) -> DispatchTurnModel | None:
+    latest_dispatch = await latest_fenced_dispatch(session, task_id=task_id)
+    if not dispatch_is_pre_send_launch_failure(latest_dispatch):
+        return latest_dispatch
+    assert latest_dispatch is not None
+    if latest_dispatch.previous_dispatch_id is None:
+        return None
+    return await session.get(DispatchTurnModel, latest_dispatch.previous_dispatch_id)
 
 
 async def runtime_predicate_value(
@@ -153,5 +229,6 @@ __all__ = [
     "latest_lingering_boundary_dispatch",
     "runtime_predicate_value",
     "task_can_auto_open_dispatch",
+    "task_has_scheduled_launch_retry",
     "task_pending_reconcile",
 ]

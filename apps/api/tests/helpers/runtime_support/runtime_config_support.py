@@ -42,6 +42,31 @@ def set_dispatch_drain_timeout(config_path: Path, *, timeout_seconds: int) -> No
     )
 
 
+def set_dispatch_launch_retry_policy(
+    config_path: Path,
+    *,
+    max_attempts: int,
+    initial_backoff_seconds: float,
+    max_backoff_seconds: float | None = None,
+) -> None:
+    _set_runtime_setting(
+        config_path,
+        setting_name="dispatch_launch_retry_max_attempts",
+        setting_literal=str(max_attempts),
+    )
+    _set_runtime_setting(
+        config_path,
+        setting_name="dispatch_launch_retry_initial_backoff_seconds",
+        setting_literal=str(initial_backoff_seconds),
+    )
+    if max_backoff_seconds is not None:
+        _set_runtime_setting(
+            config_path,
+            setting_name="dispatch_launch_retry_max_backoff_seconds",
+            setting_literal=str(max_backoff_seconds),
+        )
+
+
 def set_runtime_watchdog_enabled(config_path: Path, *, enabled: bool) -> None:
     _set_runtime_setting(
         config_path,

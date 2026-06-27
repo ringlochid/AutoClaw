@@ -46,6 +46,9 @@ timeout_ms = 60000
 
 [runtime]
 dispatch_drain_timeout_seconds = 45
+dispatch_launch_retry_max_attempts = 4
+dispatch_launch_retry_initial_backoff_seconds = 0.25
+dispatch_launch_retry_max_backoff_seconds = 3.5
 post_commit_reconcile_interval_seconds = 0.5
 openclaw_event_poll_timeout_seconds = 0.75
 provider_wait_timeout_slice_ms = 4000
@@ -84,6 +87,9 @@ watchdog_interval_seconds = 20
     assert settings.openclaw.operator_agent_id == "operator-agent"
     assert settings.openclaw.timeout_ms == 60000
     assert settings.runtime.dispatch_drain_timeout_seconds == 45
+    assert settings.runtime.dispatch_launch_retry_max_attempts == 4
+    assert settings.runtime.dispatch_launch_retry_initial_backoff_seconds == 0.25
+    assert settings.runtime.dispatch_launch_retry_max_backoff_seconds == 3.5
     assert settings.runtime.post_commit_reconcile_interval_seconds == 0.5
     assert settings.runtime.openclaw_event_poll_timeout_seconds == 0.75
     assert settings.runtime.provider_wait_timeout_slice_ms == 4000
@@ -133,6 +139,15 @@ terminal_truth_commit_poll_interval_seconds = 0.03
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", "https://gateway.example.test")
     monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_ENABLED", "false")
     monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_INTERVAL_SECONDS", "99")
+    monkeypatch.setenv("AUTOCLAW_RUNTIME__DISPATCH_LAUNCH_RETRY_MAX_ATTEMPTS", "5")
+    monkeypatch.setenv(
+        "AUTOCLAW_RUNTIME__DISPATCH_LAUNCH_RETRY_INITIAL_BACKOFF_SECONDS",
+        "0.3",
+    )
+    monkeypatch.setenv(
+        "AUTOCLAW_RUNTIME__DISPATCH_LAUNCH_RETRY_MAX_BACKOFF_SECONDS",
+        "4.5",
+    )
     monkeypatch.setenv("AUTOCLAW_RUNTIME__POST_COMMIT_RECONCILE_INTERVAL_SECONDS", "0.1")
     monkeypatch.setenv("AUTOCLAW_RUNTIME__OPENCLAW_EVENT_POLL_TIMEOUT_SECONDS", "0.2")
     monkeypatch.setenv("AUTOCLAW_RUNTIME__TERMINAL_TRUTH_COMMIT_GRACE_SECONDS", "0.6")
@@ -151,6 +166,9 @@ terminal_truth_commit_poll_interval_seconds = 0.03
     assert settings.api_port == 9001
     assert settings.config_path == config_path
     assert settings.openclaw.base_url == "https://gateway.example.test"
+    assert settings.runtime.dispatch_launch_retry_max_attempts == 5
+    assert settings.runtime.dispatch_launch_retry_initial_backoff_seconds == 0.3
+    assert settings.runtime.dispatch_launch_retry_max_backoff_seconds == 4.5
     assert settings.runtime.post_commit_reconcile_interval_seconds == 0.1
     assert settings.runtime.openclaw_event_poll_timeout_seconds == 0.2
     assert settings.runtime.provider_wait_timeout_slice_ms == 2500
