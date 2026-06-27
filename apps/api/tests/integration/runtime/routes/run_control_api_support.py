@@ -13,7 +13,7 @@ from autoclaw.persistence import (
     PolicyRevisionModel,
     TaskEventModel,
 )
-from autoclaw.runtime.command_runs import (
+from autoclaw.runtime.command_run.service import (
     record_command_run_progress,
     record_command_run_terminal_result,
     start_command_run,

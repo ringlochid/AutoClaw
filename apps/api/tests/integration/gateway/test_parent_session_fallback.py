@@ -8,14 +8,14 @@ from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
 from autoclaw.persistence import DispatchTurnModel, NodeSessionModel
 from autoclaw.persistence.session import dispose_db_engine
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.runtime_dispatch_progression import (
-    assert_parent_redispatch_after_worker_green,
-)
-from tests.helpers.runtime_dispatch_support import mark_dispatch_provider_completed
 from tests.helpers.runtime_support import (
     bootstrap_parent_runtime,
     prepare_runtime_db,
     runtime_api_context,
+)
+from tests.helpers.runtime_support.dispatch import mark_dispatch_provider_completed
+from tests.helpers.runtime_support.dispatch_progression import (
+    assert_parent_redispatch_after_worker_green,
 )
 from tests.integration.gateway.redispatch_support import (
     assert_parent_redispatch_falls_back_to_fresh_root_session,

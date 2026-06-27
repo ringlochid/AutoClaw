@@ -9,12 +9,12 @@ from autoclaw.persistence.session import dispose_db_engine
 from autoclaw.runtime.post_commit import wait_for_runtime_effects
 from sqlalchemy import select
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.runtime_dispatch_support import delivery_state_path, read_json
 from tests.helpers.runtime_support import (
     bootstrap_parent_runtime,
     prepare_runtime_db,
     runtime_api_context,
 )
+from tests.helpers.runtime_support.dispatch import delivery_state_path, read_json
 
 
 @pytest.mark.asyncio

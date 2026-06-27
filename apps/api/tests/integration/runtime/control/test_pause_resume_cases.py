@@ -16,7 +16,6 @@ from tests.helpers.operator_auth_headers import (
     DEFAULT_OPERATOR_ACTOR_REF,
     OPERATOR_HEADERS,
 )
-from tests.helpers.runtime_dispatch_support import current_open_dispatch_id, stage_child_yield
 from tests.helpers.runtime_support import (
     bootstrap_parent_runtime,
     pause_flow,
@@ -27,6 +26,7 @@ from tests.helpers.runtime_support import (
 from tests.helpers.runtime_support import (
     continue_flow as continue_flow_via_http,
 )
+from tests.helpers.runtime_support.dispatch import current_open_dispatch_id, stage_child_yield
 from tests.integration.runtime.control.boundary_support import (
     assert_pause_resumption_state,
     assert_pause_wait_state,

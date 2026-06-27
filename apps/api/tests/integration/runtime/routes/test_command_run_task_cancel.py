@@ -12,7 +12,7 @@ from autoclaw.persistence import (
     PolicyRevisionModel,
     TaskEventModel,
 )
-from autoclaw.runtime.command_runs import start_command_run
+from autoclaw.runtime.command_run.service import start_command_run
 from autoclaw.runtime.contracts import CommandRunStartRequest
 from autoclaw.runtime.flow.timestamps import coerce_datetime_to_utc
 from autoclaw.runtime.projection.runtime_state import current_runtime_state

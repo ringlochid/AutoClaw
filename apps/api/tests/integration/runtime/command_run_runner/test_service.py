@@ -11,7 +11,7 @@ from autoclaw.runtime.command_run_runner import (
     stop_command_run_runner,
     wait_for_command_run_runner_idle,
 )
-from tests.integration.runtime.command_run_runner_support import (
+from tests.integration.runtime.command_run_runner.support import (
     assert_command_run_continues_task,
     command_run_event_count,
     command_run_events,

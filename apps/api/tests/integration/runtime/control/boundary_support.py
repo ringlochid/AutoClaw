@@ -7,7 +7,7 @@ from autoclaw.runtime import pause_runtime_flow, runtime_flow_read
 from autoclaw.runtime.post_commit import drive_runtime_once, drive_runtime_until
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from tests.helpers.runtime_dispatch_support import delivery_state_path, read_json
+from tests.helpers.runtime_support.dispatch import delivery_state_path, read_json
 
 
 async def assert_boundary_wait_state(

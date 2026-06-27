@@ -10,7 +10,7 @@ from autoclaw.config import get_settings
 from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
 
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.runtime_dispatch_support import (
+from tests.helpers.runtime_support.dispatch import (
     gateway_test_server_context,
 )
 

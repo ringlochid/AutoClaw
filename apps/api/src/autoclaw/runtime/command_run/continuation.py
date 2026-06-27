@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import CommandRunModel, DispatchTurnModel, FlowModel
-from autoclaw.runtime.command_run_records import (
+from autoclaw.runtime.command_run.records import (
     command_run_record_from_model,
     terminal_result_from_model,
 )

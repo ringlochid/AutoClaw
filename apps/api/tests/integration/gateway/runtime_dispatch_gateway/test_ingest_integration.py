@@ -11,7 +11,6 @@ from autoclaw.runtime.post_commit import drive_runtime_until
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.openclaw_gateway_support import gateway_server, recv_json, send_json
-from tests.helpers.runtime_dispatch_support import current_open_dispatch_id
 from tests.helpers.runtime_support import (
     assign_child,
     boundary,
@@ -21,6 +20,7 @@ from tests.helpers.runtime_support import (
     runtime_bootstrap_context,
     runtime_read_json,
 )
+from tests.helpers.runtime_support.dispatch import current_open_dispatch_id
 from tests.helpers.seeded_runtime_support import launch_seeded_runtime, task_compose_payload
 from tests.integration.gateway.dispatch_gateway_support import (
     override_gateway_base_url,

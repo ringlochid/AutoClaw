@@ -10,7 +10,7 @@ from autoclaw.persistence import (
     NodeSessionModel,
 )
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.runtime_dispatch_support import current_open_dispatch_id
+from tests.helpers.runtime_support.dispatch import current_open_dispatch_id
 from tests.integration.watchdog.case_support import configure_watchdog_env
 from tests.integration.watchdog.recovery_action_support import (
     assert_watchdog_state_payload,

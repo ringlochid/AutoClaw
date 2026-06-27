@@ -123,7 +123,7 @@ For the current prompt-source owner page, see `../interfaces/current-openclaw-br
 - inspected code in `apps/api/src/autoclaw/interfaces/mcp/bindings.py` as helper/bootstrap context glue only
 - inspected code in `apps/api/src/autoclaw/main.py`
 - inspected tests in `apps/api/tests/integration/bootstrap/test_dispatch.py`
-- inspected tests in `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_launch_integration.py`, `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_ingest_integration.py`
+- inspected tests in `apps/api/tests/integration/gateway/runtime_dispatch_gateway/launch/test_integration.py`, `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_ingest_integration.py`
 - inspected tests in `apps/api/tests/integration/mcp/node_server`
 - inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
 

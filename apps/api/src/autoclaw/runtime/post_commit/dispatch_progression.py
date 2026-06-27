@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import DispatchTurnModel, FlowModel
-from autoclaw.runtime.command_run_continuation import (
+from autoclaw.runtime.command_run.continuation import (
     command_run_terminal_continuation_matches_current_target,
 )
 from autoclaw.runtime.contracts import FlowStatus

@@ -34,7 +34,7 @@ from tests.integration.gateway.dispatch_gateway_support import (
     load_latest_dispatch_snapshot,
     override_gateway_base_url,
 )
-from tests.integration.gateway.runtime_dispatch_gateway.launch_failure_assertions import (
+from tests.integration.gateway.runtime_dispatch_gateway.launch.failure_assertions import (
     assert_transport_ambiguous_launch_snapshot,
     assert_transport_failed_launch_snapshot,
     load_dispatch_snapshot_from_config,

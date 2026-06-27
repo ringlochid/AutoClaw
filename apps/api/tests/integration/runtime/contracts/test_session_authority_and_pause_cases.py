@@ -11,7 +11,6 @@ from autoclaw.runtime.post_commit import drive_runtime_once
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from tests.helpers.runtime_dispatch_support import mark_dispatch_provider_completed
 from tests.helpers.runtime_support import (
     assign_child,
     boundary,
@@ -27,6 +26,7 @@ from tests.helpers.runtime_support import (
     stage_child_dispatch,
     write_workspace_file,
 )
+from tests.helpers.runtime_support.dispatch import mark_dispatch_provider_completed
 from tests.helpers.seeded_runtime_support import load_workflow_definition
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]

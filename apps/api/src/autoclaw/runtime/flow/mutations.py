@@ -12,7 +12,7 @@ from autoclaw.persistence.models import (
     FlowWaitStateModel,
 )
 from autoclaw.runtime.clock import utc_now
-from autoclaw.runtime.command_runs import record_command_run_terminal_result
+from autoclaw.runtime.command_run.service import record_command_run_terminal_result
 from autoclaw.runtime.contracts import (
     CommandRunState,
     CommandRunTerminalResultRead,

@@ -12,7 +12,6 @@ from autoclaw.runtime.post_commit import drive_runtime_once, drive_runtime_until
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from tests.helpers.runtime_dispatch_support import delivery_state_path, read_json
 from tests.helpers.runtime_support import (
     live_node_session_key_for_dispatch,
     write_workspace_file,
@@ -20,6 +19,7 @@ from tests.helpers.runtime_support import (
 from tests.helpers.runtime_support import (
     record_checkpoint as callback_record_checkpoint,
 )
+from tests.helpers.runtime_support.dispatch import delivery_state_path, read_json
 
 
 async def cancel_flow(

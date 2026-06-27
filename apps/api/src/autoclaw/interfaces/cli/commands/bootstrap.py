@@ -8,11 +8,11 @@ from typing import Any
 import uvicorn
 
 from autoclaw.config import load_settings
-from autoclaw.interfaces.cli.commands.bootstrap_config import (
+from autoclaw.interfaces.cli.bootstrap.config import (
     settings_to_config_text,
     update_config_sections,
 )
-from autoclaw.interfaces.cli.commands.bootstrap_database import (
+from autoclaw.interfaces.cli.bootstrap.database import (
     DatabaseRepairResult,
     ensure_database_ready,
     ensure_database_ready_with_legacy_sqlite_repair,

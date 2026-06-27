@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoclaw.persistence.models import DispatchTurnModel
 from autoclaw.runtime.boundary.service import accept_boundary
 from autoclaw.runtime.checkpoint.recording import record_checkpoint
-from autoclaw.runtime.command_runs import start_command_run
+from autoclaw.runtime.command_run.service import start_command_run
 from autoclaw.runtime.contracts import (
     BoundaryRead,
     BoundaryWrite,

@@ -22,27 +22,6 @@ class LaunchRetryCandidate:
     semantic_source_dispatch: DispatchTurnModel | None
 
 
-def dispatch_is_pre_send_launch_failure(dispatch: DispatchTurnModel | None) -> bool:
-    return (
-        dispatch is not None
-        and dispatch.control_state == "fenced"
-        and dispatch.delivery_status == DispatchDeliveryStatus.TRANSPORT_FAILED.value
-        and dispatch.gateway_run_id is None
-        and dispatch.accepted_boundary is None
-        and dispatch.launch_failure_phase == PRE_SEND_LAUNCH_FAILURE_PHASE
-        and dispatch.launch_request_sent is False
-    )
-
-
-def launch_retry_attempts_remaining(dispatch: DispatchTurnModel) -> bool:
-    return dispatch.launch_retry_count < _dispatch_launch_retry_max_attempts()
-
-
-def launch_retry_due(dispatch: DispatchTurnModel, *, now: datetime | None = None) -> bool:
-    next_retry_at = _coerce_datetime_to_utc(dispatch.next_launch_retry_at)
-    return next_retry_at is None or next_retry_at <= (now or utc_now())
-
-
 def launch_retry_scheduled(dispatch: DispatchTurnModel) -> bool:
     return launch_retry_attempts_remaining(dispatch) and not launch_retry_due(dispatch)
 
@@ -94,6 +73,27 @@ async def active_launch_retry_candidate_for_current_target(
         failed_dispatch=latest_dispatch,
         semantic_source_dispatch=semantic_source_dispatch,
     )
+
+
+def dispatch_is_pre_send_launch_failure(dispatch: DispatchTurnModel | None) -> bool:
+    return (
+        dispatch is not None
+        and dispatch.control_state == "fenced"
+        and dispatch.delivery_status == DispatchDeliveryStatus.TRANSPORT_FAILED.value
+        and dispatch.gateway_run_id is None
+        and dispatch.accepted_boundary is None
+        and dispatch.launch_failure_phase == PRE_SEND_LAUNCH_FAILURE_PHASE
+        and dispatch.launch_request_sent is False
+    )
+
+
+def launch_retry_attempts_remaining(dispatch: DispatchTurnModel) -> bool:
+    return dispatch.launch_retry_count < _dispatch_launch_retry_max_attempts()
+
+
+def launch_retry_due(dispatch: DispatchTurnModel, *, now: datetime | None = None) -> bool:
+    next_retry_at = _coerce_datetime_to_utc(dispatch.next_launch_retry_at)
+    return next_retry_at is None or next_retry_at <= (now or utc_now())
 
 
 async def record_pre_send_launch_retry_state(

@@ -14,7 +14,7 @@ from autoclaw.persistence import (
     ProviderEventRecordModel,
 )
 from autoclaw.runtime.watchdog.service import reconcile_watchdog_truth
-from tests.helpers.runtime_dispatch_support import current_open_dispatch_id
+from tests.helpers.runtime_support.dispatch import current_open_dispatch_id
 from tests.integration.watchdog.case_support import (
     configure_watchdog_env,
     manual_watchdog_context,

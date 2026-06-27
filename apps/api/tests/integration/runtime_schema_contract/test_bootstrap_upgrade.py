@@ -14,10 +14,10 @@ import pytest
 from autoclaw.config import get_settings
 from autoclaw.persistence.models import CommandRunModel
 from autoclaw.persistence.session import dispose_db_engine, get_session_factory
-from autoclaw.runtime.command_run_continuation import (
+from autoclaw.runtime.command_run.continuation import (
     command_run_continuation_context_for_dispatch,
 )
-from autoclaw.runtime.command_run_records import command_run_record_from_model
+from autoclaw.runtime.command_run.records import command_run_record_from_model
 from autoclaw.runtime.human_request.continuation import (
     human_request_continuation_context_for_dispatch,
 )

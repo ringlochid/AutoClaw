@@ -14,7 +14,7 @@ from tests.helpers.operator_auth_headers import (
     DEFAULT_OPERATOR_ACTOR_REF,
     current_operator_headers,
 )
-from tests.helpers.runtime_route_seed_support import (
+from tests.helpers.runtime_support.route_seed import (
     SeededRuntimeRouteTask,
     seed_runtime_route_task_rows,
 )
@@ -94,11 +94,14 @@ async def test_control_actor_ref_boundary_rejects_overlong_trimmed_value(
         )
         assert readback_response.status_code == 200
         assert readback_response.json()["status"] == "running"
-        assert await _control_task_events(
-            client,
-            task_id=task.task_id,
-            event_types={"task_paused", "task_resumed", "task_cancelled"},
-        ) == []
+        assert (
+            await _control_task_events(
+                client,
+                task_id=task.task_id,
+                event_types={"task_paused", "task_resumed", "task_cancelled"},
+            )
+            == []
+        )
 
 
 async def test_runtime_cancel_alias_preserves_plain_task_cancelled_actor_provenance(

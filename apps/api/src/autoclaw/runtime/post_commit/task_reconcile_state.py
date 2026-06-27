@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from autoclaw.persistence.models import DispatchDeliveryStateModel, DispatchTurnModel, FlowModel
-from autoclaw.runtime.command_run_continuation import (
+from autoclaw.runtime.command_run.continuation import (
     command_run_terminal_continuation_matches_current_target,
 )
 from autoclaw.runtime.contracts import FlowStatus
@@ -150,39 +150,6 @@ async def task_has_scheduled_launch_retry(
     )
 
 
-async def _dispatch_open_inputs_available(
-    session: AsyncSession,
-    *,
-    flow: FlowModel,
-    previous_dispatch: DispatchTurnModel | None,
-) -> bool:
-    try:
-        resume_target = await resolve_flow_resume_target(
-            session,
-            flow=flow,
-            previous_dispatch=previous_dispatch,
-        )
-    except RuntimeOperationError as exc:
-        if exc.summary == "current semantic target is incomplete":
-            return False
-        raise
-    return resume_target.dispatch_open_inputs() is not None
-
-
-async def _latest_semantic_continuation_dispatch(
-    session: AsyncSession,
-    *,
-    task_id: str,
-) -> DispatchTurnModel | None:
-    latest_dispatch = await latest_fenced_dispatch(session, task_id=task_id)
-    if not dispatch_is_pre_send_launch_failure(latest_dispatch):
-        return latest_dispatch
-    assert latest_dispatch is not None
-    if latest_dispatch.previous_dispatch_id is None:
-        return None
-    return await session.get(DispatchTurnModel, latest_dispatch.previous_dispatch_id)
-
-
 async def runtime_predicate_value(
     predicate: Callable[[], bool | Awaitable[bool]],
 ) -> bool:
@@ -222,6 +189,39 @@ async def latest_lingering_boundary_dispatch(
             .order_by(DispatchTurnModel.rendered_at.desc())
         ),
     )
+
+
+async def _dispatch_open_inputs_available(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+    previous_dispatch: DispatchTurnModel | None,
+) -> bool:
+    try:
+        resume_target = await resolve_flow_resume_target(
+            session,
+            flow=flow,
+            previous_dispatch=previous_dispatch,
+        )
+    except RuntimeOperationError as exc:
+        if exc.summary == "current semantic target is incomplete":
+            return False
+        raise
+    return resume_target.dispatch_open_inputs() is not None
+
+
+async def _latest_semantic_continuation_dispatch(
+    session: AsyncSession,
+    *,
+    task_id: str,
+) -> DispatchTurnModel | None:
+    latest_dispatch = await latest_fenced_dispatch(session, task_id=task_id)
+    if not dispatch_is_pre_send_launch_failure(latest_dispatch):
+        return latest_dispatch
+    assert latest_dispatch is not None
+    if latest_dispatch.previous_dispatch_id is None:
+        return None
+    return await session.get(DispatchTurnModel, latest_dispatch.previous_dispatch_id)
 
 
 __all__ = [

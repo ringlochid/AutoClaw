@@ -22,8 +22,8 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.watchdog.recovery import execute_watchdog_recovery
 from sqlalchemy import select
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.runtime_dispatch_support import current_open_dispatch_id
 from tests.helpers.runtime_support import assign_child, runtime_read_json
+from tests.helpers.runtime_support.dispatch import current_open_dispatch_id
 from tests.integration.watchdog.case_support import configure_watchdog_env
 from tests.integration.watchdog.support import (
     WatchdogApiContext,

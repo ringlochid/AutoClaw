@@ -11,7 +11,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection, make_url
 
 from autoclaw.definitions.registry import seed_definition_registry
-from autoclaw.interfaces.cli.commands.bootstrap_database_legacy_copy import (
+from autoclaw.interfaces.cli.bootstrap.legacy_copy import (
     copy_postgres_runtime_terminal_table,
     copy_sqlite_runtime_terminal_table,
     postgres_command_run_row,

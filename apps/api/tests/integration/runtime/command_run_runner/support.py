@@ -15,11 +15,11 @@ from autoclaw.persistence import (
     PolicyRevisionModel,
     TaskEventModel,
 )
+from autoclaw.runtime.command_run.service import start_command_run
 from autoclaw.runtime.command_run_runner import (
     drive_command_run_runner_once,
     notify_command_run_runner,
 )
-from autoclaw.runtime.command_runs import start_command_run
 from autoclaw.runtime.contracts import CommandRunStartRequest, CommandRunStartResponse
 from autoclaw.runtime.post_commit import drive_runtime_until, write_runtime_operation
 from autoclaw.runtime.projection.runtime_state import current_runtime_state

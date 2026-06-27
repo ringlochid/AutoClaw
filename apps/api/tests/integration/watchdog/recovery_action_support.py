@@ -11,7 +11,7 @@ from autoclaw.persistence import (
 )
 from autoclaw.runtime.post_commit import drive_runtime_until
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.runtime_dispatch_support import read_json
+from tests.helpers.runtime_support.dispatch import read_json
 from tests.integration.watchdog.case_support import reset_watchdog_row
 from tests.integration.watchdog.support import (
     WatchdogApiContext,

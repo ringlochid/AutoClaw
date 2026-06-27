@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import AttemptCheckpointModel, DispatchTurnModel, NodeSessionModel
 from autoclaw.runtime.capabilities import resolve_effective_capabilities
-from autoclaw.runtime.command_run_continuation import (
+from autoclaw.runtime.command_run.continuation import (
     command_run_continuation_context_for_dispatch,
 )
 from autoclaw.runtime.contracts import (

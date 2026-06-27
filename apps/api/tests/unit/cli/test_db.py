@@ -10,12 +10,12 @@ from pathlib import Path
 import autoclaw.interfaces.cli as cli
 import pytest
 from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL, get_settings
-from autoclaw.interfaces.cli.commands.bootstrap import (
-    ensure_database_ready_with_legacy_sqlite_repair,
-)
-from autoclaw.interfaces.cli.commands.bootstrap_database_legacy_copy import (
+from autoclaw.interfaces.cli.bootstrap.legacy_copy import (
     postgres_command_run_row,
     postgres_pending_human_request_row,
+)
+from autoclaw.interfaces.cli.commands.bootstrap import (
+    ensure_database_ready_with_legacy_sqlite_repair,
 )
 from autoclaw.persistence.session import dispose_db_engine, get_async_engine
 from sqlalchemy import inspect, text

@@ -15,7 +15,7 @@ from autoclaw.interfaces.http.dependencies import (
 )
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session, get_session_factory
-from autoclaw.runtime.command_runs import cancel_command_run, list_command_runs
+from autoclaw.runtime.command_run.service import cancel_command_run, list_command_runs
 from autoclaw.runtime.contracts import (
     CommandRunCancelResponse,
     CommandRunListResponse,

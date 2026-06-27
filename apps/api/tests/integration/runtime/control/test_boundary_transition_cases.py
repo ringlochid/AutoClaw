@@ -16,17 +16,17 @@ from autoclaw.runtime.projection.runtime_state import current_runtime_state
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.runtime_dispatch_support import (
-    current_open_dispatch_id,
-    delivery_state_path,
-    read_json,
-    stage_child_yield,
-)
 from tests.helpers.runtime_support import (
     bootstrap_parent_runtime,
     prepare_runtime_db,
     runtime_api_context,
     set_dispatch_drain_timeout,
+)
+from tests.helpers.runtime_support.dispatch import (
+    current_open_dispatch_id,
+    delivery_state_path,
+    read_json,
+    stage_child_yield,
 )
 from tests.integration.runtime.control.boundary_support import (
     assert_boundary_replacement_dispatch,

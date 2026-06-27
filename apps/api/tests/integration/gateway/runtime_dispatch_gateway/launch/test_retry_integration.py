@@ -18,7 +18,6 @@ from autoclaw.runtime.post_commit import drive_runtime_once, drive_runtime_until
 from pydantic import ValidationError
 from sqlalchemy import select
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.runtime_dispatch_support import current_open_dispatch_id, stage_child_yield
 from tests.helpers.runtime_support import (
     bootstrap_parent_runtime,
     prepare_runtime_db,
@@ -27,6 +26,7 @@ from tests.helpers.runtime_support import (
     set_dispatch_drain_timeout,
     set_dispatch_launch_retry_policy,
 )
+from tests.helpers.runtime_support.dispatch import current_open_dispatch_id, stage_child_yield
 from tests.helpers.seeded_runtime_support import launch_seeded_runtime, task_compose_payload
 
 
@@ -186,28 +186,11 @@ async def test_pre_send_retry_failure_does_not_shadow_previous_boundary(
             )
             dispatches = await _dispatches_for_task(api.session_factory, task_id=task_id)
 
-        root_dispatch = _dispatch_by_id(dispatches, root_dispatch_id)
-        failed_child_dispatches = [
-            dispatch
-            for dispatch in dispatches
-            if dispatch.node_key == "implementation_subtree"
-            and dispatch.delivery_status == "transport_failed"
-        ]
-        accepted_child_dispatches = [
-            dispatch
-            for dispatch in dispatches
-            if dispatch.node_key == "implementation_subtree" and dispatch.gateway_run_id is not None
-        ]
-        assert failed_agent_sends == 1
-        assert len(failed_child_dispatches) == 1
-        assert len(accepted_child_dispatches) == 1
-        failed_child = failed_child_dispatches[0]
-        accepted_child = accepted_child_dispatches[0]
-        assert failed_child.previous_dispatch_id == root_dispatch_id
-        assert failed_child.launch_retry_count == 1
-        assert accepted_child.previous_dispatch_id == root_dispatch_id
-        assert accepted_child.dispatch_id != failed_child.dispatch_id
-        assert root_dispatch.superseded_by_dispatch_id == accepted_child.dispatch_id
+        _assert_child_retry_reused_boundary(
+            dispatches=dispatches,
+            root_dispatch_id=root_dispatch_id,
+            failed_agent_sends=failed_agent_sends,
+        )
     finally:
         await dispose_db_engine()
 
@@ -334,6 +317,36 @@ def _dispatch_by_id(
         if dispatch.dispatch_id == dispatch_id:
             return dispatch
     raise AssertionError(f"missing dispatch '{dispatch_id}'")
+
+
+def _assert_child_retry_reused_boundary(
+    *,
+    dispatches: list[DispatchTurnModel],
+    root_dispatch_id: str,
+    failed_agent_sends: int,
+) -> None:
+    root_dispatch = _dispatch_by_id(dispatches, root_dispatch_id)
+    failed_child_dispatches = [
+        dispatch
+        for dispatch in dispatches
+        if dispatch.node_key == "implementation_subtree"
+        and dispatch.delivery_status == "transport_failed"
+    ]
+    accepted_child_dispatches = [
+        dispatch
+        for dispatch in dispatches
+        if dispatch.node_key == "implementation_subtree" and dispatch.gateway_run_id is not None
+    ]
+    assert failed_agent_sends == 1
+    assert len(failed_child_dispatches) == 1
+    assert len(accepted_child_dispatches) == 1
+    failed_child = failed_child_dispatches[0]
+    accepted_child = accepted_child_dispatches[0]
+    assert failed_child.previous_dispatch_id == root_dispatch_id
+    assert failed_child.launch_retry_count == 1
+    assert accepted_child.previous_dispatch_id == root_dispatch_id
+    assert accepted_child.dispatch_id != failed_child.dispatch_id
+    assert root_dispatch.superseded_by_dispatch_id == accepted_child.dispatch_id
 
 
 def _request_count(

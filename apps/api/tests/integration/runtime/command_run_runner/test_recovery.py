@@ -5,18 +5,18 @@ from pathlib import Path
 
 import pytest
 from autoclaw.persistence import CommandRunModel, FlowModel, FlowWaitStateModel
+from autoclaw.runtime.command_run.service import record_command_run_progress
 from autoclaw.runtime.command_run_runner import (
     command_run_log_ref,
     drive_command_run_runner_once,
     start_command_run_runner,
 )
 from autoclaw.runtime.command_run_runner import service as command_run_runner_service
-from autoclaw.runtime.command_runs import record_command_run_progress
 from autoclaw.runtime.contracts import CommandRunProgressUpdate
 from autoclaw.runtime.post_commit import write_runtime_operation
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.integration.runtime.command_run_runner_support import (
+from tests.integration.runtime.command_run_runner.support import (
     assert_command_run_continues_task,
     command_run_events,
     python_command,

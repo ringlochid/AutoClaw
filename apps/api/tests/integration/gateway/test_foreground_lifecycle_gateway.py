@@ -22,17 +22,17 @@ from autoclaw.runtime.post_commit import (
 )
 from sqlalchemy import select
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.runtime_dispatch_support import (
-    current_open_dispatch_id,
-    delivery_state_path,
-    read_json,
-    stage_child_yield,
-)
 from tests.helpers.runtime_support import (
     bootstrap_parent_runtime,
     prepare_runtime_db,
     runtime_api_context,
     set_dispatch_drain_timeout,
+)
+from tests.helpers.runtime_support.dispatch import (
+    current_open_dispatch_id,
+    delivery_state_path,
+    read_json,
+    stage_child_yield,
 )
 from tests.integration.gateway.foreground_lifecycle_support import (
     assert_pause_dispatch_fenced_after_wait_ok,

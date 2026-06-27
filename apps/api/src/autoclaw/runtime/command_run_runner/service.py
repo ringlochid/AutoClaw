@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from autoclaw.config import get_settings
 from autoclaw.runtime.clock import utc_now
-from autoclaw.runtime.command_runs import (
+from autoclaw.runtime.command_run.service import (
     record_command_run_progress,
     record_command_run_terminal_result,
 )

@@ -16,7 +16,7 @@ from autoclaw.runtime.capabilities import (
     resolve_effective_capabilities,
 )
 from autoclaw.runtime.clock import utc_now
-from autoclaw.runtime.command_run_records import (
+from autoclaw.runtime.command_run.records import (
     command_run_list_item_from_model,
     command_run_record_from_model,
 )
