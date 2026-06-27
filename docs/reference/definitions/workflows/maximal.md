@@ -1,14 +1,8 @@
-# Maximal workflow guide example
+# Maximal workflow example
 
 Status: Reference
 
-Use the maximal workflow when discovery, planning, implementation, review, QA, and release need separate stages.
-
-This example teaches:
-
-- multiple coordinated subtrees can still keep explicit criteria and artifact flow
-- review and QA are separate evidence lanes
-- root closure is the final decision point after all surfaced evidence converges
+This example mirrors the shipped `maximal-parent-first-release` workflow fixture.
 
 ```yaml
 kind: workflow

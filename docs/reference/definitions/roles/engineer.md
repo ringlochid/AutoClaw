@@ -1,14 +1,8 @@
-# Engineer example
+# Engineer role example
 
 Status: Reference
 
-Use the engineer role when a worker should complete one bounded implementation assignment and publish durable outputs.
-
-This example teaches:
-
-- engineer is a worker-only role
-- it stays inside the current assignment
-- it publishes artifacts and checkpoints before closure
+This example mirrors the shipped `engineer` role fixture.
 
 ```yaml
 kind: role

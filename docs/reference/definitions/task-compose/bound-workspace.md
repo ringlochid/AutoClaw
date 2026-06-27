@@ -1,14 +1,8 @@
-# Bound workspace task-compose guide example
+# Bound workspace task-compose example
 
 Status: Reference
 
-Use this example when a task should target a real host path instead of an AutoClaw-created task-local root.
-
-This example teaches:
-
-- `ensure_host_path` binds to an explicit host path and creates it if needed
-- you can mix host-bound workspace roots with task-local context roots
-- launch input is where host placement becomes concrete
+Use this example when the task should bind to a specific host path and create it if needed.
 
 ```yaml
 task:

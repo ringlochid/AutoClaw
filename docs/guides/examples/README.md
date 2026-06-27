@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Use this subtree for explanation-first examples before the exact YAML reference pages.
+Use this subtree for copyable YAML examples with short usage notes.
 
 - [Roles](roles/README.md)
 - [Policies](policies/README.md)

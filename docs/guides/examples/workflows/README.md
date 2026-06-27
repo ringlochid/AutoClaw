@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Use these pages when you want explanation-first workflow examples before the full YAML.
+Use these pages when you want copyable workflow YAML examples with a short usage note.
 
 - [Minimal](minimal.md)
 - [Normal](normal.md)

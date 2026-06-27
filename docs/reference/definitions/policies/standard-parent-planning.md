@@ -1,0 +1,21 @@
+# Standard parent planning policy example
+
+Status: Reference
+
+This example mirrors the shipped `standard-parent-planning` policy fixture.
+
+```yaml
+kind: policy
+id: standard-parent-planning
+title: Standard Parent Planning
+description: Default parent planning behavior.
+applies_to:
+  - parent
+budget_spec:
+  child_assignment_limit: 4
+instruction: |
+  Stage child work with assign_child.
+  Use structural edits only on current direct children.
+  Explain later-sensitive decisions in checkpoints rather than transcript
+  memory.
+```

@@ -1,14 +1,8 @@
-# Minimal workflow guide example
+# Minimal workflow example
 
 Status: Reference
 
-Use the minimal workflow when one bounded engineering change plus direct verification is enough.
-
-This example teaches:
-
-- one parent/root lane can verify one worker lane cleanly
-- criteria and produced artifact slots stay explicit
-- it is the quickest path to prove local task start and runtime outputs
+This example mirrors the shipped `minimal-implement-change` workflow fixture.
 
 ```yaml
 kind: workflow

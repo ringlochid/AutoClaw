@@ -16,7 +16,7 @@ Copy the fenced YAML from each reference page into these local files:
 - `minimal_implement_change.yaml` from [Minimal workflow](../reference/definitions/workflows/minimal.md)
 - `task-compose.yaml` from [Minimal task-compose example](../reference/definitions/task-compose/minimal.md)
 
-Only the fenced YAML body should be copied into those `.yaml` files. The reference pages are documentation wrappers around the example content.
+Only the fenced YAML body should be copied into those `.yaml` files. The Markdown page itself is documentation, not an importable definition file.
 
 ## Import the definitions
 
@@ -41,7 +41,7 @@ autoclaw task-compose start --file ./task-compose.yaml
 
 ## Teaching examples
 
-If you want the shorter explanation-first pages before the exact YAML, start here:
+If you want the same YAML with short teaching notes, start here:
 
 - [Guide role examples](examples/roles/planning-lead.md)
 - [Guide policy examples](examples/policies/standard-worker.md)

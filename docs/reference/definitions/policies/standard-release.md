@@ -1,0 +1,19 @@
+# Standard release policy example
+
+Status: Reference
+
+This example mirrors the shipped `standard-release` policy fixture.
+
+```yaml
+kind: policy
+id: standard-release
+title: Standard Release
+description: Ordinary release or closure worker behavior.
+applies_to:
+  - worker
+instruction: |
+  Use only the surfaced release evidence and current criteria.
+  Publish ordinary release artifacts and checkpoint output.
+  Record release readiness or blockers in the checkpoint summary and published
+  release artifacts rather than inventing a second result enum.
+```

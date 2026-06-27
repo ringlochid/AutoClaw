@@ -1,14 +1,8 @@
-# Planning lead example
+# Planning lead role example
 
 Status: Reference
 
-Use the planning lead role when one node needs to coordinate a subtree instead of completing the bounded worker task itself.
-
-This example teaches:
-
-- a planning lead can own `root` or `parent` nodes
-- it reads manifests, checkpoints, criteria, and artifacts to decide what happens next
-- it should use explicit control tools during an open dispatch instead of relying on hidden continuity
+This example mirrors the shipped `planning_lead` role fixture.
 
 ```yaml
 kind: role

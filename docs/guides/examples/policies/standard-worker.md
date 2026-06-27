@@ -10,4 +10,13 @@ This example teaches:
 - `retry_limit` expresses bounded retry behavior
 - the policy does not redefine the role instruction; it adds budget behavior
 
-For the exact YAML, use the [standard worker reference example](../../../reference/definitions/policies/standard-worker.md).
+```yaml
+kind: policy
+id: standard-worker
+title: Standard Worker
+description: Default worker behavior for bounded work.
+applies_to:
+    - worker
+budget_spec:
+    retry_limit: 1
+```

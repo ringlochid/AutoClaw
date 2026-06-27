@@ -1,14 +1,8 @@
-# Normal workflow guide example
+# Normal workflow example
 
 Status: Reference
 
-Use the normal workflow when you want implementation, review, and release closure without the coordination overhead of the maximal lane.
-
-This example teaches:
-
-- a parent subtree can coordinate investigation, implementation, and review
-- root closure remains separate from ordinary worker success
-- release work should consume surfaced evidence rather than reopen implementation scope
+This example mirrors the shipped `normal-parent-first-release` workflow fixture.
 
 ```yaml
 kind: workflow
