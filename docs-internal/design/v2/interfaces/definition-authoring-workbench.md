@@ -23,6 +23,8 @@ The workbench may provide:
 - registry inspection of current roles, policies, and workflows
 - draft-set create, open, save, and delete actions
 - local draft editing of one or more definition files
+- local draft reset to the captured stored baseline or local starter baseline
+- explicit re-materialize-current action when replacing a draft with the current stored revision is intended
 - readback of normalized JSON draft shadows or baseline metadata when exact compare or stale inspection matters
 - schema and legality validation
 - explicit apply or import
@@ -35,6 +37,7 @@ The workbench should separate these authored concerns clearly:
 - current registry browser
 - draft workspace
 - validation readback
+- local reset versus current stored revision replacement
 - explicit draft save versus apply or publish actions
 
 Workflow-node editing should expose `description` and `instruction` as separate authored fields: `description` is node-purpose text, while `instruction` is optional node-local prompt guidance.
@@ -49,6 +52,8 @@ Rules:
 
 - the workbench should show current stored truth and saved draft state as separate states
 - editable authored bodies may stay YAML-first while the same draft set also exposes backend-owned normalized JSON shadows for machine-exact inspection
+- local reset must remain a draft-state operation; it must not imply a registry current refresh
+- replacing a draft with current stored truth must be a separate explicit operation; it must not imply publish
 - apply or import is explicit and separate from draft save
 - task start remains a post-apply action over current controller truth
 - exact draft-set, validation, staleness, and apply semantics live in the definition authoring API and draft-set contract rather than this UI page

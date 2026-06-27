@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Last verified: 2026-06-25
+Last verified: 2026-06-27
 
 This page defines the current read-model and operator-query surfaces for task runtime inspection, operator summary, trace drilldown, and task-scoped observability.
 
@@ -88,6 +88,26 @@ Current operator trace supports:
 - `sort=occurred_at_desc|occurred_at_asc`
 
 Current control command-run reads return compact controller-owned command-run truth for `GET /control/tasks/{task_id}/command-runs`, including run id, state, command, description, workdir, timestamps, timeout, latest or terminal summary, exit code, signal, and log ref. Full logs are not inlined into the read model.
+
+## Current task-event streaming coverage
+
+Current `/control/tasks/{task_id}/events` and `/control/tasks/{task_id}/events/stream` are real reads over persisted `task_events` rows.
+
+Current implemented append coverage is limited to:
+
+- human-request opened and terminal events
+- command-run started, progress, cancel-requested, and terminal events
+- task pause, resume, and cancel events
+
+The current enum vocabulary also includes `task_started`, `dispatch_opened`, `provider_resolution_recorded`, `checkpoint_recorded`, `boundary_accepted`, `child_assignment_staged`, `child_assignment_committed`, and `provider_event_normalized`. Those names are not enough to make the current stream carry those runtime facts.
+
+Current `record_checkpoint`, `accept_boundary`, `assign_child`, and structural replan or adoption paths persist controller-owned rows and projections, but they do not append task-event rows today.
+
+Rules:
+
+- UI timelines may render those facts from trace or readback as current-state context, but not as live SSE chronology unless a persisted task event exists
+- support files and generated projections must not be parsed to synthesize missing task-event stream rows
+- a future streaming implementation should add append sites and payload schemas before the UI treats checkpoint, boundary, child-assignment, or structural-revision cards as stream-backed
 
 ## Current observability rule
 

@@ -111,10 +111,13 @@ The execution thread is a chronological rendering of `task_event`.
 Rules:
 
 - thread rows are event-driven, not support-file-driven
+- a row may claim live stream provenance only when it came from a persisted `task_event`
+- trace, snapshot, and source-row reads may seed initial UI state, but the UI must not present those rows as if they arrived from SSE
 - event type is primary
 - secondary chips or labels stay compact and low-contrast
 - detail actions such as `View state` are secondary, not the main visual signal on every row
 - the execution thread may open the inspector to a selected event or selected node context, but it is not itself the inspector
+- checkpoint, boundary, child-assignment, and structural-revision cards require matching task-event families before they are treated as replayable live chronology
 
 The execution thread may live in a center or right pane. It should not be overloaded with unrelated forms.
 
@@ -235,6 +238,7 @@ Rules:
 - the UI must show saved draft state separately from stored current truth
 - saved draft state comes from backend-owned draft-set storage under AutoClaw's configured data dir rather than browser-owned truth
 - one draft set may expose YAML authored bodies plus backend-owned normalized JSON shadows for exact compare or stale inspection without making JSON a second editable truth
+- local draft reset and current-stored-revision replacement stay authoring-local; neither action publishes or becomes runtime truth
 - the exact draft-set, validation, apply, and stale semantics belong to the definition authoring API and draft-set contract rather than this page
 
 ## Non-goals

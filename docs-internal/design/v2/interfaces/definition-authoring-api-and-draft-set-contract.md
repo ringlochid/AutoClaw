@@ -10,6 +10,8 @@ Current registry revisions remain controller-owned reusable truth.
 
 Draft sets are backend-owned local pending authoring state over that truth. They are not a second registry, a live-linked projection, or a hidden runtime lane.
 
+Materialization captures the current stored revision as a point-in-time draft baseline. That captured baseline is the revision the draft is based on, even if the registry current pointer advances later.
+
 Apply or import is the only path that changes current reusable definition truth.
 
 For the first V2 authoring lane, draft persistence lives in a dedicated host-side drafts area under AutoClaw's configured data dir rather than in registry tables or browser-owned state.
@@ -48,6 +50,8 @@ Rules:
 - the backend owns the draft-set directory and manifest file
 - the browser is a client of that backend-owned draft state, not the draft-state authority
 - materialized draft files are editable local copies of stored revisions, not live-linked projections
+- each materialized file records a captured baseline: the stored revision number, content hash, optional source path, and enough baseline body or normalized data to support compare, reset, and stale checks
+- the captured baseline is not refreshed by opening, saving, validating, previewing, or resetting a draft file
 - `draft-set.json` is the authoritative saved draft-set manifest and baseline ledger for the local draft set
 - the authored definition bodies stay as real YAML files rather than being embedded only inside the manifest
 - per-definition normalized JSON files under `_normalized/` are backend-owned machine read models over the current draft body plus captured stored baseline; they are not a second editable truth surface
@@ -72,6 +76,8 @@ Minimum `files[]` entry fields should include:
 - `based_on.content_hash`
 - optional `based_on.source_path | null`
 
+For files added locally instead of materialized from stored truth, `based_on.*` values are null and the draft set owns a local starter baseline for reset only.
+
 ## Required authoring operations
 
 The authoring API must own these operations:
@@ -79,6 +85,8 @@ The authoring API must own these operations:
 - create, open, list, and delete draft sets
 - materialize current stored revision(s) into draft files plus normalized JSON shadows inside the draft-set directory
 - save draft body edits without publishing them
+- reset a draft file to its captured stored baseline or local starter baseline without consulting current registry truth
+- explicitly re-materialize a draft file from the current stored revision when the operator chooses to discard local edits and update the baseline
 - validate a full draft set
 - apply or import the draft set into current registry truth
 - optionally validate preview task-compose input against the same draft set
@@ -87,8 +95,7 @@ The workbench may rename these actions for UX, but it must keep the lifecycle sp
 
 ## Canonical API families
 
-V2 authoring uses an explicit authoring lane rather than overloading the
-current `/definitions` registry routes.
+V2 authoring uses an explicit authoring lane rather than overloading the current `/definitions` registry routes.
 
 Canonical route families are:
 
@@ -98,6 +105,8 @@ Canonical route families are:
 - `DELETE /authoring/definition-draft-sets/{draft_set_id}`
 - `POST /authoring/definition-draft-sets/{draft_set_id}/materialize`
 - `PUT /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}/reset`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}/rematerialize-current`
 - `POST /authoring/definition-draft-sets/{draft_set_id}/validate`
 - `POST /authoring/definition-draft-sets/{draft_set_id}/apply`
 - `POST /authoring/definition-draft-sets/{draft_set_id}/preview-task-compose`
@@ -157,7 +166,7 @@ definition_draft_set_create_response:
   draft_set: definition_draft_set_read
 ```
 
-Materialize and file-save routes use:
+Materialize, file-save, reset, and re-materialize routes use:
 
 ```yaml
 definition_draft_materialize_request:
@@ -168,6 +177,12 @@ definition_draft_materialize_request:
 definition_draft_file_write_request:
   body: string
   body_format: yaml
+
+definition_draft_file_reset_request:
+  discard_local_changes: true
+
+definition_draft_file_rematerialize_current_request:
+  discard_local_changes: true
 
 definition_draft_set_response:
   draft_set: definition_draft_set_read
@@ -219,6 +234,31 @@ Rules:
 - `materialize` may be empty only when creating a new draft set for new authored definitions
 - apply reads stale baselines from `draft-set.json`; clients do not supply registry revision claims in the body
 - `start_task_compose_after_apply` starts a task only from newly current registry truth after successful apply
+- reset and re-materialize requests are destructive local draft writes and require explicit discard intent rather than silently accepting accidental client actions
+
+## Reset and re-materialize rule
+
+Reset is a local draft operation.
+
+For a materialized file, reset replaces the current draft body and normalized shadow with the captured baseline recorded when the file was materialized. For a locally added file, reset restores the draft-set's local starter baseline.
+
+Rules:
+
+- reset does not read the registry current pointer
+- reset does not update `based_on`
+- reset does not publish or mutate registry truth
+- if current stored truth moved after materialization, reset still restores the captured baseline rather than the newer stored revision
+
+Re-materialize current is a separate explicit operation.
+
+It reads the current stored registry revision for that definition, replaces the local draft body and normalized shadow, and updates `based_on.revision_no`, `based_on.content_hash`, and `based_on.source_path` to the newly captured baseline.
+
+Rules:
+
+- re-materialize current is valid only when stored registry truth exists for that definition
+- re-materialize current must discard local edits only after explicit discard intent
+- re-materialize current is not automatic on open, save, validate, preview, reset, or apply
+- accepting a newer stored revision after a stale failure must happen through explicit re-materialize, rebase, or manual merge semantics rather than a silent overwrite
 
 ## Save versus publish rule
 

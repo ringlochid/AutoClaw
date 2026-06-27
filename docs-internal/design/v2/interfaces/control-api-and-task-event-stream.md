@@ -331,6 +331,7 @@ The task event stream must include these families:
 - `boundary_accepted`
 - `child_assignment_staged`
 - `child_assignment_committed`
+- `structural_revision_adopted`
 - `provider_event_normalized`
 - `human_request_opened`
 - `human_request_resolved`
@@ -349,6 +350,32 @@ The task event stream must include these families:
 
 Progressive UI rendering may group these families visually, but it must not merge or reinterpret them as different controller events.
 
+## Event-family coverage rule
+
+The event vocabulary is the target stream contract. A UI may treat a family as live-stream-backed only after the controller writes that family as a persisted `task_event` row.
+
+Minimum target coverage is:
+
+| Runtime write | Target event family | Current implementation status |
+| --- | --- | --- |
+| task launch | `task_started` | target event family only until the launch path appends it |
+| dispatch open | `dispatch_opened` | target event family only until dispatch-open paths append it |
+| provider resolution | `provider_resolution_recorded` | target event family only until provider-resolution paths append it |
+| checkpoint write | `checkpoint_recorded` | target event family only until `record_checkpoint` appends it |
+| boundary accept | `boundary_accepted` | target event family only until `accept_boundary` appends it |
+| parent/root assign child | `child_assignment_staged` | target event family only until `assign_child` appends it |
+| accepted yield consuming staged child work | `child_assignment_committed` | target event family only until boundary progression appends it |
+| parent/root structural edit adoption | `structural_revision_adopted` | target event family to add with structural replan event support |
+| human requests, command runs, and task controls | matching `human_request_*`, `command_run_*`, and `task_*` families | shipped current stream coverage for these families exists where append sites are implemented |
+
+Rules:
+
+- trace, snapshot, and source-row reads may seed the UI, but they are not replayable stream chronology unless a persisted task event exists
+- clients must not synthesize missing task events from trace rows, generated support files, or local UI state
+- once a target event family lands in code, it must be appended in the same controller-owned transaction or post-commit operation boundary as the state change it describes
+- the event payload should carry bounded renderable facts and refs; large authored bodies, logs, manifests, and raw support files stay behind refs
+- failed guarded writes return structured errors and do not emit success-family task events
+
 ## Provider-resolution event payload
 
 When the controller resolves provider preference for a dispatch attempt, it should emit `provider_resolution_recorded`.
@@ -365,6 +392,97 @@ Rules:
 - the event records the requested provider and the provider that actually accepted the attempt
 - once the attempt is accepted, later provider changes must not be represented as silent mutation of the same attempt
 - fallback detail may stay in support-state or observability lanes until a later contract proves it needs first-class task-event status
+
+## Runtime progression event payloads
+
+`checkpoint_recorded` should be emitted after the checkpoint row, artifact refs, transient refs, and latest-checkpoint pointer are committed.
+
+Minimum payload expectations are:
+
+- `checkpoint_id`
+- `checkpoint_kind: progress | terminal`
+- `outcome: green | retry | blocked | null`
+- `summary`
+- `next_step`
+- `blockers`
+- `risks`
+- `produced_artifacts`
+- `transient_refs`
+- `task_memory_search_hints`
+- `checkpoint_ref`
+- `latest_checkpoint_ref`
+
+Rules:
+
+- top-level event fields carry `flow_revision_id`, `dispatch_id`, `attempt_id`, and `node_key`
+- artifact, checkpoint, and transient details should be refs or bounded summaries rather than inlined file content
+- progress checkpoints and terminal checkpoints both use `checkpoint_recorded`; the `checkpoint_kind` and `outcome` fields distinguish them
+
+`boundary_accepted` should be emitted after the controller accepts the boundary, closes the current dispatch, and updates semantic currentness.
+
+Minimum payload expectations are:
+
+- `boundary: yield | green | retry | blocked`
+- `latest_checkpoint_ref`
+- `previous_node_key`
+- `next_node_key | null`
+- `next_attempt_id | null`
+- `resulting_flow_status`
+- `requires_reopen_after_inactivity: boolean`
+
+Rules:
+
+- a boundary event records accepted controller truth, not merely a provider message or local UI transition
+- replacement or child dispatch opening should still be represented by a later `dispatch_opened` event when that dispatch is actually opened
+- terminal boundary outcomes must match the latest terminal checkpoint; the event should not restate unvalidated provider text as truth
+
+`child_assignment_staged` should be emitted when a parent or root `assign_child` call stages exactly one child assignment.
+
+Minimum payload expectations are:
+
+- `target_node_key`
+- `target_assignment_key`
+- `target_attempt_id`
+- `assignment_summary`
+- `child_assignment_ref`
+- `workflow_manifest_ref`
+- `latest_checkpoint_ref`
+- `transient_refs`
+
+`child_assignment_committed` should be emitted when an accepted `yield` consumes the staged child assignment into semantic currentness.
+
+Minimum payload expectations are:
+
+- `target_node_key`
+- `target_assignment_key`
+- `target_attempt_id`
+- `parent_node_key`
+- `source_dispatch_id`
+- `boundary: yield`
+
+Rules:
+
+- `assign_child` and accepted `yield` are separate events because staging child work is not the same as advancing the task to that child
+- a staged child assignment that is later superseded or made stale must not be rendered as committed child work unless `child_assignment_committed` exists
+
+`structural_revision_adopted` should be emitted when a parent or root structural edit adopts a new active flow revision.
+
+Minimum payload expectations are:
+
+- `operation: add_child | update_child | remove_child`
+- `previous_flow_revision_id`
+- `active_flow_revision_id`
+- `target_node_key`
+- `affected_node_keys`
+- `workflow_manifest_ref`
+- `summary`
+
+Rules:
+
+- structural adoption is the stream event for runtime structural replan; do not invent a separate UI-only `runtime_structural_replan` family
+- `add_child`, `update_child`, and `remove_child` remain the authoritative operation values
+- failed structural validation or stale revision rejection returns an error and does not emit `structural_revision_adopted`
+- structural adoption is not a dispatch-open event, a child-assignment event, or a definition-authoring event
 
 ## Structured rejection responses
 
