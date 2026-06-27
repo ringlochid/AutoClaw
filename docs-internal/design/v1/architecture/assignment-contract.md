@@ -44,6 +44,7 @@ For the first/root assignment there is no parent-authored `assignment_intent`. A
 
 - task-wide identity (`task.title`, `task.summary`, optional `task.instruction`)
 - the launch-selected current node purpose and node-definition semantics
+- optional node instruction from the selected workflow node
 - resolved role description and optional role instruction
 - resolved policy description and optional policy instruction
 
@@ -103,7 +104,7 @@ This staging authority applies only to parent/root -> child assignment creation.
 The assignment sequence is closed:
 
 1. semantic facts exist in the child definition plus any parent/root supplemental slot selectors and transient surfacing
-   - for the first/root assignment, semantic facts start from task identity plus the launch-selected current node purpose and node-definition semantics
+   - for the first/root assignment, semantic facts start from task identity plus the launch-selected current node purpose, optional node instruction, and node-definition semantics
    - for later child assignments, semantic facts start from the child node definition plus parent/root staging
 2. the controller validates authority, currentness, dependency legality, and selector legality
 3. the controller resolves concrete durable `consumes` refs from runtime truth

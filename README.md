@@ -20,7 +20,7 @@ This root README is a front-door router only. Public docs live under `docs/`. In
 ## Repo shape
 
 - `apps/api/` - backend API, runtime, DB, CLI, and tests
-- `definitions/` - workflow and definition content used by owning phases
+- `apps/api/src/autoclaw/definitions/seeds/` - committed shipped definition seeds
 - `docs/` - public product and reference docs
 - `docs-internal/` - internal design, current-contrast, execution, ADR, and archive canon
 - `scripts/` - repo tooling, including docs validation under `scripts/docs/`

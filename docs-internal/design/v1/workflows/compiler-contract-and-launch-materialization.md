@@ -180,6 +180,7 @@ Generation inputs are:
 
 - task-wide identity from task compose
 - launch-selected current node purpose and node-definition semantics
+- optional node instruction from the selected workflow node
 - resolved role description and optional role instruction from the pinned role revision
 - resolved policy description and optional policy instruction from the pinned policy revision
 

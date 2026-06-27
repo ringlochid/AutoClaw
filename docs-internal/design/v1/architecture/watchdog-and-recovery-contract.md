@@ -22,8 +22,7 @@ Watchdog is conservative and controller-truth-first.
 Foreground-control separation:
 
 - start/open and abort handshakes are foreground controller operations
-- pre-send launch retry and post-send launch ambiguity are foreground launch
-  control outcomes
+- pre-send launch retry and post-send launch ambiguity are foreground launch control outcomes
 - watchdog is the background reconciler/escalator for stale or ambiguous cases
 - watchdog must not race a live foreground handshake on the same dispatch slot
 - a bounded post-boundary drain window is also foreground controller behavior, not watchdog behavior
@@ -161,10 +160,8 @@ Timeout and reconciliation rule:
 - use `agent.wait` as the confirmatory read before replacement or escalation
 - reconcile controller truth before any retry or replacement decision
 - do not use blind exponential resend loops for launch or abort control
-- retry pre-send launch failures only through explicit controller launch retry
-  state with proof that no request was sent
-- treat post-send no-run-id launch failure as ambiguous unless cleanup proof
-  shows no live Gateway work remains
+- retry pre-send launch failures only through explicit controller launch retry state with proof that no request was sent
+- treat post-send no-run-id launch failure as ambiguous unless cleanup proof shows no live Gateway work remains
 
 ## What watchdog may and may not do
 

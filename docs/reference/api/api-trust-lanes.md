@@ -137,13 +137,8 @@ Current lane rules:
 - this lane keeps node-only tool inventory separate from operator MCP inventory
 - current shipped node-MCP wrapper now preserves the strict typed request and result shapes:
   - `assign_child`, `add_child`, `update_child`, and `remove_child` each take their own typed `payload` body, while `release_green` and `release_blocked` use only `expected_structural_revision_id?`
-  - `open_human_request` and `start_command_run` each take their shared typed
-    `request` body and create their external wait directly when current
-    capability and dispatch authority allow it
-  - node-operation success surfaces typed `CheckpointRead`, `BoundaryRead`,
-    `HumanRequestOpenResponse`, `CommandRunStartResponse`, `AssignChildSuccess`,
-    `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`,
-    `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` bodies
+  - `open_human_request` and `start_command_run` each take their shared typed `request` body and create their external wait directly when current capability and dispatch authority allow it
+  - node-operation success surfaces typed `CheckpointRead`, `BoundaryRead`, `HumanRequestOpenResponse`, `CommandRunStartResponse`, `AssignChildSuccess`, `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`, `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` bodies
 
 ### 4. Health lane
 

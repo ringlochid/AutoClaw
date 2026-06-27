@@ -121,7 +121,7 @@ Those shapes do not match the shipped tree anymore.
 
 ## Design pointer
 
-For the target authoring/compiler model, see `../../../design/v1/workflows/compiler-contract-and-launch-materialization.md`, `../../../design/v1/workflows/workflow-definition-schema.md`, `../../../design/v1/workflows/task-compose-schema.md`, and `../../../execution/v1/maps/current-to-target-mapping.md`.
+For the target authoring/compiler model, see `../../../design/v1/workflows/compiler-contract-and-launch-materialization.md`, `../../../design/v1/workflows/workflow-definition-schema.md`, and `../../../design/v1/workflows/task-compose-schema.md`.
 
 ## Evidence
 

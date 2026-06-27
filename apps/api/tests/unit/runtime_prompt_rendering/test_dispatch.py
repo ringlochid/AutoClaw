@@ -40,7 +40,7 @@ def _assert_parent_instruction_guidance(instructions_text: str) -> None:
         "release decision from current evidence." in instructions_text
     )
     assert "Use bounded research to improve delegation quality" in instructions_text
-    assert "Write the child brief as an acquisition plan, not just a work order." in (
+    assert "Write the child brief as an acquisition plan, not just loose assignment prose." in (
         instructions_text
     )
     assert (

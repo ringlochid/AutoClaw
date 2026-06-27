@@ -131,6 +131,7 @@ Render:
 - node kind
 - role
 - short node description
+- optional node instruction
 
 ### `current_dispatch`
 

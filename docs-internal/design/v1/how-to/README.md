@@ -21,7 +21,7 @@ Use live design terms here:
 - [Recover a provider session](recover-a-provider-session.md)
 - [Publish a release](publish-a-release.md)
 
-Codex implementation guidance, test-writing, bug tracking, triage, and reset gates live in `../../../execution/v1/how-to/` only.
+Implementation-program notes and review records are local execution material, not tracked target usage guidance.
 
 ## Search-first routing
 

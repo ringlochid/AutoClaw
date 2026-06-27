@@ -87,10 +87,7 @@ Current operator trace supports:
 - `limit`
 - `sort=occurred_at_desc|occurred_at_asc`
 
-Current control command-run reads return compact controller-owned command-run
-truth for `GET /control/tasks/{task_id}/command-runs`, including run id, state,
-command, description, workdir, timestamps, timeout, latest or terminal summary,
-exit code, signal, and log ref. Full logs are not inlined into the read model.
+Current control command-run reads return compact controller-owned command-run truth for `GET /control/tasks/{task_id}/command-runs`, including run id, state, command, description, workdir, timestamps, timeout, latest or terminal summary, exit code, signal, and log ref. Full logs are not inlined into the read model.
 
 ## Current observability rule
 
@@ -118,8 +115,7 @@ That means:
 - runtime list/read is a convenience surface, not the authority
 - operator snapshot is a summary surface, not the authority
 - operator trace is a drilldown surface, not the authority
-- control event, human-request, and command-run reads are convenience surfaces over
-  controller-owned task events and source rows
+- control event, human-request, and command-run reads are convenience surfaces over controller-owned task events and source rows
 - observability file refs point at generated projections, not the authority
 
 ## Current gaps versus older docs

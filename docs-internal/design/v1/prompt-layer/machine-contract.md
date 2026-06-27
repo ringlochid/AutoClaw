@@ -67,7 +67,7 @@ Machine artifacts must keep these splits explicit:
 
 - `current_assignment` is the runtime-projected assignment surface derived from child-definition durable contract plus parent semantic staging handoff surface
 - `current_assignment.summary` plus optional `instruction` are handoff prose
-- parent/root `assignment_intent.instruction` should remain acquisition-order guidance rather than a vague work-order stub
+- parent/root `assignment_intent.instruction` should remain acquisition-order guidance rather than vague assignment prose
 - `current_assignment.criteria` and `current_assignment.consumes` are reduced durable claims only
 - `current_assignment.produces` are `assignment_produce_requirement` values, not published refs
 - `consumed_durable_refs` carries the exact current durable refs the runtime resolved for this turn

@@ -55,6 +55,7 @@ RootNodeDefinition:
   role: string
   policy: string | optional
   description: string
+  instruction: string | optional
   produces:
     artifacts: [produce_slot, ...] | optional
   criteria: [criteria_declaration, ...] | optional
@@ -70,6 +71,7 @@ NodeDefinition:
   role: string
   policy: string | optional
   description: string
+  instruction: string | optional
   consumes:
     artifacts: [consume_selector, ...] | optional
     criteria: [consume_selector, ...] | optional
@@ -118,6 +120,7 @@ root:
   role: root_planning_lead
   policy: standard-root-planning
   description: Coordinate the whole flow and decide final closure.
+  instruction: Keep final closure tied to current surfaced evidence.
   criteria:
     - slot: root_closure_criteria
       description: Final root acceptance criteria.
@@ -129,6 +132,7 @@ root:
       role: planning_lead
       policy: standard-parent-planning
       description: Coordinate investigation, implementation, and review.
+      instruction: Assign only the next bounded child step needed for this subtree.
       criteria:
         - slot: subtree_delivery_rules
           description: Shared delivery rules for direct children.
@@ -147,6 +151,7 @@ root:
         - id: investigate_issue
           role: researcher
           description: Gather findings for downstream implementation.
+          instruction: Publish only findings needed by downstream implementation.
           produces:
             artifacts:
               - slot: findings_report
@@ -155,6 +160,7 @@ root:
         - id: implement_change
           role: engineer
           description: Implement the scoped fix.
+          instruction: Read current criteria before editing and keep the patch scoped.
           consumes:
             artifacts:
               - slot: findings_report
@@ -175,6 +181,7 @@ root:
         - id: review_change
           role: reviewer
           description: Review the patch against current criteria and evidence.
+          instruction: Review the current patch and verification evidence only.
           consumes:
             artifacts:
               - slot: change_patch
@@ -302,10 +309,11 @@ Runtime assignment may later surface supplemental durable sharing as additional 
 
 - workflow `description` is local authored purpose text for the whole workflow
 - node `description` is local authored purpose text for one ordinary node
+- node `instruction` is optional node-local prompt guidance and renders as source-disambiguated node instruction
 - role is reusable compatibility plus descriptive instruction
 - policy is optional reusable descriptive instruction plus optional `budget_spec`
 
-Workflow and node descriptions render into prompt surfaces, but they do not replace role or policy instruction layers and they do not create new machine control grammar.
+Workflow and node descriptions render into prompt surfaces, but they do not replace node, role, policy, task, or assignment instruction layers and they do not create new machine control grammar.
 
 ## How authored workflow becomes runtime truth
 

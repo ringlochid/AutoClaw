@@ -11,7 +11,7 @@ Use `supplemental_durable_context.artifact_slots` for durable artifact slots the
 Use `supplemental_durable_context.criteria_slots` for the acceptance or guardrail criteria that must govern the child's decisions.
 Use `transient_surfaces` only for short-lived carryover that will help now and would be noisy as durable context.
 Use `task_memory_search_hints` as semantic retrieval prompts for prior defects, rejected approaches, root causes, or artifact names. Do not use generic hints like `ui`, `bug`, or `page`.
-Write the child brief as an acquisition plan, not just a work order.
+Write the child brief as an acquisition plan, not just loose assignment prose.
 Bad child brief example:
 - `summary`: Check the page and fix issues.
 - `instruction`: null

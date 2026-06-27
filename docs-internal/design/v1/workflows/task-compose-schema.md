@@ -153,8 +153,8 @@ roots:
   - files or materialized supporting context under the bound `context` root
 - task compose remains a narrow launch spec rather than a rich notes/details document
 - `task.title`, `task.summary`, and optional `task.instruction` project through the manifest into prompt `task_identity` for every node, not into provider `instructions`
-- node-definition purpose belongs in the current-node system/static instruction layer for every node
-- the first/root assignment is generated at launch from task identity plus the launch-selected current node purpose and resolved role/policy wording; task compose does not author an `initial_assignment`
+- node-definition purpose and optional node instruction belong in the current-node system/static instruction layer for every node
+- the first/root assignment is generated at launch from task identity plus the launch-selected current node purpose, node instruction, and resolved role/policy wording; task compose does not author an `initial_assignment`
 
 ## Public route must reject
 
@@ -306,6 +306,7 @@ Generation inputs are:
 
 - task-wide `task_identity` from `task.title`, `task.summary`, and optional `task.instruction`
 - the launch-selected current node purpose and node-definition semantics
+- optional node instruction from the selected workflow node
 - resolved role description and optional role instruction
 - resolved policy description and optional policy instruction
 

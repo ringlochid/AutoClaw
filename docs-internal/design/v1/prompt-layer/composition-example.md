@@ -57,6 +57,7 @@ prompt_request_json:
     - node kind: worker
     - node key: implement_fix
     - node description: Repair the bounded auth-refresh defect.
+    - node instruction: Change only the scoped auth-refresh code path.
     - role: engineer
     - role description: Worker for one bounded engineering assignment.
     - role instruction: Complete only the current assignment.
@@ -137,6 +138,7 @@ prompt_request_json:
     - node kind: root
     - node key: root
     - node description: Coordinate the whole flow and decide the next bounded child step.
+    - node instruction: Keep the root decision tied to surfaced evidence.
     - role: root_planning_lead
     - role description: Root coordinator for the whole task.
     - role instruction: Choose the next bounded child step and close only when release is legal.

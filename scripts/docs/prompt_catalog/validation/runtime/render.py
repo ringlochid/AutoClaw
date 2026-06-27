@@ -119,7 +119,7 @@ def _validate_parent_instruction_rules(
         return
 
     required_rules = (
-        "Write the child brief as an acquisition plan, not just a work order.",
+        "Write the child brief as an acquisition plan, not just loose assignment prose.",
         "Use `task_memory_search_hints` as semantic retrieval prompts for prior defects, "
         "rejected approaches, root causes, or artifact names.",
     )

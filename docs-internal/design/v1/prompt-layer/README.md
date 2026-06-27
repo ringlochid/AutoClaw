@@ -68,7 +68,7 @@ Use these routes when the question is "what exact text do I send or expect?"
 - exact worker or parent/root legality block: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)
 - exact rendered worker or parent/root prompt: [Rendered Examples](generated/rendered-examples.md)
 - exact `full_prompt` request composition: [Composition Example](composition-example.md)
-- exact role/policy instruction assembly: [System And Provider Block](prompt-pack/system-and-provider-block.md) and [Role And Policy Definition Schema](../interfaces/role-and-policy-definition-schema.md)
+- exact node/role/policy instruction assembly: [System And Provider Block](prompt-pack/system-and-provider-block.md), [Workflow Definition Schema](../workflows/workflow-definition-schema.md), and [Role And Policy Definition Schema](../interfaces/role-and-policy-definition-schema.md)
 - exact authored task-intent launch shape: [Task Compose Schema](../workflows/task-compose-schema.md)
 - exact generated section order and family inventory: [Inventory](generated/inventory.md), [Machine Contract](machine-contract.md), and [Prompt Resource Usage Appendix](prompt-resource-usage-appendix.md)
 - exact prompt-layer reject wording examples: [Validation And Reject Blocks](prompt-pack/validation-and-reject-blocks.md)

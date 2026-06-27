@@ -174,25 +174,13 @@ Generated runtime files therefore remain derived projections, but the taught tas
 
 ## Current lifecycle reconcile return shape
 
-Current post-commit reconciliation separates provider polling from runtime state
-changes and scheduled launch retry.
+Current post-commit reconciliation separates provider polling from runtime state changes and scheduled launch retry.
 
-The provider-polling lane is only active when existing provider work can be
-observed, for example through an accepted dispatch with a `gateway_run_id`.
-Committed runtime changes may trigger another wakeup, but they do not by
-themselves mean provider work is pending.
+The provider-polling lane is only active when existing provider work can be observed, for example through an accepted dispatch with a `gateway_run_id`. Committed runtime changes may trigger another wakeup, but they do not by themselves mean provider work is pending.
 
-Pre-send launch retry is a third explicit lane. A fenced
-`transport_failed` dispatch with `launch_failure_phase = pre_send` and
-`launch_request_sent = false` can schedule `next_launch_retry_at`. When the
-backoff becomes due and attempts remain, lifecycle reopens the current semantic
-target from the original continuation source. When attempts are exhausted,
-lifecycle stops automatic reopen so operator recovery can inspect controller
-truth.
+Pre-send launch retry is a third explicit lane. A fenced `transport_failed` dispatch with `launch_failure_phase = pre_send` and `launch_request_sent = false` can schedule `next_launch_retry_at`. When the backoff becomes due and attempts remain, lifecycle reopens the current semantic target from the original continuation source. When attempts are exhausted, lifecycle stops automatic reopen so operator recovery can inspect controller truth.
 
-Post-send no-run-id ambiguity is not scheduled retry. It remains
-`control_state = ambiguous` and replacement-blocking until abort/proof or
-operator recovery resolves whether live Gateway work may still exist.
+Post-send no-run-id ambiguity is not scheduled retry. It remains `control_state = ambiguous` and replacement-blocking until abort/proof or operator recovery resolves whether live Gateway work may still exist.
 
 ## Minimal example
 

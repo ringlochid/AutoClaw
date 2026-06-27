@@ -45,8 +45,8 @@ The required workflow lanes follow the progressive lane matrix:
 - regenerated prompt inventory and rendered examples when prompt-layer authorities changed
 - validator pass for the canonical docs pack
 
-## Related execution material
+## Related tracked material
 
-- `../../../execution/v1/gates/code-quality-gate.md`
-- `../../../execution/v1/gates/reset-gate.md`
-- `../../../execution/v1/phases/progressive-e2e-workflow-lanes.md`
+- public verification commands in [root README](../../../../README.md)
+- current runtime lane contrast in [Run real e2e workflow lanes](../../../current/v1/operations/run-real-e2e-workflow-lanes.md)
+- repo-wide coding standards in [STYLE](../../../../STYLE.md)

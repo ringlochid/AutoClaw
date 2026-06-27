@@ -342,6 +342,7 @@ workflow_manifest:
       role: string
       policy: string | null
       description: string
+      node_instruction: string | null
       consumes:
         artifacts: [slot_entry, ...] | optional
         criteria: [slot_entry, ...] | optional

@@ -479,7 +479,7 @@ Rules:
 Rules:
 
 - `task.title`, `task.summary`, and optional `task.instruction` are task-wide identity inputs visible to every node
-- the first/root assignment is generated at launch from task identity plus launch-selected current node purpose and static instruction assembly
+- the first/root assignment is generated at launch from task identity plus launch-selected current node purpose, node instruction, and static role/policy instruction assembly
 - callers do not author a separate `initial_assignment` object in workflow YAML or in `TaskStartRequest`
 
 ### `TaskStartResponse`

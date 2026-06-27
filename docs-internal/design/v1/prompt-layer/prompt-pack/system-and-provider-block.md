@@ -121,12 +121,13 @@ The static provider-side `instructions` channel should assemble:
 5. runtime boundary block
 6. current family legality block
 7. current node-kind guidance
-8. current role description
-9. current role instruction
-10. current policy description
-11. current policy instruction
+8. current node instruction
+9. current role description
+10. current role instruction
+11. current policy description
+12. current policy instruction
 
-Role/policy registry truth remains authoritative. The prompt carries only the rendered stable instruction layer derived from that truth. The exact shipped text for the static blocks lives in the app-owned prompt assets under `apps/api/src/autoclaw/runtime/prompt/assets/**`; this page is the mirror documentation for those shipped assets. Runtime loads those assets without whitespace stripping or trailing-newline normalization.
+Workflow node, role, and policy registry truth remains authoritative. The prompt carries only the rendered stable instruction layer derived from that truth. The exact shipped text for the static blocks lives in the app-owned prompt assets under `apps/api/src/autoclaw/runtime/prompt/assets/**`; this page is the mirror documentation for those shipped assets. Runtime loads those assets without whitespace stripping or trailing-newline normalization.
 
 ## `worker_dispatch_opening_v1`
 

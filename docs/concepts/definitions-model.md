@@ -14,7 +14,7 @@ Policies apply budgeting and retry or child-assignment rules to specific node ki
 
 ## Workflows
 
-Workflows describe the tree of nodes, their criteria, produced artifacts, and dependency structure.
+Workflows describe the tree of nodes, their purpose text, optional node-local instruction, criteria, produced artifacts, and dependency structure.
 
 ## Task-compose launch input
 

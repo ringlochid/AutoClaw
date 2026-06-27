@@ -202,37 +202,19 @@ Current adapter compatibility also accepts current Gateway terminal metadata on 
 
 ## Current launch retry and ambiguity behavior
 
-Current dispatch launch failure is explicit controller state, not an accepted
-boundary and not a generic lifecycle wakeup.
+Current dispatch launch failure is explicit controller state, not an accepted boundary and not a generic lifecycle wakeup.
 
-Pre-send launch failure means the Gateway `agent` request was not sent. Current
-runtime records the dispatch as fenced with `delivery_status =
-transport_failed`, `launch_failure_phase = pre_send`, `launch_request_sent =
-false`, an incremented `launch_retry_count`, error provenance, and
-`next_launch_retry_at` when attempts remain. The lifecycle may reopen the same
-current semantic target after that backoff, using the original continuation
-source rather than the failed launch dispatch as the semantic boundary.
+Pre-send launch failure means the Gateway `agent` request was not sent. Current runtime records the dispatch as fenced with `delivery_status = transport_failed`, `launch_failure_phase = pre_send`, `launch_request_sent = false`, an incremented `launch_retry_count`, error provenance, and `next_launch_retry_at` when attempts remain. The lifecycle may reopen the same current semantic target after that backoff, using the original continuation source rather than the failed launch dispatch as the semantic boundary.
 
-Post-send launch failure means the controller cannot prove whether the Gateway
-received the `agent` request or started work. Current runtime records
-`delivery_status = transport_ambiguous`, `control_state = ambiguous`,
-`launch_failure_phase = post_send`, `launch_request_sent = true`, and no
-`next_launch_retry_at`. The controller may request cleanup by session key, but
-it must not open a blind replacement without abort confirmation or other proof
-that no live Gateway work remains.
+Post-send launch failure means the controller cannot prove whether the Gateway received the `agent` request or started work. Current runtime records `delivery_status = transport_ambiguous`, `control_state = ambiguous`, `launch_failure_phase = post_send`, `launch_request_sent = true`, and no `next_launch_retry_at`. The controller may request cleanup by session key, but it must not open a blind replacement without abort confirmation or other proof that no live Gateway work remains.
 
 Rules:
 
-- `pending` provider reconciliation means poll existing provider work by
-  `gateway_run_id`; it does not mean retry launch.
-- a failed pre-send launch dispatch is audit evidence, not a semantic
-  continuation source
-- retry-failed launch dispatches do not supersede the accepted or terminal
-  boundary they attempted to reopen
-- exhausted pre-send launch retries stop automatic reopen and leave operator
-  recovery over controller truth
-- post-send no-run-id ambiguity is replacement-blocking until cleanup proof or
-  operator recovery
+- `pending` provider reconciliation means poll existing provider work by `gateway_run_id`; it does not mean retry launch.
+- a failed pre-send launch dispatch is audit evidence, not a semantic continuation source
+- retry-failed launch dispatches do not supersede the accepted or terminal boundary they attempted to reopen
+- exhausted pre-send launch retries stop automatic reopen and leave operator recovery over controller truth
+- post-send no-run-id ambiguity is replacement-blocking until cleanup proof or operator recovery
 
 ## Current dispatch return-shape note
 

@@ -98,8 +98,7 @@ Current query-backed route details include:
 - `/operator/tasks/{task_id}/trace` supports `scope`, `q`, `limit`, `cursor`, and `sort`
 - `/control/tasks/{task_id}/events` supports `cursor`, `limit`, and `through_event_id`
 - `/control/tasks/{task_id}/command-runs` supports `cursor` and `limit`
-- `/control/tasks/{task_id}/command-runs/{run_id}/cancel` requests cancellation of the
-  current active nonterminal command run without cancelling the whole task
+- `/control/tasks/{task_id}/command-runs/{run_id}/cancel` requests cancellation of the current active nonterminal command run without cancelling the whole task
 
 ## Current callback routes
 
