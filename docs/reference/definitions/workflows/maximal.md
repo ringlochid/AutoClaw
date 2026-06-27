@@ -13,6 +13,7 @@ root:
   role: root_planning_lead
   policy: standard-root-planning
   description: Coordinate the whole authentication overhaul and decide final bounded closure from current evidence.
+  instruction: Coordinate staged work and close only from current surfaced evidence.
   criteria:
     - slot: root_delivery_rules
       description: Shared delivery rules before final closure.
@@ -29,6 +30,7 @@ root:
       role: planning_lead
       policy: standard-parent-planning
       description: Coordinate discovery work and verify discovery outputs before downstream use.
+      instruction: Keep discovery scoped to evidence needed for downstream planning.
       criteria:
         - slot: discovery_requirements
           description: Shared discovery requirements.
@@ -42,6 +44,7 @@ root:
         - id: gather_evidence
           role: researcher
           description: Gather discovery evidence and publish a findings report.
+          instruction: Publish discovery findings and notes needed by downstream stages only.
           produces:
             artifacts:
               - slot: findings_report
@@ -54,6 +57,7 @@ root:
       role: planning_lead
       policy: standard-parent-planning
       description: Coordinate planning, implementation, review, and QA from current surfaced discovery outputs.
+      instruction: Coordinate planning, implementation, review, and QA from current discovery outputs.
       criteria:
         - slot: implementation_loop_requirements
           description: Shared implementation requirements.
@@ -72,6 +76,7 @@ root:
         - id: plan_iteration
           role: planner
           description: Publish the current delivery plan.
+          instruction: Publish the current delivery plan from surfaced discovery evidence only.
           consumes:
             artifacts:
               - slot: findings_report
@@ -84,6 +89,7 @@ root:
           role: engineer
           policy: standard-worker
           description: Implement the scoped change and publish patch plus verification evidence.
+          instruction: Read findings, plan, and criteria before editing; keep patch scoped.
           consumes:
             artifacts:
               - slot: findings_report
@@ -106,6 +112,7 @@ root:
           role: reviewer
           policy: standard-review
           description: Review the implementation evidence and publish an ordinary review report.
+          instruction: Review only the current patch and verification evidence.
           consumes:
             artifacts:
               - slot: change_patch
@@ -120,6 +127,7 @@ root:
         - id: qa_sweep
           role: architect
           description: Run a bounded QA or architecture sweep over current implementation evidence.
+          instruction: Inspect current implementation, verification, and review evidence only.
           consumes:
             artifacts:
               - slot: change_patch
@@ -134,6 +142,7 @@ root:
       role: release_operator
       policy: standard-release
       description: Perform the final bounded release work from current surfaced evidence.
+      instruction: Use only surfaced release evidence and closure criteria.
       consumes:
         artifacts:
           - slot: findings_report

@@ -6,6 +6,7 @@ root:
     role: root_planning_lead
     policy: standard-root-planning
     description: Verify implementation and release evidence before final closure.
+    instruction: Verify current subtree and release evidence before final closure.
     criteria:
         - slot: root_delivery_rules
           description: Root acceptance criteria.
@@ -21,6 +22,7 @@ root:
           role: planning_lead
           policy: standard-parent-planning
           description: Coordinate investigation, implementation, and ordinary review work inside the bounded subtree only.
+          instruction: Assign only bounded investigation, implementation, and review child work.
           criteria:
               - slot: implementation_subtree_requirements
                 description: Local execution requirements for this implementation subtree.
@@ -34,6 +36,7 @@ root:
               - id: investigate_issue
                 role: researcher
                 description: Inspect the issue and publish a findings report for downstream implementation.
+                instruction: Publish findings needed by downstream implementation only.
                 produces:
                     artifacts:
                         - slot: findings_report
@@ -43,6 +46,7 @@ root:
                 role: engineer
                 policy: standard-worker
                 description: Implement the change and publish patch plus verification evidence.
+                instruction: Read findings and criteria before editing; keep patch and verification scoped.
                 consumes:
                     artifacts:
                         - slot: findings_report
@@ -64,6 +68,7 @@ root:
                 role: reviewer
                 policy: standard-review
                 description: Review the implementation evidence and publish a bounded review report.
+                instruction: Review only the current patch and verification evidence.
                 consumes:
                     artifacts:
                         - slot: change_patch
@@ -79,6 +84,7 @@ root:
           role: release_operator
           policy: standard-release
           description: Perform the final bounded release work from current surfaced evidence.
+          instruction: Use only surfaced implementation and review evidence for closure.
           consumes:
               artifacts:
                   - slot: change_patch

@@ -18,6 +18,7 @@ root:
   id: root
   role: planning_lead
   description: Verify one bounded engineering worker and release only when current evidence is sufficient.
+  instruction: Keep the release decision tied to current controller evidence.
   criteria:
     - slot: implementation_rules
       description: Parent acceptance criteria for the bounded engineering child.
@@ -29,6 +30,7 @@ root:
       role: engineer
       policy: standard-worker
       description: Implement the change and publish patch plus verification evidence only for the current bounded assignment.
+      instruction: Read the current criteria before editing and publish only scoped patch and verification evidence.
       criteria:
         - slot: implement_change_delivery_criteria
           description: Delivery criteria for the bounded engineering change.
