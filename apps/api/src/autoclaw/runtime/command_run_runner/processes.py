@@ -12,6 +12,7 @@ from autoclaw.runtime.command_run_runner.logs import (
 from autoclaw.runtime.contracts import CommandRunState
 
 _PROCESS_STOP_GRACE_SECONDS = 1.0
+_PROCESS_STOP_POLL_SECONDS = 0.05
 
 
 async def copy_process_output_to_log(
@@ -39,6 +40,35 @@ async def stop_process(process: asyncio.subprocess.Process) -> str | None:
         signal_name = _kill_process_group(process)
         await process.wait()
         return signal_name_from_returncode(process.returncode) or signal_name
+
+
+def process_group_is_running(process_id: int | None) -> bool:
+    if process_id is None or process_id < 1:
+        return False
+    try:
+        if hasattr(os, "killpg"):
+            os.killpg(process_id, 0)
+        else:
+            os.kill(process_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+async def stop_process_group(process_id: int | None) -> str | None:
+    if not process_group_is_running(process_id):
+        return None
+    assert process_id is not None
+
+    signal_name = _terminate_process_group_id(process_id)
+    if await _wait_for_process_group_exit(process_id, timeout_seconds=_PROCESS_STOP_GRACE_SECONDS):
+        return signal_name
+
+    signal_name = _kill_process_group_id(process_id)
+    await _wait_for_process_group_exit(process_id, timeout_seconds=None)
+    return signal_name
 
 
 def command_run_terminal_summary(
@@ -104,10 +134,56 @@ def _kill_process_group(process: asyncio.subprocess.Process) -> str:
     return "SIGKILL"
 
 
+def _terminate_process_group_id(process_id: int) -> str:
+    if hasattr(os, "killpg"):
+        try:
+            os.killpg(process_id, signal.SIGTERM)
+            return "SIGTERM"
+        except ProcessLookupError:
+            return "SIGTERM"
+    try:
+        os.kill(process_id, signal.SIGTERM)
+    except ProcessLookupError:
+        return "SIGTERM"
+    return "SIGTERM"
+
+
+def _kill_process_group_id(process_id: int) -> str:
+    if hasattr(os, "killpg"):
+        try:
+            os.killpg(process_id, signal.SIGKILL)
+            return "SIGKILL"
+        except ProcessLookupError:
+            return "SIGKILL"
+    try:
+        os.kill(process_id, signal.SIGKILL)
+    except ProcessLookupError:
+        return "SIGKILL"
+    return "SIGKILL"
+
+
+async def _wait_for_process_group_exit(
+    process_id: int,
+    *,
+    timeout_seconds: float | None,
+) -> bool:
+    deadline = None
+    if timeout_seconds is not None:
+        deadline = asyncio.get_running_loop().time() + timeout_seconds
+
+    while process_group_is_running(process_id):
+        if deadline is not None and asyncio.get_running_loop().time() >= deadline:
+            return False
+        await asyncio.sleep(_PROCESS_STOP_POLL_SECONDS)
+    return True
+
+
 __all__ = [
     "command_run_terminal_exit_code",
     "command_run_terminal_summary",
     "copy_process_output_to_log",
+    "process_group_is_running",
     "signal_name_from_returncode",
     "stop_process",
+    "stop_process_group",
 ]

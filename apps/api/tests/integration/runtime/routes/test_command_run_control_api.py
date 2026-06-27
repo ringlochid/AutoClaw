@@ -20,6 +20,7 @@ from tests.integration.runtime.routes.run_control_api_support import (
     command_run_event_count,
     command_run_start_payload,
     finish_command_run,
+    record_progress,
     replace_active_command_run_wait,
     start_route_command_run,
 )
@@ -64,6 +65,24 @@ async def test_control_command_runs_read_exposes_started_run(
         assert item["exit_code"] is None
         assert item["signal"] is None
         assert item["log_ref"] is None
+
+        detail = await context.client.get(
+            f"/control/tasks/{task.task_id}/command-runs/{run_id}",
+            headers=context.operator_headers,
+        )
+        assert detail.status_code == 200
+        detail_json = detail.json()
+        assert detail_json["run_id"] == run_id
+        assert detail_json["state"] == "pending_start"
+        assert detail_json["latest_update"] is None
+        assert detail_json["terminal_result"] is None
+
+        log = await context.client.get(
+            f"/control/tasks/{task.task_id}/command-runs/{run_id}/log",
+            headers=context.operator_headers,
+        )
+        assert log.status_code == 404
+        assert log.json()["detail"]["code"] == "missing_resource"
 
 
 async def test_control_command_run_cancel_persists_request_and_keeps_wait_open(
@@ -223,6 +242,107 @@ async def test_control_command_run_cancel_rejects_terminal_and_duplicate_request
         )
 
 
+async def test_control_command_run_log_preserves_exact_text(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_command_run_log_exact_text",
+            task_root_name="log-exact-task-root",
+        )
+        run_id = await start_route_command_run(context, task)
+        log_ref = "outputs/command-runs/exact.log"
+        exact_text = "  leading whitespace\ntrailing whitespace  \n"
+        log_path = task.task_root / log_ref
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text(exact_text, encoding="utf-8")
+
+        await record_progress(
+            context,
+            task,
+            run_id=run_id,
+            summary="command log became available",
+            log_ref=log_ref,
+        )
+
+        response = await context.client.get(
+            f"/control/tasks/{task.task_id}/command-runs/{run_id}/log",
+            headers=context.operator_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["content"] == exact_text
+
+
+async def test_control_command_run_log_allows_empty_file(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_command_run_log_empty",
+            task_root_name="log-empty-task-root",
+        )
+        run_id = await start_route_command_run(context, task)
+        log_ref = "outputs/command-runs/empty.log"
+        log_path = task.task_root / log_ref
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("", encoding="utf-8")
+
+        await record_progress(
+            context,
+            task,
+            run_id=run_id,
+            summary="empty command log became available",
+            log_ref=log_ref,
+        )
+
+        response = await context.client.get(
+            f"/control/tasks/{task.task_id}/command-runs/{run_id}/log",
+            headers=context.operator_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json()["content"] == ""
+
+
+async def test_control_command_run_log_read_returns_full_persisted_content(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_command_run_log_oversized",
+            task_root_name="log-oversized-task-root",
+        )
+        run_id = await start_route_command_run(context, task)
+        log_ref = "outputs/command-runs/oversized.log"
+        log_path = task.task_root / log_ref
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        oversized_content = b"A" * (1024 * 1024 + 1024) + b"LOG_READ_SENTINEL"
+        log_path.write_bytes(oversized_content)
+
+        await record_progress(
+            context,
+            task,
+            run_id=run_id,
+            summary="oversized command log became available",
+            log_ref=log_ref,
+        )
+
+        response = await context.client.get(
+            f"/control/tasks/{task.task_id}/command-runs/{run_id}/log",
+            headers=context.operator_headers,
+        )
+
+        assert response.status_code == 200
+        content = response.json()["content"]
+        assert content.encode("utf-8") == oversized_content
+        assert content.startswith("A" * 64)
+        assert content.endswith("LOG_READ_SENTINEL")
+
+
 @pytest.mark.parametrize(
     ("terminal_state", "exit_code", "signal"),
     (
@@ -307,8 +427,22 @@ async def test_control_command_runs_require_operator_auth_and_existing_task(
         )
 
         unauthorized = await context.client.get(f"/control/tasks/{task.task_id}/command-runs")
+        unauthorized_detail = await context.client.get(
+            f"/control/tasks/{task.task_id}/command-runs/command-run.missing",
+        )
+        unauthorized_log = await context.client.get(
+            f"/control/tasks/{task.task_id}/command-runs/command-run.missing/log",
+        )
         missing_read = await context.client.get(
             "/control/tasks/task_missing/command-runs",
+            headers=context.operator_headers,
+        )
+        missing_detail = await context.client.get(
+            "/control/tasks/task_missing/command-runs/command-run.missing",
+            headers=context.operator_headers,
+        )
+        missing_log = await context.client.get(
+            "/control/tasks/task_missing/command-runs/command-run.missing/log",
             headers=context.operator_headers,
         )
         missing_cancel = await context.client.post(
@@ -318,7 +452,15 @@ async def test_control_command_runs_require_operator_auth_and_existing_task(
 
         assert unauthorized.status_code == 401
         assert unauthorized.json()["detail"]["code"] == "illegal_caller"
+        assert unauthorized_detail.status_code == 401
+        assert unauthorized_detail.json()["detail"]["code"] == "illegal_caller"
+        assert unauthorized_log.status_code == 401
+        assert unauthorized_log.json()["detail"]["code"] == "illegal_caller"
         assert missing_read.status_code == 404
         assert missing_read.json()["detail"]["code"] == "missing_resource"
+        assert missing_detail.status_code == 404
+        assert missing_detail.json()["detail"]["code"] == "missing_resource"
+        assert missing_log.status_code == 404
+        assert missing_log.json()["detail"]["code"] == "missing_resource"
         assert missing_cancel.status_code == 404
         assert missing_cancel.json()["detail"]["code"] == "missing_resource"

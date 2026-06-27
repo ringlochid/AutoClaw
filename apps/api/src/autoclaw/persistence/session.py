@@ -280,6 +280,11 @@ def get_async_engine() -> AsyncEngine:
                 del connection_record
                 cursor = dbapi_connection.cursor()
                 cursor.execute("PRAGMA foreign_keys=ON")
+                # The local SQLite lane runs concurrent control, runtime, runner, and
+                # watchdog sessions in one process. Keep reads and writes from tripping
+                # over immediate file-level locks during those short-lived overlaps.
+                cursor.execute("PRAGMA busy_timeout=5000")
+                cursor.execute("PRAGMA journal_mode=WAL")
                 cursor.close()
 
         _ENGINE_BY_LOOP[loop_id] = engine

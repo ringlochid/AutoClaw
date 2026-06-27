@@ -116,15 +116,17 @@ Rules:
 - `/authoring` names local pending authoring state, not runtime control truth
 - current registry reads and uploads may remain under `/definitions`, but draft-set writes do not mutate registry truth
 - `kind` accepts only `role`, `policy`, or `workflow`
-- all draft-set write routes return the updated draft-set read model or a validation/apply result derived from it
+- `DELETE /authoring/definition-draft-sets/{draft_set_id}` may return `204 No Content`; the other draft-set write routes return the updated draft-set read model or a validation/apply result derived from it
 - stale apply errors use the same controller stale or illegal-state family as other guarded writes
 
 ## Canonical API envelopes
 
-The shared read model is:
+The list/read split is explicit because the Definition Editor needs full saved draft bodies, normalized shadows, and saved preview-task-compose state, while the draft-set list only needs compact summaries.
+
+Shared summary and detail shapes are:
 
 ```yaml
-definition_draft_file:
+definition_draft_file_summary:
   kind: role | policy | workflow
   key: string
   draft_path: string
@@ -137,22 +139,55 @@ definition_draft_file:
     source_path: string | null
   status: clean | modified | added | stale | invalid
 
-definition_draft_set_read:
+definition_draft_file_detail:
+  kind: role | policy | workflow
+  key: string
+  draft_path: string
+  normalized_path: string
+  body_format: yaml
+  content_hash: string
+  based_on:
+    revision_no: integer | null
+    content_hash: string | null
+    source_path: string | null
+  status: clean | modified | added | stale | invalid
+  body: string
+  normalized_content: object | null
+  baseline_body: string | null
+  baseline_normalized_content: object | null
+
+definition_draft_set_summary:
   draft_set_id: string
+  title: string | null
   created_at: timestamp
   updated_at: timestamp
   state: open | applied | stale
   files:
-    - definition_draft_file
+    - definition_draft_file_summary
   preview_task_compose_path: string | null
+
+definition_draft_set_detail:
+  draft_set_id: string
+  title: string | null
+  created_at: timestamp
+  updated_at: timestamp
+  state: open | applied | stale
+  files:
+    - definition_draft_file_detail
+  preview_task_compose_path: string | null
+  preview_task_compose_body: string | null
 ```
 
 List and create routes use:
 
 ```yaml
+definition_draft_set_list_query:
+  cursor: string | null
+  limit: integer
+
 definition_draft_set_list_response:
   items:
-    - definition_draft_set_read
+    - definition_draft_set_summary
   next_cursor: string | null
 
 definition_draft_set_create_request:
@@ -163,7 +198,7 @@ definition_draft_set_create_request:
   preview_task_compose: string | null
 
 definition_draft_set_create_response:
-  draft_set: definition_draft_set_read
+  draft_set: definition_draft_set_detail
 ```
 
 Materialize, file-save, reset, and re-materialize routes use:
@@ -185,7 +220,7 @@ definition_draft_file_rematerialize_current_request:
   discard_local_changes: true
 
 definition_draft_set_response:
-  draft_set: definition_draft_set_read
+  draft_set: definition_draft_set_detail
 ```
 
 Validation, apply, and task-compose preview use:
@@ -205,7 +240,29 @@ definition_draft_validation_response:
       path: string | null
 
 definition_draft_apply_request:
-  start_task_compose_after_apply: boolean
+  should_start_task_after_apply: boolean
+
+definition_draft_task_start_failure:
+  code: invalid_request_shape
+    | illegal_caller
+    | illegal_target_relation
+    | illegal_state
+    | stale_dispatch
+    | stale_flow_revision
+    | stale_assignment
+    | stale_checkpoint
+    | missing_resource
+    | missing_required_publication
+    | conflicting_continuation
+    | cursor_reset_required
+    | boundary_precondition_failed
+    | capability_rejected
+    | removed_surface
+    | budget_exhausted
+    | internal_error
+  summary: string
+  is_retryable: boolean
+  suggested_next_step: string | null
 
 definition_draft_apply_response:
   draft_set_id: string
@@ -216,6 +273,8 @@ definition_draft_apply_response:
       revision_no: integer
       content_hash: string
   started_task_id: string | null
+  task_start_status: not_requested | started | failed
+  task_start_failure: definition_draft_task_start_failure | null
   validation: definition_draft_validation_response
 
 definition_draft_task_compose_preview_request:
@@ -230,11 +289,17 @@ definition_draft_task_compose_preview_response:
 Rules:
 
 - `body` is YAML text for the canonical editable authored body
-- normalized JSON shadows are produced by the backend and exposed through `normalized_path`, not edited through the write envelope
+- `GET /authoring/definition-draft-sets/{draft_set_id}` is the canonical Definition Editor bootstrap read; it must return saved draft YAML bodies, saved normalized JSON shadows, saved baseline bodies, and saved preview-task-compose state
+- normalized JSON shadows are produced by the backend and exposed through `normalized_path` plus `normalized_content`, not edited through the write envelope
 - `materialize` may be empty only when creating a new draft set for new authored definitions
+- `PUT /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}` may create a new local draft file only when current registry truth does not already own that key; otherwise the operator must materialize or re-materialize current first so stale checks stay meaningful
 - apply reads stale baselines from `draft-set.json`; clients do not supply registry revision claims in the body
-- `start_task_compose_after_apply` starts a task only from newly current registry truth after successful apply
+- `should_start_task_after_apply` starts a task only from newly current registry truth after successful apply
+- apply remains successful once registry truth published; a later task-start failure returns `task_start_status=failed` plus `task_start_failure` detail rather than surfacing a false apply failure
+- saved preview task-compose issues are non-blocking validation warnings unless `should_start_task_after_apply` is true for the current apply request
+- `started_task_id` is set only when `task_start_status=started`
 - reset and re-materialize requests are destructive local draft writes and require explicit discard intent rather than silently accepting accidental client actions
+- preview-task-compose writes persist the supplied YAML body into the draft-set folder before validation so the authoring UI can reopen the same saved preview state later
 
 ## Reset and re-materialize rule
 
@@ -272,6 +337,7 @@ Rules:
 - applying a draft set must create new current registry revisions for the changed definitions
 - the workbench should present saved draft state separately from current stored truth
 - an applied draft set may remain inspectable as local history, but it does not become the source of truth
+- once an applied draft set receives a later local draft mutation such as file save, preview-task-compose write, reset, materialize, or re-materialize-current, the draft-set state reopens to `open`
 - save writes update the draft-set directory, `draft-set.json`, and any normalized JSON shadow files; they do not publish anything by themselves
 - the minimum save contract does not invent a new registry-truth compare token or parallel publish lane
 - multi-tab or multi-operator save-conflict handling may exist later as a local draft UX improvement, but it is outside the minimum reusable-truth contract

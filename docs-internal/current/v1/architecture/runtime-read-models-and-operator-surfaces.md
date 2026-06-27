@@ -43,6 +43,8 @@ Current routes are:
 - `GET /control/tasks/{task_id}/events/stream`
 - `GET /control/tasks/{task_id}/human-requests`
 - `GET /control/tasks/{task_id}/command-runs`
+- `GET /control/tasks/{task_id}/command-runs/{run_id}`
+- `GET /control/tasks/{task_id}/command-runs/{run_id}/log`
 - `GET /observability/tasks/{task_id}/delivery-state`
 - `GET /observability/tasks/{task_id}/continuity-state`
 - `GET /observability/tasks/{task_id}/watchdog-state`
@@ -87,30 +89,33 @@ Current operator trace supports:
 - `limit`
 - `sort=occurred_at_desc|occurred_at_asc`
 
-Current control command-run reads return compact controller-owned command-run truth for `GET /control/tasks/{task_id}/command-runs`, including run id, state, command, description, workdir, timestamps, timeout, latest or terminal summary, exit code, signal, and log ref. Full logs are not inlined into the read model.
+Current control command-run reads now split cleanly:
+
+- `GET /control/tasks/{task_id}/command-runs` returns compact controller-owned list rows with run id, state, command, description, workdir, timestamps, timeout, latest or terminal summary, exit code, signal, and log ref
+- `GET /control/tasks/{task_id}/command-runs/{run_id}` returns the full controller-backed command-run record for one run, including latest update, cancellation provenance, and terminal result detail when present
+- `GET /control/tasks/{task_id}/command-runs/{run_id}/log` returns the full persisted UTF-8 log text only when that run currently exposes a log ref; otherwise it fails as `missing_resource`
+
+Full logs are therefore not inlined into the list or ordinary detail read models.
 
 ## Current task-event streaming coverage
 
 Current `/control/tasks/{task_id}/events` and `/control/tasks/{task_id}/events/stream` are real reads over persisted `task_events` rows.
 
-Current implemented append coverage is limited to:
+Current implemented append coverage includes:
 
 - task-started, dispatch-opened, and provider-resolution-recorded events
+- provider-event-normalized events for shared provider-event record appends, including adapter-lane acceptance or transport records and provider-lane normalized progress or completion records
 - checkpoint recorded, boundary accepted, child-assignment staged or committed, and structural-revision adopted events
 - human-request opened and terminal events
 - command-run started, progress, cancel-requested, and terminal events
 - task pause, resume, and cancel events
 
-The current enum vocabulary also includes `provider_event_normalized`. That name is not enough to make the current stream carry those runtime facts.
-
-Current normalized provider-event persistence still lives outside the `task_events` stream.
-
 Rules:
 
-- UI timelines may treat task-start, dispatch-open, provider-resolution, checkpoint, boundary, child-assignment, and structural-revision cards as stream-backed because persisted task events now exist for those families
-- UI timelines may still render provider-event normalization facts from trace or readback as current-state context, but not as live SSE chronology unless a persisted task event exists
+- UI timelines may treat task-start, dispatch-open, provider-resolution, provider-event-normalized, checkpoint, boundary, child-assignment, and structural-revision cards as stream-backed because persisted task events now exist for those families
+- provider-event-normalized task-event payloads carry normalized event identity, summary/detail, provider-event name, provider occurred-at time, persisted transport metadata, and the persisted `gateway_run_id` / `gateway_session_key` fields when present, but they still do not carry support-file bodies
 - support files and generated projections must not be parsed to synthesize missing task-event stream rows
-- a future streaming implementation should add append sites and payload schemas before the UI treats provider-event cards as stream-backed
+- provider-event source rows and support-state files still remain the deeper observability surfaces when the operator needs more than the task-event payload
 
 ## Current observability rule
 
@@ -140,6 +145,7 @@ That means:
 - operator trace is a drilldown surface, not the authority
 - control event, human-request, and command-run reads are convenience surfaces over controller-owned task events and source rows
 - observability file refs point at generated projections, not the authority
+- current pre-UI human-request and command-run surfaces do not apply structural or heuristic redaction or reduction; surface splits here are about controller ownership, not suppression
 
 ## Current gaps versus older docs
 

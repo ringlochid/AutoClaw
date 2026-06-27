@@ -182,7 +182,55 @@ async def test_control_task_event_stream_delivers_live_child_assignment_staged_e
         assert [frame["event"] for frame in frames] == ["child_assignment_staged"]
         assert frames[0]["id"] == frames[0]["data"]["event_id"]
         assert frames[0]["data"]["dispatch_id"] == task.current_open_dispatch_id
-        assert frames[0]["data"]["payload"]["target_node_key"] == "implementation_subtree"
+        payload = frames[0]["data"]["payload"]
+        assert payload["target_node_key"] == "implementation_subtree"
+        assert payload["target_assignment_key"]
+        assert payload["target_attempt_id"]
+        assert payload["assignment_summary"] == "Start the implementation subtree."
+        assert payload["child_assignment_ref"]["path"].endswith("assignment.md")
+        assert payload["workflow_manifest_ref"]["path"].endswith("workflow-manifest.md")
+        assert payload["latest_checkpoint_ref"] is None
+        assert payload["transient_refs"] == []
+
+
+async def test_control_task_event_stream_delivers_live_multiple_event_families(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_runtime_event_stream_multiple_families",
+            task_root_name="task-root",
+        )
+
+        async with live_control_stream_client(context) as stream_client:
+            reader = asyncio.create_task(
+                read_task_event_stream(
+                    stream_client,
+                    context,
+                    task,
+                    expected_count=2,
+                )
+            )
+            await asyncio.sleep(0.2)
+            first = await append_route_task_event(context, task, label="provider-live")
+            second = await append_route_task_event(
+                context,
+                task,
+                label="human-live",
+                event_type="human_request_opened",
+                event_source="node",
+                payload={"request_id": "human-request.live"},
+            )
+            frames = await asyncio.wait_for(reader, timeout=8)
+
+        assert [frame["event"] for frame in frames] == [
+            "provider_event_normalized",
+            "human_request_opened",
+        ]
+        assert [frame["id"] for frame in frames] == [first.event_id, second.event_id]
+        assert frames[0]["data"]["payload"]["label"] == "provider-live"
+        assert frames[1]["data"]["payload"] == {"request_id": "human-request.live"}
 
 
 async def test_control_task_event_stream_replays_after_cursor_then_tails_live_events(
@@ -353,14 +401,17 @@ async def append_route_task_event(
     task: SeededRouteTask,
     *,
     label: str,
+    event_type: str = "provider_event_normalized",
+    event_source: str = "controller",
+    payload: dict[str, Any] | None = None,
 ) -> TaskEventRecord:
     async with context.session_factory() as session:
         event = await append_task_event(
             session,
             task_id=task.task_id,
-            event_type="provider_event_normalized",
-            event_source="controller",
-            payload={"label": label},
+            event_type=event_type,
+            event_source=event_source,
+            payload={"label": label} if payload is None else payload,
         )
         await session.commit()
         return event

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -11,7 +12,6 @@ from autoclaw.runtime.command_run_runner import (
     drive_command_run_runner_once,
     start_command_run_runner,
 )
-from autoclaw.runtime.command_run_runner import service as command_run_runner_service
 from autoclaw.runtime.contracts import CommandRunProgressUpdate
 from autoclaw.runtime.post_commit import write_runtime_operation
 from sqlalchemy import select
@@ -25,6 +25,7 @@ from tests.integration.runtime.command_run_runner.support import (
 )
 from tests.integration.runtime.routes.support import (
     RuntimeRouteContext,
+    control_write_headers,
     launch_route_task,
     runtime_route_context,
 )
@@ -34,9 +35,7 @@ pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_ti
 
 async def test_command_runner_fails_unowned_running_run_and_continues_current_task(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(command_run_runner_service, "_UNOWNED_RUNNING_GRACE_SECONDS", 0.0)
     async with runtime_route_context(tmp_path) as context:
         task = await launch_route_task(
             context,
@@ -47,12 +46,35 @@ async def test_command_runner_fails_unowned_running_run_and_continues_current_ta
         run_id = await start_runner_command_run(
             context,
             task,
-            command=python_command("print('unowned process should not launch')"),
+            command=python_command(
+                "import time; "
+                "from pathlib import Path; "
+                "time.sleep(60); "
+                "Path('recovery-should-not-survive.txt').write_text('survived', encoding='utf-8')"
+            ),
             workdir=None,
             timeout_seconds=120,
             should_drive_runner=False,
         )
-        await record_running_progress(context, task_id=task.task_id, run_id=run_id)
+        detached_process = await asyncio.create_subprocess_shell(
+            python_command(
+                "import time; "
+                "from pathlib import Path; "
+                "time.sleep(60); "
+                "Path('recovery-should-not-survive.txt').write_text('survived', encoding='utf-8')"
+            ),
+            cwd=str(task.task_root / "workspace"),
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        await record_running_progress(
+            context,
+            task_id=task.task_id,
+            run_id=run_id,
+            owned_process_pid=detached_process.pid,
+        )
 
         await start_command_run_runner()
         await drive_command_run_runner_once()
@@ -64,12 +86,14 @@ async def test_command_runner_fails_unowned_running_run_and_continues_current_ta
         )
 
         assert command_run.terminal_summary == (
-            "command runner lost local process ownership before completion"
+            "command runner recovered lost local process ownership before completion"
         )
         assert command_run.terminal_exit_code is None
-        assert command_run.terminal_signal is None
+        assert command_run.terminal_signal in {"SIGTERM", "SIGKILL"}
         assert command_run.terminal_log_ref == command_run_log_ref(run_id)
         assert (task.task_root / str(command_run.terminal_log_ref)).is_file()
+        await asyncio.wait_for(detached_process.wait(), timeout=5.0)
+        assert not (task.task_root / "workspace" / "recovery-should-not-survive.txt").exists()
         await assert_unowned_running_terminal_truth(context, task_id=task.task_id, run_id=run_id)
 
         _continued_dispatch_id, prompt_path = await assert_command_run_continues_task(
@@ -81,7 +105,7 @@ async def test_command_runner_fails_unowned_running_run_and_continues_current_ta
         assert f"- run_id: {run_id}" in prompt_text
         assert "- state: failed" in prompt_text
         assert (
-            "- summary: command runner lost local process ownership before completion"
+            "- summary: command runner recovered lost local process ownership before completion"
             in prompt_text
         )
         assert f"- log_ref: {command_run_log_ref(run_id)}" in prompt_text
@@ -92,11 +116,145 @@ async def test_command_runner_fails_unowned_running_run_and_continues_current_ta
         )
 
 
+async def test_command_runner_fails_running_run_without_owned_process_pid_and_continues_task(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_command_runner_missing_owned_pid",
+            task_root_name="task-root",
+        )
+        command_run_dispatch_id = task.current_open_dispatch_id
+        run_id = await start_runner_command_run(
+            context,
+            task,
+            command=python_command("import time; time.sleep(60)"),
+            workdir=None,
+            timeout_seconds=120,
+            should_drive_runner=False,
+        )
+        await record_running_progress(
+            context,
+            task_id=task.task_id,
+            run_id=run_id,
+            owned_process_pid=None,
+        )
+
+        await start_command_run_runner()
+        await drive_command_run_runner_once()
+        command_run = await wait_for_command_run_state(
+            context,
+            task_id=task.task_id,
+            run_id=run_id,
+            expected_state="failed",
+        )
+
+        assert command_run.terminal_summary == (
+            "command runner lost local process ownership before completion because no "
+            "owned process pid was persisted"
+        )
+        assert command_run.terminal_exit_code is None
+        assert command_run.terminal_signal is None
+        assert command_run.terminal_log_ref == command_run_log_ref(run_id)
+        assert (task.task_root / str(command_run.terminal_log_ref)).is_file()
+
+        _continued_dispatch_id, prompt_path = await assert_command_run_continues_task(
+            context,
+            task,
+            command_run_dispatch_id=command_run_dispatch_id,
+        )
+        prompt_text = prompt_path.read_text(encoding="utf-8")
+        assert f"- run_id: {run_id}" in prompt_text
+        assert "- state: failed" in prompt_text
+        assert (
+            "- summary: command runner lost local process ownership before completion because "
+            "no owned process pid was persisted" in prompt_text
+        )
+        assert f"- log_ref: {command_run_log_ref(run_id)}" in prompt_text
+        await assert_flow_revision_remains_current(
+            context,
+            task_id=task.task_id,
+            revision_id=task.active_flow_revision_id,
+        )
+
+
+async def test_command_runner_recovery_stops_owned_process_after_whole_task_cancel(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_command_runner_recovery_task_cancel",
+            task_root_name="task-root",
+        )
+        run_id = await start_runner_command_run(
+            context,
+            task,
+            command=python_command("import time; time.sleep(60)"),
+            workdir=None,
+            timeout_seconds=120,
+            should_drive_runner=False,
+        )
+        detached_process = await asyncio.create_subprocess_shell(
+            python_command(
+                "import signal\n"
+                "import time\n"
+                "from pathlib import Path\n"
+                "def handle(signum, _frame):\n"
+                "    Path('recovery-task-cancel-signal.txt').write_text("
+                "signal.Signals(signum).name, encoding='utf-8')\n"
+                "    raise SystemExit(0)\n"
+                "signal.signal(signal.SIGTERM, handle)\n"
+                "signal.signal(signal.SIGINT, handle)\n"
+                "while True:\n"
+                "    time.sleep(0.1)\n"
+            ),
+            cwd=str(task.task_root / "workspace"),
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        await record_running_progress(
+            context,
+            task_id=task.task_id,
+            run_id=run_id,
+            owned_process_pid=detached_process.pid,
+        )
+
+        cancel_response = await context.client.post(
+            f"/runtime/tasks/{task.task_id}/cancel",
+            headers=control_write_headers(context, task),
+            params={"expected_active_flow_revision_id": task.active_flow_revision_id},
+        )
+        assert cancel_response.status_code == 200
+        assert cancel_response.json()["status"] == "cancelled"
+
+        await start_command_run_runner()
+        await drive_command_run_runner_once()
+        command_run = await wait_for_command_run_state(
+            context,
+            task_id=task.task_id,
+            run_id=run_id,
+            expected_state="cancelled",
+        )
+
+        assert (
+            command_run.terminal_summary == "command run cancelled because the task was cancelled"
+        )
+        await asyncio.wait_for(detached_process.wait(), timeout=5.0)
+        assert (task.task_root / "workspace" / "recovery-task-cancel-signal.txt").read_text(
+            encoding="utf-8"
+        ) == "SIGTERM"
+
+
 async def record_running_progress(
     context: RuntimeRouteContext,
     *,
     task_id: str,
     run_id: str,
+    owned_process_pid: int | None,
 ) -> None:
     async def operation(session: AsyncSession) -> None:
         await record_command_run_progress(
@@ -106,6 +264,7 @@ async def record_running_progress(
                 run_id=run_id,
                 summary="command process started before runner restart",
                 log_ref=command_run_log_ref(run_id),
+                owned_process_pid=owned_process_pid,
                 occurred_at=datetime(2026, 6, 25, 12, 0, tzinfo=UTC),
             ),
         )

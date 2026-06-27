@@ -109,6 +109,7 @@ class CommandRunProgressUpdate(BaseModel):
     run_id: RuntimeSchemaText
     summary: RuntimeSchemaText
     log_ref: RuntimeSchemaText | None = None
+    owned_process_pid: int | None = Field(default=None, ge=1)
     occurred_at: datetime
 
 
@@ -157,6 +158,15 @@ class CommandRunCancelResponse(BaseModel):
     run: CommandRunListItem
 
 
+class CommandRunLogReadResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
+
+    task_id: TaskIdentifier
+    run_id: RuntimeSchemaText
+    log_ref: RuntimeSchemaText
+    content: str
+
+
 for _command_run_contract in (
     CommandRunStartResponse,
     CommandRunTerminalResult,
@@ -166,6 +176,7 @@ for _command_run_contract in (
     CommandRunListItem,
     CommandRunListResponse,
     CommandRunCancelResponse,
+    CommandRunLogReadResponse,
 ):
     _command_run_contract.model_rebuild(_types_namespace=globals())
 
@@ -176,6 +187,7 @@ __all__ = [
     "CommandRunCancelResponse",
     "CommandRunListItem",
     "CommandRunListResponse",
+    "CommandRunLogReadResponse",
     "CommandRunProgressUpdate",
     "CommandRunRecord",
     "CommandRunStartRequest",

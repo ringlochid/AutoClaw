@@ -9,12 +9,22 @@ OPERATOR_READ_ONLY_TOOLS = {
     "get_runtime_task",
     "get_operator_snapshot",
     "get_operator_trace",
+    "get_human_requests",
+    "get_command_runs",
+    "get_command_run",
+    "get_command_run_log",
     "get_delivery_state_ref",
     "get_continuity_state_ref",
     "get_watchdog_state_ref",
     "get_provider_events_ref",
 }
-OPERATOR_MUTATING_TOOLS = {"pause_task", "continue_task", "cancel_task"}
+OPERATOR_MUTATING_TOOLS = {
+    "pause_task",
+    "continue_task",
+    "cancel_task",
+    "resolve_human_request",
+    "cancel_command_run",
+}
 NODE_CURRENT_LOOKUP_TOOLS = {"search_definitions", "get_definition"}
 NODE_MUTATING_TOOLS = {
     "record_checkpoint",
@@ -38,14 +48,28 @@ def assert_operator_tool_teaching(tools_result: Any) -> None:
     assert "active flow revision" in tool_description(tools_result, "get_runtime_task")
     assert "current_paths" in tool_description(tools_result, "get_operator_snapshot")
     assert "chronology" in tool_description(tools_result, "get_operator_trace")
+    assert "resolved request history" in tool_description(tools_result, "get_human_requests")
+    assert "current run id and state" in tool_description(tools_result, "get_command_runs")
+    assert "per-run timestamps" in tool_description(tools_result, "get_command_run")
+    assert "log_ref is available" in tool_description(tools_result, "get_command_run_log")
     for tool_name in OPERATOR_MUTATING_TOOLS:
         description = tool_description(tools_result, tool_name)
         assert description.startswith("Mutating:"), (tool_name, description)
         assert tool_read_only_hint(tools_result, tool_name) is False, tool_name
-        assert "fresh expected_active_flow_revision_id" in description, (tool_name, description)
+        if tool_name in {"pause_task", "continue_task", "cancel_task"}:
+            assert "fresh expected_active_flow_revision_id" in description, (
+                tool_name,
+                description,
+            )
     assert "Do not use for status checks." in tool_description(tools_result, "continue_task")
     assert "Use only after inspecting current runtime state." in tool_description(
         tools_result, "continue_task"
+    )
+    assert "Dedicated human-request control surface" in tool_description(
+        tools_result, "resolve_human_request"
+    )
+    assert "Dedicated command-run control surface" in tool_description(
+        tools_result, "cancel_command_run"
     )
     for tool_name in {
         "get_delivery_state_ref",

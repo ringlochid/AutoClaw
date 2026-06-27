@@ -150,6 +150,19 @@ Rules:
 - provenance is auditable fact, not prompt context by default
 - future UI surfaces may display provenance, but they must not edit it
 
+## No-redaction pre-UI rule
+
+The minimum pre-UI lane does not plan structural redaction or heuristic secret detection on human-request or command-run surfaces.
+
+Rules:
+
+- human-request readbacks may carry controller-owned answer fields and provenance on their dedicated source rows
+- task-event payloads for `human_request_*` stay bounded and do not inline full answered item bodies or structured response payloads
+- command-run list/detail reads carry controller-owned command truth and log refs, but raw log bytes stay behind the dedicated log read
+- the controller does not perform structural or heuristic masking over human answers, command strings, workdirs, or logs in this minimum contract
+- task-event and readback surface splits in this lane are about controller ownership and replay shape, not secret suppression or payload reduction
+- auth- or principal-aware narrowing may arrive later, but it is not part of the pre-UI capability/audit contract
+
 ## Event-log integrity
 
 Controller-owned task events, human-request state changes, and command-run state changes must be append-only and tamper-evident.

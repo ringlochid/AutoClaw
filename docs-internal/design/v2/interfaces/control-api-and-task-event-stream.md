@@ -37,6 +37,8 @@ V2 control route families are:
 - `GET /control/tasks/{task_id}/events`
 - `GET /control/tasks/{task_id}/human-requests`
 - `GET /control/tasks/{task_id}/command-runs`
+- `GET /control/tasks/{task_id}/command-runs/{run_id}`
+- `GET /control/tasks/{task_id}/command-runs/{run_id}/log`
 - `GET /control/tasks/{task_id}/events/stream`
 - `POST /control/tasks/{task_id}/pause`
 - `POST /control/tasks/{task_id}/continue`
@@ -358,15 +360,16 @@ Minimum target coverage is:
 
 | Runtime write | Target event family | Current implementation status |
 | --- | --- | --- |
-| task launch | `task_started` | target event family only until the launch path appends it |
-| dispatch open | `dispatch_opened` | target event family only until dispatch-open paths append it |
-| provider resolution | `provider_resolution_recorded` | target event family only until provider-resolution paths append it |
-| checkpoint write | `checkpoint_recorded` | target event family only until `record_checkpoint` appends it |
-| boundary accept | `boundary_accepted` | target event family only until `accept_boundary` appends it |
-| parent/root assign child | `child_assignment_staged` | target event family only until `assign_child` appends it |
-| accepted yield consuming staged child work | `child_assignment_committed` | target event family only until boundary progression appends it |
-| parent/root structural edit adoption | `structural_revision_adopted` | target event family to add with structural replan event support |
-| human requests, command runs, and task controls | matching `human_request_*`, `command_run_*`, and `task_*` families | shipped current stream coverage for these families exists where append sites are implemented |
+| task launch | `task_started` | implemented persisted task event family |
+| dispatch open | `dispatch_opened` | implemented persisted task event family |
+| provider resolution | `provider_resolution_recorded` | implemented persisted task event family |
+| provider-event record append | `provider_event_normalized` | implemented persisted task event family through the shared provider-event append path |
+| checkpoint write | `checkpoint_recorded` | implemented persisted task event family |
+| boundary accept | `boundary_accepted` | implemented persisted task event family |
+| parent/root assign child | `child_assignment_staged` | implemented persisted task event family |
+| accepted yield consuming staged child work | `child_assignment_committed` | implemented persisted task event family |
+| parent/root structural edit adoption | `structural_revision_adopted` | implemented persisted task event family |
+| human requests, command runs, and task controls | matching `human_request_*`, `command_run_*`, and `task_*` families | implemented persisted task event families where the controller source rows commit those states |
 
 Rules:
 
@@ -392,6 +395,63 @@ Rules:
 - the event records the requested provider and the provider that actually accepted the attempt
 - once the attempt is accepted, later provider changes must not be represented as silent mutation of the same attempt
 - fallback detail may stay in support-state or observability lanes until a later contract proves it needs first-class task-event status
+
+## Launch and dispatch-open event payloads
+
+`task_started` should be emitted when the controller has committed the new task lineage, current flow revision, root attempt basis, and manifest ref.
+
+Minimum payload expectations are:
+
+- `task_title`
+- `task_summary`
+- `workflow_key`
+- `initial_node_key`
+- `workflow_manifest_ref`
+
+Rules:
+
+- `task_started` is the task-lineage bootstrap event, not merely a UI toast or preflight stub
+- `workflow_manifest_ref` is the controller-backed manifest reread path for the launched task, not an inline manifest body
+- controller top-level event fields still carry `task_id`, `flow_revision_id`, `attempt_id`, and `node_key`
+
+`dispatch_opened` should be emitted when the controller has committed the new dispatch row, accepted provider binding, and current control-state truth for that dispatch.
+
+Minimum payload expectations are:
+
+- `node_key`
+- `assignment_key`
+- `attempt_id`
+- `previous_dispatch_id | null`
+- `delivery_status`
+- `control_state`
+- `workflow_manifest_ref`
+
+Rules:
+
+- `dispatch_opened` is the controller-opened dispatch truth, not a provider-side receipt or raw transport callback
+- `previous_dispatch_id` is null for task launch and otherwise points at the just-replaced dispatch lineage when the controller has one
+- later provider progress, tool activity, completion, failure, or cleanup still land as later task events; `dispatch_opened` does not absorb them
+
+## Provider-event-normalized payload
+
+`provider_event_normalized` should be emitted whenever the controller appends a normalized provider-event record for the active task lineage, including provider-lane progress/completion records and adapter-lane acceptance or transport/cleanup records.
+
+Minimum payload expectations are:
+
+- `provider_event_record_id`
+- `event_no`
+- `event_kind`
+- `summary`
+- `detail`
+- `provider_event_name | null`
+- `provider_occurred_at | null`
+
+Rules:
+
+- the top-level task event `event_source` stays `provider` for provider-lane normalized events and `adapter` for adapter-lane transport or cleanup records
+- persisted transport metadata such as transport family, event label, stream, phase, status, event sequence, state version, normalized error detail, `gateway_run_id`, and `gateway_session_key` may be included when the controller already persisted them on the provider-event record
+- support-only file bodies still stay out of the task-event payload
+- `provider_event_normalized` exists to make the normalized provider-event timeline replayable; it does not replace provider-event source rows or support-state files as deeper observability surfaces
 
 ## Runtime progression event payloads
 
@@ -548,6 +608,20 @@ Rules:
 - if `request_id` is not the current open request for the task anymore, the write must fail as a structured stale or currentness conflict instead of silently resolving the wrong request
 - the client follows ordinary task reread or SSE progression after a successful resolve; the resolve response is not a second live history lane
 
+## Human-request and command-run no-redaction rule
+
+The minimum pre-UI lane does not plan structural redaction or heuristic secret scanning on human-request or command-run surfaces.
+
+Rules:
+
+- `human_request_read` is the authoritative controller readback for prompts, options, item responses, extra notes, validated structured payloads, and `resolved_by_actor_ref`
+- task-event payloads for `human_request_*` stay bounded and do not inline full answer bodies, `extra_notes`, or `response_payload`
+- command-run list and detail reads expose controller-owned command, description, workdir, timestamps, summaries, state, provenance, and log refs
+- raw log bytes are not inlined into task events, list rows, or ordinary detail summaries; they are available only through the dedicated log read
+- the controller does not infer or mask secrets from human answers, command strings, workdirs, or logs in this minimum contract
+- source-surface splits in this lane are about controller ownership and replay shape, not secret suppression or payload reduction
+- future auth- or principal-aware field suppression may narrow these surfaces later, but that is outside the pre-UI contract
+
 ## Human request UI behavior
 
 When the UI receives `human_request_opened`, it should surface the request as an active control-plane work item.
@@ -582,7 +656,7 @@ Rules:
 
 ## Command-run event payloads
 
-The controller should emit bounded command-run event payloads that mirror controller-owned run truth.
+The controller should emit command-run event payloads that mirror controller-owned run truth.
 
 Minimum payload expectations are:
 
@@ -600,14 +674,14 @@ Rules:
 
 ## Command-run read semantics
 
-`GET /control/tasks/{task_id}/command-runs` and any later per-run detail reads should expose controller truth for:
+`GET /control/tasks/{task_id}/command-runs`, `GET /control/tasks/{task_id}/command-runs/{run_id}`, and `GET /control/tasks/{task_id}/command-runs/{run_id}/log` should expose controller truth for:
 
 - run id and state
 - command and description
 - workdir when present
 - created, started, and ended timestamps
 - declared timeout
-- latest bounded update when present
+- latest update when present
 - terminal summary
 - exit code or signal when present
 - log ref when present
@@ -618,10 +692,10 @@ Rules:
 - these reads are for controller-managed long commands, normally commands that were expected to exceed about five minutes
 - the command-run list row should be derivable from controller fields such as `command`, `description`, `state`, and latest or terminal summary
 - `state` may be `cancellation_requested` when cancel was accepted but terminal closure has not committed yet
-- full logs may be linked by ref instead of inlined into the control response
-- inline control responses must not pretend that missing raw log bytes mean missing controller truth
+- full logs are opened only through the dedicated per-run log read
+- inline list/detail responses must not pretend that missing raw log bytes mean missing controller truth
 
-Minimum list and cancel envelopes are:
+Minimum list, detail, log, and cancel envelopes are:
 
 ```yaml
 command_run_list_response:
@@ -641,6 +715,37 @@ command_run_list_response:
       signal: string | null
       log_ref: string | null
   next_cursor: string | null
+
+command_run_record:
+  run_id: string
+  task_id: string
+  dispatch_id: string
+  attempt_id: string | null
+  command: string
+  description: string
+  workdir: string | null
+  state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
+  created_at: timestamp
+  started_at: timestamp | null
+  ended_at: timestamp | null
+  timeout_seconds: integer | null
+  latest_update: string | null
+  latest_log_ref: string | null
+  cancellation_requested_at: timestamp | null
+  cancellation_requested_by_actor_ref: string | null
+  terminal_result:
+    summary: string
+    exit_code: integer | null
+    signal: string | null
+    log_ref: string | null
+  terminal_event_source: controller | control_api | node | provider | adapter | null
+  terminal_actor_ref: string | null
+
+command_run_log_read_response:
+  task_id: string
+  run_id: string
+  log_ref: string
+  content: string
 
 command_run_cancel_response:
   task_id: string
@@ -663,6 +768,8 @@ command_run_cancel_response:
 Rules:
 
 - `GET /control/tasks/{task_id}/command-runs` uses typed pagination with `cursor` and `limit`
+- `GET /control/tasks/{task_id}/command-runs/{run_id}` returns the full controller-backed `command_run_record` for that task/run pair
+- `GET /control/tasks/{task_id}/command-runs/{run_id}/log` returns the full persisted UTF-8 log text only when the controller-backed run currently exposes a log ref; otherwise the read fails as missing resource
 - `POST /control/tasks/{task_id}/command-runs/{run_id}/cancel` is the canonical dedicated operator or UI surface for cancelling one running command run without cancelling the whole task
 - `POST /control/tasks/{task_id}/command-runs/{run_id}/cancel` returns the controller-known run record after cancel acceptance
 - after cancel acceptance and before terminal closure commits, the returned `run.state` should be `cancellation_requested`

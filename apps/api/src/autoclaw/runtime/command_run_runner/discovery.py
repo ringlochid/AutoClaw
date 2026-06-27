@@ -26,6 +26,7 @@ class CurrentCommandRun:
     workdir: str | None
     timeout_seconds: int | None
     state: str
+    owned_process_pid: int | None
 
 
 async def list_current_command_runs(
@@ -54,6 +55,7 @@ async def list_current_command_runs(
             workdir=row.workdir,
             timeout_seconds=row.timeout_seconds,
             state=row.state,
+            owned_process_pid=row.owned_process_pid,
         )
         for row in rows
     ]

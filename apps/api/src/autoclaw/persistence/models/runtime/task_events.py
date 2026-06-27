@@ -65,22 +65,18 @@ class TaskEventModel(RuntimeBase):
         "TaskModel",
         back_populates="task_events",
         foreign_keys=[task_id],
-        lazy="selectin",
     )
     flow_revision: Mapped[FlowRevisionModel | None] = relationship(
         "FlowRevisionModel",
         foreign_keys=[flow_revision_id],
-        lazy="selectin",
     )
     dispatch: Mapped[DispatchTurnModel | None] = relationship(
         "DispatchTurnModel",
         foreign_keys=[dispatch_id],
-        lazy="selectin",
     )
     attempt: Mapped[AttemptModel | None] = relationship(
         "AttemptModel",
         foreign_keys=[attempt_id],
-        lazy="selectin",
     )
 
 

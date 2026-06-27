@@ -9,6 +9,7 @@ from autoclaw.config import get_settings
 from ..mcp_operation_failures import ContractFastMCP
 from ..transport import default_transport_security
 from .auth import add_operator_auth_middleware
+from .authoring_tools import register_authoring_tools
 from .definition_tools import (
     register_definition_tools,
     register_task_start_tool,
@@ -18,6 +19,7 @@ from .runtime_tools import (
     register_operator_read_tools,
     register_runtime_control_tools,
     register_runtime_task_tools,
+    register_runtime_wait_tools,
 )
 
 OPERATOR_TOOL_NAMES: tuple[str, ...] = (
@@ -26,10 +28,27 @@ OPERATOR_TOOL_NAMES: tuple[str, ...] = (
     "list_definition_versions",
     "upload_definition",
     "start_task",
+    "list_definition_draft_sets",
+    "create_definition_draft_set",
+    "get_definition_draft_set",
+    "delete_definition_draft_set",
+    "materialize_definition_draft_set",
+    "write_definition_draft_file",
+    "reset_definition_draft_file",
+    "rematerialize_current_definition_draft_file",
+    "validate_definition_draft_set",
+    "apply_definition_draft_set",
+    "preview_definition_draft_set_task_compose",
     "list_runtime_tasks",
     "get_runtime_task",
     "get_operator_snapshot",
     "get_operator_trace",
+    "get_human_requests",
+    "resolve_human_request",
+    "get_command_runs",
+    "get_command_run",
+    "get_command_run_log",
+    "cancel_command_run",
     "pause_task",
     "continue_task",
     "cancel_task",
@@ -73,6 +92,12 @@ def create_operator_mcp_server(
             "- pause_task, continue_task, and cancel_task change runtime state.\n"
             "- continue_task is not a status-check or polling tool and "
             "should use a fresh expected_active_flow_revision_id from a current runtime read.\n\n"
+            "Human requests and command runs:\n"
+            "- get_human_requests and resolve_human_request are the dedicated "
+            "inspection and answer path for current pending requests.\n"
+            "- get_command_runs, get_command_run, get_command_run_log, and "
+            "cancel_command_run are the dedicated command-run inspection and "
+            "control tools; they do not replace whole-task cancel.\n\n"
             "Support-state refs:\n"
             "- get_delivery_state_ref, get_continuity_state_ref, "
             "get_watchdog_state_ref, and get_provider_events_ref return "
@@ -83,7 +108,10 @@ def create_operator_mcp_server(
             "- search_definitions, get_definition, and list_definition_versions "
             "are read-only.\n"
             "- upload_definition and start_task load local files on the "
-            "AutoClaw host and mutate controller-owned state.\n\n"
+            "AutoClaw host and mutate controller-owned state.\n"
+            "- definition draft-set tools manage backend-owned local authoring "
+            "state under the configured data dir; save and preview do not "
+            "publish registry truth until apply_definition_draft_set.\n\n"
             "Surface continuity:\n"
             "- runtime, operator, and support reads stay on this same operator "
             "MCP surface.\n"
@@ -96,8 +124,10 @@ def create_operator_mcp_server(
     )
     register_definition_tools(server)
     register_task_start_tool(server)
+    register_authoring_tools(server)
     register_runtime_task_tools(server)
     register_operator_read_tools(server)
+    register_runtime_wait_tools(server)
     register_runtime_control_tools(server)
     register_observability_ref_tools(server)
     return server

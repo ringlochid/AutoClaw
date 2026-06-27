@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-06-27
 
 This page defines the current DB-backed definition registry lifecycle for roles, policies, and workflows.
 
@@ -79,11 +79,19 @@ Current reseeding preserves controller-owned currentness by refusing to hijack a
 
 ## Current HTTP surface fact
 
-Current shipped API routes do not expose registry draft, publish, validate, or bootstrap endpoints.
+Current shipped API routes still keep registry truth under `/definitions` and task start under `/tasks/start`, but the tree now also exposes backend-owned authoring draft routes under `/authoring/definition-draft-sets/*`.
 
-The current router has no shipped registry route family and no public definition authoring routes.
+Current shipped authoring facts are:
 
-Registry lifecycle is currently an internal service plus CLI/init concern.
+- draft sets live under the configured data dir at `drafts/definitions/<draft_set_id>/`
+- `GET /authoring/definition-draft-sets/{draft_set_id}` returns saved YAML bodies, saved normalized JSON shadows, saved baseline bodies, and saved preview task-compose state for the Definition Editor-style UI
+- draft-set save/reset/re-materialize writes mutate only backend-owned local draft state, not registry truth
+- once a draft set reaches `applied`, any later local draft mutation such as file save, preview-task-compose write, reset, materialize, or re-materialize-current reopens the draft set to `open`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/apply` publishes through the same DB-backed definition upsert truth used elsewhere and may optionally start a task from newly current registry truth after successful apply
+- invalid saved preview task-compose input is warning-only authoring context unless that apply request also asks to start a task
+- when the optional post-apply task start fails after publish committed, the route still returns `status=applied` plus task-start failure detail instead of surfacing a false apply failure
+
+Registry lifecycle is therefore no longer only an internal service plus CLI/init concern; current HTTP also exposes a local pending-authoring lane over that same registry truth.
 
 ## Current skill-specific rule
 
@@ -113,8 +121,11 @@ later shipped reseed of that same workflow key
 - inspected code in `apps/api/src/autoclaw/definitions/registry/seeds.py`
 - inspected code in `apps/api/src/autoclaw/definitions/registry/current.py`
 - inspected code in `apps/api/src/autoclaw/definitions/registry/upsert.py`
+- inspected code in `apps/api/src/autoclaw/definitions/authoring/service.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/authoring.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
 - inspected tests in `apps/api/tests/integration/definition_registry/test_registry_db.py`
+- inspected tests in `apps/api/tests/integration/public_surfaces/test_definition_authoring_api.py`
 - inspected tests in `apps/api/tests/unit/cli/**`
 
 ## Related current pages

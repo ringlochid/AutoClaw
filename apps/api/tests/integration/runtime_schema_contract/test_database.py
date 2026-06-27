@@ -285,6 +285,7 @@ CURRENTNESS_COLUMN_EXPECTATIONS = (
             "workdir",
             "timeout_seconds",
             "state",
+            "owned_process_pid",
             "latest_update",
             "latest_log_ref",
             "terminal_summary",

@@ -278,6 +278,7 @@ def _insert_terminal_command_run(connection: sqlite3.Connection) -> None:
             workdir,
             timeout_seconds,
             state,
+            owned_process_pid,
             latest_update,
             latest_log_ref,
             terminal_summary,
@@ -293,7 +294,7 @@ def _insert_terminal_command_run(connection: sqlite3.Connection) -> None:
             ended_at,
             updated_at
         ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
         """,
         (
@@ -311,6 +312,7 @@ def _insert_terminal_command_run(connection: sqlite3.Connection) -> None:
             "workspace",
             600,
             "failed",
+            None,
             "command failed with exit code 7",
             _TERMINAL_LOG_REF,
             "command failed with exit code 7",

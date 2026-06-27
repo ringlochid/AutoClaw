@@ -56,24 +56,21 @@ class FlowWaitStateModel(RuntimeBase):
         default=utcnow,
         onupdate=utcnow,
     )
-    flow: Mapped[FlowModel] = relationship("FlowModel", foreign_keys=[flow_id], lazy="selectin")
-    task: Mapped[TaskModel] = relationship("TaskModel", foreign_keys=[task_id], lazy="selectin")
+    flow: Mapped[FlowModel] = relationship("FlowModel", foreign_keys=[flow_id])
+    task: Mapped[TaskModel] = relationship("TaskModel", foreign_keys=[task_id])
     pending_human_request: Mapped[PendingHumanRequestModel | None] = relationship(
         "PendingHumanRequestModel",
         back_populates="wait_state",
         foreign_keys=[pending_human_request_id],
-        lazy="selectin",
     )
     command_run: Mapped[CommandRunModel | None] = relationship(
         "CommandRunModel",
         back_populates="wait_state",
         foreign_keys=[command_run_id],
-        lazy="selectin",
     )
     created_by_dispatch: Mapped[DispatchTurnModel | None] = relationship(
         "DispatchTurnModel",
         foreign_keys=[created_by_dispatch_id],
-        lazy="selectin",
     )
 
 

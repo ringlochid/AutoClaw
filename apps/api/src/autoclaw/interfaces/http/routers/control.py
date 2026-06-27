@@ -15,10 +15,17 @@ from autoclaw.interfaces.http.dependencies import (
 )
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session, get_session_factory
-from autoclaw.runtime.command_run.service import cancel_command_run, list_command_runs
+from autoclaw.runtime.command_run.service import (
+    cancel_command_run,
+    list_command_runs,
+    read_command_run,
+    read_command_run_log,
+)
 from autoclaw.runtime.contracts import (
     CommandRunCancelResponse,
     CommandRunListResponse,
+    CommandRunLogReadResponse,
+    CommandRunRecord,
     HumanRequestListResponse,
     HumanRequestResolveRequest,
     HumanRequestResolveResponse,
@@ -219,6 +226,33 @@ async def get_control_command_runs(
             cursor=cursor,
             limit=limit,
         )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.get("/tasks/{task_id}/command-runs/{run_id}", response_model=CommandRunRecord)
+async def get_control_command_run(
+    task_id: str,
+    run_id: str,
+    session: DBSession,
+) -> CommandRunRecord:
+    try:
+        return await read_command_run(session, task_id=task_id, run_id=run_id)
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
+
+
+@router.get(
+    "/tasks/{task_id}/command-runs/{run_id}/log",
+    response_model=CommandRunLogReadResponse,
+)
+async def get_control_command_run_log(
+    task_id: str,
+    run_id: str,
+    session: DBSession,
+) -> CommandRunLogReadResponse:
+    try:
+        return await read_command_run_log(session, task_id=task_id, run_id=run_id)
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
 

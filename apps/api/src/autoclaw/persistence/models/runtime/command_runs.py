@@ -103,6 +103,7 @@ class CommandRunModel(RuntimeBase):
     workdir: Mapped[str | None] = mapped_column(Text, nullable=True)
     timeout_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     state: Mapped[str] = mapped_column(String(64), index=True)
+    owned_process_pid: Mapped[int | None] = mapped_column(Integer, nullable=True)
     latest_update: Mapped[str | None] = mapped_column(Text, nullable=True)
     latest_log_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
     terminal_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -127,38 +128,32 @@ class CommandRunModel(RuntimeBase):
         default=utcnow,
         onupdate=utcnow,
     )
-    task: Mapped[TaskModel] = relationship("TaskModel", foreign_keys=[task_id], lazy="selectin")
-    flow: Mapped[FlowModel] = relationship("FlowModel", foreign_keys=[flow_id], lazy="selectin")
+    task: Mapped[TaskModel] = relationship("TaskModel", foreign_keys=[task_id])
+    flow: Mapped[FlowModel] = relationship("FlowModel", foreign_keys=[flow_id])
     flow_revision: Mapped[FlowRevisionModel] = relationship(
         "FlowRevisionModel",
         foreign_keys=[flow_revision_id],
-        lazy="selectin",
     )
     flow_node: Mapped[FlowNodeModel] = relationship(
         "FlowNodeModel",
         foreign_keys=[flow_node_id],
-        lazy="selectin",
     )
     assignment: Mapped[AssignmentModel] = relationship(
         "AssignmentModel",
         foreign_keys=[assignment_id],
-        lazy="selectin",
     )
     attempt: Mapped[AttemptModel] = relationship(
         "AttemptModel",
         foreign_keys=[attempt_id],
-        lazy="selectin",
     )
     dispatch: Mapped[DispatchTurnModel] = relationship(
         "DispatchTurnModel",
         foreign_keys=[dispatch_id],
-        lazy="selectin",
     )
     wait_state: Mapped[FlowWaitStateModel | None] = relationship(
         "FlowWaitStateModel",
         back_populates="command_run",
         foreign_keys="FlowWaitStateModel.command_run_id",
-        lazy="selectin",
         uselist=False,
     )
 

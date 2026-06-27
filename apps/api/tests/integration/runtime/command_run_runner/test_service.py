@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import autoclaw.runtime.command_run_runner.service as command_run_runner_service
 import pytest
 from autoclaw.runtime.command_run_runner import (
-    MAX_COMMAND_RUN_LOG_BYTES,
     command_run_log_ref,
     drive_command_run_runner_once,
     start_command_run_runner,
     stop_command_run_runner,
-    wait_for_command_run_runner_idle,
 )
 from tests.integration.runtime.command_run_runner.support import (
     assert_command_run_continues_task,
@@ -52,7 +51,7 @@ async def test_command_runner_launches_pending_run_from_wait_and_writes_log_ref(
             task,
             command=command,
             workdir=None,
-            timeout_seconds=5,
+            timeout_seconds=30,
         )
         command_run = await wait_for_command_run_state(
             context,
@@ -132,8 +131,30 @@ async def test_command_runner_records_failed_exit_with_bounded_summary_and_log(
         assert item["log_ref"] == command_run_log_ref(run_id)
         assert "RUNNER_FAILURE_SENTINEL" not in item["summary"]
 
+        detail = await context.client.get(
+            f"/control/tasks/{task.task_id}/command-runs/{run_id}",
+            headers=context.operator_headers,
+        )
+        assert detail.status_code == 200
+        detail_json = detail.json()
+        assert detail_json["run_id"] == run_id
+        assert detail_json["state"] == "failed"
+        assert detail_json["terminal_result"]["summary"] == "command failed with exit code 7"
+        assert detail_json["terminal_result"]["exit_code"] == 7
+        assert detail_json["terminal_result"]["log_ref"] == command_run_log_ref(run_id)
 
-async def test_command_runner_caps_long_output_log_without_read_surface_bytes(
+        log = await context.client.get(
+            f"/control/tasks/{task.task_id}/command-runs/{run_id}/log",
+            headers=context.operator_headers,
+        )
+        assert log.status_code == 200
+        log_json = log.json()
+        assert log_json["run_id"] == run_id
+        assert log_json["log_ref"] == command_run_log_ref(run_id)
+        assert "RUNNER_FAILURE_SENTINEL" in log_json["content"]
+
+
+async def test_command_runner_persists_full_long_output_log(
     tmp_path: Path,
 ) -> None:
     async with runtime_route_context(tmp_path) as context:
@@ -143,42 +164,146 @@ async def test_command_runner_caps_long_output_log_without_read_surface_bytes(
             task_root_name="task-root",
         )
         await start_command_run_runner()
-        command = python_command(
-            "import sys; "
-            f"sys.stdout.write('A' * {MAX_COMMAND_RUN_LOG_BYTES + 2048}); "
-            "sys.stdout.write('LOG_CAP_' + 'SENTINEL')"
-        )
+        try:
+            oversized_output_bytes = 1024 * 1024 + 2048
+            command = python_command(
+                "import sys; "
+                f"sys.stdout.write('A' * {oversized_output_bytes}); "
+                "sys.stdout.write('LOG_CAP_' + 'SENTINEL')"
+            )
 
-        run_id = await start_runner_command_run(
+            run_id = await start_runner_command_run(
+                context,
+                task,
+                command=command,
+                workdir=None,
+                timeout_seconds=30,
+            )
+            command_run = await wait_for_command_run_state(
+                context,
+                task_id=task.task_id,
+                run_id=run_id,
+                expected_state="succeeded",
+            )
+
+            assert command_run.terminal_summary == "command succeeded with exit code 0"
+            assert command_run.terminal_log_ref == command_run_log_ref(run_id)
+            log_path = task.task_root / str(command_run.terminal_log_ref)
+            assert log_path.stat().st_size > oversized_output_bytes
+            log_text = log_path.read_text(encoding="utf-8", errors="replace")
+            assert "LOG_CAP_SENTINEL" in log_text
+            assert "additional output omitted" not in log_text
+
+            item = (
+                await context.client.get(
+                    f"/control/tasks/{task.task_id}/command-runs",
+                    headers=context.operator_headers,
+                )
+            ).json()["items"][0]
+            assert item["summary"] == "command succeeded with exit code 0"
+        finally:
+            await stop_command_run_runner()
+
+
+async def test_command_runner_persists_full_terminal_summary_without_truncation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    long_error_message = "terminal-summary-" + ("x" * 320)
+
+    async def fail_command_run_process(*_args: object, **_kwargs: object) -> object:
+        raise RuntimeError(long_error_message)
+
+    monkeypatch.setattr(
+        command_run_runner_service,
+        "_start_command_run_process",
+        fail_command_run_process,
+    )
+
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
             context,
-            task,
-            command=command,
-            workdir=None,
-            timeout_seconds=5,
+            task_id="task_command_runner_untruncated_summary",
+            task_root_name="task-root",
         )
-        command_run = await wait_for_command_run_state(
-            context,
-            task_id=task.task_id,
-            run_id=run_id,
-            expected_state="succeeded",
-        )
+        await start_command_run_runner()
+        try:
+            run_id = await start_runner_command_run(
+                context,
+                task,
+                command=python_command("print('will not run')"),
+                workdir=None,
+                timeout_seconds=5,
+            )
+            command_run = await wait_for_command_run_state(
+                context,
+                task_id=task.task_id,
+                run_id=run_id,
+                expected_state="failed",
+            )
 
-        assert command_run.terminal_summary == "command succeeded with exit code 0"
-        assert command_run.terminal_log_ref == command_run_log_ref(run_id)
-        log_path = task.task_root / str(command_run.terminal_log_ref)
-        assert log_path.stat().st_size <= MAX_COMMAND_RUN_LOG_BYTES
-        log_text = log_path.read_text(encoding="utf-8", errors="replace")
-        assert "additional output omitted" in log_text
-        assert "LOG_CAP_SENTINEL" not in log_text
+            expected_summary = f"command runner failed before completion: {long_error_message}"
+            assert command_run.terminal_summary == expected_summary
+            assert command_run.latest_update == expected_summary
 
-        item = (
-            await context.client.get(
-                f"/control/tasks/{task.task_id}/command-runs",
+            detail = await context.client.get(
+                f"/control/tasks/{task.task_id}/command-runs/{run_id}",
                 headers=context.operator_headers,
             )
-        ).json()["items"][0]
-        assert item["summary"] == "command succeeded with exit code 0"
-        assert "LOG_CAP_SENTINEL" not in str(item)
+            assert detail.status_code == 200
+            assert detail.json()["terminal_result"]["summary"] == expected_summary
+        finally:
+            await stop_command_run_runner()
+
+
+async def test_command_runner_does_not_release_command_before_owned_pid_persists(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fail_owned_pid_record(*_args: object, **_kwargs: object) -> bool:
+        raise RuntimeError("simulated owned pid persistence failure")
+
+    monkeypatch.setattr(
+        command_run_runner_service,
+        "_record_owned_process_pid",
+        fail_owned_pid_record,
+    )
+
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_command_runner_launch_claim_failure",
+            task_root_name="task-root",
+        )
+        await start_command_run_runner()
+        try:
+            run_id = await start_runner_command_run(
+                context,
+                task,
+                command=python_command(
+                    "from pathlib import Path; "
+                    "Path('launch-claim-should-not-run.txt').write_text("
+                    "'survived', encoding='utf-8')"
+                ),
+                workdir=None,
+                timeout_seconds=30,
+            )
+            command_run = await wait_for_command_run_state(
+                context,
+                task_id=task.task_id,
+                run_id=run_id,
+                expected_state="failed",
+            )
+
+            assert command_run.terminal_summary == (
+                "command runner failed before completion: simulated owned pid persistence failure"
+            )
+            assert not (task.task_root / "workspace" / "launch-claim-should-not-run.txt").exists()
+            assert "simulated owned pid persistence failure" in (
+                task.task_root / str(command_run.terminal_log_ref)
+            ).read_text(encoding="utf-8")
+        finally:
+            await stop_command_run_runner()
 
 
 async def test_command_runner_times_out_process_and_records_log_ref(
@@ -375,8 +500,12 @@ async def test_command_runner_stops_live_process_after_whole_task_cancel(
         assert response.status_code == 200
         assert response.json()["status"] == "cancelled"
 
-        await wait_for_command_run_runner_idle()
-        command_run = await read_command_run(context, run_id)
+        command_run = await wait_for_command_run_state(
+            context,
+            task_id=task.task_id,
+            run_id=run_id,
+            expected_state="cancelled",
+        )
         signal_path = task.task_root / "workspace" / "task-cancel-signal.txt"
 
         assert command_run.state == "cancelled"

@@ -138,6 +138,7 @@ async def resolve_human_request(
     request_id: str,
     request: HumanRequestResolveRequest,
     actor_ref: str | None = None,
+    resolved_by_surface: HumanRequestResolutionSurface = HumanRequestResolutionSurface.CONTROL_API,
 ) -> HumanRequestResolveResponse:
     resolution = await record_human_request_terminal_result(
         session,
@@ -148,7 +149,7 @@ async def resolve_human_request(
         event_source=TaskEventSource.CONTROL_API,
         actor_ref=actor_ref,
         resolved_by_actor_ref=actor_ref,
-        resolved_by_surface=HumanRequestResolutionSurface.CONTROL_API,
+        resolved_by_surface=resolved_by_surface,
         policy_basis="task_authorized_human_request_resolution",
     )
     return HumanRequestResolveResponse(task_id=task_id, resolution=resolution)

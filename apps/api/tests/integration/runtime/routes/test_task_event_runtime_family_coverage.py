@@ -162,9 +162,16 @@ async def test_control_task_events_include_child_assignment_committed_after_acce
         committed_event = next(
             event for event in events if event["event_type"] == "child_assignment_committed"
         )
+        yield_payload = event_payload(yield_boundary_event)
         committed_payload = event_payload(committed_event)
 
         assert yield_boundary_event["event_seq"] < committed_event["event_seq"]
+        assert yield_payload["previous_node_key"] == "root"
+        assert yield_payload["next_node_key"] == "implementation_subtree"
+        assert yield_payload["next_attempt_id"] == assign_payload["target_attempt_id"]
+        assert yield_payload["resulting_flow_status"] == "running"
+        assert yield_payload["requires_reopen_after_inactivity"] is True
+        assert yield_payload["latest_checkpoint_ref"] is None
         assert committed_event["event_source"] == "controller"
         assert committed_event["dispatch_id"] == task.current_open_dispatch_id
         assert committed_event["attempt_id"] == assign_payload["target_attempt_id"]
@@ -198,9 +205,7 @@ async def test_control_task_events_include_structural_revision_adopted_for_updat
                 "tool_name": "update_child",
                 "payload": {
                     "child_node_key": "implementation_subtree",
-                    "patch": {
-                        "description": "Updated child description for task-event coverage."
-                    },
+                    "patch": {"description": "Updated child description for task-event coverage."},
                 },
                 "expected_structural_revision_id": task.active_flow_revision_id,
             },
@@ -218,16 +223,18 @@ async def test_control_task_events_include_structural_revision_adopted_for_updat
         structural_event = structural_events[0]
         structural_payload = event_payload(structural_event)
         assert structural_event["event_source"] == "node"
-        assert structural_event["flow_revision_id"] == update_child_payload["flow"][
-            "active_flow_revision_id"
-        ]
+        assert (
+            structural_event["flow_revision_id"]
+            == update_child_payload["flow"]["active_flow_revision_id"]
+        )
         assert structural_event["dispatch_id"] == task.current_open_dispatch_id
         assert structural_event["node_key"] == "root"
         assert structural_payload["operation"] == "update_child"
         assert structural_payload["previous_flow_revision_id"] == task.active_flow_revision_id
-        assert structural_payload["active_flow_revision_id"] == update_child_payload["flow"][
-            "active_flow_revision_id"
-        ]
+        assert (
+            structural_payload["active_flow_revision_id"]
+            == update_child_payload["flow"]["active_flow_revision_id"]
+        )
         assert structural_payload["target_node_key"] == "implementation_subtree"
         assert structural_payload["affected_node_keys"] == ["implementation_subtree"]
         assert structural_payload["summary"] == "Updated child node 'implementation_subtree'."
@@ -236,7 +243,9 @@ async def test_control_task_events_include_structural_revision_adopted_for_updat
         await cancel_route_task(
             context,
             task,
-            expected_active_flow_revision_id=update_child_payload["flow"]["active_flow_revision_id"],
+            expected_active_flow_revision_id=update_child_payload["flow"][
+                "active_flow_revision_id"
+            ],
         )
 
 

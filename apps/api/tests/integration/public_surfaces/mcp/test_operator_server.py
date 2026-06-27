@@ -82,6 +82,7 @@ async def test_operator_mcp_server_instructions_include_definition_writes() -> N
     instructions = server.instructions
     assert instructions is not None
     assert "Definition/task-start writes" in instructions
+    assert "definition draft-set tools manage backend-owned local authoring state" in instructions
 
 
 async def test_operator_mcp_exposes_runtime_support_and_definition_tools(
@@ -265,3 +266,96 @@ async def test_operator_mcp_uploads_definitions_and_starts_tasks(
             async with mcp_client_session(app) as session:
                 await _assert_uploaded_role_round_trip(session, role_definition_path)
                 await _assert_started_task(session, task_compose_path)
+
+
+async def test_operator_mcp_manages_definition_draft_sets(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+
+    with openclaw_gateway_test_server.configured_env():
+        async with runtime_api_context(config_path):
+            app = create_operator_mcp_app(
+                transport_security=default_transport_security(host="127.0.0.1")
+            )
+            async with mcp_client_session(app) as session:
+                await _assert_definition_draft_set_round_trip(session)
+
+
+async def _assert_definition_draft_set_round_trip(session: Any) -> None:
+    created = await call_tool_structured(
+        session,
+        "create_definition_draft_set",
+        {
+            "title": "Operator MCP draft",
+            "materialize": [{"kind": "workflow", "key": "minimal-implement-change"}],
+            "preview_task_compose": yaml.safe_dump(
+                task_compose_payload("minimal-implement-change").model_dump(mode="json"),
+                sort_keys=False,
+            ),
+        },
+    )
+    draft_set = created["draft_set"]
+    draft_set_id = cast(str, draft_set["draft_set_id"])
+    workflow_file = draft_set["files"][0]
+    assert workflow_file["kind"] == "workflow"
+    assert workflow_file["status"] == "clean"
+
+    listed = await call_tool_structured(
+        session,
+        "list_definition_draft_sets",
+        {"limit": 10},
+    )
+    assert listed["items"]
+    assert listed["items"][0]["draft_set_id"] == draft_set_id
+
+    detail = await call_tool_structured(
+        session,
+        "get_definition_draft_set",
+        {"draft_set_id": draft_set_id},
+    )
+    original_body = cast(str, detail["draft_set"]["files"][0]["body"])
+    edited_workflow = cast(dict[str, Any], yaml.safe_load(original_body))
+    edited_workflow["description"] = (
+        "Operator MCP authoring parity coverage for backend-owned draft sets."
+    )
+    edited_body = yaml.safe_dump(edited_workflow, sort_keys=False)
+    saved = await call_tool_structured(
+        session,
+        "write_definition_draft_file",
+        {
+            "draft_set_id": draft_set_id,
+            "kind": "workflow",
+            "key": "minimal-implement-change",
+            "body": edited_body,
+        },
+    )
+    saved_file = saved["draft_set"]["files"][0]
+    assert saved_file["status"] == "modified"
+
+    validated = await call_tool_structured(
+        session,
+        "validate_definition_draft_set",
+        {"draft_set_id": draft_set_id},
+    )
+    assert validated["status"] == "valid"
+
+    applied = await call_tool_structured(
+        session,
+        "apply_definition_draft_set",
+        {
+            "draft_set_id": draft_set_id,
+            "should_start_task_after_apply": False,
+        },
+    )
+    assert applied["status"] == "applied"
+    assert applied["published_revisions"]
+
+    deleted = await call_tool_structured(
+        session,
+        "delete_definition_draft_set",
+        {"draft_set_id": draft_set_id},
+    )
+    assert deleted["status"] == "deleted"
+    assert deleted["draft_set_id"] == draft_set_id

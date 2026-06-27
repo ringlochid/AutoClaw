@@ -6,7 +6,20 @@ from typing import Any, cast
 
 from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
 from autoclaw.interfaces.mcp.operator.server import create_operator_mcp_app
+from autoclaw.persistence import (
+    CommandRunModel,
+    DispatchTurnModel,
+    FlowModel,
+    FlowNodeModel,
+    PendingHumanRequestModel,
+    PolicyRevisionModel,
+)
+from autoclaw.runtime.command_run.service import start_command_run
+from autoclaw.runtime.contracts import CommandRunStartRequest, HumanRequestOpenRequest
+from autoclaw.runtime.human_request.service import open_human_request
 from autoclaw.runtime.post_commit import drive_runtime_once, drive_runtime_until
+from autoclaw.runtime.projection.runtime_state import current_runtime_state
+from sqlalchemy import select
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
 from tests.helpers.operator_trace_readback import current_dispatch_history_entry
 from tests.helpers.support_state_shapes import (
@@ -255,6 +268,241 @@ async def test_operator_mcp_support_state_refs_freeze_exact_field_sets(
                 watchdog_ref=watchdog_ref,
                 provider_events_ref=provider_events_ref,
             )
+
+
+async def test_operator_mcp_resolves_human_requests_and_controls_command_runs(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    task_id = "task.operator-mcp-human-request-command-run"
+    config_path, _task_root = await bootstrap_runtime_task(
+        tmp_path,
+        task_id=task_id,
+        openclaw_gateway_test_server=openclaw_gateway_test_server,
+    )
+
+    with openclaw_gateway_test_server.configured_env():
+        async with runtime_api_context(config_path) as api:
+            app = create_operator_mcp_app(
+                transport_security=default_transport_security(host="127.0.0.1")
+            )
+
+            await _allow_human_request_kind(api, task_id=task_id, kind="review")
+            async with api.session_factory() as session:
+                state = await current_runtime_state(session, task_id)
+                dispatch = await session.get(DispatchTurnModel, state.flow.current_open_dispatch_id)
+                assert dispatch is not None
+                opened = await open_human_request(
+                    session,
+                    task_id=task_id,
+                    request=HumanRequestOpenRequest.model_validate(
+                        {
+                            "kind": "review",
+                            "title": "Review the staged change",
+                            "summary": "The node needs a human review before continuing.",
+                            "items": [
+                                {
+                                    "item_id": "review_choice",
+                                    "prompt": "Should the node continue?",
+                                    "options": [
+                                        {"id": "approve", "title": "Approve"},
+                                        {"id": "revise", "title": "Revise"},
+                                    ],
+                                    "recommended_option": "approve",
+                                }
+                            ],
+                            "suggested_human_instruction": "Inspect the staged change first.",
+                        }
+                    ),
+                    state=state,
+                    dispatch=dispatch,
+                )
+                await session.commit()
+
+            async with mcp_client_session(app) as mcp_session:
+                human_requests = await call_tool_structured(
+                    mcp_session,
+                    "get_human_requests",
+                    {"task_id": task_id},
+                )
+                assert human_requests["items"][0]["request"]["request_id"] == opened.request_id
+                assert human_requests["items"][0]["resolution"] is None
+
+                resolved = await call_tool_structured(
+                    mcp_session,
+                    "resolve_human_request",
+                    {
+                        "task_id": task_id,
+                        "request_id": opened.request_id,
+                        "item_responses": [
+                            {
+                                "item_id": "review_choice",
+                                "selected_option": "approve",
+                                "freeform_answer": None,
+                                "extra_notes": "Proceed.",
+                                "response_payload": None,
+                            }
+                        ],
+                    },
+                )
+                assert resolved["resolution"]["resolution_kind"] == "answered"
+
+                resolved_requests = await call_tool_structured(
+                    mcp_session,
+                    "get_human_requests",
+                    {"task_id": task_id},
+                )
+                assert (
+                    resolved_requests["items"][0]["resolution"]["resolved_by_actor_ref"]
+                    == "operator_mcp"
+                )
+
+            await drive_runtime_until(
+                lambda: _current_open_dispatch_restored(api, task_id=task_id),
+                task_id=task_id,
+                max_cycles=20,
+            )
+            await _allow_command_run(api, task_id=task_id)
+            async with api.session_factory() as session:
+                state = await current_runtime_state(session, task_id)
+                dispatch = await session.get(DispatchTurnModel, state.flow.current_open_dispatch_id)
+                assert dispatch is not None
+                command_run = await start_command_run(
+                    session,
+                    task_id=task_id,
+                    request=CommandRunStartRequest.model_validate(
+                        {
+                            "command": "pytest apps/api/tests/unit/runtime -q",
+                            "description": "Run focused runtime unit tests.",
+                            "workdir": "apps/api",
+                            "timeout_seconds": 900,
+                        }
+                    ),
+                    state=state,
+                    dispatch=dispatch,
+                )
+                await session.commit()
+
+            command_run_app = create_operator_mcp_app(
+                transport_security=default_transport_security(host="127.0.0.1")
+            )
+            async with mcp_client_session(command_run_app) as mcp_session:
+                command_runs = await call_tool_structured(
+                    mcp_session,
+                    "get_command_runs",
+                    {"task_id": task_id},
+                )
+                assert command_runs["items"][0]["run_id"] == command_run.run_id
+
+                command_run_detail = await call_tool_structured(
+                    mcp_session,
+                    "get_command_run",
+                    {"task_id": task_id, "run_id": command_run.run_id},
+                )
+                assert command_run_detail["state"] == "pending_start"
+                assert command_run_detail["terminal_result"] is None
+
+                cancelled = await call_tool_structured(
+                    mcp_session,
+                    "cancel_command_run",
+                    {"task_id": task_id, "run_id": command_run.run_id},
+                )
+                assert cancelled["run"]["state"] == "cancellation_requested"
+
+                cancelled_detail = await call_tool_structured(
+                    mcp_session,
+                    "get_command_run",
+                    {"task_id": task_id, "run_id": command_run.run_id},
+                )
+                assert cancelled_detail["state"] == "cancellation_requested"
+
+            async with api.session_factory() as session:
+                pending_request = await session.get(PendingHumanRequestModel, opened.request_id)
+                persisted_command_run = await session.get(CommandRunModel, command_run.run_id)
+                assert pending_request is not None
+                assert pending_request.resolved_by_actor_ref == "operator_mcp"
+                assert pending_request.resolved_by_surface == "operator_mcp"
+                assert persisted_command_run is not None
+                assert persisted_command_run.cancellation_requested_by_actor_ref == "operator_mcp"
+
+
+async def _allow_human_request_kind(
+    api: Any,
+    *,
+    task_id: str,
+    kind: str,
+) -> None:
+    async with api.session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        assert flow is not None
+        node = await session.scalar(
+            select(FlowNodeModel).where(
+                FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+                FlowNodeModel.node_key == flow.current_node_key,
+            )
+        )
+        assert node is not None
+        assert node.policy_key is not None
+        assert node.policy_revision_no is not None
+        policy_revision = await session.scalar(
+            select(PolicyRevisionModel).where(
+                PolicyRevisionModel.policy_key == node.policy_key,
+                PolicyRevisionModel.revision_no == node.policy_revision_no,
+            )
+        )
+        assert policy_revision is not None
+        content = dict(policy_revision.content_json)
+        raw_capabilities = content.get("capabilities")
+        capabilities = dict(raw_capabilities) if isinstance(raw_capabilities, dict) else {}
+        capabilities["human_request"] = {"mode": "allow", "allowed_kinds": [kind]}
+        capabilities.setdefault("command_run", "deny")
+        content["capabilities"] = capabilities
+        policy_revision.content_json = content
+        await session.commit()
+
+
+async def _allow_command_run(
+    api: Any,
+    *,
+    task_id: str,
+) -> None:
+    async with api.session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        assert flow is not None
+        node = await session.scalar(
+            select(FlowNodeModel).where(
+                FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+                FlowNodeModel.node_key == flow.current_node_key,
+            )
+        )
+        assert node is not None
+        assert node.policy_key is not None
+        assert node.policy_revision_no is not None
+        policy_revision = await session.scalar(
+            select(PolicyRevisionModel).where(
+                PolicyRevisionModel.policy_key == node.policy_key,
+                PolicyRevisionModel.revision_no == node.policy_revision_no,
+            )
+        )
+        assert policy_revision is not None
+        content = dict(policy_revision.content_json)
+        raw_capabilities = content.get("capabilities")
+        capabilities = dict(raw_capabilities) if isinstance(raw_capabilities, dict) else {}
+        capabilities.setdefault("human_request", {"mode": "deny", "allowed_kinds": []})
+        capabilities["command_run"] = "allow"
+        content["capabilities"] = capabilities
+        policy_revision.content_json = content
+        await session.commit()
+
+
+async def _current_open_dispatch_restored(
+    api: Any,
+    *,
+    task_id: str,
+) -> bool:
+    async with api.session_factory() as session:
+        flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
+        return flow is not None and flow.current_open_dispatch_id is not None
 
 
 async def _load_support_state_refs(

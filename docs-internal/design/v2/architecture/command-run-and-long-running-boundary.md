@@ -215,7 +215,8 @@ Rules:
 - controller-owned command-run records own normalized command truth, not every raw byte emitted by the runner
 - full stdout/stderr and similar bulky output should live in logs referenced from the command-run record
 - large logs stay out of ordinary prompt truth unless surfaced intentionally later
-- control UI/API reads may inspect job logs directly
+- control UI/API reads may inspect job logs directly through the dedicated follow-up route family `GET /control/tasks/{task_id}/command-runs/{run_id}` and `GET /control/tasks/{task_id}/command-runs/{run_id}/log`
+- the pre-UI lane does not truncate or reduce persisted command-run logs or terminal summaries before those controller-owned reads expose them
 - control UI/API should default to compact summaries first and let humans inspect logs through explicit follow-up reads when needed
 - prompt surfaces should consume compact summaries and deliberate log refs, not raw log streams by default
 

@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-06-25
+Last verified: 2026-06-27
 
 This page owns the exact current HTTP route families, mounted surface nouns, and auth grouping for the shipped FastAPI tree.
 
@@ -20,6 +20,7 @@ Current router families are:
 
 - `health`
 - `definitions`
+- `authoring`
 - `tasks`
 - `runtime`
 - `operator`
@@ -57,10 +58,25 @@ Current routes are:
 - `POST /definitions`
 - `POST /tasks/start`
 
+Current authoring routes on the same trusted operator lane are:
+
+- `GET /authoring/definition-draft-sets`
+- `POST /authoring/definition-draft-sets`
+- `GET /authoring/definition-draft-sets/{draft_set_id}`
+- `DELETE /authoring/definition-draft-sets/{draft_set_id}`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/materialize`
+- `PUT /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}/reset`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}/rematerialize-current`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/validate`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/apply`
+- `POST /authoring/definition-draft-sets/{draft_set_id}/preview-task-compose`
+
 Current query-backed route details include:
 
 - `/definitions/roles|policies|workflows` support the shared definition list query contract
 - `/definitions/{kind}/{key}/versions` supports history paging and sort queries
+- `/authoring/definition-draft-sets` supports `cursor` and `limit`
 - `POST /definitions` returns `201 Created` for a new revision and `200 OK` for a no-op replay
 - `POST /tasks/start` waits for initial runtime effects before returning the task start readback
 
@@ -83,6 +99,8 @@ Current operator-visible routes are:
 - `GET /control/tasks/{task_id}/human-requests`
 - `POST /control/tasks/{task_id}/human-requests/{request_id}/resolve`
 - `GET /control/tasks/{task_id}/command-runs`
+- `GET /control/tasks/{task_id}/command-runs/{run_id}`
+- `GET /control/tasks/{task_id}/command-runs/{run_id}/log`
 - `POST /control/tasks/{task_id}/command-runs/{run_id}/cancel`
 - `GET /control/tasks/{task_id}/events`
 - `GET /control/tasks/{task_id}/events/stream`
@@ -98,6 +116,7 @@ Current query-backed route details include:
 - `/operator/tasks/{task_id}/trace` supports `scope`, `q`, `limit`, `cursor`, and `sort`
 - `/control/tasks/{task_id}/events` supports `cursor`, `limit`, and `through_event_id`
 - `/control/tasks/{task_id}/command-runs` supports `cursor` and `limit`
+- `/control/tasks/{task_id}/command-runs/{run_id}/log` returns bounded UTF-8 log text only when a controller-backed log ref currently exists for that run
 - `/control/tasks/{task_id}/command-runs/{run_id}/cancel` requests cancellation of the current active nonterminal command run without cancelling the whole task
 
 ## Current callback routes
@@ -178,12 +197,15 @@ Current code still keeps `require_internal_api_key()` in `app.api.deps`, but no 
 ```text
 operator HTTP:
   GET  /definitions/roles
+  POST /authoring/definition-draft-sets
   POST /tasks/start
   GET  /runtime/tasks
   GET  /runtime/tasks/{task_id}
   POST /runtime/tasks/{task_id}/pause?expected_active_flow_revision_id=...
   GET  /operator/tasks/{task_id}/trace
   GET  /control/tasks/{task_id}/command-runs
+  GET  /control/tasks/{task_id}/command-runs/{run_id}
+  GET  /control/tasks/{task_id}/command-runs/{run_id}/log
   POST /control/tasks/{task_id}/command-runs/{run_id}/cancel
   GET  /observability/tasks/{task_id}/delivery-state
 
@@ -202,6 +224,7 @@ mounted node MCP:
 - inspected code in `apps/api/src/autoclaw/interfaces/http/router.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/health.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/definitions.py`
+- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/authoring.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/tasks.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
 - inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
@@ -214,6 +237,7 @@ mounted node MCP:
 - inspected tests in `apps/api/tests/integration/runtime/routes/test_query_contract.py`
 - inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
 - inspected tests in `apps/api/tests/integration/runtime/routes/test_command_run_control_api.py`
+- inspected tests in `apps/api/tests/integration/public_surfaces/test_definition_authoring_api.py`
 - inspected tests in `apps/api/tests/integration/mcp/node_server`
 - inspected tests in `apps/api/tests/integration/public_surfaces/test_public_http_subset.py`
 

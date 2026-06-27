@@ -1,5 +1,4 @@
 from autoclaw.runtime.command_run_runner.logs import (
-    MAX_COMMAND_RUN_LOG_BYTES,
     command_run_log_ref,
 )
 from autoclaw.runtime.command_run_runner.service import (
@@ -13,7 +12,6 @@ from autoclaw.runtime.command_run_runner.service import (
 )
 
 __all__ = [
-    "MAX_COMMAND_RUN_LOG_BYTES",
     "command_run_log_ref",
     "drive_command_run_runner_once",
     "notify_command_run_runner",

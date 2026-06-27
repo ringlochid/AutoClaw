@@ -9,6 +9,7 @@ from autoclaw.integrations.openclaw.gateway.fixtures import (
     connect_challenge_fixture,
     hello_ok_fixture,
 )
+from autoclaw.persistence import TaskEventModel
 from autoclaw.runtime.dispatch.openclaw.event_ingest import (
     normalize_observed_event,
 )
@@ -16,6 +17,7 @@ from autoclaw.runtime.dispatch.openclaw.models import (
     ActiveOpenClawDispatchRuntime,
     OpenClawDispatchLaunchLease,
 )
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from tests.helpers.openclaw_gateway_support import gateway_server, recv_json, send_json
 from tests.helpers.runtime_support import runtime_bootstrap_context
@@ -372,3 +374,33 @@ async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_ev
         "assistant.message",
         "run.completed",
     ]
+    async with runtime.session_factory() as session:
+        task_events = list(
+            await session.scalars(
+                select(TaskEventModel)
+                .where(
+                    TaskEventModel.task_id == task_id,
+                    TaskEventModel.event_type == "provider_event_normalized",
+                )
+                .order_by(TaskEventModel.event_seq.asc())
+            )
+        )
+
+    assert [event.event_source for event in task_events[:5]] == [
+        "adapter",
+        "provider",
+        "provider",
+        "provider",
+        "provider",
+    ]
+    assert [event.payload["event_kind"] for event in task_events[:5]] == [
+        "accepted",
+        "first_data",
+        "tool_event",
+        "output_delta",
+        "response_completed",
+    ]
+    assert task_events[1].payload["provider_event_name"] == "assistant.delta"
+    assert task_events[1].payload["transport_family"] == "openclaw_gateway_ws_rpc"
+    assert task_events[1].payload["gateway_run_id"] == snapshot.dispatch.gateway_run_id
+    assert task_events[1].payload["gateway_session_key"] == snapshot.dispatch.gateway_session_key

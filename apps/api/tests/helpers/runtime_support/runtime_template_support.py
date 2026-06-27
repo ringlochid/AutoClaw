@@ -15,7 +15,7 @@ from autoclaw.paths import default_database_path, default_database_url, ensure_r
 from autoclaw.persistence.session import dispose_test_db_engine
 from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
 
-_TEMPLATE_ROOT = Path(tempfile.gettempdir()) / "autoclaw-runtime-init-template-v12"
+_TEMPLATE_ROOT = Path(tempfile.gettempdir()) / "autoclaw-runtime-init-template-v13"
 _TEMPLATE_READY_STAMP = _TEMPLATE_ROOT / ".ready"
 
 

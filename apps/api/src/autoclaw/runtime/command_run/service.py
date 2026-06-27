@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import cast
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import (
     CommandRunModel,
     DispatchTurnModel,
+    FlowModel,
     FlowWaitStateModel,
 )
 from autoclaw.runtime.capabilities import (
@@ -16,6 +16,13 @@ from autoclaw.runtime.capabilities import (
     resolve_effective_capabilities,
 )
 from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.command_run.reads import (
+    command_run_conflict,
+    list_command_runs,
+    load_command_run_for_task,
+    read_command_run,
+    read_command_run_log,
+)
 from autoclaw.runtime.command_run.records import (
     command_run_list_item_from_model,
     command_run_record_from_model,
@@ -24,13 +31,13 @@ from autoclaw.runtime.contracts import (
     COMMAND_RUN_TERMINAL_EVENT_TYPES,
     TERMINAL_COMMAND_RUN_STATES,
     CommandRunCancelResponse,
-    CommandRunListResponse,
     CommandRunProgressUpdate,
     CommandRunRecord,
     CommandRunStartRequest,
     CommandRunStartResponse,
     CommandRunState,
     CommandRunTerminalResultRead,
+    FlowStatus,
     OperationFailureCode,
     TaskEventSource,
     TaskEventType,
@@ -38,14 +45,11 @@ from autoclaw.runtime.contracts import (
 )
 from autoclaw.runtime.dispatch.control import fence_foreground_dispatch
 from autoclaw.runtime.errors import RuntimeOperationError, illegal_state_error
-from autoclaw.runtime.flow.queries import require_flow_for_task
 from autoclaw.runtime.ids import command_run_id
 from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState
 from autoclaw.runtime.task_events import append_task_event
+from autoclaw.runtime.workspace_leases import release_workspace_root_lease
 
-_COMMAND_RUN_CONFLICT_NEXT_STEP = (
-    "Reread the current command-run list for this task before retrying the command-run action."
-)
 _COMMAND_RUN_CANCEL_REQUESTED_SUMMARY = "command run cancellation requested"
 
 
@@ -116,49 +120,6 @@ async def start_command_run(
     )
 
 
-async def list_command_runs(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    cursor: str | None = None,
-    limit: int = 100,
-) -> CommandRunListResponse:
-    await require_flow_for_task(session, task_id)
-    page_limit = max(1, min(limit, 250))
-    statement = (
-        select(CommandRunModel)
-        .where(CommandRunModel.task_id == task_id)
-        .order_by(CommandRunModel.created_at.asc(), CommandRunModel.run_id.asc())
-        .limit(page_limit + 1)
-    )
-    if cursor is not None:
-        cursor_row = await _command_run_for_task(
-            session,
-            task_id=task_id,
-            run_id=cursor,
-        )
-        if cursor_row is None:
-            raise _command_run_conflict(f"command run cursor '{cursor}' is not current")
-        statement = statement.where(
-            or_(
-                CommandRunModel.created_at > cursor_row.created_at,
-                and_(
-                    CommandRunModel.created_at == cursor_row.created_at,
-                    CommandRunModel.run_id > cursor_row.run_id,
-                ),
-            )
-        )
-
-    rows = list(await session.scalars(statement))
-    page_rows = rows[:page_limit]
-    next_cursor = page_rows[-1].run_id if len(rows) > page_limit else None
-    return CommandRunListResponse(
-        task_id=task_id,
-        items=tuple(command_run_list_item_from_model(row) for row in page_rows),
-        next_cursor=next_cursor,
-    )
-
-
 async def cancel_command_run(
     session: AsyncSession,
     *,
@@ -166,15 +127,38 @@ async def cancel_command_run(
     run_id: str,
     actor_ref: str | None = None,
 ) -> CommandRunCancelResponse:
-    flow = await require_flow_for_task(session, task_id)
-    command_run = await _command_run_for_task(session, task_id=task_id, run_id=run_id)
+    command_run = await request_command_run_cancellation(
+        session,
+        task_id=task_id,
+        run_id=run_id,
+        actor_ref=actor_ref,
+    )
+    return CommandRunCancelResponse(
+        task_id=task_id,
+        run=command_run_list_item_from_model(command_run),
+    )
+
+
+async def request_command_run_cancellation(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    run_id: str,
+    actor_ref: str | None = None,
+    allow_already_requested: bool = False,
+) -> CommandRunModel:
+    flow = await _require_flow_for_task(session, task_id)
+    command_run = await load_command_run_for_task(session, task_id=task_id, run_id=run_id)
     wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
     _ensure_command_run_can_be_cancelled(
         command_run=command_run,
         wait_state=wait_state,
         run_id=run_id,
+        allow_already_requested=allow_already_requested,
     )
     assert command_run is not None
+    if command_run.state == CommandRunState.CANCELLATION_REQUESTED.value:
+        return command_run
 
     cancelled_at = utc_now()
     command_run.state = CommandRunState.CANCELLATION_REQUESTED.value
@@ -202,10 +186,7 @@ async def cancel_command_run(
         },
     )
     await session.flush()
-    return CommandRunCancelResponse(
-        task_id=task_id,
-        run=command_run_list_item_from_model(command_run),
-    )
+    return command_run
 
 
 async def record_command_run_progress(
@@ -214,8 +195,8 @@ async def record_command_run_progress(
     task_id: str,
     update: CommandRunProgressUpdate,
 ) -> CommandRunRecord:
-    flow = await require_flow_for_task(session, task_id)
-    command_run = await _command_run_for_task(
+    flow = await _require_flow_for_task(session, task_id)
+    command_run = await load_command_run_for_task(
         session,
         task_id=task_id,
         run_id=update.run_id,
@@ -233,6 +214,8 @@ async def record_command_run_progress(
         command_run.started_at = occurred_at
     if command_run.state == CommandRunState.PENDING_START.value:
         command_run.state = CommandRunState.RUNNING.value
+    if update.owned_process_pid is not None:
+        command_run.owned_process_pid = update.owned_process_pid
     command_run.latest_update = update.summary
     command_run.latest_log_ref = update.log_ref
     command_run.updated_at = occurred_at
@@ -259,6 +242,59 @@ async def record_command_run_progress(
     return command_run_record_from_model(command_run)
 
 
+async def claim_command_run_for_local_start(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    run_id: str,
+    log_ref: str,
+    occurred_at: datetime,
+) -> CommandRunRecord:
+    flow = await _require_flow_for_task(session, task_id)
+    command_run = await load_command_run_for_task(session, task_id=task_id, run_id=run_id)
+    wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
+    _ensure_command_run_can_be_claimed_for_local_start(
+        command_run=command_run,
+        wait_state=wait_state,
+        run_id=run_id,
+    )
+    assert command_run is not None
+
+    command_run.state = CommandRunState.RUNNING.value
+    command_run.started_at = command_run.started_at or occurred_at
+    command_run.latest_log_ref = log_ref
+    command_run.updated_at = occurred_at
+    flow.updated_at = occurred_at
+    await session.flush()
+    return command_run_record_from_model(command_run)
+
+
+async def record_command_run_owned_process_pid(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    run_id: str,
+    owned_process_pid: int,
+    occurred_at: datetime,
+) -> CommandRunRecord:
+    flow = await _require_flow_for_task(session, task_id)
+    command_run = await load_command_run_for_task(session, task_id=task_id, run_id=run_id)
+    wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
+    _ensure_command_run_can_record_owned_process_pid(
+        command_run=command_run,
+        wait_state=wait_state,
+        run_id=run_id,
+    )
+    assert command_run is not None
+
+    command_run.owned_process_pid = owned_process_pid
+    command_run.started_at = command_run.started_at or occurred_at
+    command_run.updated_at = occurred_at
+    flow.updated_at = occurred_at
+    await session.flush()
+    return command_run_record_from_model(command_run)
+
+
 async def record_command_run_terminal_result(
     session: AsyncSession,
     *,
@@ -267,8 +303,8 @@ async def record_command_run_terminal_result(
     event_source: TaskEventSource = TaskEventSource.CONTROLLER,
     actor_ref: str | None = None,
 ) -> CommandRunRecord:
-    flow = await require_flow_for_task(session, task_id)
-    command_run = await _command_run_for_task(
+    flow = await _require_flow_for_task(session, task_id)
+    command_run = await load_command_run_for_task(
         session,
         task_id=task_id,
         run_id=result.run_id,
@@ -287,6 +323,7 @@ async def record_command_run_terminal_result(
 
     ended_at = result.ended_at
     command_run.state = terminal_state.value
+    command_run.owned_process_pid = None
     command_run.ended_at = ended_at
     command_run.terminal_summary = result.summary
     command_run.terminal_exit_code = result.exit_code
@@ -307,6 +344,16 @@ async def record_command_run_terminal_result(
     command_run.updated_at = ended_at
     await session.delete(wait_state)
     flow.updated_at = ended_at
+    if (
+        flow.status
+        in {
+            FlowStatus.SUCCEEDED.value,
+            FlowStatus.BLOCKED.value,
+            FlowStatus.CANCELLED.value,
+        }
+        and flow.current_open_dispatch_id is None
+    ):
+        await release_workspace_root_lease(session, task_id=task_id)
     payload = {
         "run_id": result.run_id,
         "state": terminal_state.value,
@@ -455,24 +502,28 @@ async def _next_command_run_id(session: AsyncSession, *, task_id: str) -> str:
     return command_run_id(task_id, int(run_count or 0) + 1)
 
 
-async def _command_run_for_task(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    run_id: str,
-) -> CommandRunModel | None:
-    return cast(
-        CommandRunModel | None,
-        await session.scalar(
-            select(CommandRunModel).where(
-                CommandRunModel.task_id == task_id,
-                CommandRunModel.run_id == run_id,
-            )
-        ),
-    )
-
-
 def _ensure_command_run_can_be_cancelled(
+    *,
+    command_run: CommandRunModel | None,
+    wait_state: FlowWaitStateModel | None,
+    run_id: str,
+    allow_already_requested: bool = False,
+) -> None:
+    _ensure_command_run_owns_active_wait(
+        command_run=command_run,
+        wait_state=wait_state,
+        run_id=run_id,
+    )
+    assert command_run is not None
+    if command_run.state in {state.value for state in TERMINAL_COMMAND_RUN_STATES}:
+        raise command_run_conflict(f"command run '{run_id}' is already terminal")
+    if command_run.state == CommandRunState.CANCELLATION_REQUESTED.value:
+        if allow_already_requested:
+            return
+        raise command_run_conflict(f"command run '{run_id}' already has cancellation requested")
+
+
+def _ensure_command_run_can_be_claimed_for_local_start(
     *,
     command_run: CommandRunModel | None,
     wait_state: FlowWaitStateModel | None,
@@ -484,10 +535,10 @@ def _ensure_command_run_can_be_cancelled(
         run_id=run_id,
     )
     assert command_run is not None
-    if command_run.state in {state.value for state in TERMINAL_COMMAND_RUN_STATES}:
-        raise _command_run_conflict(f"command run '{run_id}' is already terminal")
-    if command_run.state == CommandRunState.CANCELLATION_REQUESTED.value:
-        raise _command_run_conflict(f"command run '{run_id}' already has cancellation requested")
+    if command_run.state != CommandRunState.PENDING_START.value:
+        raise command_run_conflict(
+            f"command run '{run_id}' is no longer pending local process start"
+        )
 
 
 def _ensure_command_run_can_record_progress(
@@ -503,7 +554,25 @@ def _ensure_command_run_can_record_progress(
     )
     assert command_run is not None
     if command_run.state in {state.value for state in TERMINAL_COMMAND_RUN_STATES}:
-        raise _command_run_conflict(f"command run '{run_id}' is already terminal")
+        raise command_run_conflict(f"command run '{run_id}' is already terminal")
+
+
+def _ensure_command_run_can_record_owned_process_pid(
+    *,
+    command_run: CommandRunModel | None,
+    wait_state: FlowWaitStateModel | None,
+    run_id: str,
+) -> None:
+    _ensure_command_run_owns_active_wait(
+        command_run=command_run,
+        wait_state=wait_state,
+        run_id=run_id,
+    )
+    assert command_run is not None
+    if command_run.state != CommandRunState.RUNNING.value:
+        raise command_run_conflict(
+            f"command run '{run_id}' is not in the local-running state needed to persist a pid"
+        )
 
 
 def _ensure_command_run_can_record_terminal_result(
@@ -519,7 +588,7 @@ def _ensure_command_run_can_record_terminal_result(
     )
     assert command_run is not None
     if command_run.state in {state.value for state in TERMINAL_COMMAND_RUN_STATES}:
-        raise _command_run_conflict(f"command run '{run_id}' is already terminal")
+        raise command_run_conflict(f"command run '{run_id}' is already terminal")
 
 
 def _ensure_command_run_owns_active_wait(
@@ -529,31 +598,35 @@ def _ensure_command_run_owns_active_wait(
     run_id: str,
 ) -> None:
     if command_run is None:
-        raise _command_run_conflict(f"command run '{run_id}' is not current")
+        raise command_run_conflict(f"command run '{run_id}' is not current")
     if (
         wait_state is None
         or wait_state.waiting_cause != WaitingCause.WAITING_FOR_COMMAND_RUN.value
         or wait_state.command_run_id != command_run.run_id
     ):
-        raise _command_run_conflict(
+        raise command_run_conflict(
             f"command run '{run_id}' no longer owns the active command-run wait"
         )
 
 
-def _command_run_conflict(summary: str) -> RuntimeOperationError:
-    return RuntimeOperationError(
-        code=OperationFailureCode.ILLEGAL_STATE,
-        summary=summary,
-        is_retryable=False,
-        suggested_next_step=_COMMAND_RUN_CONFLICT_NEXT_STEP,
-        status_code_override=409,
-    )
+async def _require_flow_for_task(
+    session: AsyncSession,
+    task_id: str,
+) -> FlowModel:
+    from autoclaw.runtime.flow.queries import require_flow_for_task
+
+    return await require_flow_for_task(session, task_id)
 
 
 __all__ = [
     "cancel_command_run",
+    "claim_command_run_for_local_start",
     "list_command_runs",
+    "read_command_run",
+    "read_command_run_log",
+    "record_command_run_owned_process_pid",
     "record_command_run_progress",
     "record_command_run_terminal_result",
+    "request_command_run_cancellation",
     "start_command_run",
 ]
