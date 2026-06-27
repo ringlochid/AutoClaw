@@ -28,7 +28,7 @@ async def adopt_candidate(
     current_revision: FlowRevisionModel,
     nodes: list[NodeSnapshot],
     edges: list[EdgeSnapshot],
-) -> None:
+) -> FlowRevisionModel:
     _sync_child_node_key_mirrors(nodes)
     next_revision_id, next_flow_revision = _create_next_flow_revision(
         flow=flow,
@@ -66,6 +66,7 @@ async def adopt_candidate(
     )
     _persist_adopted_edges(session, next_revision_id, edges)
     flow.active_flow_revision_id = next_revision_id
+    return next_flow_revision
 
 
 def _criteria_signature(criteria: dict[str, object]) -> tuple[str, str, tuple[str, ...]]:

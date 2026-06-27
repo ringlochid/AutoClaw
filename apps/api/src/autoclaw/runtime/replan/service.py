@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.definitions.contracts.workflow import NodeKind
-from autoclaw.runtime.contracts import ChildNodeDraft, ChildNodePatch
+from autoclaw.runtime.contracts import (
+    ChildNodeDraft,
+    ChildNodePatch,
+    TaskEventSource,
+    TaskEventType,
+    WorkflowManifestRef,
+)
 from autoclaw.runtime.errors import illegal_state_error, illegal_target_relation_error
 from autoclaw.runtime.replan.adopt import adopt_candidate
 from autoclaw.runtime.replan.defaults import apply_child_defaults, refresh_descendant_defaults
@@ -14,6 +21,8 @@ from autoclaw.runtime.replan.edges import rebuild_dependency_edges
 from autoclaw.runtime.replan.lineage import node_has_open_current_work
 from autoclaw.runtime.replan.lookup import resolve_policy, resolve_role
 from autoclaw.runtime.replan.revision_state import current_revision_state
+from autoclaw.runtime.task_events import append_task_event
+from autoclaw.runtime.task_root.reads import load_task_root_paths
 
 NodeSnapshot = dict[str, Any]
 
@@ -48,8 +57,20 @@ async def add_child_to_current_flow(
     apply_child_defaults(parent, new_nodes[0])
     nodes.extend(new_nodes)
     edges = rebuild_dependency_edges(nodes)
-    await adopt_candidate(session, task_id, flow, revision, nodes, edges)
+    next_revision = await adopt_candidate(session, task_id, flow, revision, nodes, edges)
     await session.flush()
+    await _append_structural_revision_adopted_event(
+        session,
+        task_id=task_id,
+        state=state,
+        operation="add_child",
+        previous_flow_revision_id=revision.flow_revision_id,
+        active_flow_revision_id=next_revision.flow_revision_id,
+        target_node_key=child.node_key,
+        affected_node_keys=new_node_keys,
+        summary=f"Added child node '{child.node_key}'.",
+        occurred_at=next_revision.adopted_at,
+    )
     return child.node_key
 
 
@@ -66,6 +87,11 @@ async def update_child_in_current_flow(
         nodes=nodes,
         child_node_key=child_node_key,
         action_name="update_child",
+    )
+    affected_node_keys = (
+        _descendant_node_keys(nodes, target_node_key=child_node_key)
+        if patch.criteria is not None or patch.child_defaults is not None
+        else [child_node_key]
     )
     previous_target = deepcopy(target)
     if patch.role is not None:
@@ -109,8 +135,20 @@ async def update_child_in_current_flow(
             updated_parent=target,
         )
     edges = rebuild_dependency_edges(nodes)
-    await adopt_candidate(session, task_id, flow, revision, nodes, edges)
+    next_revision = await adopt_candidate(session, task_id, flow, revision, nodes, edges)
     await session.flush()
+    await _append_structural_revision_adopted_event(
+        session,
+        task_id=task_id,
+        state=state,
+        operation="update_child",
+        previous_flow_revision_id=revision.flow_revision_id,
+        active_flow_revision_id=next_revision.flow_revision_id,
+        target_node_key=child_node_key,
+        affected_node_keys=affected_node_keys,
+        summary=f"Updated child node '{child_node_key}'.",
+        occurred_at=next_revision.adopted_at,
+    )
 
 
 async def remove_child_from_current_flow(
@@ -137,10 +175,25 @@ async def remove_child_from_current_flow(
     for node in nodes:
         if node["node_key"] in descendants and await node_has_open_current_work(session, node):
             raise illegal_state_error("remove_child cannot delete open current child work")
+    affected_node_keys = [
+        str(node["node_key"]) for node in nodes if node["node_key"] in descendants
+    ]
     nodes = [node for node in nodes if node["node_key"] not in descendants]
     edges = rebuild_dependency_edges(nodes)
-    await adopt_candidate(session, task_id, flow, revision, nodes, edges)
+    next_revision = await adopt_candidate(session, task_id, flow, revision, nodes, edges)
     await session.flush()
+    await _append_structural_revision_adopted_event(
+        session,
+        task_id=task_id,
+        state=state,
+        operation="remove_child",
+        previous_flow_revision_id=revision.flow_revision_id,
+        active_flow_revision_id=next_revision.flow_revision_id,
+        target_node_key=child_node_key,
+        affected_node_keys=affected_node_keys,
+        summary=f"Removed child node '{child_node_key}'.",
+        occurred_at=next_revision.adopted_at,
+    )
 
 
 async def _draft_subtree_nodes(
@@ -254,3 +307,58 @@ def _resolve_add_child_parent(
             "add_child target parent must be an explicit descendant parent"
         )
     return target_parent
+
+
+async def _append_structural_revision_adopted_event(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    state: Any,
+    operation: str,
+    previous_flow_revision_id: str,
+    active_flow_revision_id: str,
+    target_node_key: str,
+    affected_node_keys: list[str],
+    summary: str,
+    occurred_at: datetime,
+) -> None:
+    workflow_manifest_ref = WorkflowManifestRef(
+        path=(await load_task_root_paths(session, task_id)).runtime_path / "workflow-manifest.md",
+        description="Whole-workflow visible contract for the current task.",
+    )
+    await append_task_event(
+        session,
+        task_id=task_id,
+        event_type=TaskEventType.STRUCTURAL_REVISION_ADOPTED,
+        event_source=TaskEventSource.NODE,
+        occurred_at=occurred_at,
+        flow_revision_id=active_flow_revision_id,
+        dispatch_id=state.flow.current_open_dispatch_id,
+        attempt_id=state.current_attempt.attempt_id,
+        node_key=state.current_node.node_key,
+        payload={
+            "operation": operation,
+            "previous_flow_revision_id": previous_flow_revision_id,
+            "active_flow_revision_id": active_flow_revision_id,
+            "target_node_key": target_node_key,
+            "affected_node_keys": affected_node_keys,
+            "workflow_manifest_ref": workflow_manifest_ref.model_dump(mode="json"),
+            "summary": summary,
+        },
+    )
+
+
+def _descendant_node_keys(
+    nodes: list[NodeSnapshot],
+    *,
+    target_node_key: str,
+) -> list[str]:
+    descendants = {target_node_key}
+    changed = True
+    while changed:
+        changed = False
+        for node in nodes:
+            if node["parent_node_key"] in descendants and node["node_key"] not in descendants:
+                descendants.add(node["node_key"])
+                changed = True
+    return [str(node["node_key"]) for node in nodes if node["node_key"] in descendants]

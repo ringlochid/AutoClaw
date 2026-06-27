@@ -167,6 +167,7 @@ class TaskEventType(StrEnum):
     BOUNDARY_ACCEPTED = "boundary_accepted"
     CHILD_ASSIGNMENT_STAGED = "child_assignment_staged"
     CHILD_ASSIGNMENT_COMMITTED = "child_assignment_committed"
+    STRUCTURAL_REVISION_ADOPTED = "structural_revision_adopted"
     PROVIDER_EVENT_NORMALIZED = "provider_event_normalized"
     HUMAN_REQUEST_OPENED = "human_request_opened"
     HUMAN_REQUEST_RESOLVED = "human_request_resolved"

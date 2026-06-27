@@ -24,6 +24,8 @@ from autoclaw.runtime.contracts import (
     CheckpointWriteBody,
     EvidenceRef,
     NodeKind,
+    TaskEventSource,
+    TaskEventType,
 )
 from autoclaw.runtime.errors import (
     illegal_caller_error,
@@ -38,6 +40,7 @@ from autoclaw.runtime.projection.runtime_state import (
     CurrentRuntimeState,
     current_runtime_state,
 )
+from autoclaw.runtime.task_events import append_task_event
 from autoclaw.runtime.task_root.reads import load_task_root_paths
 
 
@@ -50,17 +53,7 @@ async def record_checkpoint(
     dispatch: DispatchTurnModel | None = None,
 ) -> CheckpointRead:
     state = state or await current_runtime_state(session, task_id)
-    if dispatch is None:
-        flow = state.flow
-        if flow.current_open_dispatch_id is None:
-            raise illegal_state_error("no current open dispatch")
-        dispatch = await session.get(
-            DispatchTurnModel,
-            flow.current_open_dispatch_id,
-            options=(raiseload("*"),),
-        )
-        if dispatch is None:
-            raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
+    dispatch = await _load_checkpoint_dispatch(session, state=state, dispatch=dispatch)
     checkpoint_write = payload.checkpoint
     latest_checkpoint = await latest_checkpoint_for_attempt(session, state.current_attempt)
     _ensure_checkpoint_writable(state, latest_checkpoint, checkpoint_write)
@@ -76,7 +69,7 @@ async def record_checkpoint(
         checkpoint_write=checkpoint_write,
         paths=paths,
     )
-    _persist_checkpoint_row(
+    checkpoint = _persist_checkpoint_row(
         session,
         checkpoint_id=checkpoint_id,
         state=state,
@@ -98,6 +91,21 @@ async def record_checkpoint(
         checkpoint_kind=checkpoint_write.checkpoint_kind,
     )
     await session.flush()
+    checkpoint_ref = CheckpointFileRef(
+        path=paths.attempts_path / state.current_attempt.attempt_id / "latest-checkpoint.md",
+        description="Latest checkpoint for the current attempt.",
+    )
+    await _append_checkpoint_recorded_event(
+        session,
+        task_id=task_id,
+        state=state,
+        dispatch=dispatch,
+        checkpoint=checkpoint,
+        checkpoint_write=checkpoint_write,
+        produced_refs=artifacts.produced_refs,
+        transient_refs=artifacts.transient_refs,
+        checkpoint_ref=checkpoint_ref,
+    )
     _stage_checkpoint_outputs(
         session,
         task_id=task_id,
@@ -108,12 +116,42 @@ async def record_checkpoint(
         produced_file_copies=artifacts.produced_file_copies,
         transient_file_copies=artifacts.transient_file_copies,
     )
-    checkpoint_ref = CheckpointFileRef(
-        path=paths.attempts_path / state.current_attempt.attempt_id / "latest-checkpoint.md",
-        description="Latest checkpoint for the current attempt.",
-    )
-    return CheckpointRead(
+    return _checkpoint_read(
         attempt_id=state.current_attempt.attempt_id,
+        checkpoint_id=checkpoint_id,
+        checkpoint_ref=checkpoint_ref,
+    )
+
+
+async def _load_checkpoint_dispatch(
+    session: AsyncSession,
+    *,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel | None,
+) -> DispatchTurnModel:
+    if dispatch is not None:
+        return dispatch
+    flow = state.flow
+    if flow.current_open_dispatch_id is None:
+        raise illegal_state_error("no current open dispatch")
+    dispatch = await session.get(
+        DispatchTurnModel,
+        flow.current_open_dispatch_id,
+        options=(raiseload("*"),),
+    )
+    if dispatch is None:
+        raise missing_resource_error(f"missing dispatch '{flow.current_open_dispatch_id}'")
+    return dispatch
+
+
+def _checkpoint_read(
+    *,
+    attempt_id: str,
+    checkpoint_id: str,
+    checkpoint_ref: CheckpointFileRef,
+) -> CheckpointRead:
+    return CheckpointRead(
+        attempt_id=attempt_id,
         checkpoint_id=checkpoint_id,
         checkpoint_ref=checkpoint_ref,
         latest_checkpoint_ref=checkpoint_ref,
@@ -172,32 +210,30 @@ def _persist_checkpoint_row(
     checkpoint_write: Any,
     produced_refs: list[EvidenceRef],
     transient_refs: tuple[EvidenceRef, ...],
-) -> None:
-    session.add(
-        AttemptCheckpointModel(
-            checkpoint_id=checkpoint_id,
-            assignment_id=state.current_assignment.assignment_id,
-            assignment_key=state.current_assignment.assignment_key,
-            attempt_id=state.current_attempt.attempt_id,
-            flow_node_id=state.current_assignment.flow_node_id,
-            node_key=state.current_node.node_key,
-            checkpoint_kind=checkpoint_write.checkpoint_kind.value,
-            outcome=(
-                checkpoint_write.outcome.value if checkpoint_write.outcome is not None else None
-            ),
-            summary=checkpoint_write.handoff.summary,
-            next_step=checkpoint_write.handoff.next_step,
-            blockers_json=list(checkpoint_write.handoff.blockers),
-            risks_json=list(checkpoint_write.handoff.risks),
-            produced_artifact_claims_json=[
-                claim.model_dump(mode="json") for claim in checkpoint_write.produced_artifacts
-            ],
-            produced_artifacts_json=[ref.model_dump(mode="json") for ref in produced_refs],
-            artifact_refs_json=[ref.model_dump(mode="json") for ref in produced_refs],
-            transient_refs_json=[ref.model_dump(mode="json") for ref in transient_refs],
-            task_memory_search_hints_json=list(checkpoint_write.task_memory_search_hints),
-        )
+) -> AttemptCheckpointModel:
+    checkpoint = AttemptCheckpointModel(
+        checkpoint_id=checkpoint_id,
+        assignment_id=state.current_assignment.assignment_id,
+        assignment_key=state.current_assignment.assignment_key,
+        attempt_id=state.current_attempt.attempt_id,
+        flow_node_id=state.current_assignment.flow_node_id,
+        node_key=state.current_node.node_key,
+        checkpoint_kind=checkpoint_write.checkpoint_kind.value,
+        outcome=(checkpoint_write.outcome.value if checkpoint_write.outcome is not None else None),
+        summary=checkpoint_write.handoff.summary,
+        next_step=checkpoint_write.handoff.next_step,
+        blockers_json=list(checkpoint_write.handoff.blockers),
+        risks_json=list(checkpoint_write.handoff.risks),
+        produced_artifact_claims_json=[
+            claim.model_dump(mode="json") for claim in checkpoint_write.produced_artifacts
+        ],
+        produced_artifacts_json=[ref.model_dump(mode="json") for ref in produced_refs],
+        artifact_refs_json=[ref.model_dump(mode="json") for ref in produced_refs],
+        transient_refs_json=[ref.model_dump(mode="json") for ref in transient_refs],
+        task_memory_search_hints_json=list(checkpoint_write.task_memory_search_hints),
     )
+    session.add(checkpoint)
+    return checkpoint
 
 
 def _persist_attempt_produced_refs(
@@ -242,6 +278,47 @@ def _update_delivery_state_for_checkpoint(
     else:
         delivery_state.last_controller_terminal_at = utc_now()
     delivery_state.updated_at = utc_now()
+
+
+async def _append_checkpoint_recorded_event(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    checkpoint: AttemptCheckpointModel,
+    checkpoint_write: CheckpointWriteBody,
+    produced_refs: list[EvidenceRef],
+    transient_refs: tuple[EvidenceRef, ...],
+    checkpoint_ref: CheckpointFileRef,
+) -> None:
+    await append_task_event(
+        session,
+        task_id=task_id,
+        event_type=TaskEventType.CHECKPOINT_RECORDED,
+        event_source=TaskEventSource.NODE,
+        occurred_at=checkpoint.recorded_at,
+        flow_revision_id=state.flow_revision.flow_revision_id,
+        dispatch_id=dispatch.dispatch_id,
+        attempt_id=state.current_attempt.attempt_id,
+        node_key=state.current_node.node_key,
+        payload={
+            "checkpoint_id": checkpoint.checkpoint_id,
+            "checkpoint_kind": checkpoint_write.checkpoint_kind.value,
+            "outcome": (
+                checkpoint_write.outcome.value if checkpoint_write.outcome is not None else None
+            ),
+            "summary": checkpoint_write.handoff.summary,
+            "next_step": checkpoint_write.handoff.next_step,
+            "blockers": list(checkpoint_write.handoff.blockers),
+            "risks": list(checkpoint_write.handoff.risks),
+            "produced_artifacts": [ref.model_dump(mode="json") for ref in produced_refs],
+            "transient_refs": [ref.model_dump(mode="json") for ref in transient_refs],
+            "task_memory_search_hints": list(checkpoint_write.task_memory_search_hints),
+            "checkpoint_ref": checkpoint_ref.model_dump(mode="json"),
+            "latest_checkpoint_ref": checkpoint_ref.model_dump(mode="json"),
+        },
+    )
 
 
 def _stage_checkpoint_outputs(

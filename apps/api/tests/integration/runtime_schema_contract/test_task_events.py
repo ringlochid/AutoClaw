@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+import argparse
 import asyncio
+import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from itertools import pairwise
 from pathlib import Path
 
+import autoclaw.interfaces.cli as cli
 import pytest
+from autoclaw.config import get_settings
 from autoclaw.persistence import RuntimeBase, TaskEventModel, TaskModel
+from autoclaw.persistence.session import (
+    dispose_db_engine,
+    get_session_factory,
+    verify_database_schema,
+)
 from autoclaw.runtime.contracts import TaskEventRecord
 from autoclaw.runtime.task_events import (
     TaskEventCursorResetRequiredError,
@@ -57,6 +66,67 @@ async def test_task_event_schema_persists_timeline_fields_and_query_indexes(
     assert "ck_task_events_event_type" in snapshot.table_sql["task_events"]
     assert "ix_task_events_task_seq" in snapshot.index_names["task_events"]
     assert "ix_task_events_task_event" in snapshot.index_names["task_events"]
+
+
+async def test_task_event_schema_verification_and_upgrade_repair_stale_event_type_constraint(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    database_path = await initialize_runtime_schema_database(tmp_path)
+    await dispose_db_engine()
+    legacyify_task_event_type_constraint(
+        database_path,
+        removed_event_type="structural_revision_adopted",
+    )
+
+    try:
+        with cli.command_env(config_path=config_path):
+            get_settings.cache_clear()
+            with pytest.raises(
+                RuntimeError,
+                match=(
+                    "task_events missing check constraint ck_task_events_event_type token "
+                    "structural_revision_adopted"
+                ),
+            ):
+                await verify_database_schema()
+    finally:
+        await dispose_db_engine()
+
+    try:
+        upgrade_result = await asyncio.to_thread(
+            cli.cmd_db_upgrade,
+            argparse.Namespace(config=str(config_path), revision="head"),
+        )
+    finally:
+        await dispose_db_engine()
+
+    assert upgrade_result == 0
+    assert "Database repair: legacy schema backed up and reconciled" in capsys.readouterr().out
+    assert (
+        "structural_revision_adopted"
+        in read_runtime_schema_snapshot(database_path).table_sql["task_events"]
+    )
+
+    try:
+        with cli.command_env(config_path=config_path):
+            get_settings.cache_clear()
+            session_factory = get_session_factory()
+            await seed_task(session_factory, task_id="task_event_constraint_repaired")
+            async with session_factory() as session:
+                repaired_event = await append_task_event(
+                    session,
+                    task_id="task_event_constraint_repaired",
+                    event_type="structural_revision_adopted",
+                    event_source="controller",
+                    payload={"operation": "update_child"},
+                )
+                await session.commit()
+    finally:
+        await dispose_db_engine()
+
+    assert repaired_event.event_type == "structural_revision_adopted"
 
 
 async def test_task_event_rows_keep_task_stream_sequence_and_hash_chain(
@@ -359,3 +429,45 @@ async def seed_task(
             )
         )
         await session.commit()
+
+
+def legacyify_task_event_type_constraint(
+    database_path: Path,
+    *,
+    removed_event_type: str,
+) -> None:
+    with sqlite3.connect(database_path) as connection:
+        table_sql_row = connection.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'task_events'"
+        ).fetchone()
+        assert table_sql_row is not None and isinstance(table_sql_row[0], str)
+        legacy_table_sql = table_sql_row[0].replace(f", '{removed_event_type}'", "")
+        index_sql = [
+            row[0]
+            for row in connection.execute(
+                """
+                SELECT sql
+                FROM sqlite_master
+                WHERE type = 'index'
+                  AND tbl_name = 'task_events'
+                  AND sql IS NOT NULL
+                """
+            ).fetchall()
+            if isinstance(row[0], str)
+        ]
+        current_columns = [
+            row[1]
+            for row in connection.execute("PRAGMA table_info('task_events')").fetchall()
+            if isinstance(row[1], str)
+        ]
+        projection = ", ".join(f'"{column_name}"' for column_name in current_columns)
+        connection.execute('ALTER TABLE "task_events" RENAME TO "task_events_legacy"')
+        connection.execute(legacy_table_sql)
+        connection.execute(
+            f'INSERT INTO "task_events" ({projection}) '
+            f'SELECT {projection} FROM "task_events_legacy"'
+        )
+        connection.execute('DROP TABLE "task_events_legacy"')
+        for statement in index_sql:
+            connection.execute(statement)
+        connection.commit()

@@ -103,7 +103,11 @@ async def test_runtime_routes_surface_paused_snapshot_continue_action(
             == paused_snapshot_json["current_paths"]
         )
         assert_operator_current_paths(paused_snapshot_json["current_paths"])
-        assert await task_event_types_for_task(context, task_id=task.task_id) == ["task_paused"]
+        assert [
+            event_type
+            for event_type in await task_event_types_for_task(context, task_id=task.task_id)
+            if event_type == "task_paused"
+        ] == ["task_paused"]
 
 
 async def test_runtime_routes_reject_continue_for_running_flow(

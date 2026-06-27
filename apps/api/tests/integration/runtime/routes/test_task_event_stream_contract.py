@@ -17,6 +17,7 @@ from autoclaw.runtime.task_events import append_task_event, encode_task_event_cu
 from tests.integration.runtime.routes.support import (
     RuntimeRouteContext,
     SeededRouteTask,
+    assign_child,
     launch_route_task,
     runtime_route_context,
 )
@@ -33,6 +34,13 @@ async def test_control_task_events_backfill_after_cursor_and_stop_at_snapshot_he
             task_id="task_control_event_backfill",
             task_root_name="task-root",
         )
+        launch_snapshot = await context.client.get(
+            f"/control/tasks/{task.task_id}/snapshot",
+            headers=context.operator_headers,
+        )
+        assert launch_snapshot.status_code == 200
+        launch_head_event_id = launch_snapshot.json()["stream_head_event_id"]
+        assert isinstance(launch_head_event_id, str)
         first = await append_route_task_event(context, task, label="first")
         second = await append_route_task_event(context, task, label="second")
         third = await append_route_task_event(context, task, label="third")
@@ -41,7 +49,7 @@ async def test_control_task_events_backfill_after_cursor_and_stop_at_snapshot_he
         first_page = await context.client.get(
             f"/control/tasks/{task.task_id}/events",
             headers=context.operator_headers,
-            params={"limit": 1},
+            params={"cursor": launch_head_event_id, "limit": 1},
         )
         assert first_page.status_code == 200
         assert [event["event_id"] for event in first_page.json()["items"]] == [first.event_id]
@@ -145,6 +153,36 @@ async def test_control_snapshot_returns_current_stream_head(
         assert control_trace.json()["task_id"] == task.task_id
         assert control_snapshot.json()["stream_head_event_id"] == head.event_id
         assert operator_snapshot.json()["stream_head_event_id"] == head.event_id
+
+
+async def test_control_task_event_stream_delivers_live_child_assignment_staged_event(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_runtime_event_stream_live",
+            task_root_name="task-root",
+        )
+
+        async with live_control_stream_client(context) as stream_client:
+            reader = asyncio.create_task(
+                read_task_event_stream(
+                    stream_client,
+                    context,
+                    task,
+                    expected_count=1,
+                )
+            )
+            await asyncio.sleep(0.2)
+            assign_response = await assign_child(context, task)
+            assert assign_response.status_code == 200
+            frames = await asyncio.wait_for(reader, timeout=8)
+
+        assert [frame["event"] for frame in frames] == ["child_assignment_staged"]
+        assert frames[0]["id"] == frames[0]["data"]["event_id"]
+        assert frames[0]["data"]["dispatch_id"] == task.current_open_dispatch_id
+        assert frames[0]["data"]["payload"]["target_node_key"] == "implementation_subtree"
 
 
 async def test_control_task_event_stream_replays_after_cursor_then_tails_live_events(
@@ -364,10 +402,7 @@ def reserve_local_port() -> int:
 
 
 def open_runtime_session_counts() -> dict[int, int]:
-    return {
-        loop_id: len(tuple(sessions))
-        for loop_id, sessions in _OPEN_SESSIONS_BY_LOOP.items()
-    }
+    return {loop_id: len(tuple(sessions)) for loop_id, sessions in _OPEN_SESSIONS_BY_LOOP.items()}
 
 
 async def assert_runtime_sessions_return_to_baseline(
@@ -379,8 +414,7 @@ async def assert_runtime_sessions_return_to_baseline(
     while loop.time() < deadline:
         latest_counts = open_runtime_session_counts()
         if all(
-            count <= baseline_counts.get(loop_id, 0)
-            for loop_id, count in latest_counts.items()
+            count <= baseline_counts.get(loop_id, 0) for loop_id, count in latest_counts.items()
         ):
             return
         await asyncio.sleep(0.05)

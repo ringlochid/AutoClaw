@@ -7,9 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
 from autoclaw.persistence.models import (
+    AssignmentModel,
     AttemptCheckpointModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
+    FlowModel,
 )
 from autoclaw.runtime.boundary.transitions import advance_boundary_state
 from autoclaw.runtime.clock import dispatch_control_deadline, utc_now
@@ -22,6 +24,8 @@ from autoclaw.runtime.contracts import (
     FlowStatus,
     NodeKind,
     RuntimeFlowRead,
+    TaskEventSource,
+    TaskEventType,
     TaskRootPaths,
     WorkflowManifestRef,
 )
@@ -40,6 +44,7 @@ from autoclaw.runtime.post_commit.cases import stage_boundary_outputs
 from autoclaw.runtime.post_commit.writes import DeferredRuntimeWrite
 from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState, current_runtime_state
 from autoclaw.runtime.release.guards import terminal_release_basis_committed
+from autoclaw.runtime.task_events import append_task_event
 from autoclaw.runtime.task_root.reads import load_task_root_paths
 
 TERMINAL_BOUNDARIES = frozenset(
@@ -114,42 +119,45 @@ async def accept_boundary(
         boundary=payload.boundary,
         checkpoint_ref=context.checkpoint_ref,
     )
-    context.state.flow.updated_at = utc_now()
+    boundary_accepted_at = utc_now()
+    context.state.flow.updated_at = boundary_accepted_at
+    await _append_boundary_progression_events(
+        session,
+        task_id=task_id,
+        state=context.state,
+        dispatch=context.dispatch,
+        boundary=payload.boundary,
+        checkpoint_ref=context.checkpoint_ref,
+        occurred_at=boundary_accepted_at,
+    )
     await session.flush()
-    attempt_ids: tuple[str, ...] = ()
-    if (
-        payload.boundary == EgressBoundary.RETRY
-        and context.state.current_assignment.current_attempt_id
-    ):
-        attempt_ids = (context.state.current_assignment.current_attempt_id,)
     _stage_boundary_outputs(
         session,
         task_id,
         dispatch_id=context.dispatch.dispatch_id,
-        attempt_ids=attempt_ids,
+        attempt_ids=_retry_attempt_ids(
+            boundary=payload.boundary,
+            current_attempt_id=context.state.current_assignment.current_attempt_id,
+        ),
     )
     if should_read_after_commit:
 
         async def _should_read_after_commit() -> BoundaryRead:
-            return BoundaryRead(
+            return await _boundary_read(
+                session,
+                task_id=task_id,
+                state=context.state,
                 accepted_boundary=payload.boundary,
-                flow=await _semantic_boundary_flow_read(
-                    session,
-                    task_id=task_id,
-                    state=context.state,
-                ),
-                latest_checkpoint_ref=context.checkpoint_ref,
+                checkpoint_ref=context.checkpoint_ref,
             )
 
         return DeferredRuntimeWrite(read_after_commit=_should_read_after_commit)
-    return BoundaryRead(
+    return await _boundary_read(
+        session,
+        task_id=task_id,
+        state=context.state,
         accepted_boundary=payload.boundary,
-        flow=await _semantic_boundary_flow_read(
-            session,
-            task_id=task_id,
-            state=context.state,
-        ),
-        latest_checkpoint_ref=context.checkpoint_ref,
+        checkpoint_ref=context.checkpoint_ref,
     )
 
 
@@ -382,6 +390,115 @@ async def _semantic_boundary_flow_read(
         active_attempt_id=semantic_target.attempt.attempt_id,
         updated_at=state.flow.updated_at,
     )
+
+
+def _retry_attempt_ids(
+    *,
+    boundary: EgressBoundary,
+    current_attempt_id: str | None,
+) -> tuple[str, ...]:
+    if boundary == EgressBoundary.RETRY and current_attempt_id is not None:
+        return (current_attempt_id,)
+    return ()
+
+
+async def _boundary_read(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    state: CurrentRuntimeState,
+    accepted_boundary: EgressBoundary,
+    checkpoint_ref: CheckpointFileRef | None,
+) -> BoundaryRead:
+    return BoundaryRead(
+        accepted_boundary=accepted_boundary,
+        flow=await _semantic_boundary_flow_read(
+            session,
+            task_id=task_id,
+            state=state,
+        ),
+        latest_checkpoint_ref=checkpoint_ref,
+    )
+
+
+async def _append_boundary_progression_events(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    boundary: EgressBoundary,
+    checkpoint_ref: CheckpointFileRef | None,
+    occurred_at: datetime,
+) -> None:
+    next_node_key, next_attempt_id = await _next_semantic_target(session, flow=state.flow)
+    await append_task_event(
+        session,
+        task_id=task_id,
+        event_type=TaskEventType.BOUNDARY_ACCEPTED,
+        event_source=TaskEventSource.NODE,
+        occurred_at=occurred_at,
+        flow_revision_id=state.flow.active_flow_revision_id,
+        dispatch_id=dispatch.dispatch_id,
+        attempt_id=state.current_attempt.attempt_id,
+        node_key=state.current_node.node_key,
+        payload={
+            "boundary": boundary.value,
+            "latest_checkpoint_ref": (
+                None if checkpoint_ref is None else checkpoint_ref.model_dump(mode="json")
+            ),
+            "previous_node_key": state.current_node.node_key,
+            "next_node_key": next_node_key,
+            "next_attempt_id": next_attempt_id,
+            "resulting_flow_status": state.flow.status,
+            "requires_reopen_after_inactivity": state.flow.status == FlowStatus.RUNNING.value,
+        },
+    )
+    if boundary != EgressBoundary.YIELD or dispatch.staged_child_assignment_id is None:
+        return
+    child_assignment = await session.get(AssignmentModel, dispatch.staged_child_assignment_id)
+    if child_assignment is None or child_assignment.current_attempt_id is None:
+        raise missing_resource_error("yield continuation basis is incomplete")
+    await append_task_event(
+        session,
+        task_id=task_id,
+        event_type=TaskEventType.CHILD_ASSIGNMENT_COMMITTED,
+        event_source=TaskEventSource.CONTROLLER,
+        occurred_at=occurred_at,
+        flow_revision_id=child_assignment.flow_revision_id,
+        dispatch_id=dispatch.dispatch_id,
+        attempt_id=child_assignment.current_attempt_id,
+        node_key=child_assignment.node_key,
+        payload={
+            "target_node_key": child_assignment.node_key,
+            "target_assignment_key": child_assignment.assignment_key,
+            "target_attempt_id": child_assignment.current_attempt_id,
+            "parent_node_key": state.current_node.node_key,
+            "source_dispatch_id": dispatch.dispatch_id,
+            "boundary": EgressBoundary.YIELD.value,
+        },
+    )
+
+
+async def _next_semantic_target(
+    session: AsyncSession,
+    *,
+    flow: FlowModel,
+) -> tuple[str | None, str | None]:
+    if flow.status != FlowStatus.RUNNING.value:
+        return None, None
+    semantic_target = await current_semantic_flow_target(
+        session,
+        flow=flow,
+        incomplete_summary="accepted boundary left current semantic target incomplete",
+        suggested_next_step=(
+            "Inspect the committed node, assignment, and attempt currentness, then repair "
+            "the incomplete semantic target before progressing this task."
+        ),
+    )
+    if semantic_target is None:
+        return None, None
+    return semantic_target.node.node_key, semantic_target.attempt.attempt_id
 
 
 __all__ = ["accept_boundary"]

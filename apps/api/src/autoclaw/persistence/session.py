@@ -18,6 +18,10 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool, StaticPool
 
 from autoclaw.config import get_settings
+from autoclaw.persistence.models.runtime.task_events import (
+    TASK_EVENT_SOURCE_VALUES,
+    TASK_EVENT_TYPE_VALUES,
+)
 from autoclaw.platform.environment import Environment
 from autoclaw.runtime.post_commit.queue import (
     clear_post_commit_actions,
@@ -159,6 +163,12 @@ REQUIRED_SCHEMA_INDEXES: dict[str, set[str]] = {
     "pending_human_requests": {"ix_pending_human_requests_task_status"},
     "command_runs": {"ix_command_runs_task_created", "ix_command_runs_task_state"},
     "flow_wait_states": {"ix_flow_wait_states_task_cause"},
+}
+REQUIRED_SCHEMA_CHECK_CONSTRAINT_TOKENS: dict[str, dict[str, tuple[str, ...]]] = {
+    "task_events": {
+        "ck_task_events_event_source": TASK_EVENT_SOURCE_VALUES,
+        "ck_task_events_event_type": TASK_EVENT_TYPE_VALUES,
+    }
 }
 _TEST_SQLITE_CLOSE_SETTLE_SECONDS = 0.2
 
@@ -386,6 +396,16 @@ def _index_names(connection: Connection, table_name: str) -> set[str]:
     }
 
 
+def _check_constraint_sql_by_name(connection: Connection, table_name: str) -> dict[str, str]:
+    constraints: dict[str, str] = {}
+    for constraint in inspect(connection).get_check_constraints(table_name):
+        name = constraint.get("name")
+        sqltext = constraint.get("sqltext")
+        if isinstance(name, str) and isinstance(sqltext, str):
+            constraints[name] = sqltext
+    return constraints
+
+
 def _missing_foreign_key_messages(connection: Connection) -> list[str]:
     missing: list[str] = []
     actual_tables = _table_names(connection)
@@ -417,10 +437,32 @@ def _missing_index_messages(connection: Connection) -> list[str]:
     return missing
 
 
+def _missing_check_constraint_messages(connection: Connection) -> list[str]:
+    missing: list[str] = []
+    actual_tables = _table_names(connection)
+    for table_name, expected_constraints in REQUIRED_SCHEMA_CHECK_CONSTRAINT_TOKENS.items():
+        if table_name not in actual_tables:
+            continue
+        actual_constraints = _check_constraint_sql_by_name(connection, table_name)
+        for constraint_name, expected_tokens in expected_constraints.items():
+            sqltext = actual_constraints.get(constraint_name)
+            if sqltext is None:
+                missing.append(f"{table_name} missing check constraint {constraint_name}")
+                continue
+            for expected_token in expected_tokens:
+                if expected_token not in sqltext:
+                    missing.append(
+                        f"{table_name} missing check constraint {constraint_name} token "
+                        f"{expected_token}"
+                    )
+    return missing
+
+
 def _verify_database_schema_contract(connection: Connection) -> None:
     missing = _missing_table_or_column_messages(connection)
     missing.extend(_missing_foreign_key_messages(connection))
     missing.extend(_missing_index_messages(connection))
+    missing.extend(_missing_check_constraint_messages(connection))
     if missing:
         joined = "; ".join(missing)
         raise RuntimeError(

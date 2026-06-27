@@ -270,15 +270,17 @@ async def _latest_task_event_head(
     *,
     task_id: str,
 ) -> _TaskEventAppendHead:
-    row = await session.scalar(
-        select(TaskEventModel)
+    row = await session.execute(
+        select(TaskEventModel.event_seq, TaskEventModel.event_hash)
         .where(TaskEventModel.task_id == task_id)
         .order_by(TaskEventModel.event_seq.desc())
         .limit(1)
     )
-    if row is None:
+    latest_row = row.first()
+    if latest_row is None:
         return _TaskEventAppendHead(event_seq=0, event_hash=None)
-    return _TaskEventAppendHead(event_seq=row.event_seq, event_hash=row.event_hash)
+    event_seq, event_hash = latest_row
+    return _TaskEventAppendHead(event_seq=int(event_seq), event_hash=event_hash)
 
 
 async def _lock_task_event_stream(session: AsyncSession, *, task_id: str) -> None:

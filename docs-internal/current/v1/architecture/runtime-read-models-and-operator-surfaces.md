@@ -95,19 +95,22 @@ Current `/control/tasks/{task_id}/events` and `/control/tasks/{task_id}/events/s
 
 Current implemented append coverage is limited to:
 
+- task-started, dispatch-opened, and provider-resolution-recorded events
+- checkpoint recorded, boundary accepted, child-assignment staged or committed, and structural-revision adopted events
 - human-request opened and terminal events
 - command-run started, progress, cancel-requested, and terminal events
 - task pause, resume, and cancel events
 
-The current enum vocabulary also includes `task_started`, `dispatch_opened`, `provider_resolution_recorded`, `checkpoint_recorded`, `boundary_accepted`, `child_assignment_staged`, `child_assignment_committed`, and `provider_event_normalized`. Those names are not enough to make the current stream carry those runtime facts.
+The current enum vocabulary also includes `provider_event_normalized`. That name is not enough to make the current stream carry those runtime facts.
 
-Current `record_checkpoint`, `accept_boundary`, `assign_child`, and structural replan or adoption paths persist controller-owned rows and projections, but they do not append task-event rows today.
+Current normalized provider-event persistence still lives outside the `task_events` stream.
 
 Rules:
 
-- UI timelines may render those facts from trace or readback as current-state context, but not as live SSE chronology unless a persisted task event exists
+- UI timelines may treat task-start, dispatch-open, provider-resolution, checkpoint, boundary, child-assignment, and structural-revision cards as stream-backed because persisted task events now exist for those families
+- UI timelines may still render provider-event normalization facts from trace or readback as current-state context, but not as live SSE chronology unless a persisted task event exists
 - support files and generated projections must not be parsed to synthesize missing task-event stream rows
-- a future streaming implementation should add append sites and payload schemas before the UI treats checkpoint, boundary, child-assignment, or structural-revision cards as stream-backed
+- a future streaming implementation should add append sites and payload schemas before the UI treats provider-event cards as stream-backed
 
 ## Current observability rule
 

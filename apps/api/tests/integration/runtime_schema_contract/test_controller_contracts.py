@@ -230,6 +230,7 @@ def test_runtime_contracts_expose_waiting_and_event_vocabulary() -> None:
         "boundary_accepted",
         "child_assignment_staged",
         "child_assignment_committed",
+        "structural_revision_adopted",
         "provider_event_normalized",
         "human_request_opened",
         "human_request_resolved",

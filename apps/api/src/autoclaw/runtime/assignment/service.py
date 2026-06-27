@@ -29,6 +29,8 @@ from autoclaw.runtime.contracts import (
     AssignmentFileRef,
     EvidenceRef,
     NodeRuntimeFileRef,
+    TaskEventSource,
+    TaskEventType,
     TaskRootPaths,
     WorkflowManifestRef,
 )
@@ -41,6 +43,7 @@ from autoclaw.runtime.post_commit.cases import stage_assign_child_outputs
 from autoclaw.runtime.post_commit.writes import DeferredRuntimeWrite
 from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState
 from autoclaw.runtime.release.guards import ensure_no_staged_child_assignment
+from autoclaw.runtime.task_events import append_task_event
 from autoclaw.runtime.task_root.reads import load_task_root_paths
 
 
@@ -296,6 +299,15 @@ async def _stage_prepared_child_assignment(
     )
     dispatch.staged_child_assignment_id = assignment.assignment_id
     await session.flush()
+    await _append_child_assignment_staged_event(
+        session,
+        task_id=task_id,
+        state=state,
+        dispatch=dispatch,
+        assignment=assignment,
+        prepared=prepared,
+        assignment_summary=typed_call.payload.assignment_intent.summary,
+    )
     stage_assign_child_outputs(
         session,
         task_id=task_id,
@@ -343,6 +355,54 @@ async def _assign_child_success(
     if should_read_after_commit:
         return DeferredRuntimeWrite(read_after_commit=_should_read_after_commit)
     return await _should_read_after_commit()
+
+
+async def _append_child_assignment_staged_event(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    assignment: AssignmentModel,
+    prepared: PreparedChildAssignment,
+    assignment_summary: str,
+) -> None:
+    child_assignment_ref = AssignmentFileRef(
+        path=prepared.paths.attempts_path / prepared.attempt_id / "assignment.md",
+        description=f"Current assignment for child node '{prepared.child_node.node_key}'.",
+    )
+    workflow_manifest_ref = WorkflowManifestRef(
+        path=prepared.paths.runtime_path / "workflow-manifest.md",
+        description="Whole-workflow visible contract for the current task.",
+    )
+    checkpoint_ref = latest_checkpoint_ref(
+        attempt_id=state.current_attempt.attempt_id,
+        latest_checkpoint_id=state.current_attempt.latest_checkpoint_id,
+        task_root_paths=prepared.paths,
+    )
+    await append_task_event(
+        session,
+        task_id=task_id,
+        event_type=TaskEventType.CHILD_ASSIGNMENT_STAGED,
+        event_source=TaskEventSource.NODE,
+        occurred_at=assignment.created_at,
+        flow_revision_id=state.flow_revision.flow_revision_id,
+        dispatch_id=dispatch.dispatch_id,
+        attempt_id=state.current_attempt.attempt_id,
+        node_key=state.current_node.node_key,
+        payload={
+            "target_node_key": prepared.child_node.node_key,
+            "target_assignment_key": assignment.assignment_key,
+            "target_attempt_id": prepared.attempt_id,
+            "assignment_summary": assignment_summary,
+            "child_assignment_ref": child_assignment_ref.model_dump(mode="json"),
+            "workflow_manifest_ref": workflow_manifest_ref.model_dump(mode="json"),
+            "latest_checkpoint_ref": (
+                None if checkpoint_ref is None else checkpoint_ref.model_dump(mode="json")
+            ),
+            "transient_refs": [ref.model_dump(mode="json") for ref in prepared.transient_refs],
+        },
+    )
 
 
 __all__ = ["call_assign_child"]

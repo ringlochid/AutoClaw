@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +22,10 @@ from autoclaw.runtime.contracts import (
     FlowStatus,
     NodeKind,
     PromptFamily,
+    ProviderName,
+    TaskEventSource,
+    TaskEventType,
+    WorkflowManifestRef,
 )
 from autoclaw.runtime.dispatch.gateway import (
     OPENCLAW_GATEWAY_TRANSPORT_FAMILY,
@@ -40,8 +45,11 @@ from autoclaw.runtime.dispatch.openclaw.lifecycle import activate_dispatch_runti
 from autoclaw.runtime.dispatch.openclaw.models import (
     OpenClawDispatchLaunchLease,
 )
+from autoclaw.runtime.flow import WORKFLOW_MANIFEST_REF_DESCRIPTION
 from autoclaw.runtime.flow.queries import next_node_sequence_number
 from autoclaw.runtime.ids import dispatch_id_for_task
+from autoclaw.runtime.task_events import append_task_event
+from autoclaw.runtime.task_root.reads import load_task_root_paths
 
 LOGGER = logging.getLogger(__name__)
 
@@ -276,6 +284,11 @@ async def _persist_dispatch_acceptance(
             prompt_path=launch_outcome.prompt_path,
             content_hash=launch_outcome.content_hash,
         )
+        await _append_dispatch_open_events(
+            session,
+            context=context,
+            accepted_at=launch_outcome.launch_result.accepted_at,
+        )
         await _commit_dispatch_outputs(
             session,
             task_id=context.task_id,
@@ -366,6 +379,56 @@ def _relevant_checkpoint_attempt_id(
     ):
         return None
     return previous_dispatch.attempt_id
+
+
+async def _append_dispatch_open_events(
+    session: AsyncSession,
+    *,
+    context: GatewayDispatchContext,
+    accepted_at: datetime,
+) -> None:
+    task_root_paths = await load_task_root_paths(session, context.task_id)
+    workflow_manifest_ref = WorkflowManifestRef(
+        path=task_root_paths.runtime_path / "workflow-manifest.md",
+        description=WORKFLOW_MANIFEST_REF_DESCRIPTION,
+    )
+    await append_task_event(
+        session,
+        task_id=context.task_id,
+        event_type=TaskEventType.PROVIDER_RESOLUTION_RECORDED,
+        event_source=TaskEventSource.CONTROLLER,
+        occurred_at=accepted_at,
+        flow_revision_id=context.flow.active_flow_revision_id,
+        dispatch_id=context.dispatch.dispatch_id,
+        attempt_id=context.attempt.attempt_id,
+        node_key=context.dispatch.node_key,
+        payload={
+            "requested_provider": ProviderName.OPENCLAW.value,
+            "resolved_provider": ProviderName.OPENCLAW.value,
+            "dispatch_id": context.dispatch.dispatch_id,
+            "attempt_id": context.attempt.attempt_id,
+        },
+    )
+    await append_task_event(
+        session,
+        task_id=context.task_id,
+        event_type=TaskEventType.DISPATCH_OPENED,
+        event_source=TaskEventSource.CONTROLLER,
+        occurred_at=accepted_at,
+        flow_revision_id=context.flow.active_flow_revision_id,
+        dispatch_id=context.dispatch.dispatch_id,
+        attempt_id=context.attempt.attempt_id,
+        node_key=context.dispatch.node_key,
+        payload={
+            "node_key": context.dispatch.node_key,
+            "assignment_key": context.assignment.assignment_key,
+            "attempt_id": context.attempt.attempt_id,
+            "previous_dispatch_id": context.dispatch.previous_dispatch_id,
+            "delivery_status": context.dispatch.delivery_status,
+            "control_state": context.dispatch.control_state,
+            "workflow_manifest_ref": workflow_manifest_ref.model_dump(mode="json"),
+        },
+    )
 
 
 async def _commit_dispatch_outputs(
