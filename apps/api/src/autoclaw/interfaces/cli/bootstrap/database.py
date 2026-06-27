@@ -19,6 +19,7 @@ from autoclaw.interfaces.cli.bootstrap.legacy_copy import (
     sqlite_command_run_row,
     sqlite_pending_human_request_row,
 )
+from autoclaw.interfaces.cli.progress import CliProgress
 from autoclaw.persistence.session import (
     dispose_db_engine,
     ensure_database_schema,
@@ -37,22 +38,34 @@ class DatabaseRepairResult:
 
 async def ensure_database_ready_with_legacy_sqlite_repair(
     database_url: str,
+    *,
+    progress: CliProgress | None = None,
 ) -> DatabaseRepairResult | None:
     try:
-        await ensure_database_ready(database_url)
+        await ensure_database_ready(database_url, progress=progress)
         return None
     except RuntimeError as exc:
         if not _schema_reset_required(exc):
             raise
         database_path = sqlite_database_path(database_url)
         if database_path is None:
+            if progress is not None:
+                progress.warn("database", "Repairing legacy PostgreSQL schema")
             return await _repair_postgres_legacy_schema(database_url)
 
     await dispose_db_engine()
+    if progress is not None:
+        progress.warn("database", "Legacy SQLite schema needs repair")
     backup_path = await asyncio.to_thread(_sqlite_backup_path, database_path)
+    if progress is not None:
+        progress.step("database", f"Backing up legacy SQLite database to {backup_path}")
     await asyncio.to_thread(shutil.copy2, database_path, backup_path)
+    if progress is not None:
+        progress.step("database", "Recreating SQLite database")
     await asyncio.to_thread(reset_sqlite_database, database_url)
-    await ensure_database_ready(database_url)
+    await ensure_database_ready(database_url, progress=progress)
+    if progress is not None:
+        progress.step("database", "Copying compatible legacy rows")
     migrated_tables, skipped_tables = await asyncio.to_thread(
         _copy_sqlite_legacy_data,
         database_path,
@@ -67,14 +80,28 @@ async def ensure_database_ready_with_legacy_sqlite_repair(
     )
 
 
-async def ensure_database_ready(database_url: str) -> None:
+async def ensure_database_ready(
+    database_url: str,
+    *,
+    progress: CliProgress | None = None,
+) -> None:
+    if progress is not None:
+        progress.step("database", "Ensuring database file")
     ensure_sqlite_database(database_url)
+    if progress is not None:
+        progress.step("database", "Checking database connection")
     await ping_database()
+    if progress is not None:
+        progress.step("database", "Applying database schema")
     await ensure_database_schema()
     async with get_session_factory()() as session:
+        if progress is not None:
+            progress.step("seed", "Seeding packaged definitions")
         await seed_definition_registry(session)
         await session.commit()
     await dispose_db_engine()
+    if progress is not None:
+        progress.done("database", "Database ready")
 
 
 def reset_sqlite_database(database_url: str) -> Path:

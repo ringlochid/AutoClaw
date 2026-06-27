@@ -30,6 +30,7 @@ from autoclaw.interfaces.cli.commands.openclaw.support import (
     collect_openclaw_preflight,
     emit_openclaw_preflight_failure,
 )
+from autoclaw.interfaces.cli.progress import CliProgress
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
 from autoclaw.interfaces.cli.terminal.theme import accent, heading, rich_enabled, success, warn
 
@@ -49,6 +50,7 @@ class WrapperStateResult:
 
 
 async def cmd_openclaw_doctor(args: argparse.Namespace) -> int:
+    progress = CliProgress.from_args(args)
     config_path = coerce_path(args.config)
     effective_base_url = build_effective_openclaw_base_url(
         getattr(args, "openclaw_gateway_port", None)
@@ -60,6 +62,7 @@ async def cmd_openclaw_doctor(args: argparse.Namespace) -> int:
                 args,
                 config_path=config_path,
                 openclaw_base_url=effective_base_url,
+                progress=progress,
             )
         except RuntimeError:
             preflight = collect_openclaw_preflight(
@@ -104,17 +107,22 @@ async def cmd_openclaw_doctor(args: argparse.Namespace) -> int:
 
 
 async def cmd_openclaw_setup(args: argparse.Namespace) -> int:
+    progress = CliProgress.from_args(args)
     config_path = coerce_path(args.config)
     effective_base_url = build_effective_openclaw_base_url(
         getattr(args, "openclaw_gateway_port", None)
     )
+    progress.step("openclaw", "Reconciling OpenClaw gateway access")
     bootstrap_openclaw_gateway_access(
         config_path=config_path,
         is_non_interactive=bool(getattr(args, "non_interactive", False)),
         gateway_token=getattr(args, "openclaw_gateway_token", None),
         gateway_port=getattr(args, "openclaw_gateway_port", None),
         openclaw_base_url=effective_base_url,
+        command_observer=progress.command,
+        command_output_observer=progress.command_output,
     )
+    progress.step("openclaw", "Checking OpenClaw support")
     preflight = collect_openclaw_preflight(
         config_path=config_path,
         openclaw_base_url=effective_base_url,
@@ -136,6 +144,7 @@ async def cmd_openclaw_setup(args: argparse.Namespace) -> int:
         is_non_interactive=bool(getattr(args, "non_interactive", False)),
         openclaw_base_url=effective_base_url,
         openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+        progress=progress,
     )
     payload = {
         "ok": True,
@@ -197,7 +206,9 @@ async def reconcile_openclaw_setup(
     is_non_interactive: bool,
     openclaw_base_url: str | None = None,
     openclaw_gateway_token: str | None = None,
+    progress: CliProgress | None = None,
 ) -> WrapperStateResult:
+    active_progress = progress or CliProgress.disabled()
     with command_env(
         config_path=config_path,
         openclaw_base_url=openclaw_base_url,
@@ -212,7 +223,10 @@ async def reconcile_openclaw_setup(
         config_path=config_path,
         host_state=host_state,
         is_non_interactive=is_non_interactive,
+        command_observer=active_progress.command,
+        command_output_observer=active_progress.command_output,
     )
+    active_progress.step("config", "Persisting selected OpenClaw agents")
     update_config_sections(
         config_path,
         section_updates={
@@ -231,19 +245,26 @@ async def reconcile_openclaw_setup(
     ):
         settings = load_settings()
         desired_servers = openclaw_host_setup.build_autoclaw_mcp_servers(settings)
+        active_progress.step("openclaw", "Patching OpenClaw agent profiles")
         agent_profiles_written = openclaw_host_setup.set_openclaw_agent_profiles(
             host_state,
             worker_agent_id=selection.worker_agent_id,
             operator_agent_id=selection.operator_agent_id,
+            command_observer=active_progress.command,
+            command_output_observer=active_progress.command_output,
         )
+        active_progress.step("openclaw", "Writing OpenClaw MCP server definitions")
         mcp_servers_written = openclaw_host_setup.set_openclaw_mcp_servers(
             host_state,
             servers=desired_servers,
+            command_observer=active_progress.command,
+            command_output_observer=active_progress.command_output,
         )
         payload = openclaw_wrapper_contract.desired_wrapper_state(
             settings=settings,
             host_state=host_state,
         )
+        active_progress.step("openclaw", "Writing AutoClaw wrapper material")
         paths = openclaw_wrapper_contract.write_wrapper_material(
             data_dir=settings.data_dir,
             state=payload,
@@ -256,6 +277,7 @@ async def reconcile_openclaw_setup(
             ),
             mcp_surfaces=openclaw_wrapper_contract.desired_mcp_surfaces(),
         )
+    active_progress.done("openclaw", "OpenClaw integration reconciled")
     return WrapperStateResult(
         path=paths["state"],
         is_written=True,
@@ -346,14 +368,19 @@ async def _apply_openclaw_doctor_fix(
     *,
     config_path: Path,
     openclaw_base_url: str | None,
+    progress: CliProgress,
 ) -> bool:
+    progress.step("openclaw", "Repairing OpenClaw gateway access")
     bootstrap_openclaw_gateway_access(
         config_path=config_path,
         is_non_interactive=True,
         gateway_token=getattr(args, "openclaw_gateway_token", None),
         gateway_port=getattr(args, "openclaw_gateway_port", None),
         openclaw_base_url=openclaw_base_url,
+        command_observer=progress.command,
+        command_output_observer=progress.command_output,
     )
+    progress.step("openclaw", "Checking OpenClaw support")
     preflight = collect_openclaw_preflight(
         config_path=config_path,
         openclaw_base_url=openclaw_base_url,
@@ -370,6 +397,7 @@ async def _apply_openclaw_doctor_fix(
         is_non_interactive=True,
         openclaw_base_url=openclaw_base_url,
         openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+        progress=progress,
     )
     return True
 

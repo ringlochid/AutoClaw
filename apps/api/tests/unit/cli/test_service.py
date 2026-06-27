@@ -80,10 +80,16 @@ def test_service_install_and_status_use_systemd_user_surface(
     assert env_file.exists()
     config_payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
     assert config_payload["server"]["port"] == 19123
-    payload = json.loads(capsys.readouterr().out)
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
     assert payload["manager"] == "systemd-user"
     assert payload["installed"] is True
     assert payload["running"] is True
+    assert "Checking OpenClaw support" in captured.err
+    assert "Checking local API bind target" in captured.err
+    assert "Running" in captured.err
+    assert "daemon-reload" in captured.err
+    assert "enable autoclaw.service" in captured.err
     log_lines = systemctl_log.read_text(encoding="utf-8").splitlines()
     assert "daemon-reload" in log_lines[0]
     assert any("enable autoclaw.service" in line for line in log_lines)
@@ -216,7 +222,7 @@ async def test_service_start_and_status_use_managed_service_surface(
         result = cli.cmd_service_start(
             argparse.Namespace(config=str(config_path), name="autoclaw", json=False)
         )
-        capsys.readouterr()
+        start_output = capsys.readouterr()
         status_result = cli.cmd_service_status(
             argparse.Namespace(config=str(config_path), name="autoclaw", json=True)
         )
@@ -230,6 +236,7 @@ async def test_service_start_and_status_use_managed_service_surface(
     assert status_payload["manager"] == "systemd-user"
     assert status_payload["installed"] is True
     assert status_payload["running"] is True
+    assert "systemctl --user start autoclaw.service" in start_output.err
     log_lines = systemctl_log.read_text(encoding="utf-8").splitlines()
     assert any("start autoclaw.service" in line for line in log_lines)
 

@@ -172,21 +172,20 @@ def db_group() -> None:
 @db_group.command("upgrade")
 @config_option
 @click.option("--revision", default="head", show_default=True)
-def db_upgrade_command(config: str, revision: str) -> int:
+@output_options
+def db_upgrade_command(**kwargs: Any) -> int:
     return invoke_handler_result(
-        cmd_db_upgrade(build_argument_namespace(config=config, revision=revision))
+        cmd_db_upgrade(build_argument_namespace(**kwargs, json=kwargs["json_output"]))
     )
 
 
 @db_group.command("reset")
 @config_option
 @click.option("--revision", default="head", show_default=True)
-@click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
-def db_reset_command(config: str, revision: str, is_json_output: bool) -> int:
+@output_options
+def db_reset_command(**kwargs: Any) -> int:
     return invoke_handler_result(
-        cmd_db_reset(
-            build_argument_namespace(config=config, revision=revision, json=is_json_output)
-        )
+        cmd_db_reset(build_argument_namespace(**kwargs, json=kwargs["json_output"]))
     )
 
 
@@ -301,6 +300,9 @@ def service_render_command(**kwargs: Any) -> int:
 @click.option("--port", type=int)
 @click.option("--force", is_flag=True)
 @click.option("--no-start", is_flag=True)
+@click.option("--verbose", is_flag=True, help="Show nested command output when available.")
+@click.option("--no-color", is_flag=True, help="Disable ANSI color output.")
+@click.option("--plain", is_flag=True, help="Disable rich styling.")
 def service_install_command(**kwargs: Any) -> int:
     return invoke_handler_result(cmd_service_install(build_argument_namespace(**kwargs)))
 

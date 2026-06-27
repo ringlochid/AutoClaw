@@ -29,6 +29,7 @@ from autoclaw.interfaces.cli.commands.server_config import (
     update_server_config_overrides,
 )
 from autoclaw.interfaces.cli.commands.service import DEFAULT_SERVICE_NAME, cmd_service_install
+from autoclaw.interfaces.cli.progress import CliProgress
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
 from autoclaw.interfaces.cli.terminal.note import note
 from autoclaw.interfaces.cli.terminal.prompts import PromptUnavailableError, confirm, text
@@ -50,7 +51,9 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
             return interactive_result
 
     config_path = coerce_path(args.config)
+    progress = CliProgress.from_args(args)
     effective_base_url = _build_effective_openclaw_base_url(args)
+    progress.step("openclaw", "Checking OpenClaw support")
     preflight = _collect_onboard_preflight(
         args,
         config_path=config_path,
@@ -63,14 +66,20 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
             openclaw_payload=preflight.payload,
         )
 
-    created_local_config = await _initialize_onboard_config(args, config_path=config_path)
+    created_local_config = await _initialize_onboard_config(
+        args,
+        config_path=config_path,
+        progress=progress,
+    )
     requested_port = getattr(args, "port", None)
     _apply_onboard_service_overrides(
         config_path,
         requested_port=requested_port,
         gateway_port=getattr(args, "openclaw_gateway_port", None),
+        progress=progress,
     )
     args.config_path = config_path
+    progress.step("server", "Checking local API bind target")
     server_payload = _load_onboard_server_payload(
         args,
         config_path=config_path,
@@ -88,11 +97,12 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
             },
         )
 
-    database_repair = await _repair_onboard_database(args)
+    database_repair = await _repair_onboard_database(args, progress=progress)
     wrapper_result, openclaw_payload = await _reconcile_onboard_openclaw(
         args,
         config_path=config_path,
         openclaw_base_url=effective_base_url,
+        progress=progress,
     )
 
     daemon_installed = False
@@ -101,6 +111,7 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
             args,
             config_path=config_path,
             requested_port=requested_port,
+            progress=progress,
         )
         if install_result != 0:
             return install_result
@@ -307,9 +318,12 @@ async def _initialize_onboard_config(
     args: argparse.Namespace,
     *,
     config_path: Path,
+    progress: CliProgress,
 ) -> bool:
     if not args.force and await asyncio.to_thread(config_path.exists):
+        progress.done("config", f"Using existing config at {config_path}")
         return False
+    progress.step("config", f"Writing local config to {config_path}")
     with redirect_stdout(io.StringIO()):
         init_result = await cmd_init(
             argparse.Namespace(
@@ -323,20 +337,30 @@ async def _initialize_onboard_config(
                 internal_api_key=args.internal_api_key,
                 force=True,
                 skip_db_upgrade=True,
-                json=False,
+                json=True,
             )
         )
     if init_result != 0:
         raise RuntimeError(f"unexpected onboard init failure: {init_result}")
+    progress.done("config", "Local config written")
     return True
 
 
-async def _repair_onboard_database(args: argparse.Namespace) -> dict[str, Any] | None:
+async def _repair_onboard_database(
+    args: argparse.Namespace,
+    *,
+    progress: CliProgress,
+) -> dict[str, Any] | None:
     if args.skip_db_upgrade:
+        progress.warn("database", "Skipping database upgrade and packaged definition seeding")
         return None
     with command_env(config_path=args.config_path):
         settings = load_settings()
-        repair_result = await ensure_database_ready_with_legacy_sqlite_repair(settings.database_url)
+        progress.step("database", "Running database upgrade")
+        repair_result = await ensure_database_ready_with_legacy_sqlite_repair(
+            settings.database_url,
+            progress=progress,
+        )
         if repair_result is None:
             return None
         return {
@@ -352,9 +376,13 @@ def _apply_onboard_service_overrides(
     *,
     requested_port: int | None,
     gateway_port: int | None,
+    progress: CliProgress,
 ) -> None:
     if requested_port is not None:
+        progress.step("config", f"Persisting service port override {requested_port}")
         update_server_config_overrides(config_path, port=requested_port)
+    if gateway_port is not None:
+        progress.step("config", f"Persisting OpenClaw gateway port override {gateway_port}")
     _persist_openclaw_port_override(
         config_path,
         gateway_port=gateway_port,
@@ -382,12 +410,15 @@ async def _reconcile_onboard_openclaw(
     *,
     config_path: Path,
     openclaw_base_url: str | None,
+    progress: CliProgress,
 ) -> tuple[Any, dict[str, Any]]:
+    progress.step("openclaw", "Reconciling OpenClaw integration")
     wrapper_result = await reconcile_openclaw_setup(
         config_path,
         is_non_interactive=bool(getattr(args, "non_interactive", False)),
         openclaw_base_url=openclaw_base_url,
         openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
+        progress=progress,
     )
     preflight = collect_openclaw_preflight(
         config_path=config_path,
@@ -428,6 +459,7 @@ def _install_onboard_daemon(
     *,
     config_path: Path,
     requested_port: int | None,
+    progress: CliProgress,
 ) -> int:
     return cmd_service_install(
         argparse.Namespace(
@@ -440,7 +472,11 @@ def _install_onboard_daemon(
             force=args.force,
             no_start=args.no_start,
             json=getattr(args, "json", False),
-        )
+            plain=getattr(args, "plain", False),
+            no_color=getattr(args, "no_color", False),
+            verbose=getattr(args, "verbose", False),
+        ),
+        progress=progress,
     )
 
 

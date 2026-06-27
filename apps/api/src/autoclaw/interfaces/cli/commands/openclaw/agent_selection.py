@@ -9,6 +9,8 @@ from autoclaw.integrations.openclaw.gateway.host_setup import (
     AUTOCLAW_OPERATOR_AGENT_ID,
     AUTOCLAW_WORKER_AGENT_ID,
     OpenClawAgentSummary,
+    OpenClawCommandObserver,
+    OpenClawCommandOutputObserver,
     bootstrap_openclaw_agent,
     default_openclaw_agent_workspace,
     list_openclaw_agents,
@@ -36,18 +38,30 @@ def resolve_openclaw_agent_selection(
     config_path: Path,
     host_state: OpenClawResolvedHostState,
     is_non_interactive: bool,
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
 ) -> OpenClawAgentSelection:
     with command_env(config_path=config_path):
         settings = load_settings()
 
-    available_agents = list_openclaw_agents(host_state)
+    available_agents = list_openclaw_agents(
+        host_state,
+        command_observer=command_observer,
+        command_output_observer=command_output_observer,
+    )
     if not available_agents:
         bootstrap_openclaw_agent(
             host_state,
             agent_id=AUTOCLAW_WORKER_AGENT_ID,
             workspace_dir=_bootstrap_agent_workspace(AUTOCLAW_WORKER_AGENT_ID),
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
         )
-        available_agents = list_openclaw_agents(host_state)
+        available_agents = list_openclaw_agents(
+            host_state,
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
+        )
 
     if is_non_interactive:
         return _resolve_noninteractive_selection(
@@ -55,10 +69,14 @@ def resolve_openclaw_agent_selection(
             available_agents=available_agents,
             configured_worker_agent_id=settings.openclaw.agent_id,
             configured_operator_agent_id=settings.openclaw.operator_agent_id,
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
         )
     return _resolve_interactive_selection(
         host_state=host_state,
         available_agents=available_agents,
+        command_observer=command_observer,
+        command_output_observer=command_output_observer,
     )
 
 
@@ -198,6 +216,8 @@ def _ensure_agent_present(
     agents: tuple[OpenClawAgentSummary, ...],
     *,
     agent_id: str,
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
 ) -> tuple[tuple[OpenClawAgentSummary, ...], bool]:
     if _find_agent(agents, agent_id) is not None:
         return agents, False
@@ -205,8 +225,17 @@ def _ensure_agent_present(
         host_state,
         agent_id=agent_id,
         workspace_dir=_bootstrap_agent_workspace(agent_id),
+        command_observer=command_observer,
+        command_output_observer=command_output_observer,
     )
-    return list_openclaw_agents(host_state), True
+    return (
+        list_openclaw_agents(
+            host_state,
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
+        ),
+        True,
+    )
 
 
 def _noninteractive_operator_agent_id(
@@ -229,6 +258,8 @@ def _resolve_noninteractive_selection(
     available_agents: tuple[OpenClawAgentSummary, ...],
     configured_worker_agent_id: str,
     configured_operator_agent_id: str,
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
 ) -> OpenClawAgentSelection:
     selected_worker_agent_id = _preferred_or_explicit_agent_id(
         available_agents,
@@ -242,8 +273,14 @@ def _resolve_noninteractive_selection(
             host_state,
             agent_id=selected_worker_agent_id,
             workspace_dir=_bootstrap_agent_workspace(selected_worker_agent_id),
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
         )
-        available_agents = list_openclaw_agents(host_state)
+        available_agents = list_openclaw_agents(
+            host_state,
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
+        )
         bootstrapped_worker = True
     selected_operator_agent_id = _noninteractive_operator_agent_id(
         agents=available_agents,
@@ -255,8 +292,14 @@ def _resolve_noninteractive_selection(
             host_state,
             agent_id=selected_operator_agent_id,
             workspace_dir=_bootstrap_agent_workspace(selected_operator_agent_id),
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
         )
-        available_agents = list_openclaw_agents(host_state)
+        available_agents = list_openclaw_agents(
+            host_state,
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
+        )
         bootstrapped_operator = True
     return OpenClawAgentSelection(
         worker_agent_id=selected_worker_agent_id,
@@ -271,6 +314,8 @@ def _resolve_interactive_selection(
     *,
     host_state: OpenClawResolvedHostState,
     available_agents: tuple[OpenClawAgentSummary, ...],
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
 ) -> OpenClawAgentSelection:
     selected_worker_selection = _select_worker_agent_interactively(
         agents=available_agents,
@@ -282,6 +327,8 @@ def _resolve_interactive_selection(
             host_state,
             agent_id=AUTOCLAW_WORKER_AGENT_ID,
             agents=available_agents,
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
         )
         selected_worker_agent_id = AUTOCLAW_WORKER_AGENT_ID
     else:
@@ -296,6 +343,8 @@ def _resolve_interactive_selection(
             host_state,
             agent_id=AUTOCLAW_OPERATOR_AGENT_ID,
             agents=available_agents,
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
         )
         selected_operator_agent_id = AUTOCLAW_OPERATOR_AGENT_ID
     else:

@@ -16,6 +16,7 @@ from autoclaw.paths import default_database_path
 from autoclaw.persistence.session import dispose_db_engine
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
 from tests.integration.public_surfaces.root_cli.support import (
+    available_loopback_port,
     build_fake_openclaw_host,
     load_openclaw_agents_by_id,
     write_stale_flows_schema,
@@ -119,10 +120,15 @@ async def test_root_cli_onboard_writes_wrapper_state(
                     json=True,
                     plain=False,
                     no_color=False,
+                    verbose=False,
                 )
             )
-        payload = json.loads(capsys.readouterr().out)
+        captured = capsys.readouterr()
+        payload = json.loads(captured.out)
         assert result == 0
+        assert "Running database upgrade" not in captured.err
+        assert "Seeding packaged definitions" not in captured.err
+        assert "Running openclaw agents list --json" not in captured.err
         await _assert_onboard_runtime_config(
             payload,
             config_path=paths.config_path,
@@ -190,6 +196,7 @@ async def test_root_cli_onboard_repairs_stale_sqlite_schema(
                     json=True,
                     plain=False,
                     no_color=False,
+                    verbose=False,
                 )
             )
         payload = json.loads(capsys.readouterr().out)
@@ -252,6 +259,7 @@ async def test_root_cli_onboard_persists_openclaw_runtime_inputs_for_env_free_co
                 json=True,
                 plain=False,
                 no_color=False,
+                verbose=False,
             )
         )
         payload = json.loads(capsys.readouterr().out)
@@ -275,3 +283,55 @@ async def test_root_cli_onboard_persists_openclaw_runtime_inputs_for_env_free_co
         get_settings.cache_clear()
         gateway_server.close()
         await dispose_db_engine()
+
+
+async def test_root_cli_onboard_human_progress_reports_major_steps(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    api_port = available_loopback_port()
+    paths = build_fake_openclaw_host(tmp_path, monkeypatch)
+    gateway_server = LocalGatewayTestServer()
+    gateway_server.start()
+
+    try:
+        with gateway_server.configured_env():
+            monkeypatch.delenv("AUTOCLAW_OPENCLAW__AGENT_ID", raising=False)
+            result = await cli.cmd_onboard(
+                argparse.Namespace(
+                    config=str(paths.config_path),
+                    data_dir=str(tmp_path / "autoclaw-data"),
+                    database_url=None,
+                    host="127.0.0.1",
+                    port=api_port,
+                    log_level="INFO",
+                    api_key="api-test-key",
+                    internal_api_key="internal-test-key",
+                    force=False,
+                    skip_db_upgrade=False,
+                    install_daemon=False,
+                    skip_daemon=True,
+                    no_start=True,
+                    non_interactive=True,
+                    json=False,
+                    plain=True,
+                    no_color=False,
+                    verbose=False,
+                )
+            )
+        captured = capsys.readouterr()
+    finally:
+        gateway_server.close()
+        await dispose_db_engine()
+
+    assert result == 0
+    assert "AutoClaw onboard" in captured.out
+    assert "Checking OpenClaw support" in captured.err
+    assert "Writing local config" in captured.err
+    assert "Checking local API bind target" in captured.err
+    assert "Running database upgrade" in captured.err
+    assert "Seeding packaged definitions" in captured.err
+    assert "Reconciling OpenClaw integration" in captured.err
+    assert "Running openclaw agents list --json" in captured.err
+    assert "Running openclaw mcp set autoclaw-node" in captured.err

@@ -20,6 +20,11 @@ def config_option(function: Callable[P, T]) -> Callable[P, T]:
 
 def output_options(function: Callable[P, T]) -> Callable[P, T]:
     function = click.option(
+        "--verbose",
+        is_flag=True,
+        help="Show nested command output when available.",
+    )(function)
+    function = click.option(
         "--no-color",
         is_flag=True,
         help="Disable ANSI color output.",

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+
+ManagedServiceCommandObserver = Callable[[tuple[str, ...]], None]
 
 
 @dataclass(frozen=True)
@@ -57,6 +60,7 @@ class ServiceInstallRequest:
     unit_dir: Path | None
     should_force: bool
     should_skip_start: bool
+    command_observer: ManagedServiceCommandObserver | None
 
     def __init__(
         self,
@@ -66,6 +70,7 @@ class ServiceInstallRequest:
         env_file: Path,
         service_name: str,
         unit_dir: Path | None,
+        command_observer: ManagedServiceCommandObserver | None = None,
         **legacy_options: object,
     ) -> None:
         should_force = _pop_required_boolean_option(legacy_options, "force")
@@ -78,6 +83,7 @@ class ServiceInstallRequest:
         object.__setattr__(self, "unit_dir", unit_dir)
         object.__setattr__(self, "should_force", should_force)
         object.__setattr__(self, "should_skip_start", should_skip_start)
+        object.__setattr__(self, "command_observer", command_observer)
 
     @property
     def force(self) -> bool:
@@ -157,6 +163,7 @@ def _raise_for_unexpected_options(legacy_options: dict[str, object]) -> None:
 
 
 __all__ = [
+    "ManagedServiceCommandObserver",
     "ManagedServiceManager",
     "ManagedServiceStatus",
     "ServiceInstallRequest",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .contracts import (
+    ManagedServiceCommandObserver,
     ManagedServiceManager,
     ManagedServiceStatus,
     ServiceInstallRequest,
@@ -25,6 +26,7 @@ from .systemd import (
 __all__ = [
     "DEFAULT_SERVICE_ENV_TEXT",
     "LaunchdUserServiceManager",
+    "ManagedServiceCommandObserver",
     "ManagedServiceManager",
     "ManagedServiceStatus",
     "ScheduledTaskServiceManager",

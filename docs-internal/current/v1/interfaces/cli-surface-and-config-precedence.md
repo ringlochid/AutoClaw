@@ -95,10 +95,25 @@ Current parser truth still excludes some richer presentation behaviors even thou
 
 - `--plain`
 - `--no-color`
+- `--verbose` on setup-style commands with nested command execution
 
 `--non-interactive` already changes current command behavior on guided commands such as `onboard` and `configure`: it disables prompts and is required when those flows run without a TTY.
 
 Those flags now run through the Click + Rich root shell with central parse and failure rendering, while the underlying command bodies still reuse the existing domain handlers.
+
+## Current progress output contract
+
+Mutating setup-style commands now emit concise human progress lines for major hidden phases. This covers `onboard`, `configure`, `doctor --fix`, `db upgrade`, `db reset`, `openclaw setup`, `openclaw doctor --fix`, and managed-service install/start/restart/stop paths.
+
+Rules:
+
+- Progress is operator-facing status, not machine payload.
+- Progress is disabled for `--json` so command stdout remains parseable JSON for commands that emit JSON.
+- Human progress reports config write/reuse, local bind checks, database schema work, packaged definition seeding, OpenClaw reconciliation, nested OpenClaw commands, service unit writes, and `systemctl --user` operations when those phases run.
+- `--plain`, `--no-color`, `NO_COLOR`, and non-TTY output use stable ASCII status marks.
+- TTY-rich output may use a small semantic icon set: DB, seed, OpenClaw, service, success, warning, and failure.
+- Nested command labels are sanitized and do not print raw stdin payloads or JSON arguments containing tokens.
+- Nested stdout/stderr is shown on failure and when `--verbose` is supplied; sensitive-looking token, password, authorization, and API-key values are redacted before rendering.
 
 ## Current config and override behavior
 

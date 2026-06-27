@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -23,9 +25,7 @@ OPENCLAW_AGENT_WORKSPACE_ROOT = Path.home() / ".openclaw" / "workspaces"
 OPENCLAW_AGENT_DIR_ROOT = Path.home() / ".openclaw" / "agents"
 WORKER_OPERATOR_TOOL_DENY = f"{AUTOCLAW_OPERATOR_MCP_SERVER_NAME}__*"
 OPERATOR_NODE_TOOL_DENY = f"{AUTOCLAW_NODE_MCP_SERVER_NAME}__*"
-WORKER_RUNTIME_TOOL_DENY = (
-    WORKER_OPERATOR_TOOL_DENY,
-)
+WORKER_RUNTIME_TOOL_DENY = (WORKER_OPERATOR_TOOL_DENY,)
 OPENCLAW_EXEC_TOOL_SETTINGS = {
     "host": "gateway",
     "security": "full",
@@ -34,6 +34,13 @@ OPENCLAW_EXEC_TOOL_SETTINGS = {
     "timeoutSec": 3600,
 }
 OPENCLAW_DEFAULT_GATEWAY_PORT = 18789
+OpenClawCommandObserver = Callable[[str], None]
+OpenClawCommandOutputObserver = Callable[[str, int, str, str], None]
+OPENCLAW_SECRET_PATTERN = re.compile(
+    r"(?i)((?:authorization|api[_-]?key|internal[_-]?api[_-]?key|password|secret|token)"
+    r"[\"']?\s*[:=]\s*[\"']?)([^\"'\s,}]+)"
+)
+OPENCLAW_BEARER_PATTERN = re.compile(r"(?i)(bearer\s+)([A-Za-z0-9._~+/=-]+)")
 
 
 @dataclass(frozen=True)
@@ -143,6 +150,8 @@ def set_openclaw_agent_profiles(
     *,
     worker_agent_id: str,
     operator_agent_id: str,
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
 ) -> tuple[str, ...]:
     payload = load_openclaw_config_payload(Path(host_state.config_path)) or {}
     if not isinstance(payload, dict):
@@ -184,6 +193,8 @@ def set_openclaw_agent_profiles(
             {"agents": {"list": updated_list}},
             separators=(",", ":"),
         ),
+        command_observer=command_observer,
+        command_output_observer=command_output_observer,
     )
     return tuple(written_ids)
 
@@ -192,6 +203,8 @@ def set_openclaw_mcp_servers(
     host_state: OpenClawResolvedHostState,
     *,
     servers: dict[str, dict[str, Any]],
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
 ) -> tuple[str, ...]:
     written: list[str] = []
     for name, server in servers.items():
@@ -201,13 +214,27 @@ def set_openclaw_mcp_servers(
             "set",
             name,
             json.dumps(server, separators=(",", ":")),
+            command_observer=command_observer,
+            command_output_observer=command_output_observer,
         )
         written.append(name)
     return tuple(written)
 
 
-def list_openclaw_agents(host_state: OpenClawResolvedHostState) -> tuple[OpenClawAgentSummary, ...]:
-    raw_output = run_openclaw_cli(host_state, "agents", "list", "--json")
+def list_openclaw_agents(
+    host_state: OpenClawResolvedHostState,
+    *,
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
+) -> tuple[OpenClawAgentSummary, ...]:
+    raw_output = run_openclaw_cli(
+        host_state,
+        "agents",
+        "list",
+        "--json",
+        command_observer=command_observer,
+        command_output_observer=command_output_observer,
+    )
     try:
         payload = json.loads(raw_output)
     except json.JSONDecodeError as exc:
@@ -241,6 +268,8 @@ def bootstrap_openclaw_agent(
     *,
     agent_id: str,
     workspace_dir: Path,
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
 ) -> OpenClawAgentSummary:
     run_openclaw_cli(
         host_state,
@@ -251,6 +280,8 @@ def bootstrap_openclaw_agent(
         str(workspace_dir),
         "--non-interactive",
         "--json",
+        command_observer=command_observer,
+        command_output_observer=command_output_observer,
     )
     return OpenClawAgentSummary(
         id=agent_id,
@@ -288,6 +319,8 @@ def patch_openclaw_gateway_settings(
     *,
     gateway_port: int,
     gateway_token: str,
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
 ) -> None:
     payload = {
         "gateway": {
@@ -305,6 +338,8 @@ def patch_openclaw_gateway_settings(
         "patch",
         "--stdin",
         input_text=json.dumps(payload, separators=(",", ":")),
+        command_observer=command_observer,
+        command_output_observer=command_output_observer,
     )
 
 
@@ -358,6 +393,8 @@ def run_openclaw_cli(
     host_state: OpenClawResolvedHostState,
     *args: str,
     input_text: str | None = None,
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
 ) -> str:
     binary_path = host_state.binary_path
     if not binary_path:
@@ -366,6 +403,9 @@ def run_openclaw_cli(
     binary_name = Path(binary_path).name.lower()
     if binary_name.startswith("python"):
         command = [binary_path, "-m", "autoclaw", *args]
+    command_label = _openclaw_command_label(args)
+    if command_observer is not None:
+        command_observer(command_label)
     env = os.environ.copy()
     env["OPENCLAW_CONFIG_PATH"] = host_state.config_path
     result = subprocess.run(
@@ -376,10 +416,25 @@ def run_openclaw_cli(
         input=input_text,
         text=True,
     )
+    if command_output_observer is not None:
+        command_output_observer(command_label, result.returncode, result.stdout, result.stderr)
     if result.returncode != 0:
         detail = result.stderr.strip() or result.stdout.strip() or "no output"
-        raise RuntimeError(f"openclaw {' '.join(args)} failed: {detail}")
+        raise RuntimeError(f"{command_label} failed: {_redact_openclaw_command_output(detail)}")
     return result.stdout
+
+
+def _openclaw_command_label(args: tuple[str, ...]) -> str:
+    if args == ("config", "patch", "--stdin"):
+        return "openclaw config patch --stdin"
+    if len(args) >= 4 and args[0:2] == ("mcp", "set"):
+        return f"openclaw mcp set {args[2]}"
+    return " ".join(("openclaw", *args))
+
+
+def _redact_openclaw_command_output(value: str) -> str:
+    redacted = OPENCLAW_BEARER_PATTERN.sub(r"\1<redacted>", value)
+    return OPENCLAW_SECRET_PATTERN.sub(r"\1<redacted>", redacted)
 
 
 def default_openclaw_agent_workspace(agent_id: str) -> Path:
@@ -487,6 +542,8 @@ __all__ = [
     "AUTOCLAW_WORKER_AGENT_ID",
     "OPENCLAW_DEFAULT_AGENT_ID",
     "OpenClawAgentSummary",
+    "OpenClawCommandObserver",
+    "OpenClawCommandOutputObserver",
     "bootstrap_openclaw_agent",
     "build_autoclaw_agent_entries",
     "build_autoclaw_mcp_servers",

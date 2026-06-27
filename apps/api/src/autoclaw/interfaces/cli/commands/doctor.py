@@ -18,6 +18,7 @@ from autoclaw.interfaces.cli.commands.openclaw.wrapper import (
     reconcile_openclaw_setup,
 )
 from autoclaw.interfaces.cli.commands.service import DEFAULT_SERVICE_NAME, collect_service_status
+from autoclaw.interfaces.cli.progress import CliProgress
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
 from autoclaw.interfaces.cli.terminal.theme import heading, muted, rich_enabled, success, warn
 from autoclaw.paths import ensure_runtime_dirs
@@ -25,6 +26,7 @@ from autoclaw.persistence.session import ping_database, verify_database_schema
 
 
 async def cmd_doctor(args: argparse.Namespace) -> int:
+    progress = CliProgress.from_args(args)
     config_path = coerce_path(args.config)
     if not config_path.is_file():
         return _emit_missing_config_exit(args, str(config_path))
@@ -39,6 +41,7 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
         )
 
     findings: list[dict[str, Any]] = []
+    progress.step("openclaw", "Checking OpenClaw integration")
     openclaw_payload = await inspect_openclaw_integration(config_path)
     findings.append(
         {
@@ -55,9 +58,11 @@ async def cmd_doctor(args: argparse.Namespace) -> int:
         args.settings = settings
         await _collect_local_doctor_findings(args, findings)
         if args.fix:
+            progress.step("openclaw", "Repairing OpenClaw integration")
             wrapper_repair_result: WrapperStateResult = await reconcile_openclaw_setup(
                 config_path,
                 is_non_interactive=True,
+                progress=progress,
             )
             findings.append(
                 {
@@ -153,7 +158,12 @@ async def _collect_database_findings(
     findings: list[dict[str, Any]],
 ) -> None:
     if args.fix:
-        repair_result = await ensure_database_ready_with_legacy_sqlite_repair(args.database_url)
+        progress = CliProgress.from_args(args)
+        progress.step("database", "Running database repair")
+        repair_result = await ensure_database_ready_with_legacy_sqlite_repair(
+            args.database_url,
+            progress=progress,
+        )
         repair_detail: dict[str, Any] = {"status": "applied db upgrade/seed repair"}
         if repair_result is not None:
             repair_detail.update(

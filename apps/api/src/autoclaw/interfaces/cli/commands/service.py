@@ -17,6 +17,7 @@ from autoclaw.interfaces.cli.commands.server_config import (
     emit_server_bind_check_failure,
     update_server_config_overrides,
 )
+from autoclaw.interfaces.cli.progress import CliProgress
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
 from autoclaw.interfaces.cli.terminal.theme import (
     accent,
@@ -32,7 +33,10 @@ from autoclaw.platform.managed_services import (
     ServiceUninstallRequest,
     get_managed_service_manager,
 )
-from autoclaw.platform.managed_services.systemd import render_systemd_service_unit
+from autoclaw.platform.managed_services.systemd import (
+    build_service_unit_name,
+    render_systemd_service_unit,
+)
 
 DEFAULT_SERVICE_NAME = "autoclaw"
 SERVICE_MANAGER = get_managed_service_manager()
@@ -56,8 +60,14 @@ def cmd_service_render(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_service_install(args: argparse.Namespace) -> int:
+def cmd_service_install(
+    args: argparse.Namespace,
+    *,
+    progress: CliProgress | None = None,
+) -> int:
+    active_progress = progress or CliProgress.from_args(args)
     config_path = coerce_path(args.config)
+    active_progress.step("openclaw", "Checking OpenClaw support")
     support_error = _require_openclaw_supported(
         args,
         command_name="AutoClaw service install",
@@ -69,6 +79,10 @@ def cmd_service_install(args: argparse.Namespace) -> int:
     with command_env(config_path=config_path):
         initial_settings = load_settings()
     effective_port = requested_port if requested_port is not None else initial_settings.api_port
+    active_progress.step(
+        "server",
+        f"Checking local API bind target {initial_settings.api_host}:{effective_port}",
+    )
     server_payload = build_server_bind_check_payload(
         initial_settings.api_host,
         effective_port,
@@ -81,9 +95,16 @@ def cmd_service_install(args: argparse.Namespace) -> int:
             stopped_before="stopped before managed service install",
         )
     if requested_port is not None:
+        active_progress.step("config", f"Persisting service port override {requested_port}")
         update_server_config_overrides(config_path, port=requested_port)
-        reconcile_openclaw_mcp_server_config(config_path)
+        active_progress.step("openclaw", "Refreshing OpenClaw MCP server definitions")
+        reconcile_openclaw_mcp_server_config(
+            config_path,
+            command_observer=active_progress.command,
+            command_output_observer=active_progress.command_output,
+        )
 
+    active_progress.step("service", "Writing managed service unit")
     SERVICE_MANAGER.install(
         ServiceInstallRequest(
             config_path=config_path,
@@ -93,8 +114,10 @@ def cmd_service_install(args: argparse.Namespace) -> int:
             unit_dir=coerce_path(args.unit_dir) if args.unit_dir is not None else None,
             force=args.force,
             no_start=args.no_start,
+            command_observer=active_progress.command_args,
         )
     )
+    active_progress.done("service", "Managed service installed")
     return 0
 
 
@@ -122,6 +145,8 @@ def cmd_service_status(args: argparse.Namespace) -> int:
 
 
 def cmd_service_start(args: argparse.Namespace) -> int:
+    progress = CliProgress.from_args(args)
+    progress.step("openclaw", "Checking OpenClaw support")
     support_error = _require_openclaw_supported(
         args,
         command_name="AutoClaw service start",
@@ -129,14 +154,16 @@ def cmd_service_start(args: argparse.Namespace) -> int:
     )
     if support_error is not None:
         return support_error
-    return execute_service_lifecycle(args, "start")
+    return execute_service_lifecycle(args, "start", progress=progress)
 
 
 def cmd_service_stop(args: argparse.Namespace) -> int:
-    return execute_service_lifecycle(args, "stop")
+    return execute_service_lifecycle(args, "stop", progress=CliProgress.from_args(args))
 
 
 def cmd_service_restart(args: argparse.Namespace) -> int:
+    progress = CliProgress.from_args(args)
+    progress.step("openclaw", "Checking OpenClaw support")
     support_error = _require_openclaw_supported(
         args,
         command_name="AutoClaw service restart",
@@ -144,12 +171,19 @@ def cmd_service_restart(args: argparse.Namespace) -> int:
     )
     if support_error is not None:
         return support_error
-    return execute_service_lifecycle(args, "restart")
+    return execute_service_lifecycle(args, "restart", progress=progress)
 
 
-def execute_service_lifecycle(args: argparse.Namespace, verb: str) -> int:
+def execute_service_lifecycle(
+    args: argparse.Namespace,
+    verb: str,
+    *,
+    progress: CliProgress,
+) -> int:
     action = getattr(SERVICE_MANAGER, verb)
+    progress.command_args(("systemctl", "--user", verb, build_service_unit_name(args.name)))
     snapshot = action(args.name)
+    progress.done("service", f"Managed service {verb} complete")
     if args.json:
         print_json(snapshot.to_payload())
     else:

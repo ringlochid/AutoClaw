@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from autoclaw.platform.managed_services.resources import get_systemd_service_template
@@ -52,10 +53,18 @@ class SystemdUserServiceManager:
             ),
             encoding="utf-8",
         )
-        execute_systemctl("daemon-reload")
-        execute_systemctl("enable", build_service_unit_name(request.service_name))
+        execute_systemctl("daemon-reload", command_observer=request.command_observer)
+        execute_systemctl(
+            "enable",
+            build_service_unit_name(request.service_name),
+            command_observer=request.command_observer,
+        )
         if not request.should_skip_start:
-            execute_systemctl("restart", build_service_unit_name(request.service_name))
+            execute_systemctl(
+                "restart",
+                build_service_unit_name(request.service_name),
+                command_observer=request.command_observer,
+            )
 
     def uninstall(self, request: ServiceUninstallRequest) -> None:
         require_supported_systemd()
@@ -157,9 +166,13 @@ def require_supported_systemd() -> None:
 def execute_systemctl(
     *args: str,
     should_check: bool = True,
+    command_observer: Callable[[tuple[str, ...]], None] | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    command = (resolve_systemctl_bin(), "--user", *args)
+    if command_observer is not None:
+        command_observer(command)
     return subprocess.run(
-        [resolve_systemctl_bin(), "--user", *args],
+        list(command),
         check=should_check,
         capture_output=True,
         text=True,

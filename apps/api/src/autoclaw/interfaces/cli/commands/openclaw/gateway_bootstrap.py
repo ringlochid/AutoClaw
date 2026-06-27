@@ -6,6 +6,8 @@ from typing import Any
 from autoclaw.config import load_settings
 from autoclaw.integrations.openclaw.gateway.discovery import OpenClawResolvedHostState
 from autoclaw.integrations.openclaw.gateway.host_setup import (
+    OpenClawCommandObserver,
+    OpenClawCommandOutputObserver,
     gateway_bootstrap_needed,
     host_base_url_from_config,
     patch_openclaw_gateway_settings,
@@ -24,6 +26,8 @@ def bootstrap_openclaw_gateway_access(
     gateway_token: str | None = None,
     gateway_port: int | None = None,
     openclaw_base_url: str | None = None,
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
 ) -> OpenClawResolvedHostState:
     with command_env(config_path=config_path, openclaw_base_url=openclaw_base_url):
         settings = load_settings()
@@ -52,6 +56,8 @@ def bootstrap_openclaw_gateway_access(
         host_state,
         gateway_port=resolved_port,
         gateway_token=resolved_token,
+        command_observer=command_observer,
+        command_output_observer=command_output_observer,
     )
     update_config_sections(
         config_path,

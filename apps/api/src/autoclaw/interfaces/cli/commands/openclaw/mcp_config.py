@@ -5,6 +5,8 @@ from pathlib import Path
 from autoclaw.config import load_settings
 from autoclaw.integrations.openclaw.gateway.discovery import OpenClawHostSupportStatus
 from autoclaw.integrations.openclaw.gateway.host_setup import (
+    OpenClawCommandObserver,
+    OpenClawCommandOutputObserver,
     build_autoclaw_mcp_servers,
     set_openclaw_mcp_servers,
 )
@@ -12,7 +14,12 @@ from autoclaw.integrations.openclaw.gateway.preflight import openclaw_preflight_
 from autoclaw.interfaces.cli.support import command_env
 
 
-def reconcile_openclaw_mcp_server_config(config_path: Path) -> tuple[str, ...]:
+def reconcile_openclaw_mcp_server_config(
+    config_path: Path,
+    *,
+    command_observer: OpenClawCommandObserver | None = None,
+    command_output_observer: OpenClawCommandOutputObserver | None = None,
+) -> tuple[str, ...]:
     with command_env(config_path=config_path):
         settings = load_settings()
         host_state = openclaw_preflight_report(settings.openclaw)
@@ -22,7 +29,12 @@ def reconcile_openclaw_mcp_server_config(config_path: Path) -> tuple[str, ...]:
     ):
         raise RuntimeError(host_state.reason or "unsupported OpenClaw host state")
     desired_servers = build_autoclaw_mcp_servers(settings)
-    return set_openclaw_mcp_servers(host_state, servers=desired_servers)
+    return set_openclaw_mcp_servers(
+        host_state,
+        servers=desired_servers,
+        command_observer=command_observer,
+        command_output_observer=command_output_observer,
+    )
 
 
 __all__ = ["reconcile_openclaw_mcp_server_config"]

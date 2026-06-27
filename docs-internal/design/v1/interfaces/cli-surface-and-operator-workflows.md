@@ -97,6 +97,10 @@ The output, interaction, and visual rules below are also target CLI contract. Th
 - `--non-interactive` controls automation behavior. It disables guided prompts and requires the command to operate from already-resolved inputs.
 - `--plain`, `--no-color`, and `NO_COLOR` disable rich styling.
 - Rich styling is TTY-only. Non-TTY output must stay stable and readable without assuming ANSI-capable consumers.
+- Mutating setup-style commands should show concise human progress for major phases such as config write/reuse, bind checks, database schema work, packaged definition seeding, provider reconciliation, nested provider commands, and service-manager operations.
+- Progress/status lines are human output, not machine payload. `--json` must keep stdout parseable and must not mix progress lines into the JSON stream.
+- Nested provider command labels should be sanitized. Raw stdin payloads, token-bearing JSON arguments, and secret values must not be printed.
+- Nested provider stdout/stderr should be shown on command failure or explicit verbose output, with token, password, authorization, and API-key shaped values redacted before rendering.
 - when styling is present, mirror OpenClaw's lobster palette rather than inventing a separate AutoClaw palette. At minimum keep the heading and severity roles aligned to OpenClaw's accent, success, warn, error, and muted colors.
 - the frozen palette roles are: accent `#FF5A2D`, success `#2FBF71`, warn `#FFB020`, error `#E23D2D`, and muted `#8B7F77`.
 - Onboarding, setup, configure, and doctor output should mirror OpenClaw's warning-first tone rather than inventing a separate AutoClaw aesthetic.

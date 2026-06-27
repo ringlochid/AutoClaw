@@ -105,6 +105,7 @@ async def test_root_cli_openclaw_setup_patches_selected_profiles_tool_slice_only
                 json=True,
                 plain=False,
                 no_color=False,
+                verbose=False,
             )
         )
         payload = json.loads(capsys.readouterr().out)
@@ -144,6 +145,7 @@ async def test_root_cli_openclaw_check_blocks_ambiguous_auth(
                 json=True,
                 plain=False,
                 no_color=False,
+                verbose=False,
             )
         )
         payload = json.loads(capsys.readouterr().out)
@@ -179,6 +181,7 @@ async def test_root_cli_openclaw_check_reports_invalid_openclaw_config_json(
                 json=True,
                 plain=False,
                 no_color=False,
+                verbose=False,
             )
         )
         payload = json.loads(capsys.readouterr().out)
@@ -233,6 +236,7 @@ async def test_root_cli_openclaw_setup_bootstraps_gateway_token_and_port(
                 json=True,
                 plain=False,
                 no_color=False,
+                verbose=False,
             )
         )
         output = capsys.readouterr().out
@@ -251,3 +255,44 @@ async def test_root_cli_openclaw_setup_bootstraps_gateway_token_and_port(
     assert host_payload["gateway"]["port"] == 19055
     assert host_payload["gateway"]["auth"]["mode"] == "token"
     assert host_payload["gateway"]["auth"]["token"] == "gateway-config-token"
+
+
+@pytest.mark.asyncio
+async def test_root_cli_openclaw_setup_verbose_reports_nested_command_output(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = build_fake_openclaw_host(tmp_path, monkeypatch)
+    gateway_server = LocalGatewayTestServer()
+    gateway_server.start()
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", gateway_server.base_url)
+    monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", "gateway-config-token")
+
+    try:
+        await cli.cmd_init(build_init_args(paths))
+        capsys.readouterr()
+        result = await cli.cmd_openclaw_setup(
+            argparse.Namespace(
+                config=str(paths.config_path),
+                non_interactive=True,
+                openclaw_gateway_token=None,
+                openclaw_gateway_port=None,
+                json=False,
+                plain=True,
+                no_color=False,
+                verbose=True,
+            )
+        )
+        captured = capsys.readouterr()
+    finally:
+        gateway_server.close()
+        await dispose_db_engine()
+
+    assert result == 0
+    assert "AutoClaw openclaw setup" in captured.out
+    assert "Running openclaw agents list --json" in captured.err
+    assert "openclaw config patch --stdin completed" in captured.err
+    assert "Patched config" in captured.err
+    assert "Saved MCP server autoclaw-node" in captured.err
+    assert "api-test-key" not in captured.err
