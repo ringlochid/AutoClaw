@@ -164,6 +164,7 @@ async def cancel_command_run(
     *,
     task_id: str,
     run_id: str,
+    actor_ref: str | None = None,
 ) -> CommandRunCancelResponse:
     flow = await require_flow_for_task(session, task_id)
     command_run = await _command_run_for_task(session, task_id=task_id, run_id=run_id)
@@ -178,6 +179,7 @@ async def cancel_command_run(
     cancelled_at = utc_now()
     command_run.state = CommandRunState.CANCELLATION_REQUESTED.value
     command_run.cancellation_requested_at = cancelled_at
+    command_run.cancellation_requested_by_actor_ref = actor_ref
     command_run.latest_update = _COMMAND_RUN_CANCEL_REQUESTED_SUMMARY
     command_run.updated_at = cancelled_at
     flow.updated_at = cancelled_at
@@ -191,6 +193,7 @@ async def cancel_command_run(
         dispatch_id=command_run.dispatch_id,
         attempt_id=command_run.attempt_id,
         node_key=command_run.requester_node_key,
+        actor_ref=actor_ref,
         payload={
             "run_id": run_id,
             "state": CommandRunState.CANCELLATION_REQUESTED.value,
@@ -290,13 +293,16 @@ async def record_command_run_terminal_result(
     command_run.terminal_signal = result.signal
     command_run.terminal_log_ref = result.log_ref
     command_run.terminal_event_source = event_source.value
-    command_run.terminal_actor_ref = actor_ref
+    terminal_actor_ref = actor_ref
+    if terminal_state == CommandRunState.CANCELLED and terminal_actor_ref is None:
+        terminal_actor_ref = command_run.cancellation_requested_by_actor_ref
+    command_run.terminal_actor_ref = terminal_actor_ref
     command_run.latest_update = result.summary
     command_run.latest_log_ref = result.log_ref
     if terminal_state == CommandRunState.CANCELLED:
         command_run.cancellation_requested_at = command_run.cancellation_requested_at or ended_at
         command_run.cancellation_requested_by_actor_ref = (
-            command_run.cancellation_requested_by_actor_ref or actor_ref
+            command_run.cancellation_requested_by_actor_ref or terminal_actor_ref
         )
     command_run.updated_at = ended_at
     await session.delete(wait_state)
@@ -311,7 +317,9 @@ async def record_command_run_terminal_result(
         "log_ref": result.log_ref,
     }
     if terminal_state == CommandRunState.CANCELLED:
-        initiated_by_actor_ref = actor_ref or command_run.cancellation_requested_by_actor_ref
+        initiated_by_actor_ref = (
+            terminal_actor_ref or command_run.cancellation_requested_by_actor_ref
+        )
         if initiated_by_actor_ref is not None:
             payload["initiated_by_actor_ref"] = initiated_by_actor_ref
     await append_task_event(
@@ -324,7 +332,7 @@ async def record_command_run_terminal_result(
         dispatch_id=command_run.dispatch_id,
         attempt_id=command_run.attempt_id,
         node_key=command_run.requester_node_key,
-        actor_ref=actor_ref,
+        actor_ref=terminal_actor_ref,
         payload=payload,
     )
     await session.flush()

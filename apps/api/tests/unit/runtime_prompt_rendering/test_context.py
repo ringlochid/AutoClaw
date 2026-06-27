@@ -18,6 +18,7 @@ from autoclaw.runtime.contracts import (
     HumanRequestStatus,
     HumanRequestTimeout,
     PendingHumanRequest,
+    TaskEventSource,
 )
 from autoclaw.runtime.prompt import render_prompt_bundle
 
@@ -154,7 +155,7 @@ def test_worker_prompt_surfaces_terminal_command_run_context_without_raw_logs(
                         signal=None,
                         log_ref="logs/pytest-terminal.txt",
                     ),
-                    terminal_event_source="controller",
+                    terminal_event_source=TaskEventSource.CONTROLLER,
                 )
             }
         )
@@ -239,6 +240,9 @@ def test_worker_prompt_surfaces_terminal_human_request_context(
     assert "human-request.task_2026_0042.01" in human_request_section
     assert "resolution_kind: answered" in human_request_section
     assert "resolved_by_actor_ref: None" in human_request_section
+    assert "recommended_option: approve" in human_request_section
+    assert "- id: approve" in human_request_section
+    assert "- id: revise" in human_request_section
     assert "selected_option: approve" in human_request_section
     assert "timeout_default_behavior: Proceed with the recommended review option." in (
         human_request_section

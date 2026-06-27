@@ -235,7 +235,17 @@ def render_human_request_continuation_context(
         f"- resolved_by_actor_ref: {resolution.resolved_by_actor_ref}",
     ]
     for item in request_record.items:
-        lines.append(f"- item {item.item_id}: {item.prompt}")
+        lines.append(f"- item_id: {item.item_id}")
+        lines.append(f"  prompt: {item.prompt}")
+        lines.append(f"  recommended_option: {item.recommended_option}")
+        if item.options:
+            lines.append("  options:")
+            for option in item.options:
+                lines.append(f"    - id: {option.id}")
+                lines.append(f"      title: {option.title}")
+                lines.append(f"      description: {option.description}")
+        else:
+            lines.append("  options: []")
     if resolution.item_responses:
         lines.append("- item_responses:")
         for item_response in resolution.item_responses:

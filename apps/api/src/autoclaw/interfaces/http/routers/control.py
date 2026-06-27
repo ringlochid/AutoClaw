@@ -9,7 +9,10 @@ from fastapi import APIRouter, Depends, Header, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.interfaces.http.dependencies import require_api_key
+from autoclaw.interfaces.http.dependencies import (
+    read_control_actor_ref,
+    require_api_key,
+)
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session, get_session_factory
 from autoclaw.runtime.command_runs import cancel_command_run, list_command_runs
@@ -47,6 +50,7 @@ from autoclaw.runtime.task_events import (
 
 router = APIRouter(prefix="/control", tags=["control"], dependencies=[Depends(require_api_key)])
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
+type ControlActorRefDep = Annotated[str | None, Depends(read_control_actor_ref)]
 type OperatorTraceParams = Annotated[OperatorFlowTraceQuery, Query()]
 type TaskEventListParams = Annotated[TaskEventListQuery, Query()]
 type RuntimeFlowControlParams = Annotated[RuntimeFlowControlQuery, Query()]
@@ -75,6 +79,7 @@ async def pause_control_task(
     task_id: str,
     session: DBSession,
     query: RuntimeFlowControlParams,
+    actor_ref: ControlActorRefDep,
 ) -> RuntimeFlowPauseResponse:
     try:
         return await write_runtime_operation(
@@ -82,6 +87,7 @@ async def pause_control_task(
                 active_session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                actor_ref=actor_ref,
             ),
             session=session,
         )
@@ -94,6 +100,7 @@ async def continue_control_task(
     task_id: str,
     session: DBSession,
     query: RuntimeFlowControlParams,
+    actor_ref: ControlActorRefDep,
 ) -> RuntimeFlowRead:
     try:
         return await write_runtime_operation(
@@ -101,6 +108,7 @@ async def continue_control_task(
                 active_session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                actor_ref=actor_ref,
             ),
             session=session,
         )
@@ -113,6 +121,7 @@ async def cancel_control_task(
     task_id: str,
     session: DBSession,
     query: RuntimeFlowControlParams,
+    actor_ref: ControlActorRefDep,
 ) -> RuntimeFlowRead:
     try:
         return await write_runtime_operation(
@@ -120,6 +129,7 @@ async def cancel_control_task(
                 active_session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                actor_ref=actor_ref,
             ),
             session=session,
         )
@@ -178,6 +188,7 @@ async def resolve_control_human_request(
     request_id: str,
     resolve_request: HumanRequestResolveRequest,
     session: DBSession,
+    actor_ref: ControlActorRefDep,
 ) -> HumanRequestResolveResponse:
     try:
         return await write_runtime_operation(
@@ -186,6 +197,7 @@ async def resolve_control_human_request(
                 task_id=task_id,
                 request_id=request_id,
                 request=resolve_request,
+                actor_ref=actor_ref,
             ),
             session=session,
         )
@@ -219,6 +231,7 @@ async def cancel_control_command_run(
     task_id: str,
     run_id: str,
     session: DBSession,
+    actor_ref: ControlActorRefDep,
 ) -> CommandRunCancelResponse:
     try:
         return await write_runtime_operation(
@@ -226,6 +239,7 @@ async def cancel_control_command_run(
                 active_session,
                 task_id=task_id,
                 run_id=run_id,
+                actor_ref=actor_ref,
             ),
             session=session,
         )

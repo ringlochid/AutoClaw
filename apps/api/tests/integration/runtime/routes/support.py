@@ -287,5 +287,12 @@ async def continue_into_child_dispatch(
     )
 
 
+def control_write_headers(
+    context: RuntimeRouteContext,
+    _task: SeededRouteTask,
+) -> dict[str, str]:
+    return dict(context.operator_headers)
+
+
 async def _all_operator_paths_exist(paths: list[Path]) -> bool:
     return all(await asyncio.gather(*(asyncio.to_thread(path.is_file) for path in paths)))

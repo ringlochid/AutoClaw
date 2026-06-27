@@ -15,7 +15,7 @@ from autoclaw.runtime.post_commit import drive_runtime_once
 from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from tests.helpers.operator_auth_headers import OPERATOR_HEADERS
+from tests.helpers.operator_auth_headers import OPERATOR_HEADERS, seeded_runtime_headers
 
 
 def _callback_params(session_key: str) -> dict[str, str]:
@@ -130,7 +130,7 @@ async def pause_flow(
 ) -> Response:
     return await client.post(
         f"/runtime/tasks/{task_id}/pause",
-        headers=OPERATOR_HEADERS,
+        headers=seeded_runtime_headers(task_id),
         params={"expected_active_flow_revision_id": active_flow_revision_id},
     )
 
@@ -143,7 +143,7 @@ async def continue_flow(
 ) -> Response:
     return await client.post(
         f"/runtime/tasks/{task_id}/continue",
-        headers=OPERATOR_HEADERS,
+        headers=seeded_runtime_headers(task_id),
         params={"expected_active_flow_revision_id": active_flow_revision_id},
     )
 

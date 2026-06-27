@@ -12,7 +12,7 @@ from tests.helpers.dispatch_wait_support import (
     commit_dispatch_wait_ok,
     mark_dispatch_provider_completed,
 )
-from tests.helpers.runtime_support.http_api_support import OPERATOR_HEADERS
+from tests.helpers.operator_auth_headers import seeded_runtime_headers
 
 
 async def current_session_key(
@@ -203,7 +203,7 @@ async def resume_live_dispatch_if_needed(
     else:
         resumed = await client.post(
             f"/runtime/tasks/{task_id}/continue",
-            headers=OPERATOR_HEADERS,
+            headers=seeded_runtime_headers(task_id),
             params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
         )
         assert resumed.status_code == 200
@@ -227,7 +227,7 @@ async def continue_latest_dispatch(
     if should_resume_paused_flow:
         resumed = await client.post(
             f"/runtime/tasks/{task_id}/continue",
-            headers=OPERATOR_HEADERS,
+            headers=seeded_runtime_headers(task_id),
             params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
         )
         assert resumed.status_code == 200

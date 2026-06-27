@@ -4,15 +4,20 @@ import argparse
 import asyncio
 import json
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
 
 import autoclaw.interfaces.cli as cli
 import pytest
 from autoclaw.config import get_settings
+from autoclaw.persistence.models import CommandRunModel
 from autoclaw.persistence.session import dispose_db_engine, get_session_factory
 from autoclaw.runtime.command_run_continuation import (
     command_run_continuation_context_for_dispatch,
 )
+from autoclaw.runtime.command_run_records import command_run_record_from_model
 from autoclaw.runtime.human_request.continuation import (
     human_request_continuation_context_for_dispatch,
 )
@@ -89,7 +94,11 @@ async def test_db_upgrade_repairs_legacy_terminal_runtime_rows_for_readback_and_
     with sqlite3.connect(database_path) as connection:
         human_request_row = connection.execute(
             """
-            SELECT resolved_by_actor_ref, resolved_by_surface, resolution_policy_basis, resolution_note
+            SELECT
+                resolved_by_actor_ref,
+                resolved_by_surface,
+                resolution_policy_basis,
+                resolution_note
             FROM pending_human_requests
             WHERE request_id = ?
             """,
@@ -142,6 +151,34 @@ async def test_db_upgrade_repairs_legacy_terminal_runtime_rows_for_readback_and_
     assert command_run_context is not None
     assert command_run_context.run_id == _TERMINAL_COMMAND_RUN_ID
     assert command_run_context.terminal_event_source == "controller"
+    assert command_run_context.terminal_actor_ref is None
+
+
+@pytest.mark.parametrize(
+    ("state", "terminal_summary", "ended_at", "expected_terminal_event_source"),
+    (
+        ("cancellation_requested", None, None, None),
+        ("failed", "command failed with exit code 7", _TERMINAL_EVENT_TIME, "controller"),
+        ("timed_out", "command timed out after 600 seconds", _TERMINAL_EVENT_TIME, "controller"),
+    ),
+)
+def test_command_run_record_readback_only_uses_cancel_provenance_for_cancelled_rows(
+    state: str,
+    terminal_summary: str | None,
+    ended_at: str | None,
+    expected_terminal_event_source: str | None,
+) -> None:
+    command_run_model = _legacy_command_run_model_for_readback(
+        state=state,
+        terminal_summary=terminal_summary,
+        ended_at=ended_at,
+        cancellation_requested_by_actor_ref="operator.alice",
+    )
+
+    command_run_record = command_run_record_from_model(command_run_model)
+
+    assert command_run_record.terminal_event_source == expected_terminal_event_source
+    assert command_run_record.terminal_actor_ref is None
 
 
 def _seed_terminal_runtime_rows(database_path: Path) -> None:
@@ -283,7 +320,7 @@ def _insert_terminal_command_run(connection: sqlite3.Connection) -> None:
             "controller",
             None,
             None,
-            None,
+            "operator.alice",
             "2026-05-06T00:01:00+00:00",
             "2026-05-06T00:02:00+00:00",
             _TERMINAL_EVENT_TIME,
@@ -404,3 +441,44 @@ def _rewrite_table_without_columns(
     )
     connection.execute(f'DROP TABLE "{table_name}"')
     connection.execute(f'ALTER TABLE "{legacy_table_name}" RENAME TO "{table_name}"')
+
+
+def _legacy_command_run_model_for_readback(
+    *,
+    state: str,
+    terminal_summary: str | None,
+    ended_at: str | None,
+    cancellation_requested_by_actor_ref: str | None,
+) -> CommandRunModel:
+    created_at = datetime(2026, 5, 6, 0, 1, tzinfo=UTC)
+    started_at = datetime(2026, 5, 6, 0, 2, tzinfo=UTC)
+    ended_at_value = datetime.fromisoformat(ended_at) if ended_at is not None else None
+    terminal_log_ref = _TERMINAL_LOG_REF if terminal_summary is not None else None
+    latest_update = terminal_summary or "operator requested command-run cancellation"
+    return cast(
+        CommandRunModel,
+        SimpleNamespace(
+            run_id="command-run.legacy.readback",
+            task_id=_TERMINAL_TASK_ID,
+            dispatch_id=_TERMINAL_DISPATCH_ID,
+            attempt_id=_TERMINAL_ATTEMPT_ID,
+            command="pytest apps/api/tests/unit -q",
+            description="Run targeted tests.",
+            workdir="workspace",
+            state=state,
+            created_at=created_at,
+            started_at=started_at,
+            ended_at=ended_at_value,
+            timeout_seconds=600,
+            latest_update=latest_update,
+            latest_log_ref=_TERMINAL_LOG_REF,
+            cancellation_requested_at=created_at,
+            cancellation_requested_by_actor_ref=cancellation_requested_by_actor_ref,
+            terminal_summary=terminal_summary,
+            terminal_exit_code=7 if state == "failed" else None,
+            terminal_signal=None,
+            terminal_log_ref=terminal_log_ref,
+            terminal_event_source=None,
+            terminal_actor_ref=None,
+        ),
+    )

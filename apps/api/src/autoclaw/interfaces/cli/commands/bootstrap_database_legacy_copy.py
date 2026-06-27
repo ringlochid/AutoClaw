@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -154,12 +154,17 @@ def _legacy_command_run_terminal_event_source(
     existing = _row_text(row, "terminal_event_source")
     if existing is not None:
         return existing
-    if _row_text(row, "state") not in _TERMINAL_COMMAND_RUN_STATES:
+    state = _row_text(row, "state")
+    if state not in _TERMINAL_COMMAND_RUN_STATES:
         return None
-    if _row_text(row, "terminal_actor_ref") == _CONTROL_API_ACTOR_REF:
-        return _CONTROL_API_EVENT_SOURCE
-    if _row_text(row, "terminal_summary") == _TASK_CANCELLED_SUMMARY:
-        return _CONTROL_API_EVENT_SOURCE
+    if state == "cancelled":
+        if (
+            _row_text(row, "terminal_actor_ref") == _CONTROL_API_ACTOR_REF
+            or _row_text(row, "cancellation_requested_by_actor_ref") is not None
+        ):
+            return _CONTROL_API_EVENT_SOURCE
+        if _row_text(row, "terminal_summary") == _TASK_CANCELLED_SUMMARY:
+            return _CONTROL_API_EVENT_SOURCE
     return _CONTROLLER_EVENT_SOURCE
 
 
@@ -169,8 +174,12 @@ def _legacy_command_run_terminal_actor_ref(
     existing = _row_text(row, "terminal_actor_ref")
     if existing is not None:
         if existing == _CONTROL_API_ACTOR_REF and not _row_has_key(row, "terminal_event_source"):
+            if _row_text(row, "state") == "cancelled":
+                return _row_text(row, "cancellation_requested_by_actor_ref")
             return None
         return existing
+    if _row_text(row, "state") == "cancelled":
+        return _row_text(row, "cancellation_requested_by_actor_ref")
     return None
 
 
@@ -299,7 +308,7 @@ def _copy_postgres_runtime_terminal_table(
         )
     )
     for row in rows:
-        values = build_row(row, current_columns)
+        values = build_row(cast(Mapping[str, Any], row), current_columns)
         connection.execute(
             insert_statement,
             {

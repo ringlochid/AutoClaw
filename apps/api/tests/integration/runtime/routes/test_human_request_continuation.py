@@ -22,9 +22,11 @@ from autoclaw.runtime.post_commit import drive_runtime_until
 from autoclaw.runtime.projection.runtime_state import current_runtime_state
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.operator_auth_headers import DEFAULT_OPERATOR_ACTOR_REF
 from tests.integration.runtime.routes.support import (
     RuntimeRouteContext,
     SeededRouteTask,
+    control_write_headers,
     launch_route_task,
     runtime_route_context,
 )
@@ -87,7 +89,7 @@ async def test_resolved_human_request_continues_task_and_backfills_real_events(
 
         response = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
             json=_answer_payload(),
         )
 
@@ -102,7 +104,10 @@ async def test_resolved_human_request_continues_task_and_backfills_real_events(
         assert "## Human Request Continuation Context" in prompt_text
         assert f"- request_id: {request_id}" in prompt_text
         assert "- resolution_kind: answered" in prompt_text
-        assert "- resolved_by_actor_ref: None" in prompt_text
+        assert f"- resolved_by_actor_ref: {DEFAULT_OPERATOR_ACTOR_REF}" in prompt_text
+        assert "recommended_option: approve" in prompt_text
+        assert "- id: approve" in prompt_text
+        assert "- id: revise" in prompt_text
         assert "selected_option: approve" in prompt_text
         assert "extra_notes: Looks good." in prompt_text
 
@@ -127,11 +132,12 @@ async def test_resolved_human_request_continues_task_and_backfills_real_events(
             "status": "open",
         }
         assert human_request_events[1]["event_source"] == "control_api"
-        assert human_request_events[1]["actor_ref"] is None
+        assert human_request_events[1]["actor_ref"] == DEFAULT_OPERATOR_ACTOR_REF
         assert human_request_events[1]["payload"] == {
             "request_id": request_id,
             "status": "resolved",
             "resolution_kind": "answered",
+            "resolved_by_actor_ref": DEFAULT_OPERATOR_ACTOR_REF,
         }
 
 
@@ -218,7 +224,7 @@ async def test_cancel_task_closes_open_human_request_as_cancelled(
 
         cancel_response = await context.client.post(
             f"/control/tasks/{task.task_id}/cancel",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
             params={"expected_active_flow_revision_id": task.active_flow_revision_id},
         )
 
@@ -240,7 +246,7 @@ async def test_cancel_task_closes_open_human_request_as_cancelled(
             assert pending_request is not None
             assert pending_request.status == "cancelled"
             assert pending_request.resolution_kind == "cancelled"
-            assert pending_request.resolved_by_actor_ref is None
+            assert pending_request.resolved_by_actor_ref == DEFAULT_OPERATOR_ACTOR_REF
             assert pending_request.resolved_by_surface == "control_api"
             assert pending_request.resolution_policy_basis == "task_cancelled"
             assert pending_request.resolution_note == (
@@ -250,20 +256,21 @@ async def test_cancel_task_closes_open_human_request_as_cancelled(
             assert len(cancelled_events) == 1
             cancelled_event = cancelled_events[0]
             assert cancelled_event.event_source == "control_api"
-            assert cancelled_event.actor_ref is None
+            assert cancelled_event.actor_ref == DEFAULT_OPERATOR_ACTOR_REF
             assert cancelled_event.payload == {
                 "request_id": request_id,
                 "status": "cancelled",
                 "resolution_kind": "cancelled",
+                "resolved_by_actor_ref": DEFAULT_OPERATOR_ACTOR_REF,
             }
             assert len(task_cancelled_events) == 1
             assert task_cancelled_events[0].event_source == "control_api"
-            assert task_cancelled_events[0].actor_ref is None
+            assert task_cancelled_events[0].actor_ref == DEFAULT_OPERATOR_ACTOR_REF
             assert task_cancelled_events[0].payload == {"status": "cancelled"}
 
         stale_response = await context.client.post(
             f"/control/tasks/{task.task_id}/human-requests/{request_id}/resolve",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
             json=_answer_payload(),
         )
         assert stale_response.status_code == 409

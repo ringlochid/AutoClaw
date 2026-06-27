@@ -20,9 +20,9 @@ from autoclaw.runtime.contracts import (
     HumanRequestOpenRequest,
     HumanRequestOpenResponse,
     HumanRequestResolutionKind,
+    HumanRequestResolutionSurface,
     HumanRequestResolveRequest,
     HumanRequestResolveResponse,
-    HumanRequestResolutionSurface,
     HumanRequestStatus,
     OperationFailureCode,
     TaskEventSource,
@@ -137,6 +137,7 @@ async def resolve_human_request(
     task_id: str,
     request_id: str,
     request: HumanRequestResolveRequest,
+    actor_ref: str | None = None,
 ) -> HumanRequestResolveResponse:
     resolution = await record_human_request_terminal_result(
         session,
@@ -145,6 +146,8 @@ async def resolve_human_request(
         resolution_kind=HumanRequestResolutionKind.ANSWERED,
         item_responses=request.item_responses,
         event_source=TaskEventSource.CONTROL_API,
+        actor_ref=actor_ref,
+        resolved_by_actor_ref=actor_ref,
         resolved_by_surface=HumanRequestResolutionSurface.CONTROL_API,
         policy_basis="task_authorized_human_request_resolution",
     )

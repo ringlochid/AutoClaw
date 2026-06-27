@@ -30,6 +30,7 @@ from autoclaw.runtime.post_commit import drive_runtime_until, write_runtime_oper
 from autoclaw.runtime.projection.runtime_state import current_runtime_state
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from tests.helpers.operator_auth_headers import DEFAULT_OPERATOR_ACTOR_REF
 from tests.integration.runtime.routes.support import RuntimeRouteContext, SeededRouteTask
 
 
@@ -199,12 +200,12 @@ async def assert_command_run_cancel_requested(
         assert wait_state.command_run_id == run_id
         assert command_run.state == "cancellation_requested"
         assert command_run.cancellation_requested_at is not None
-        assert command_run.cancellation_requested_by_actor_ref is None
+        assert command_run.cancellation_requested_by_actor_ref == DEFAULT_OPERATOR_ACTOR_REF
         assert command_run.latest_update == "command run cancellation requested"
         assert len(events) == 1
         event = events[0]
         assert event.event_source == "control_api"
-        assert event.actor_ref is None
+        assert event.actor_ref == DEFAULT_OPERATOR_ACTOR_REF
         assert event.flow_revision_id == command_run.flow_revision_id
         assert event.dispatch_id == command_run.dispatch_id
         assert event.attempt_id == command_run.attempt_id
@@ -336,6 +337,7 @@ async def assert_command_run_terminal_state(
         assert len(terminal_events) == 1
         terminal_event = terminal_events[0]
         assert terminal_event.event_source == "controller"
+        assert terminal_event.actor_ref is None
         assert terminal_event.payload == {
             "run_id": run_id,
             "state": terminal_state_value,

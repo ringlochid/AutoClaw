@@ -74,12 +74,17 @@ def terminal_result_from_model(row: CommandRunModel) -> CommandRunTerminalResult
 
 def _terminal_event_source(row: CommandRunModel) -> TaskEventSource | None:
     if row.terminal_event_source is None:
-        if CommandRunState(row.state) not in TERMINAL_COMMAND_RUN_STATES:
+        state = CommandRunState(row.state)
+        if state not in TERMINAL_COMMAND_RUN_STATES:
             return None
-        if row.terminal_actor_ref == TaskEventSource.CONTROL_API.value:
-            return TaskEventSource.CONTROL_API
-        if row.terminal_summary == _TASK_CANCELLED_SUMMARY:
-            return TaskEventSource.CONTROL_API
+        if state == CommandRunState.CANCELLED:
+            if (
+                row.terminal_actor_ref == TaskEventSource.CONTROL_API.value
+                or row.cancellation_requested_by_actor_ref is not None
+            ):
+                return TaskEventSource.CONTROL_API
+            if row.terminal_summary == _TASK_CANCELLED_SUMMARY:
+                return TaskEventSource.CONTROL_API
         return TaskEventSource.CONTROLLER
     return TaskEventSource(row.terminal_event_source)
 

@@ -12,7 +12,10 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.operator_auth_headers import OPERATOR_HEADERS
+from tests.helpers.operator_auth_headers import (
+    DEFAULT_OPERATOR_ACTOR_REF,
+    OPERATOR_HEADERS,
+)
 from tests.helpers.runtime_dispatch_support import current_open_dispatch_id, stage_child_yield
 from tests.helpers.runtime_support import (
     bootstrap_parent_runtime,
@@ -20,6 +23,9 @@ from tests.helpers.runtime_support import (
     prepare_runtime_db,
     runtime_api_context,
     set_dispatch_drain_timeout,
+)
+from tests.helpers.runtime_support import (
+    continue_flow as continue_flow_via_http,
 )
 from tests.integration.runtime.control.boundary_support import (
     assert_pause_resumption_state,
@@ -118,25 +124,14 @@ async def test_pause_waits_for_inactivity_proof_before_reopening_dispatch(
                 task_id=task_id,
                 max_cycles=40,
             )
-            async with api.session_factory() as session:
-                resumed = await continue_runtime_flow(
-                    session,
-                    task_id,
-                    expected_active_flow_revision_id=active_flow_revision_id,
-                )
-                await session.commit()
-                assert resumed.current_node_key == "root"
-                assert resumed.active_attempt_id == root_attempt_id
-            await assert_pause_resumption_state(
+            await assert_route_resume_reopens_dispatch(
+                client=api.client,
                 session_factory=api.session_factory,
                 task_id=task_id,
                 dispatch_id=dispatch_id,
+                active_flow_revision_id=active_flow_revision_id,
                 root_attempt_id=root_attempt_id,
             )
-            assert await control_task_events(api.client, task_id=task_id) == [
-                expected_control_task_event("task_paused", "paused"),
-                expected_control_task_event("task_resumed", "running"),
-            ]
     finally:
         await dispose_db_engine()
 
@@ -166,13 +161,48 @@ async def control_task_events(
 def expected_control_task_event(
     event_type: str,
     status: str,
+    *,
+    actor_ref: str | None = None,
 ) -> dict[str, object]:
     return {
         "event_type": event_type,
         "event_source": "control_api",
-        "actor_ref": None,
+        "actor_ref": actor_ref,
         "payload": {"status": status},
     }
+
+
+async def assert_route_resume_reopens_dispatch(
+    *,
+    client: AsyncClient,
+    session_factory: async_sessionmaker[AsyncSession],
+    task_id: str,
+    dispatch_id: str,
+    active_flow_revision_id: str,
+    root_attempt_id: str | None,
+) -> None:
+    resumed = await continue_flow_via_http(
+        client,
+        task_id=task_id,
+        active_flow_revision_id=active_flow_revision_id,
+    )
+    assert resumed.status_code == 200
+    assert resumed.json()["current_node_key"] == "root"
+    assert resumed.json()["active_attempt_id"] == root_attempt_id
+    await assert_pause_resumption_state(
+        session_factory=session_factory,
+        task_id=task_id,
+        dispatch_id=dispatch_id,
+        root_attempt_id=root_attempt_id,
+    )
+    assert await control_task_events(client, task_id=task_id) == [
+        expected_control_task_event("task_paused", "paused"),
+        expected_control_task_event(
+            "task_resumed",
+            "running",
+            actor_ref=DEFAULT_OPERATOR_ACTOR_REF,
+        ),
+    ]
 
 
 @pytest.mark.asyncio

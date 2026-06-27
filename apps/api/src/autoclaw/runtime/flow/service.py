@@ -56,11 +56,13 @@ async def continue_runtime_flow(
     task_id: str,
     *,
     expected_active_flow_revision_id: str,
+    actor_ref: str | None = None,
 ) -> RuntimeFlowRead:
     return await flow_mutations.continue_runtime_flow(
         session,
         task_id,
         expected_active_flow_revision_id=expected_active_flow_revision_id,
+        actor_ref=actor_ref,
     )
 
 
@@ -69,11 +71,13 @@ async def pause_runtime_flow(
     task_id: str,
     *,
     expected_active_flow_revision_id: str,
+    actor_ref: str | None = None,
 ) -> RuntimeFlowPauseResponse:
     return await flow_mutations.pause_runtime_flow(
         session,
         task_id,
         expected_active_flow_revision_id=expected_active_flow_revision_id,
+        actor_ref=actor_ref,
     )
 
 
@@ -82,11 +86,13 @@ async def cancel_runtime_flow(
     task_id: str,
     *,
     expected_active_flow_revision_id: str,
+    actor_ref: str | None = None,
 ) -> RuntimeFlowRead:
     return await flow_mutations.cancel_runtime_flow(
         session,
         task_id,
         expected_active_flow_revision_id=expected_active_flow_revision_id,
+        actor_ref=actor_ref,
     )
 
 

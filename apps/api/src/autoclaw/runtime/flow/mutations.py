@@ -61,6 +61,7 @@ async def continue_runtime_flow(
     task_id: str,
     *,
     expected_active_flow_revision_id: str,
+    actor_ref: str | None = None,
 ) -> RuntimeFlowRead:
     flow = await require_flow_for_task(session, task_id)
     if flow.active_flow_revision_id != expected_active_flow_revision_id:
@@ -104,6 +105,8 @@ async def continue_runtime_flow(
         await session.delete(pause_wait_state)
     flow.status = FlowStatus.RUNNING.value
     flow.updated_at = utc_now()
+    assert resume_target.attempt is not None
+    assert resume_target.node is not None
     await _append_task_control_event(
         session,
         task_id=task_id,
@@ -111,26 +114,15 @@ async def continue_runtime_flow(
         flow=flow,
         attempt_id=resume_target.attempt.attempt_id,
         node_key=resume_target.node.node_key,
+        actor_ref=actor_ref,
     )
     await session.flush()
-    if flow.current_open_dispatch_id is None and dispatch_open_inputs is not None:
-        node, assignment, attempt, previous_dispatch_id, staged_child_assignment_id = (
-            dispatch_open_inputs
-        )
-        await open_dispatch_for_attempt(
-            session,
-            task_id=task_id,
-            node=node,
-            assignment=assignment,
-            attempt=attempt,
-            previous_dispatch_id=previous_dispatch_id,
-            staged_child_assignment_id=staged_child_assignment_id,
-        )
-        stage_previous_dispatch_outputs(
-            session,
-            task_id=task_id,
-            previous_dispatch_id=previous_dispatch_id,
-        )
+    await _open_resumed_dispatch_if_needed(
+        session,
+        task_id=task_id,
+        flow=flow,
+        dispatch_open_inputs=dispatch_open_inputs,
+    )
     await session.flush()
     return await runtime_flow_read(session, task_id)
 
@@ -140,6 +132,7 @@ async def pause_runtime_flow(
     task_id: str,
     *,
     expected_active_flow_revision_id: str,
+    actor_ref: str | None = None,
 ) -> RuntimeFlowPauseResponse:
     flow = await require_flow_for_task(session, task_id)
     if flow.active_flow_revision_id != expected_active_flow_revision_id:
@@ -176,6 +169,7 @@ async def pause_runtime_flow(
         attempt_id=state.current_attempt.attempt_id,
         node_key=state.current_node.node_key,
         dispatch_id=paused_dispatch_id,
+        actor_ref=actor_ref,
     )
     await session.flush()
     if paused_dispatch_id is not None:
@@ -188,6 +182,7 @@ async def cancel_runtime_flow(
     task_id: str,
     *,
     expected_active_flow_revision_id: str,
+    actor_ref: str | None = None,
 ) -> RuntimeFlowRead:
     flow = await require_flow_for_task(session, task_id)
     if flow.active_flow_revision_id != expected_active_flow_revision_id:
@@ -207,7 +202,13 @@ async def cancel_runtime_flow(
                     flow=flow,
                     dispatch=dispatch,
                 )
-                return await _finish_cancelled_flow(session, task_id, flow, cancelled_dispatch_id)
+                return await _finish_cancelled_flow(
+                    session,
+                    task_id,
+                    flow,
+                    cancelled_dispatch_id,
+                    actor_ref=actor_ref,
+                )
             if dispatch_deadline_expired(dispatch):
                 await fence_foreground_dispatch_after_timeout(
                     session,
@@ -218,7 +219,13 @@ async def cancel_runtime_flow(
                 stage_operator_outputs(session, task_id=task_id, dispatch_id=cancelled_dispatch_id)
                 await session.flush()
                 return await runtime_flow_read(session, task_id)
-            return await _finish_cancelled_flow(session, task_id, flow, cancelled_dispatch_id)
+            return await _finish_cancelled_flow(
+                session,
+                task_id,
+                flow,
+                cancelled_dispatch_id,
+                actor_ref=actor_ref,
+            )
         if dispatch.control_state == "ambiguous":
             await fence_foreground_dispatch(
                 session,
@@ -232,8 +239,19 @@ async def cancel_runtime_flow(
             flow.current_open_dispatch_id = None
         else:
             await _mark_dispatch_cancel_requested(session, dispatch)
-    await _cancel_active_external_wait(session, task_id=task_id, flow=flow)
-    return await _finish_cancelled_flow(session, task_id, flow, cancelled_dispatch_id)
+    await _cancel_active_external_wait(
+        session,
+        task_id=task_id,
+        flow=flow,
+        actor_ref=actor_ref,
+    )
+    return await _finish_cancelled_flow(
+        session,
+        task_id,
+        flow,
+        cancelled_dispatch_id,
+        actor_ref=actor_ref,
+    )
 
 
 async def _pause_active_dispatch(
@@ -321,6 +339,8 @@ async def _finish_cancelled_flow(
     task_id: str,
     flow: Any,
     cancelled_dispatch_id: str | None,
+    *,
+    actor_ref: str | None,
 ) -> RuntimeFlowRead:
     flow.status = FlowStatus.CANCELLED.value
     flow.updated_at = utc_now()
@@ -332,6 +352,7 @@ async def _finish_cancelled_flow(
         attempt_id=None,
         node_key=flow.current_node_key,
         dispatch_id=cancelled_dispatch_id,
+        actor_ref=actor_ref,
     )
     if flow.current_open_dispatch_id is None:
         await release_workspace_root_lease(session, task_id=task_id)
@@ -341,11 +362,40 @@ async def _finish_cancelled_flow(
     return await runtime_flow_read(session, task_id)
 
 
+async def _open_resumed_dispatch_if_needed(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    flow: Any,
+    dispatch_open_inputs: Any,
+) -> None:
+    if flow.current_open_dispatch_id is not None or dispatch_open_inputs is None:
+        return
+    node, assignment, attempt, previous_dispatch_id, staged_child_assignment_id = (
+        dispatch_open_inputs
+    )
+    await open_dispatch_for_attempt(
+        session,
+        task_id=task_id,
+        node=node,
+        assignment=assignment,
+        attempt=attempt,
+        previous_dispatch_id=previous_dispatch_id,
+        staged_child_assignment_id=staged_child_assignment_id,
+    )
+    stage_previous_dispatch_outputs(
+        session,
+        task_id=task_id,
+        previous_dispatch_id=previous_dispatch_id,
+    )
+
+
 async def _cancel_active_external_wait(
     session: AsyncSession,
     *,
     task_id: str,
     flow: Any,
+    actor_ref: str | None,
 ) -> None:
     wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
     if wait_state is None:
@@ -362,6 +412,8 @@ async def _cancel_active_external_wait(
             request_id=wait_state.pending_human_request_id,
             resolution_kind=HumanRequestResolutionKind.CANCELLED,
             event_source=TaskEventSource.CONTROL_API,
+            actor_ref=actor_ref,
+            resolved_by_actor_ref=actor_ref,
             resolved_by_surface=HumanRequestResolutionSurface.CONTROL_API,
             policy_basis="task_cancelled",
             note="human request cancelled because the task was cancelled",
@@ -389,6 +441,7 @@ async def _cancel_active_external_wait(
                 ended_at=cancelled_at,
             ),
             event_source=TaskEventSource.CONTROL_API,
+            actor_ref=actor_ref,
         )
         return
     await session.delete(wait_state)
@@ -403,6 +456,7 @@ async def _append_task_control_event(
     attempt_id: str | None,
     node_key: str | None,
     dispatch_id: str | None = None,
+    actor_ref: str | None = None,
 ) -> None:
     await append_task_event(
         session,
@@ -414,6 +468,7 @@ async def _append_task_control_event(
         dispatch_id=dispatch_id,
         attempt_id=attempt_id,
         node_key=node_key,
+        actor_ref=actor_ref,
         payload={"status": flow.status},
     )
 

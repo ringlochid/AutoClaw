@@ -13,7 +13,7 @@ from autoclaw.runtime.post_commit import (
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from tests.helpers.operator_auth_headers import OPERATOR_HEADERS
+from tests.helpers.operator_auth_headers import OPERATOR_HEADERS, seeded_runtime_headers
 
 EXPECTED_CURRENT_PATH_NAMES = (
     "workflow-manifest.md",
@@ -279,7 +279,7 @@ async def continue_runtime(
     await mark_current_dispatch_inactive(session_factory, task_id=task_id)
     response = await client.post(
         f"/runtime/tasks/{task_id}/continue",
-        headers=OPERATOR_HEADERS,
+        headers=seeded_runtime_headers(task_id),
         params={"expected_active_flow_revision_id": active_flow_revision_id},
     )
     assert response.status_code == 200

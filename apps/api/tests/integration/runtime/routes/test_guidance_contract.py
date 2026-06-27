@@ -12,6 +12,7 @@ from tests.integration.runtime.routes.support import (
     RuntimeRouteContext,
     SeededRouteTask,
     assert_operator_current_paths,
+    control_write_headers,
     launch_route_task,
     runtime_route_context,
 )
@@ -117,7 +118,7 @@ async def test_runtime_routes_reject_continue_for_running_flow(
 
         running_continue = await context.client.post(
             f"/control/tasks/{task.task_id}/continue",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
             params={"expected_active_flow_revision_id": task.active_flow_revision_id},
         )
         assert running_continue.status_code == 422
@@ -215,7 +216,7 @@ async def pause_route_task(
 ) -> SeededRouteTask:
     pause_response = await context.client.post(
         f"/control/tasks/{task.task_id}/pause",
-        headers=context.operator_headers,
+        headers=control_write_headers(context, task),
         params={"expected_active_flow_revision_id": task.active_flow_revision_id},
     )
     assert pause_response.status_code == 200

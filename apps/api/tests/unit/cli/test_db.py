@@ -208,3 +208,61 @@ def test_legacy_postgres_terminal_row_builders_keep_surface_and_clear_unknown_ac
         "terminal_event_source": "control_api",
         "terminal_actor_ref": None,
     }
+
+
+def test_legacy_postgres_command_run_builder_preserves_cancellation_actor_ref() -> None:
+    command_run_columns = [
+        "terminal_event_source",
+        "terminal_actor_ref",
+        "cancellation_requested_by_actor_ref",
+    ]
+    command_run_values = postgres_command_run_row(
+        {
+            "state": "cancelled",
+            "terminal_actor_ref": "control_api",
+            "cancellation_requested_by_actor_ref": "operator.alice",
+        },
+        command_run_columns,
+    )
+    command_run_row = dict(zip(command_run_columns, command_run_values, strict=True))
+
+    assert command_run_row == {
+        "terminal_event_source": "control_api",
+        "terminal_actor_ref": "operator.alice",
+        "cancellation_requested_by_actor_ref": "operator.alice",
+    }
+
+
+@pytest.mark.parametrize(
+    ("state", "terminal_summary", "expected_terminal_event_source"),
+    (
+        ("cancellation_requested", None, None),
+        ("failed", "command failed with exit code 7", "controller"),
+        ("timed_out", "command timed out after 600 seconds", "controller"),
+    ),
+)
+def test_legacy_postgres_command_run_builder_only_backfills_cancel_provenance_for_cancelled_rows(
+    state: str,
+    terminal_summary: str | None,
+    expected_terminal_event_source: str | None,
+) -> None:
+    command_run_columns = [
+        "terminal_event_source",
+        "terminal_actor_ref",
+        "cancellation_requested_by_actor_ref",
+    ]
+    command_run_values = postgres_command_run_row(
+        {
+            "state": state,
+            "terminal_summary": terminal_summary,
+            "cancellation_requested_by_actor_ref": "operator.alice",
+        },
+        command_run_columns,
+    )
+    command_run_row = dict(zip(command_run_columns, command_run_values, strict=True))
+
+    assert command_run_row == {
+        "terminal_event_source": expected_terminal_event_source,
+        "terminal_actor_ref": None,
+        "cancellation_requested_by_actor_ref": "operator.alice",
+    }

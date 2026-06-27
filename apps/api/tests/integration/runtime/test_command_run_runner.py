@@ -22,6 +22,7 @@ from tests.integration.runtime.command_run_runner_support import (
     wait_for_command_run_state,
 )
 from tests.integration.runtime.routes.support import (
+    control_write_headers,
     launch_route_task,
     runtime_route_context,
 )
@@ -244,7 +245,7 @@ async def test_command_runner_records_cancel_requested_before_process_launch(
 
         response = await context.client.post(
             f"/control/tasks/{task.task_id}/command-runs/{run_id}/cancel",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
         )
         assert response.status_code == 200
         assert response.json()["run"]["state"] == "cancellation_requested"
@@ -297,7 +298,7 @@ async def test_command_runner_cancels_process_after_control_request_without_nois
 
         response = await context.client.post(
             f"/control/tasks/{task.task_id}/command-runs/{run_id}/cancel",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
         )
         assert response.status_code == 200
         assert response.json()["run"]["state"] == "cancellation_requested"
@@ -368,7 +369,7 @@ async def test_command_runner_stops_live_process_after_whole_task_cancel(
 
         response = await context.client.post(
             f"/runtime/tasks/{task.task_id}/cancel",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
             params={"expected_active_flow_revision_id": task.active_flow_revision_id},
         )
         assert response.status_code == 200

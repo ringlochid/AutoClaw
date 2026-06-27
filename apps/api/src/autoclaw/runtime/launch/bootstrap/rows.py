@@ -133,20 +133,29 @@ async def _stage_task_root_rows(
             snapshot_json=bootstrap_input.compiled_plan.model_dump(mode="json"),
         )
     )
-    for binding_kind, path in context.binding_paths.items():
-        session.add(
-            TaskResourceBindingModel(
-                task_resource_binding_id=task_resource_binding_id(
-                    bootstrap_input.task_id,
-                    binding_kind,
-                ),
-                task_id=bootstrap_input.task_id,
-                binding_kind=binding_kind,
-                path=path,
-                binding_mode=None,
-            )
-        )
+    for resource_binding_row in _task_resource_binding_rows(
+        task_id=bootstrap_input.task_id,
+        binding_paths=context.binding_paths,
+    ):
+        session.add(resource_binding_row)
     await session.flush()
+
+
+def _task_resource_binding_rows(
+    *,
+    task_id: str,
+    binding_paths: dict[str, str],
+) -> tuple[TaskResourceBindingModel, ...]:
+    return tuple(
+        TaskResourceBindingModel(
+            task_resource_binding_id=task_resource_binding_id(task_id, binding_kind),
+            task_id=task_id,
+            binding_kind=binding_kind,
+            path=path,
+            binding_mode=None,
+        )
+        for binding_kind, path in binding_paths.items()
+    )
 
 
 async def _stage_compiled_plan_graph_rows(

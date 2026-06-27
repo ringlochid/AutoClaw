@@ -5,6 +5,7 @@ from autoclaw.runtime.post_commit import drive_runtime_once, drive_runtime_until
 from httpx import Response
 from sqlalchemy import select
 
+from tests.helpers.operator_auth_headers import seeded_runtime_headers
 from tests.helpers.runtime_support import (
     current_session_key_after_dispatch_progress_for_node,
 )
@@ -159,7 +160,7 @@ async def continue_flow(
     flow = json_map(
         await driver.client.post(
             f"/runtime/tasks/{driver.task_id}/continue",
-            headers=OPERATOR_HEADERS,
+            headers=seeded_runtime_headers(driver.task_id),
             params={"expected_active_flow_revision_id": expected_active_flow_revision_id},
         )
     )

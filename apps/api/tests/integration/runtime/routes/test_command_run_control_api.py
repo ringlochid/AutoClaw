@@ -11,6 +11,7 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.contracts.command_runs import CommandRunTerminalState
 from autoclaw.runtime.errors import RuntimeOperationError
 from sqlalchemy import select
+from tests.helpers.operator_auth_headers import current_operator_headers
 from tests.integration.runtime.routes.run_control_api_support import (
     assert_command_run_cancel_requested,
     assert_command_run_started_without_boundary,
@@ -23,6 +24,7 @@ from tests.integration.runtime.routes.run_control_api_support import (
     start_route_command_run,
 )
 from tests.integration.runtime.routes.support import (
+    control_write_headers,
     launch_route_task,
     runtime_route_context,
 )
@@ -77,7 +79,7 @@ async def test_control_command_run_cancel_persists_request_and_keeps_wait_open(
 
         response = await context.client.post(
             f"/control/tasks/{task.task_id}/command-runs/{run_id}/cancel",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
         )
 
         assert response.status_code == 200
@@ -110,11 +112,11 @@ async def test_control_command_run_cancel_rejects_missing_and_noncurrent_runs(
 
         missing = await context.client.post(
             f"/control/tasks/{task.task_id}/command-runs/command-run.missing/cancel",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
         )
         noncurrent = await context.client.post(
             f"/control/tasks/{task.task_id}/command-runs/{run_id}/cancel",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
         )
 
         assert missing.status_code == 409
@@ -142,7 +144,7 @@ async def test_pause_then_continue_rejects_active_command_run_wait(
 
         pause_response = await context.client.post(
             f"/control/tasks/{task.task_id}/pause",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
             params={"expected_active_flow_revision_id": task.active_flow_revision_id},
         )
 
@@ -151,7 +153,7 @@ async def test_pause_then_continue_rejects_active_command_run_wait(
 
         continue_response = await context.client.post(
             f"/control/tasks/{task.task_id}/continue",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, task),
             params={"expected_active_flow_revision_id": task.active_flow_revision_id},
         )
 
@@ -188,7 +190,7 @@ async def test_control_command_run_cancel_rejects_terminal_and_duplicate_request
 
         terminal_cancel = await context.client.post(
             f"/control/tasks/{terminal_task.task_id}/command-runs/{terminal_run_id}/cancel",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, terminal_task),
         )
         assert terminal_cancel.status_code == 409
         assert terminal_cancel.json()["detail"]["code"] == "illegal_state"
@@ -201,11 +203,11 @@ async def test_control_command_run_cancel_rejects_terminal_and_duplicate_request
         duplicate_run_id = await start_route_command_run(context, duplicate_task)
         first = await context.client.post(
             f"/control/tasks/{duplicate_task.task_id}/command-runs/{duplicate_run_id}/cancel",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, duplicate_task),
         )
         second = await context.client.post(
             f"/control/tasks/{duplicate_task.task_id}/command-runs/{duplicate_run_id}/cancel",
-            headers=context.operator_headers,
+            headers=control_write_headers(context, duplicate_task),
         )
 
         assert first.status_code == 200
@@ -311,7 +313,7 @@ async def test_control_command_runs_require_operator_auth_and_existing_task(
         )
         missing_cancel = await context.client.post(
             "/control/tasks/task_missing/command-runs/command-run.missing/cancel",
-            headers=context.operator_headers,
+            headers=current_operator_headers(),
         )
 
         assert unauthorized.status_code == 401
