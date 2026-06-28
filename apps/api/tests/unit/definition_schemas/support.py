@@ -19,6 +19,7 @@ from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
 REPO_ROOT = Path(__file__).resolve().parents[5]
 PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("autoclaw.definitions.seeds")
 WORKFLOW_EXAMPLES_ROOT = REPO_ROOT / "docs-internal" / "design" / "v1" / "workflows" / "examples"
+REFERENCE_DEFINITIONS_ROOT = REPO_ROOT / "docs" / "reference" / "definitions"
 WORKFLOW_SCHEMA_DOC = (
     REPO_ROOT / "docs-internal" / "design" / "v1" / "workflows" / "workflow-definition-schema.md"
 )
@@ -33,34 +34,53 @@ ROLE_POLICY_SCHEMA_DOC = (
 
 EXPECTED_WORKFLOW_IDS = {
     "bugfix-review-release",
+    "core-only-build",
+    "feature-implementation",
+    "idea-discovery",
     "minimal-implement-change",
     "normal-parent-first-release",
     "maximal-parent-first-release",
     "delivery-batch",
+    "marketing-campaign",
+    "mvp-build",
+    "planning-only",
+    "project-management-delivery",
 }
 EXPECTED_ROLE_IDS = {
     "architect",
     "bug_fix_engineer",
     "bug_triage",
     "code_reviewer",
+    "core_architect",
     "engineer",
     "failure_analyst",
+    "market_researcher",
+    "marketing_strategist",
     "planner",
     "planning_lead",
+    "product_planner",
+    "product_reviewer",
+    "project_manager",
     "release_operator",
     "replan_planner",
     "researcher",
     "reviewer",
     "root_planning_lead",
+    "scope_reviewer",
     "test_verifier",
     "delivery_planner",
 }
 EXPECTED_POLICY_IDS = {
     "standard-failure-analysis",
+    "standard-long-command-worker",
+    "standard-marketing-planning",
     "standard-parent-planning",
+    "standard-product-planning",
+    "standard-project-management",
     "standard-release",
     "standard-review",
     "standard-root-planning",
+    "standard-scope-review",
     "standard-verification",
     "standard-worker",
     "standard-delivery-planning",

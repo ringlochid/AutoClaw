@@ -19,6 +19,12 @@ from autoclaw.interfaces.cli.bootstrap.legacy_copy import (
     sqlite_command_run_row,
     sqlite_pending_human_request_row,
 )
+from autoclaw.interfaces.cli.bootstrap.postgres_repair import (
+    postgres_backup_schema_name,
+    postgres_constraint_with_not_valid,
+    postgres_quote_identifier,
+    postgres_rebound_constraint_definition,
+)
 from autoclaw.interfaces.cli.progress import CliProgress
 from autoclaw.persistence.session import (
     dispose_db_engine,
@@ -302,37 +308,6 @@ def _postgres_missing_columns(connection: Connection) -> dict[str, list[str]]:
     return missing
 
 
-def _postgres_backup_schema_name(connection: Connection, base_name: str = "autoclaw_legacy") -> str:
-    existing = {str(name) for name in inspect(connection).get_schema_names()}
-    candidate = base_name
-    suffix = 1
-    while candidate in existing:
-        candidate = f"{base_name}_{suffix}"
-        suffix += 1
-    return candidate
-
-
-def _postgres_quote_identifier(value: str) -> str:
-    return '"' + value.replace('"', '""') + '"'
-
-
-def _postgres_rebound_constraint_definition(definition: str, backup_schema: str) -> str:
-    rebound = definition.replace(
-        f"REFERENCES {backup_schema}.",
-        "REFERENCES public.",
-    )
-    return rebound.replace(
-        f'REFERENCES "{backup_schema}".',
-        "REFERENCES public.",
-    )
-
-
-def _postgres_constraint_with_not_valid(definition: str) -> str:
-    if "NOT VALID" in definition:
-        return definition
-    return f"{definition} NOT VALID"
-
-
 def _postgres_rebind_public_foreign_keys(
     connection: Connection,
     backup_schema: str,
@@ -352,14 +327,14 @@ def _postgres_rebind_public_foreign_keys(
     ).all()
     rebound_constraints: list[str] = []
     for table_name, constraint_name, definition in rows:
-        rebound_definition = _postgres_rebound_constraint_definition(
+        rebound_definition = postgres_rebound_constraint_definition(
             str(definition),
             backup_schema,
         )
         if rebound_definition == definition:
             continue
-        quoted_table = _postgres_quote_identifier(str(table_name))
-        quoted_constraint = _postgres_quote_identifier(str(constraint_name))
+        quoted_table = postgres_quote_identifier(str(table_name))
+        quoted_constraint = postgres_quote_identifier(str(constraint_name))
         connection.execute(
             text(
                 " ".join(
@@ -376,7 +351,7 @@ def _postgres_rebind_public_foreign_keys(
                     [
                         f"ALTER TABLE public.{quoted_table}",
                         f"ADD CONSTRAINT {quoted_constraint}",
-                        _postgres_constraint_with_not_valid(rebound_definition),
+                        postgres_constraint_with_not_valid(rebound_definition),
                     ]
                 )
             )
@@ -432,14 +407,14 @@ def _postgres_fk_validity_predicates(
         ):
             continue
         source_null_checks = [
-            f"{source_alias}.{_postgres_quote_identifier(column)} IS NULL"
+            f"{source_alias}.{postgres_quote_identifier(column)} IS NULL"
             for column in constrained_columns
         ]
         target_matches = [
             " = ".join(
                 [
-                    f"target.{_postgres_quote_identifier(referred_column)}",
-                    f"{source_alias}.{_postgres_quote_identifier(constrained_column)}",
+                    f"target.{postgres_quote_identifier(referred_column)}",
+                    f"{source_alias}.{postgres_quote_identifier(constrained_column)}",
                 ]
             )
             for constrained_column, referred_column in zip(
@@ -454,7 +429,7 @@ def _postgres_fk_validity_predicates(
                     *source_null_checks,
                     (
                         "EXISTS ("
-                        f"SELECT 1 FROM public.{_postgres_quote_identifier(str(referred_table))} "
+                        f"SELECT 1 FROM public.{postgres_quote_identifier(str(referred_table))} "
                         f"AS target WHERE {' AND '.join(target_matches)}"
                         ")"
                     ),
@@ -538,12 +513,12 @@ def _copy_postgres_legacy_data(
             if column.get("name")
         }
         shared_columns = [name for name in current_columns if name in backup_columns]
-        quoted_columns = ", ".join(_postgres_quote_identifier(name) for name in shared_columns)
-        insert_target = f"public.{_postgres_quote_identifier(table_name)}"
+        quoted_columns = ", ".join(postgres_quote_identifier(name) for name in shared_columns)
+        insert_target = f"public.{postgres_quote_identifier(table_name)}"
         source_alias = "legacy_source"
         select_source = " ".join(
             [
-                f"{_postgres_quote_identifier(backup_schema)}.{_postgres_quote_identifier(table_name)}",
+                f"{postgres_quote_identifier(backup_schema)}.{postgres_quote_identifier(table_name)}",
                 f"AS {source_alias}",
             ]
         )
@@ -580,7 +555,7 @@ async def _repair_postgres_legacy_schema(database_url: str) -> DatabaseRepairRes
 
     engine = get_async_engine()
     async with engine.begin() as connection:
-        backup_schema = await connection.run_sync(_postgres_backup_schema_name)
+        backup_schema = await connection.run_sync(postgres_backup_schema_name)
         missing_columns = await connection.run_sync(_postgres_missing_columns)
         existing_tables = await connection.run_sync(_table_names)
         moved_tables = sorted(

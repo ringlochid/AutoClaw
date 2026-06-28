@@ -1,0 +1,82 @@
+# Project management delivery workflow example
+
+Status: Reference
+
+This example mirrors the shipped `project-management-delivery` workflow fixture.
+
+```yaml
+kind: workflow
+id: project-management-delivery
+description: Capture objectives, decompose work, review risks, and publish a delivery-management plan without implementation.
+root:
+  id: root
+  role: root_planning_lead
+  policy: standard-root-planning
+  description: Preserve delivery-management purpose and close only when objectives, work packages, risks, and status plan are current.
+  instruction: Keep this workflow in coordination mode. Do not implement package work from project-management assignments.
+  criteria:
+    - slot: project_management_criteria
+      description: Hard criteria for delivery-management closure.
+      criteria:
+        - delivery plan explains objective, packages, dependencies, risks, decisions, owners, status cadence, and verification gates
+        - blockers and human decisions are explicit
+        - no implementation package is executed by this workflow
+  children:
+    - id: capture_objectives
+      role: project_manager
+      policy: standard-project-management
+      description: Capture objective, stakeholders, constraints, decision needs, and current state.
+      instruction: Build a management brief that makes the delivery problem inspectable.
+      produces:
+        artifacts:
+          - slot: project_objectives
+            file_hint: project_objectives.md
+            description: Objective, stakeholders, constraints, current state, and decision needs.
+    - id: decompose_work
+      role: project_manager
+      policy: standard-project-management
+      description: Decompose objectives into packages, dependencies, sequencing, and verification gates.
+      instruction: Keep packages assignable and separate implementation work from coordination work.
+      consumes:
+        artifacts:
+          - slot: project_objectives
+      produces:
+        artifacts:
+          - slot: delivery_work_breakdown
+            file_hint: delivery_work_breakdown.md
+            description: Work packages, dependencies, sequencing, owners, and verification gates.
+    - id: review_delivery_risks
+      role: scope_reviewer
+      policy: standard-scope-review
+      description: Review delivery work for risk, missing dependencies, unclear ownership, and acceptance gaps.
+      instruction: Name concrete corrections, blocking decisions, and risk severity.
+      consumes:
+        artifacts:
+          - slot: project_objectives
+          - slot: delivery_work_breakdown
+        criteria:
+          - slot: project_management_criteria
+      produces:
+        artifacts:
+          - slot: delivery_risk_review
+            file_hint: delivery_risk_review.md
+            description: Delivery risk, dependency, ownership, and acceptance review.
+    - id: publish_delivery_plan
+      role: project_manager
+      policy: standard-project-management
+      description: Publish the final delivery-management plan and status cadence.
+      instruction: Incorporate review findings where possible and clearly list remaining decisions.
+      consumes:
+        artifacts:
+          - slot: project_objectives
+          - slot: delivery_work_breakdown
+          - slot: delivery_risk_review
+        criteria:
+          - slot: project_management_criteria
+      produces:
+        artifacts:
+          - slot: delivery_management_plan
+            file_hint: delivery_management_plan.md
+            description: Final delivery-management plan, status cadence, decisions, risks, and next actions.
+```
+

@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from autoclaw.definitions.compiler import NormalizedCompiledNode
 from autoclaw.persistence.models import (
     CompiledPlanEdgeModel,
     CompiledPlanModel,
     CompiledPlanNodeModel,
     ContextSpaceModel,
+    FlowNodeModel,
+    FlowRevisionModel,
     ManifestRootModel,
     TaskComposeModel,
     TaskModel,
@@ -37,6 +40,14 @@ from autoclaw.runtime.launch.persistence.flows import (
     build_flow_row,
     build_node_plan_revision_row,
 )
+
+type NodePlanRevisionInput = tuple[
+    NormalizedCompiledNode,
+    str,
+    str | None,
+    str | None,
+    str | None,
+]
 
 
 async def stage_launch_bootstrap_rows(
@@ -264,8 +275,39 @@ async def _stage_flow_rows(
         binding_mode=context.workspace_binding_mode,
     )
 
-    flow_node_rows = []
-    node_plan_revision_inputs = []
+    flow_node_rows, node_plan_revision_inputs = _stage_flow_node_rows(
+        session,
+        bootstrap_input=bootstrap_input,
+        result=result,
+        context=context,
+        flow_revision=flow_revision,
+    )
+    await session.flush()
+
+    _stage_node_plan_revision_rows(
+        session,
+        bootstrap_input=bootstrap_input,
+        flow_revision=flow_revision,
+        flow_node_rows=flow_node_rows,
+        node_plan_revision_inputs=node_plan_revision_inputs,
+    )
+    await session.flush()
+
+    for edge in bootstrap_input.compiled_plan.dependency_edges:
+        session.add(build_flow_edge_row(bootstrap_input=bootstrap_input, edge=edge))
+    await session.flush()
+
+
+def _stage_flow_node_rows(
+    session: AsyncSession,
+    *,
+    bootstrap_input: RuntimeBootstrapProjectionInput,
+    result: RuntimeBootstrapResult,
+    context: LaunchBootstrapPersistenceContext,
+    flow_revision: FlowRevisionModel,
+) -> tuple[list[FlowNodeModel], list[NodePlanRevisionInput]]:
+    flow_node_rows: list[FlowNodeModel] = []
+    node_plan_revision_inputs: list[NodePlanRevisionInput] = []
     for node in bootstrap_input.compiled_plan.nodes:
         role, policy = resolve_pinned_role_policy(
             bootstrap_input.role_policy_lookup,
@@ -296,9 +338,17 @@ async def _stage_flow_rows(
                 policy.definition.instruction if policy else None,
             )
         )
+    return flow_node_rows, node_plan_revision_inputs
 
-    await session.flush()
 
+def _stage_node_plan_revision_rows(
+    session: AsyncSession,
+    *,
+    bootstrap_input: RuntimeBootstrapProjectionInput,
+    flow_revision: FlowRevisionModel,
+    flow_node_rows: list[FlowNodeModel],
+    node_plan_revision_inputs: list[NodePlanRevisionInput],
+) -> None:
     for (
         flow_node,
         (
@@ -321,8 +371,3 @@ async def _stage_flow_rows(
                 policy_instruction=policy_instruction,
             )
         )
-    await session.flush()
-
-    for edge in bootstrap_input.compiled_plan.dependency_edges:
-        session.add(build_flow_edge_row(bootstrap_input=bootstrap_input, edge=edge))
-    await session.flush()

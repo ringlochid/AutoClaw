@@ -1,0 +1,82 @@
+# Marketing campaign workflow example
+
+Status: Reference
+
+This example mirrors the shipped `marketing-campaign` workflow fixture.
+
+```yaml
+kind: workflow
+id: marketing-campaign
+description: Research audience, shape positioning, review campaign risk, and prepare a campaign plan without external publishing.
+root:
+  id: root
+  role: root_planning_lead
+  policy: standard-root-planning
+  description: Preserve campaign purpose and close only when campaign plan evidence, positioning, approvals, and non-publishing scope are clear.
+  instruction: Keep this workflow in campaign planning mode. Do not externally publish, message, spend, or distribute from this workflow.
+  criteria:
+    - slot: campaign_planning_criteria
+      description: Hard criteria for campaign planning closure.
+      criteria:
+        - campaign plan explains audience, offer, channel, message, proof, risks, approvals, and next execution package
+        - claims are backed by research or explicitly marked as assumptions
+        - external publishing, sending, buying, or distribution is not performed by this workflow
+  children:
+    - id: research_audience
+      role: market_researcher
+      policy: standard-marketing-planning
+      description: Research audience, competitor, channel, and positioning evidence for the campaign.
+      instruction: Keep findings source-grounded and tied to campaign decisions.
+      produces:
+        artifacts:
+          - slot: audience_research
+            file_hint: audience_research.md
+            description: Audience, competitor, channel, positioning, and proof findings.
+    - id: shape_positioning
+      role: marketing_strategist
+      policy: standard-marketing-planning
+      description: Shape positioning, message hierarchy, channel strategy, and asset plan.
+      instruction: Separate evidence-backed claims from assumptions and name approval needs.
+      consumes:
+        artifacts:
+          - slot: audience_research
+      produces:
+        artifacts:
+          - slot: campaign_brief
+            file_hint: campaign_brief.md
+            description: Positioning, message hierarchy, channels, asset plan, assumptions, and approvals.
+    - id: review_campaign_risk
+      role: scope_reviewer
+      policy: standard-scope-review
+      description: Review campaign scope, proof, approval gaps, and risk before launch planning.
+      instruction: Identify unsupported claims, missing approvals, channel mismatch, and execution risks.
+      consumes:
+        artifacts:
+          - slot: audience_research
+          - slot: campaign_brief
+        criteria:
+          - slot: campaign_planning_criteria
+      produces:
+        artifacts:
+          - slot: campaign_risk_review
+            file_hint: campaign_risk_review.md
+            description: Campaign risk, proof, scope, and approval review.
+    - id: prepare_campaign_package
+      role: marketing_strategist
+      policy: standard-marketing-planning
+      description: Prepare the final campaign package for later approval or execution.
+      instruction: Publish a plan that can be reviewed or executed later without performing external distribution now.
+      consumes:
+        artifacts:
+          - slot: audience_research
+          - slot: campaign_brief
+          - slot: campaign_risk_review
+        criteria:
+          - slot: campaign_planning_criteria
+      produces:
+        artifacts:
+          - slot: campaign_package
+            file_hint: campaign_package.md
+            description: Final campaign plan, assets list, approval needs, launch checklist, and next execution package.
+```
+

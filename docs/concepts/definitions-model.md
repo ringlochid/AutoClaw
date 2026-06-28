@@ -22,6 +22,7 @@ Task compose is the concrete launch body that picks a workflow, names the task, 
 
 ## Exact reference
 
+- [Design workflows and instructions](../guides/design-workflows-and-instructions.md)
 - [Roles reference examples](../reference/definitions/roles/README.md)
 - [Policies reference examples](../reference/definitions/policies/README.md)
 - [Workflows reference examples](../reference/definitions/workflows/README.md)

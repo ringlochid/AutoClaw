@@ -233,10 +233,17 @@ Current removed/stale fields are rejected by schema validation, including:
 Current shipped workflow fixtures are:
 
 - `bugfix-review-release`
+- `core-only-build`
+- `feature-implementation`
+- `idea-discovery`
 - `minimal-implement-change`
 - `normal-parent-first-release`
 - `maximal-parent-first-release`
 - `delivery-batch`
+- `marketing-campaign`
+- `mvp-build`
+- `planning-only`
+- `project-management-delivery`
 
 The packaged bootstrap mirror under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` is the committed authored and shipped seed source for those fixtures. No repo-root definitions mirror is required by shipped paths.
 

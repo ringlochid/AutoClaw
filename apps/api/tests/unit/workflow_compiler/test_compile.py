@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from .support import (
     POLICY_REVISIONS,
     ROLE_REVISIONS,
@@ -324,3 +326,107 @@ def test_compile_delivery_batch_workflow_normalizes_parent_and_worker_edges() ->
         ),
         ("root", "release_closure", "criteria", "package_release_criteria"),
     ]
+
+
+@pytest.mark.parametrize(
+    ("fixture_name", "workflow_key", "node_keys"),
+    [
+        (
+            "idea_discovery",
+            "idea-discovery",
+            [
+                "root",
+                "gather_context",
+                "shape_options",
+                "critique_options",
+                "recommend_direction",
+            ],
+        ),
+        (
+            "planning_only",
+            "planning-only",
+            [
+                "root",
+                "define_scope",
+                "map_work",
+                "review_plan_scope",
+                "publish_final_plan",
+            ],
+        ),
+        (
+            "mvp_build",
+            "mvp-build",
+            [
+                "root",
+                "discover_mvp_value",
+                "implement_mvp_slice",
+                "verify_demo_path",
+                "review_mvp_code",
+                "review_product_fit",
+                "release_closure",
+            ],
+        ),
+        (
+            "core_only_build",
+            "core-only-build",
+            [
+                "root",
+                "design_core_contracts",
+                "implement_core",
+                "verify_core_contracts",
+                "review_core_design",
+                "release_closure",
+            ],
+        ),
+        (
+            "feature_implementation",
+            "feature-implementation",
+            [
+                "root",
+                "inspect_existing_context",
+                "plan_feature_integration",
+                "review_feature_scope",
+                "implement_feature",
+                "verify_feature",
+                "review_feature",
+                "release_closure",
+            ],
+        ),
+        (
+            "marketing_campaign",
+            "marketing-campaign",
+            [
+                "root",
+                "research_audience",
+                "shape_positioning",
+                "review_campaign_risk",
+                "prepare_campaign_package",
+            ],
+        ),
+        (
+            "project_management_delivery",
+            "project-management-delivery",
+            [
+                "root",
+                "capture_objectives",
+                "decompose_work",
+                "review_delivery_risks",
+                "publish_delivery_plan",
+            ],
+        ),
+    ],
+)
+def test_compile_new_workflow_archetype_seed_smoke(
+    fixture_name: str,
+    workflow_key: str,
+    node_keys: list[str],
+) -> None:
+    plan = compile_packaged_workflow_fixture(fixture_name, revision_no=23)
+
+    assert plan.workflow_key == workflow_key
+    assert [node.node_key for node in plan.nodes] == node_keys
+    assert node_by_key(plan, "root").role_revision_no == ROLE_REVISIONS["root_planning_lead"]
+    assert (
+        node_by_key(plan, "root").policy_revision_no == POLICY_REVISIONS["standard-root-planning"]
+    )
+    assert plan.dependency_edges

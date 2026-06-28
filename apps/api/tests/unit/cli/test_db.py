@@ -10,13 +10,13 @@ from pathlib import Path
 import autoclaw.interfaces.cli as cli
 import pytest
 from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL, get_settings
-from autoclaw.interfaces.cli.bootstrap.database import (
-    _postgres_constraint_with_not_valid,
-    _postgres_rebound_constraint_definition,
-)
 from autoclaw.interfaces.cli.bootstrap.legacy_copy import (
     postgres_command_run_row,
     postgres_pending_human_request_row,
+)
+from autoclaw.interfaces.cli.bootstrap.postgres_repair import (
+    postgres_constraint_with_not_valid,
+    postgres_rebound_constraint_definition,
 )
 from autoclaw.interfaces.cli.commands.bootstrap import (
     ensure_database_ready_with_legacy_sqlite_repair,
@@ -215,7 +215,7 @@ def test_legacy_postgres_terminal_row_builders_keep_surface_and_clear_unknown_ac
 
 
 def test_legacy_postgres_constraint_rebinder_targets_public_schema_and_not_valid() -> None:
-    rebound = _postgres_rebound_constraint_definition(
+    rebound = postgres_rebound_constraint_definition(
         (
             "FOREIGN KEY (flow_node_id) "
             "REFERENCES autoclaw_legacy.flow_nodes(flow_node_id) "
@@ -229,7 +229,7 @@ def test_legacy_postgres_constraint_rebinder_targets_public_schema_and_not_valid
         "REFERENCES public.flow_nodes(flow_node_id) "
         "DEFERRABLE INITIALLY DEFERRED"
     )
-    assert _postgres_constraint_with_not_valid(rebound).endswith(
+    assert postgres_constraint_with_not_valid(rebound).endswith(
         "DEFERRABLE INITIALLY DEFERRED NOT VALID"
     )
 

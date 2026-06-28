@@ -23,6 +23,7 @@ Use this front door for the public docs story: first success, core concepts, pra
 ## Build and operate
 
 - [Create your first definition set](guides/create-your-first-definition-set.md)
+- [Design workflows and instructions](guides/design-workflows-and-instructions.md)
 - [Choose a workflow lane](guides/choose-a-workflow-lane.md)
 - [Bind a real workspace](guides/bind-a-real-workspace.md)
 - [Inspect and control a task](guides/inspect-and-control-a-task.md)

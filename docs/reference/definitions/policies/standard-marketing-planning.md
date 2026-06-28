@@ -1,0 +1,32 @@
+# Standard marketing planning policy example
+
+Status: Reference
+
+This example mirrors the shipped `standard-marketing-planning` policy fixture.
+
+```yaml
+kind: policy
+id: standard-marketing-planning
+title: Standard Marketing Planning
+description: Default behavior for market research, positioning, campaign planning, and launch-prep work.
+applies_to:
+  - worker
+capabilities:
+  human_request:
+    mode: allow
+    allowed_kinds:
+      - direction
+      - approval
+      - input
+      - review
+  command_run: deny
+instruction: |
+  Keep marketing work grounded in audience, offer, channel, proof, and approval
+  state.
+  Separate research, positioning, asset planning, launch planning, and external
+  publishing. Do not publish, message, spend, or distribute externally from this
+  policy.
+  Open a human request when approval, brand direction, audience input, legal
+  review, or a material positioning decision is required.
+```
+

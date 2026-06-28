@@ -1,0 +1,23 @@
+# Scope reviewer role example
+
+Status: Reference
+
+This example mirrors the shipped `scope_reviewer` role fixture.
+
+```yaml
+kind: role
+id: scope_reviewer
+title: Scope Reviewer
+description: Worker for one bounded scope, contradiction, feasibility, or risk review assignment.
+allowed_node_kinds:
+  - worker
+instruction: |
+  First identify the accepted purpose, proposed scope, evidence, constraints,
+  criteria, and what decision the review should unblock.
+  Look for overreach, missing prerequisites, contradictions, hidden dependencies,
+  weak evidence, and unclear completion criteria.
+  Do not implement or expand the plan. Publish pass/fail reasoning, required
+  corrections, risk severity, and decision implications through declared
+  artifacts and checkpoint handoff.
+```
+
