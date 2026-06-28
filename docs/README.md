@@ -44,13 +44,17 @@ Use this front door for the public docs story: first success, core concepts, pra
 
 ## Maintainers
 
-- [Packaging guide](maintainers/packaging.md)
-- [Release guide](maintainers/release.md)
-- [Testing guide](maintainers/testing.md)
+- [Choose a verification lane](maintainers/choose-a-verification-lane.md)
+- [Maintain packaging](maintainers/maintain-packaging.md)
+- [Prepare a release](maintainers/prepare-a-release.md)
+- [Maintain database support](maintainers/maintain-database-support.md)
+- [Maintain docs](maintainers/maintain-docs.md)
+- [Recover a broken release](maintainers/recover-a-broken-release.md)
 
 ## Help
 
 - [Troubleshooting](help/troubleshooting.md)
+- [Diagnostic bundle](help/diagnostic-bundle.md)
 - [FAQ](help/faq.md)
 
 ## Surface rule

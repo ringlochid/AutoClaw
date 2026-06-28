@@ -2,47 +2,49 @@
 
 Status: Reference
 
-Use this page for the most common install, onboarding, and first-run failures.
+Use this page to route a failure to the right help topic.
 
-## `autoclaw onboard` fails before writing
+Start with the visible symptom. Do not jump straight to reset or reinstall; most AutoClaw failures are clearer after `doctor`, `openclaw check`, runtime readbacks, or service health reads.
 
-Cause:
-- OpenClaw support preflight blocked the host shape
+## First checks
 
-Check:
-- run `autoclaw openclaw check --json`
+Run these local reads before changing state:
 
-Likely fixes:
-- confirm the OpenClaw gateway is loopback, not remote
-- confirm auth mode is supported and the required secret is available
-- avoid assuming AutoClaw will rewrite OpenClaw gateway policy for you
+- `autoclaw doctor`
+- `autoclaw openclaw check`
+- `autoclaw service status` when you use the managed Linux service
+- `curl http://127.0.0.1:18125/healthz` when the API should be running
+- `curl http://127.0.0.1:18125/readyz` when database readiness matters
 
-## `autoclaw service start` fails
+Use `--json` when you need machine-readable output.
 
-Cause:
-- Linux `systemd --user` support is the only fully shipped v1 managed-service lane
+## Symptom map
 
-Check:
-- run `autoclaw service status`
-- if needed, use `autoclaw serve` to prove the foreground runtime path
+| If you see | Start with |
+| --- | --- |
+| `autoclaw` is not found, `onboard` fails, or `doctor` is unhealthy after install | [Install and onboard problems](install-and-onboard.md) |
+| `openclaw check` blocks setup, wrapper repair, or service startup | [OpenClaw integration problems](openclaw-integration.md) |
+| `service start` fails, `/healthz` fails, or `/readyz` fails | [Service and health problems](service-and-health.md) |
+| `task-compose start` fails before a useful task exists | [Task start failures](task-start-failures.md) |
+| a task is waiting, paused, stale, or unclear after launch | [Task stuck or waiting](task-stuck-or-waiting.md) |
+| Postgres, migration, reset, or DB-backed verification fails | [Postgres and database problems](postgres-and-database.md) |
 
-## `autoclaw doctor` is healthy but task start fails
+## Collect evidence
 
-Cause:
-- definition import or task-compose launch input is invalid
+When the symptom is not obvious, collect the smallest useful diagnostic bundle:
 
-Check:
-- verify the workflow key exists
-- verify the task-compose file matches the current launch contract
-- use [definition and task-compose YAML contract](../reference/api/definition-and-task-compose-yaml-contract.md)
+- current command and exact error
+- `autoclaw doctor --json`
+- `autoclaw openclaw check --json`
+- service status or foreground `serve` log when the API should be running
+- task id, runtime readback, operator snapshot, and operator trace when a task already exists
 
-## Postgres lane fails
+Use [diagnostic bundle](diagnostic-bundle.md) for the exact command set and redaction notes.
 
-Cause:
-- the stronger DB-backed lane depends on the package extra plus Docker/Postgres setup
+## Avoid these shortcuts
 
-Check:
-- confirm you installed `autoclaw[postgres]`
-- confirm `AUTOCLAW_DATABASE_URL` is set
-- use [Use Postgres](../reference/maintainers/use-postgres.md)
-- run [Run Docker Postgres verification](../reference/maintainers/run-docker-postgres-verification.md)
+- do not delete the data directory before reading the failing state
+- do not use `continue` as a polling command
+- do not treat observability support files as controller truth
+- do not assume macOS or Windows managed-service parity in v1
+- do not paste API keys, Gateway tokens, passwords, or private task artifacts into a report
