@@ -13,7 +13,7 @@ TEST_COMPOSE := COMPOSE_PROJECT_NAME=autoclaw-test-db $(TEST_COMPOSE_ENV) $(COMP
 .PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
 
 tree:
-	find . -maxdepth 4 | sort
+	find . -maxdepth 6 | sort
 
 clean-local:
 	rm -rf .openclaw-run-logs tmp .pytest_cache .mypy_cache .ruff_cache
