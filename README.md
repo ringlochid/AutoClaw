@@ -11,7 +11,6 @@ This root README is a front-door router only. Public docs live under `docs/`. In
 ## Start here
 
 - Public docs map: [Public docs home](docs/README.md)
-- Product narrative: [Product docs home](docs/product/README.md)
 - Public reference: [Reference docs home](docs/reference/README.md)
 - Internal canon: [Internal canon home](docs-internal/README.md)
 - Coding-agent policy: [Coding agent contract](AGENTS.md)

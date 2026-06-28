@@ -50,6 +50,17 @@ Node kind comes from workflow structure:
 
 Review, verification, research, implementation, planning, failure analysis, and release work are modes of work. They are not separate node kinds.
 
+## Workflow shape
+
+A workflow is a purpose-specific evidence path, not just a list of roles. Good workflow shape answers:
+
+- what purpose this run serves
+- what artifacts and criteria prove closure
+- where parent orchestration, review, retry, replan, or human judgment may be needed
+- which work must stay out of scope
+
+Choose the lane in a guide. Keep the concept simple: different purposes need different evidence and different coordination.
+
 ## Proof model
 
 AutoClaw treats evidence as part of the workflow contract:
@@ -78,6 +89,6 @@ A minimal implementation workflow may have one root and one worker. The root rea
 
 - [Definitions model](definitions-model.md)
 - [Runtime model](runtime-model.md)
-- [Workflow lanes](workflow-lanes.md)
+- [Choose a workflow lane](../guides/choose-a-workflow-lane.md)
 - [Workspace model](workspace-model.md)
 - [Inspect and control a task](../guides/inspect-and-control-a-task.md)

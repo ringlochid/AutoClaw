@@ -18,7 +18,6 @@ Use this front door for the public docs story: first success, core concepts, pra
 - [Core concepts](concepts/core-concepts.md)
 - [Runtime model](concepts/runtime-model.md)
 - [Definitions model](concepts/definitions-model.md)
-- [Workflow lanes](concepts/workflow-lanes.md)
 - [Workspace model](concepts/workspace-model.md)
 
 ## Build and operate

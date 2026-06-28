@@ -225,6 +225,7 @@ Use this pattern only when both pages have a clear audience and durable value. D
 - maintainer-heavy public pages should live under reference or maintainer lanes, not under onboarding
 - internal canon should not be mixed into the public nav by default
 - if a page is private, scratch, or mirror-only, keep it out of public nav and publish paths
+- do not keep redirect-style wrapper, router, or compatibility pages after moving public docs; delete the old page, update real links, and let missing old paths fail visibly
 - do not keep parallel live `README.md` and `INDEX.md` front doors that both claim owner authority for the same subtree
 - use human-readable link labels such as `docs structure guide` or `current runtime read models and operator surfaces` for navigation; do not expose `.md` filenames as link text unless the filename itself is the subject
 
