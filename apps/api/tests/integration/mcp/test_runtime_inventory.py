@@ -34,8 +34,10 @@ _OPERATOR_DEFINITION_EXTENSION_TOOLS = {
     "upload_definition",
     "start_task",
     "list_definition_draft_sets",
-    "create_definition_draft_set",
     "get_definition_draft_set",
+}
+_REMOVED_OPERATOR_DRAFT_MUTATION_TOOLS = {
+    "create_definition_draft_set",
     "delete_definition_draft_set",
     "materialize_definition_draft_set",
     "write_definition_draft_file",
@@ -82,6 +84,8 @@ def _assert_query_schema(tool_schema: dict[str, object]) -> None:
 def _assert_operator_tool_inventory(tools_result: Any) -> None:
     names = set(tool_names(tools_result))
     assert _OPERATOR_RUNTIME_SUPPORT_TOOLS <= names
+    assert _OPERATOR_DEFINITION_EXTENSION_TOOLS <= names
+    assert names.isdisjoint(_REMOVED_OPERATOR_DRAFT_MUTATION_TOOLS)
     assert (names & _NODE_ONLY_TOOLS) == _SHARED_CURRENT_DEFINITION_TOOLS
     _assert_query_schema(tool_input_schema(tools_result, "list_runtime_tasks"))
     _assert_query_schema(tool_input_schema(tools_result, "get_operator_trace"))

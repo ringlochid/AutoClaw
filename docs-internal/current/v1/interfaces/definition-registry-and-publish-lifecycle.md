@@ -90,6 +90,7 @@ Current shipped authoring facts are:
 - `POST /authoring/definition-draft-sets/{draft_set_id}/apply` publishes through the same DB-backed definition upsert truth used elsewhere and may optionally start a task from newly current registry truth after successful apply
 - invalid saved preview task-compose input is warning-only authoring context unless that apply request also asks to start a task
 - when the optional post-apply task start fails after publish committed, the route still returns `status=applied` plus task-start failure detail instead of surfacing a false apply failure
+- mounted operator MCP exposes only read-only draft-set list/detail inspection; mutating draft authoring remains on the HTTP `/authoring` workbench API
 
 Registry lifecycle is therefore no longer only an internal service plus CLI/init concern; current HTTP also exposes a local pending-authoring lane over that same registry truth.
 

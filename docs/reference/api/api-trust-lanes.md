@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Last verified: 2026-06-25
+Last verified: 2026-06-28
 
 This page owns the exact current operator definition, trust-lane split, and the difference between operator, callback caller, node-tool caller, worker, parent/root, and controller in the shipped tree.
 
@@ -30,7 +30,7 @@ The same human may play both roles, but the authority is different.
 
 | Role         | Current meaning                                         | Owns                                                                                       | Does not own                                       |
 | ------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| `operator`   | trusted runtime-steering principal                      | `/definitions`, `/tasks/start`, `/runtime`, `/operator`, `/control`, and `/observability` HTTP actions | callback or node write authority, controller truth |
+| `operator`   | trusted runtime-steering principal                      | `/definitions`, `/authoring`, `/tasks/start`, `/runtime`, `/operator`, `/control`, and `/observability` HTTP actions | callback or node write authority, controller truth |
 | `worker`     | current worker-node caller                              | checkpoint and boundary writes for the bound dispatch                                      | operator reads, parent/root tools                  |
 | `parent`     | current parent-node caller                              | parent/root tool calls and parent/root boundary decisions                                  | operator reads, controller truth                   |
 | `root`       | current root-node caller                                | root-only `release_blocked` and root closure decisions                                     | operator reads, delegated worker execution         |
@@ -46,7 +46,7 @@ The same human may play both roles, but the authority is different.
 | Lane               | Typical caller                       | Current capability level                                                                                                          | Notes                                                                   |
 | ------------------ | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | health lane        | any caller                           | `/healthz`, `/readyz`                                                                                                             | unauthenticated                                                         |
-| operator HTTP lane | operator                             | definition discovery and upload, task start, runtime list/read, continue, pause, cancel, snapshot, trace, control events, human requests, command runs, observability file refs | protected by `X-AutoClaw-API-Key`                                       |
+| operator HTTP lane | operator                             | definition discovery and upload, definition authoring drafts, task start, runtime list/read, continue, pause, cancel, snapshot, trace, control events, human requests, command runs, observability file refs | protected by `X-AutoClaw-API-Key`                                       |
 | callback HTTP lane | bound worker, parent, or root caller | checkpoint writes, boundary acceptance, parent/root tools                                                                         | explicit `session_key` query parameter + route `task_id`                |
 | node MCP mount     | bound worker, parent, or root caller | current-only definition reads plus checkpoint, boundary, and parent/root tools                                                    | explicit `session_key` + `task_id`, mounted at `/node/mcp` when enabled |
 | internal-key gap   | none on the shipped HTTP router      | none                                                                                                                              | `require_internal_api_key()` exists but is unused                       |
@@ -64,6 +64,7 @@ Protected by `X-AutoClaw-API-Key` via `require_api_key`.
 Current grouped surfaces:
 
 - `/definitions/*`
+- `/authoring/*`
 - `/tasks/start`
 - `/runtime/*`
 - `/operator/*`
@@ -73,6 +74,7 @@ Current grouped surfaces:
 Current operator actions on this lane include:
 
 - list, inspect, or upload definitions
+- create, inspect, save, reset, re-materialize, validate, preview, apply, or delete backend-owned definition draft sets
 - start a task from the definition service
 - list or inspect runtime tasks
 - continue, pause, or cancel a task runtime
@@ -81,7 +83,9 @@ Current operator actions on this lane include:
 - request cancellation of the current active command run without cancelling the whole task
 - fetch task-scoped observability file refs
 
-Current operator GET routes are read-only in the shipped tree: they surface current file refs but do not repair or rematerialize projections inline. `POST /definitions` and `POST /tasks/start` are trusted API-key write paths on the same lane.
+Current operator GET routes are read-only in the shipped tree: they surface current file refs or current backend-owned draft state but do not repair or rematerialize projections inline. `POST /definitions`, `/authoring/definition-draft-sets/*`, and `POST /tasks/start` are trusted API-key write paths on the same lane.
+
+Mounted operator MCP is a narrower operator surface over the same trusted principal. It exposes registry reads, definition upload, task start, runtime control/readback, support refs, and read-only draft-set discovery/detail tools. It does not expose draft-set create, delete, materialize, save, reset, re-materialize, validate, apply, or preview-task-compose tools; those remain HTTP `/authoring` workbench actions.
 
 ### 2. Callback HTTP lane
 
@@ -161,6 +165,8 @@ The config still carries `internal_api_key`, but no shipped HTTP router uses the
 | inspect definition detail    | operator HTTP             | read one current definition revision                                                                                                                                                                                                         |
 | inspect definition history   | operator HTTP             | read historical revisions for one definition                                                                                                                                                                                                 |
 | upload definition            | operator HTTP             | create or update a definition revision                                                                                                                                                                                                       |
+| manage definition draft sets | operator HTTP             | create, inspect, save, reset, re-materialize, validate, preview, apply, or delete backend-owned draft-set state under the configured data dir                                                                                             |
+| inspect definition draft sets | operator HTTP or operator MCP | list draft-set refs and inspect saved draft bodies, normalized content, and preview state without mutating local draft state                                                                                                              |
 | start task                   | operator HTTP             | create a task from the definition service and wait for initial runtime effects                                                                                                                                                               |
 | inspect runtime list         | operator HTTP             | read `GET /runtime/tasks`                                                                                                                                                                                                                    |
 | inspect one task runtime     | operator HTTP             | read `GET /runtime/tasks/{task_id}`                                                                                                                                                                                                          |
@@ -181,7 +187,7 @@ The config still carries `internal_api_key`, but no shipped HTTP router uses the
 
 ## Mutation timing
 
-- runtime writes, checkpoint writes, boundary writes, callback writes, node-tool writes, definition uploads, and task-start writes commit controller-owned rows first
+- runtime writes, checkpoint writes, boundary writes, callback writes, node-tool writes, definition uploads, definition draft-set apply writes, and task-start writes commit controller-owned rows first
 - the same request then applies the owned task-root file writes synchronously before returning when that route family owns those projections
 - launch returns only after the stable root workflow-manifest, root attempt files, and opened-dispatch projections are readable
 - structural callback and node-tool writes return only after the stable manifest reread path is current

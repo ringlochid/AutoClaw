@@ -31,7 +31,13 @@ OPERATOR_ONLY_TOOLS = {
     "get_watchdog_state_ref",
     "get_provider_events_ref",
 }
-OPERATOR_DEFINITION_ONLY_TOOLS = {"list_definition_versions", "upload_definition", "start_task"}
+OPERATOR_DEFINITION_ONLY_TOOLS = {
+    "list_definition_versions",
+    "upload_definition",
+    "start_task",
+    "list_definition_draft_sets",
+    "get_definition_draft_set",
+}
 
 
 def node_mcp_app() -> Starlette:

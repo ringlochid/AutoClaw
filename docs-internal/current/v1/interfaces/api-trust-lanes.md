@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-06-27
+Last verified: 2026-06-28
 
 This page owns the exact current operator definition, trust-lane split, and the difference between operator, callback caller, node-tool caller, worker, parent/root, and controller in the shipped tree.
 
@@ -86,6 +86,8 @@ Current operator actions on this lane include:
 
 Current operator GET routes are read-only in the shipped tree: they surface current file refs or current backend-owned draft state but do not repair or rematerialize projections inline. `POST /definitions`, `/authoring/definition-draft-sets/*`, and `POST /tasks/start` are trusted API-key write paths on the same lane.
 
+Mounted operator MCP is a narrower operator surface over the same trusted principal. It exposes registry reads, definition upload, task start, runtime control/readback, support refs, and read-only draft-set discovery/detail tools. It does not expose draft-set create, delete, materialize, save, reset, re-materialize, validate, apply, or preview-task-compose tools; those remain HTTP `/authoring` workbench actions.
+
 ### 2. Callback HTTP lane
 
 Current live authority is explicit `session_key` plus route `task_id`.
@@ -166,6 +168,7 @@ The config still carries `internal_api_key`, but no shipped HTTP router uses the
 | inspect definition history   | operator HTTP             | read historical revisions for one definition                                                                                                                                                                                                 |
 | upload definition            | operator HTTP             | create or update a definition revision                                                                                                                                                                                                       |
 | manage definition draft sets | operator HTTP             | create, inspect, save, reset, re-materialize, validate, preview, apply, or delete backend-owned draft-set state under the configured data dir                                                                                             |
+| inspect definition draft sets | operator HTTP or operator MCP | list draft-set refs and inspect saved draft bodies, normalized content, and preview state without mutating local draft state                                                                                                              |
 | start task                   | operator HTTP             | create a task from the definition service and wait for initial runtime effects                                                                                                                                                               |
 | inspect runtime list         | operator HTTP             | read `GET /runtime/tasks`                                                                                                                                                                                                                    |
 | inspect one task runtime     | operator HTTP             | read `GET /runtime/tasks/{task_id}`                                                                                                                                                                                                          |

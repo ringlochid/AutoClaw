@@ -29,16 +29,7 @@ OPERATOR_TOOL_NAMES: tuple[str, ...] = (
     "upload_definition",
     "start_task",
     "list_definition_draft_sets",
-    "create_definition_draft_set",
     "get_definition_draft_set",
-    "delete_definition_draft_set",
-    "materialize_definition_draft_set",
-    "write_definition_draft_file",
-    "reset_definition_draft_file",
-    "rematerialize_current_definition_draft_file",
-    "validate_definition_draft_set",
-    "apply_definition_draft_set",
-    "preview_definition_draft_set_task_compose",
     "list_runtime_tasks",
     "get_runtime_task",
     "get_operator_snapshot",
@@ -104,14 +95,15 @@ def create_operator_mcp_server(
             "support file refs/paths, not parsed status answers.\n"
             "- if a support reread disagrees with controller/runtime truth, "
             "controller/runtime truth wins.\n\n"
-            "Definition/task-start writes:\n"
+            "Definitions, task start, and draft inspection:\n"
             "- search_definitions, get_definition, and list_definition_versions "
             "are read-only.\n"
             "- upload_definition and start_task load local files on the "
             "AutoClaw host and mutate controller-owned state.\n"
-            "- definition draft-set tools manage backend-owned local authoring "
-            "state under the configured data dir; save and preview do not "
-            "publish registry truth until apply_definition_draft_set.\n\n"
+            "- list_definition_draft_sets and get_definition_draft_set are "
+            "read-only inspection tools for backend-owned draft refs and "
+            "saved draft readbacks; mutating draft authoring stays on the "
+            "HTTP /authoring workbench API.\n\n"
             "Surface continuity:\n"
             "- runtime, operator, and support reads stay on this same operator "
             "MCP surface.\n"

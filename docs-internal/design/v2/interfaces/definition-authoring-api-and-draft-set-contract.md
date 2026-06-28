@@ -115,6 +115,7 @@ Rules:
 
 - `/authoring` names local pending authoring state, not runtime control truth
 - current registry reads and uploads may remain under `/definitions`, but draft-set writes do not mutate registry truth
+- operator MCP is not the authoring mutation lane; it may expose read-only draft-set listing and detail inspection, but create, delete, materialize, save, reset, re-materialize, validate, apply, and preview-task-compose actions stay on the `/authoring` workbench API
 - `kind` accepts only `role`, `policy`, or `workflow`
 - `DELETE /authoring/definition-draft-sets/{draft_set_id}` may return `204 No Content`; the other draft-set write routes return the updated draft-set read model or a validation/apply result derived from it
 - stale apply errors use the same controller stale or illegal-state family as other guarded writes

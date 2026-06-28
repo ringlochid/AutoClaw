@@ -46,6 +46,8 @@ The workbench may collapse these into one page or switcher, but it must not blur
 
 The workbench talks to backend-owned draft-set folders under AutoClaw's configured data dir. Browser state may cache editor input transiently, but it is not the authoritative saved-draft surface.
 
+The workbench and `/authoring` API own draft mutations. Operator MCP may inspect saved draft-set refs and readbacks, but it must not expose a parallel create, save, reset, apply, or preview editor lane.
+
 ## Surface rules
 
 Rules:
