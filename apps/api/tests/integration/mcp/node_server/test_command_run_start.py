@@ -113,7 +113,8 @@ async def test_disallowed_command_run_start_has_no_side_effects(
                 "retryable": False,
                 "field_path": None,
                 "suggested_next_step": (
-                    "run_short_command_inline_or_record_checkpoint_or_close_boundary"
+                    "avoid long command; for example, run focused tests one by one rather than "
+                    "the whole test suite"
                 ),
             }
             assert result.content[0].text == failure["summary"]

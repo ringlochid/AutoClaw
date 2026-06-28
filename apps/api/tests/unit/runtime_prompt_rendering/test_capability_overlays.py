@@ -45,7 +45,8 @@ def test_capabilities_now_overlay_surfaces_explicit_decisions(tmp_path: Path) ->
     assert "- human_request.input: deny" in capabilities_section
     assert "- human_request.review: allow" in capabilities_section
     assert "- command_run: allow" in capabilities_section
-    assert "next legal action:" in capabilities_section
+    assert "next legal action:" not in capabilities_section
+    assert "choose_an_allowed_human_request_kind" not in capabilities_section
     assert bundle.instructions_text is not None
     assert "### Human Request Use Guide" in bundle.instructions_text
     assert "Use `open_human_request` only when the current effective capability allows" in (
@@ -114,3 +115,19 @@ def test_capability_instruction_overlays_render_independently(tmp_path: Path) ->
         load_exact_prompt_block("command_run_use_guide_v1"),
     )
     assert overlay_positions == sorted(overlay_positions)
+
+
+def test_capabilities_now_overlay_uses_readable_command_run_denial(tmp_path: Path) -> None:
+    request = worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    bundle = render_prompt_bundle(request)
+
+    capabilities_section = extract_section(
+        bundle.full_markdown,
+        "### Capabilities Now",
+        "### Workflow Manifest",
+    )
+
+    assert "choose_an_allowed_human_request_kind" not in capabilities_section
+    assert "run_short_command_inline" not in capabilities_section
+    assert "next legal action: avoid long command" in capabilities_section
+    assert "run focused tests one by one rather than the whole test suite" in (capabilities_section)

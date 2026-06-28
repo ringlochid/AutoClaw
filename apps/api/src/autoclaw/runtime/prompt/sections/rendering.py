@@ -571,10 +571,7 @@ def _human_request_capability_line(
         return f"- {target}: allow"
     rejection = capability_rejection_for_human_request(capabilities, request_kind)
     assert rejection is not None
-    return (
-        f"- {target}: deny; reason: {rejection.message}; "
-        f"next legal action: {rejection.next_legal_action}"
-    )
+    return f"- {target}: deny; reason: {rejection.message}"
 
 
 def _command_run_capability_line(request: PromptRenderRequest) -> str:
@@ -583,7 +580,9 @@ def _command_run_capability_line(request: PromptRenderRequest) -> str:
         return "- command_run: allow"
     rejection = capability_rejection_for_command_run(capabilities)
     assert rejection is not None
-    return (
-        "- command_run: deny; "
-        f"reason: {rejection.message}; next legal action: {rejection.next_legal_action}"
+    next_legal_action = (
+        f"; next legal action: {rejection.next_legal_action}"
+        if rejection.next_legal_action is not None
+        else ""
     )
+    return f"- command_run: deny; reason: {rejection.message}{next_legal_action}"

@@ -563,11 +563,11 @@ Rules:
 - adapter, local-tool, or UI restrictions may narrow it but must not widen it
 - human_request and command_run are controller capabilities, not generic adapter approval prompts
 - execution_scope: dispatch
-- human_request.direction: deny; reason: current node policy does not allow human_request.direction from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- human_request.approval: deny; reason: current node policy does not allow human_request.approval from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- human_request.input: deny; reason: current node policy does not allow human_request.input from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- human_request.review: deny; reason: current node policy does not allow human_request.review from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- command_run: deny; reason: current node policy does not allow controller-managed command_run from this node; next legal action: run_short_command_inline_or_record_checkpoint_or_close_boundary
+- human_request.direction: deny; reason: current node policy does not allow human_request.direction from this node
+- human_request.approval: deny; reason: current node policy does not allow human_request.approval from this node
+- human_request.input: deny; reason: current node policy does not allow human_request.input from this node
+- human_request.review: deny; reason: current node policy does not allow human_request.review from this node
+- command_run: deny; reason: current node policy does not allow controller-managed command_run from this node; next legal action: avoid long command; for example, run focused tests one by one rather than the whole test suite
 
 ### Workflow Manifest
 
@@ -1248,11 +1248,11 @@ Rules:
 - adapter, local-tool, or UI restrictions may narrow it but must not widen it
 - human_request and command_run are controller capabilities, not generic adapter approval prompts
 - execution_scope: dispatch
-- human_request.direction: deny; reason: current node policy does not allow human_request.direction from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- human_request.approval: deny; reason: current node policy does not allow human_request.approval from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- human_request.input: deny; reason: current node policy does not allow human_request.input from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- human_request.review: deny; reason: current node policy does not allow human_request.review from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- command_run: deny; reason: current node policy does not allow controller-managed command_run from this node; next legal action: run_short_command_inline_or_record_checkpoint_or_close_boundary
+- human_request.direction: deny; reason: current node policy does not allow human_request.direction from this node
+- human_request.approval: deny; reason: current node policy does not allow human_request.approval from this node
+- human_request.input: deny; reason: current node policy does not allow human_request.input from this node
+- human_request.review: deny; reason: current node policy does not allow human_request.review from this node
+- command_run: deny; reason: current node policy does not allow controller-managed command_run from this node; next legal action: avoid long command; for example, run focused tests one by one rather than the whole test suite
 
 ### Workflow Manifest
 
@@ -1740,11 +1740,11 @@ If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 - adapter, local-tool, or UI restrictions may narrow it but must not widen it
 - human_request and command_run are controller capabilities, not generic adapter approval prompts
 - execution_scope: dispatch
-- human_request.direction: deny; reason: current node policy does not allow human_request.direction from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- human_request.approval: deny; reason: current node policy does not allow human_request.approval from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- human_request.input: deny; reason: current node policy does not allow human_request.input from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- human_request.review: deny; reason: current node policy does not allow human_request.review from this node; next legal action: choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary
-- command_run: deny; reason: current node policy does not allow controller-managed command_run from this node; next legal action: run_short_command_inline_or_record_checkpoint_or_close_boundary
+- human_request.direction: deny; reason: current node policy does not allow human_request.direction from this node
+- human_request.approval: deny; reason: current node policy does not allow human_request.approval from this node
+- human_request.input: deny; reason: current node policy does not allow human_request.input from this node
+- human_request.review: deny; reason: current node policy does not allow human_request.review from this node
+- command_run: deny; reason: current node policy does not allow controller-managed command_run from this node; next legal action: avoid long command; for example, run focused tests one by one rather than the whole test suite
 
 ### Workflow Manifest
 

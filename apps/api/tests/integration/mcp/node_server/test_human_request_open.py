@@ -124,9 +124,7 @@ async def test_disallowed_human_request_open_has_no_side_effects(
                 ),
                 "retryable": False,
                 "field_path": None,
-                "suggested_next_step": (
-                    "choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary"
-                ),
+                "suggested_next_step": None,
             }
             assert result.content[0].text == failure["summary"]
             await _assert_no_human_request_side_effects(

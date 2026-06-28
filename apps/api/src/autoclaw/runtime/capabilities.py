@@ -22,11 +22,9 @@ from autoclaw.runtime.contracts import (
 )
 from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState
 
-HUMAN_REQUEST_DENIED_NEXT_LEGAL_ACTION = (
-    "choose_an_allowed_human_request_kind_or_record_checkpoint_or_close_boundary"
-)
+HUMAN_REQUEST_DENIED_NEXT_LEGAL_ACTION = None
 COMMAND_RUN_DENIED_NEXT_LEGAL_ACTION = (
-    "run_short_command_inline_or_record_checkpoint_or_close_boundary"
+    "avoid long command; for example, run focused tests one by one rather than the whole test suite"
 )
 
 

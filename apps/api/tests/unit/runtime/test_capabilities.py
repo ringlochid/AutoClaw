@@ -102,9 +102,12 @@ def test_capability_rejection_names_target_and_next_action() -> None:
     assert human_request_rejection.code == OperationFailureCode.CAPABILITY_REJECTED
     assert human_request_rejection.capability == "human_request.review"
     assert "does not allow human_request.review" in human_request_rejection.message
-    assert human_request_rejection.next_legal_action is not None
+    assert human_request_rejection.next_legal_action is None
     assert command_run_rejection is not None
     assert command_run_rejection.code == OperationFailureCode.CAPABILITY_REJECTED
     assert command_run_rejection.capability == "command_run"
     assert "controller-managed command_run" in command_run_rejection.message
-    assert command_run_rejection.next_legal_action is not None
+    assert command_run_rejection.next_legal_action == (
+        "avoid long command; for example, run focused tests one by one rather than the whole "
+        "test suite"
+    )
