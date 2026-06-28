@@ -298,17 +298,13 @@ def build_test_launch_request(
     instructions_text: str = "system",
     input_text: str = "body",
 ) -> OpenClawAgentLaunchInput:
-    message = "\n\n".join(
-        part
-        for part in (
-            instructions_text,
-            input_text,
-        )
-        if part
-    )
     return OpenClawAgentLaunchInput(
         session_key="session-123",
-        message=message,
+        message=input_text,
+        extra_system_prompt=instructions_text,
+        flattened_message_fallback=(
+            f"# AutoClaw Dispatch Prompt\n\n{instructions_text}\n\n{input_text}"
+        ),
         idempotency_key="dispatch:dispatch-123",
     )
 

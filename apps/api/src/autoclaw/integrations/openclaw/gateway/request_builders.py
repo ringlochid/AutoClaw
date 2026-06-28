@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 from uuid import uuid4
 
 from autoclaw.config import OpenClawSettings
@@ -57,6 +57,7 @@ class OpenClawAgentParamsPayload(TypedDict):
     sessionKey: str
     message: str
     channel: str
+    extraSystemPrompt: NotRequired[str]
     idempotencyKey: str
 
 
@@ -81,6 +82,8 @@ def build_openclaw_agent_request(
         "channel": "webchat",
         "idempotencyKey": launch_input.idempotency_key,
     }
+    if launch_input.extra_system_prompt is not None:
+        payload["extraSystemPrompt"] = launch_input.extra_system_prompt
     return OpenClawAgentRequest(
         id=request_id,
         method="agent",

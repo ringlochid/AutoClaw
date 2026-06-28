@@ -29,6 +29,7 @@ from autoclaw.integrations.openclaw.gateway.protocol import (
     OpenClawAgentRequest,
     OpenClawAgentWaitPayload,
     OpenClawAgentWaitRequest,
+    OpenClawGatewayError,
     OpenClawGatewayEventFrame,
     OpenClawGatewayResponseEnvelope,
     OpenClawSessionsAbortRequest,
@@ -114,18 +115,38 @@ class OpenClawGatewayRuntimeHandle:
         return self._compatibility
 
     async def launch_run(self, request: OpenClawAgentLaunchInput) -> OpenClawLaunchResult:
-        response = await self.send_request(
-            build_openclaw_agent_request(
-                request_id=next_openclaw_request_id("agent"),
-                launch_input=request,
-            )
-        )
+        try:
+            response, _request_sent = await self.send_agent_launch_request_with_tracking(request)
+        except OpenClawRequestDispatchError as exc:
+            raise exc.error from exc
         accepted = parse_response_payload(response, OpenClawAgentAcceptedPayload)
         return OpenClawLaunchResult(
             session_key=request.session_key,
             run_id=accepted.run_id,
             accepted_at=accepted.accepted_at,
             compatibility=self.require_compatibility(),
+        )
+
+    async def send_agent_launch_request_with_tracking(
+        self,
+        request: OpenClawAgentLaunchInput,
+    ) -> tuple[OpenClawGatewayResponseEnvelope, bool]:
+        response, request_sent = await self.send_request_with_tracking(
+            build_openclaw_agent_request(
+                request_id=next_openclaw_request_id("agent"),
+                launch_input=request,
+            )
+        )
+        if not should_retry_agent_without_extra_system_prompt(
+            response,
+            launch_input=request,
+        ):
+            return response, request_sent
+        return await self.send_request_with_tracking(
+            build_openclaw_agent_request(
+                request_id=next_openclaw_request_id("agent"),
+                launch_input=legacy_flattened_agent_launch_input(request),
+            )
         )
 
     async def wait_for_run(self, request: OpenClawWaitRequest) -> OpenClawWaitResult:
@@ -313,6 +334,49 @@ class OpenClawGatewayRuntimeHandle:
 
 def utc_now() -> datetime:
     return datetime.now(tz=UTC)
+
+
+def should_retry_agent_without_extra_system_prompt(
+    response: OpenClawGatewayResponseEnvelope,
+    *,
+    launch_input: OpenClawAgentLaunchInput,
+) -> bool:
+    if response.ok or response.error is None:
+        return False
+    if launch_input.extra_system_prompt is None or launch_input.flattened_message_fallback is None:
+        return False
+    return gateway_error_rejects_extra_system_prompt(response.error)
+
+
+def gateway_error_rejects_extra_system_prompt(error: OpenClawGatewayError) -> bool:
+    detail_code = "" if error.details is None or error.details.code is None else error.details.code
+    text = " ".join(part.lower() for part in (error.code or "", detail_code, error.message) if part)
+    return "extrasystemprompt" in text and any(
+        marker in text
+        for marker in (
+            "additional",
+            "invalid",
+            "not allowed",
+            "unexpected",
+            "unknown",
+            "unrecognized",
+            "unsupported",
+        )
+    )
+
+
+def legacy_flattened_agent_launch_input(
+    request: OpenClawAgentLaunchInput,
+) -> OpenClawAgentLaunchInput:
+    if request.flattened_message_fallback is None:
+        raise OpenClawProtocolError("flattened message fallback is required")
+    return request.model_copy(
+        update={
+            "message": request.flattened_message_fallback,
+            "extra_system_prompt": None,
+            "flattened_message_fallback": None,
+        }
+    )
 
 
 __all__ = ["OpenClawGatewayRuntimeHandle", "OpenClawRequestDispatchError"]

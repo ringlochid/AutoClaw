@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-13
+Last verified: 2026-06-28
 
 This page owns the current prompt-delivery shape for the shipped runtime:
 
@@ -65,6 +65,15 @@ The persisted `full_markdown` readback has this Markdown wrapper:
 `instructions_text` starts at `## Instructions`. It contains AutoClaw-owned dispatch instructions and reusable prompt assets, not opaque provider/platform prompt text outside controller truth.
 
 `input_text` starts at `## Dispatch Input`. It contains the regenerated dispatch input sections; those sections render as `###` fragments.
+
+The live OpenClaw Gateway adapter preserves that split:
+
+- `instructions_text` is sent as Gateway `extraSystemPrompt`
+- `input_text` is sent as Gateway `message`
+
+The combined `full_markdown` form is the persisted audit/readback prompt, not the live OpenClaw `message` payload.
+
+When an older Gateway explicitly rejects `extraSystemPrompt` before acceptance, the adapter may retry with that combined readback in `message` and no `extraSystemPrompt`. That is a compatibility fallback only; it is not the primary prompt-delivery shape.
 
 The full markdown prompt artifact is persisted to:
 

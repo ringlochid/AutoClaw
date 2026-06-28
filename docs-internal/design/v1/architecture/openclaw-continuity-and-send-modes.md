@@ -39,7 +39,7 @@ Continuity rule:
 The runtime keeps same-session continuity at the Gateway `sessionKey` layer only:
 
 - launch control still emits `full_prompt`
-- OpenClaw request envelopes still carry the regenerated canonical prompt package
+- OpenClaw request envelopes still carry the regenerated canonical prompt package split into provider instruction and user input lanes
 - `continuity-state.json` remains an observability projection, not a second dispatch planner
 
 ## OpenClaw request mapping
@@ -49,7 +49,8 @@ Keep the canonical Gateway WS request shape separate from any OpenResponses HTTP
 Canonical Gateway WS `agent` request fields:
 
 - `sessionKey` = the Gateway continuity selector for the current execution context
-- `message` = the full regenerated canonical prompt package as one root string
+- `extraSystemPrompt` = AutoClaw `instructions_text`, the regenerated provider-system instruction lane
+- `message` = AutoClaw `input_text`, the regenerated node-facing user/input lane
 - `idempotencyKey` = the fresh launch/dedupe key for that dispatch request
 
 Canonical Gateway WS response field used by runtime:
@@ -61,14 +62,15 @@ Rules:
 - provider/OpenResponses fields are adapter-native transport detail only
 - they are not the canonical Gateway WS request shape
 - they are not the required controller inputs for parent/root same-attempt redispatch
+- fallback to one combined `message` is legal only for explicit older-Gateway rejection of `extraSystemPrompt` before acceptance
 
-The persisted prompt truth remains the full regenerated canonical prompt package for every dispatch.
+The persisted prompt truth remains the full regenerated canonical prompt package for every dispatch. `prompt.md` keeps the combined readback, while the live OpenClaw Gateway request preserves the split through `extraSystemPrompt` plus `message`.
 
 ## Send-mode consequences
 
 ### `full_prompt`
 
-- sends the regenerated prompt package in one `message` field
+- sends regenerated `instructions_text` in `extraSystemPrompt` and regenerated `input_text` in `message`
 - uses the canonical Gateway WS `agent` path with the same `sessionKey` when continuity reuse remains lawful or a fresh `sessionKey` when it does not, plus a fresh `idempotencyKey`
 - accepts a fresh returned `runId` from Gateway
 - does not require adapter-private response chaining on the canonical Gateway WS path

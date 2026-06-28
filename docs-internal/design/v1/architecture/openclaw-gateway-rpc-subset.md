@@ -215,8 +215,9 @@ Runtime ownership rule:
 Required request behavior:
 
 - use the controller-selected agent-scoped `sessionKey` as the canonical session selector
-- send one root `message` string plus `idempotencyKey`; do not send the older split root fields `account`, `instructions`, `input`, `meta`, or `previousResponseId`
-- the adapter collapses the regenerated prompt package into that one `message` string for the live Gateway path
+- send `message`, optional `extraSystemPrompt`, and `idempotencyKey`; do not send the older split root fields `account`, `instructions`, `input`, `meta`, or `previousResponseId`
+- map AutoClaw `instructions_text` to Gateway `extraSystemPrompt` and AutoClaw `input_text` to Gateway `message`
+- retry with the combined prompt readback in `message` and no `extraSystemPrompt` only when an older Gateway explicitly rejects `extraSystemPrompt` before acceptance
 - keep any delivery, provider, or model-tuning extensions adapter-private
 - send a deterministic idempotency key when the upstream schema requires one
 - side-effecting requests must supply the vendored upstream idempotency-key shape; do not invent an adapter-local substitute

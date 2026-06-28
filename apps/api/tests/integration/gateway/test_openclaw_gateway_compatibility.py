@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 from autoclaw.config import get_settings
 from autoclaw.integrations.openclaw.gateway import (
+    OpenClawAgentLaunchInput,
     OpenClawAuthError,
     OpenClawCompatibilityError,
     OpenClawWaitRequest,
@@ -18,9 +19,13 @@ from autoclaw.integrations.openclaw.gateway.fixtures import (
     connect_challenge_fixture,
     hello_ok_fixture,
 )
+from autoclaw.integrations.openclaw.gateway.request_builders import (
+    build_openclaw_agent_request,
+    serialize_openclaw_gateway_request,
+)
 from autoclaw.main import create_app
 from autoclaw.runtime import PromptSendMode, PromptTransportRequest
-from autoclaw.runtime.dispatch.gateway.launch import build_gateway_launch_message
+from autoclaw.runtime.dispatch.gateway.launch import build_gateway_launch_input
 from pytest import MonkeyPatch
 from tests.helpers.openclaw_gateway_support import (
     build_test_adapter,
@@ -293,16 +298,26 @@ async def test_ambiguous_loopback_auth_mode_is_blocked(
         await adapter.check_compatibility()
 
 
-def test_gateway_launch_message_uses_combined_prompt_readback_shape() -> None:
+def test_gateway_launch_input_splits_provider_instructions_from_user_message() -> None:
     transport_request = PromptTransportRequest(
         send_mode=PromptSendMode.FULL_PROMPT,
         instructions_text="## Instructions\n\n### Runtime Identity\n\nFollow AutoClaw rules.",
         input_text="## Dispatch Input\n\n### Current Dispatch\n\n- node kind: worker",
     )
 
-    message = build_gateway_launch_message(transport_request)
+    launch_input = build_gateway_launch_input(
+        session_key="session-123",
+        transport_request=transport_request,
+        idempotency_key="dispatch:dispatch-123",
+    )
 
-    assert message == (
+    assert (
+        launch_input.message == "## Dispatch Input\n\n### Current Dispatch\n\n- node kind: worker"
+    )
+    assert launch_input.extra_system_prompt == (
+        "## Instructions\n\n### Runtime Identity\n\nFollow AutoClaw rules."
+    )
+    assert launch_input.flattened_message_fallback == (
         "# AutoClaw Dispatch Prompt\n\n"
         "## Instructions\n\n"
         "### Runtime Identity\n\n"
@@ -311,6 +326,27 @@ def test_gateway_launch_message_uses_combined_prompt_readback_shape() -> None:
         "### Current Dispatch\n\n"
         "- node kind: worker"
     )
+
+
+def test_gateway_agent_request_omits_absent_extra_system_prompt() -> None:
+    request = build_openclaw_agent_request(
+        request_id="agent-1",
+        launch_input=OpenClawAgentLaunchInput(
+            session_key="session-123",
+            message="body",
+            idempotency_key="dispatch:dispatch-123",
+        ),
+    )
+
+    payload = json.loads(serialize_openclaw_gateway_request(request))
+
+    assert payload["type"] == "req"
+    assert payload["params"] == {
+        "sessionKey": "session-123",
+        "message": "body",
+        "channel": "webchat",
+        "idempotencyKey": "dispatch:dispatch-123",
+    }
 
 
 @pytest.mark.asyncio

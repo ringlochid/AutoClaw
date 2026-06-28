@@ -113,7 +113,8 @@ async def test_launch_wait_and_abort_round_trip(tmp_path: Path) -> None:
             assert request["params"]["sessionKey"] == "agent:worker-agent:session-123"
             assert request["params"]["channel"] == "webchat"
             assert request["params"]["idempotencyKey"] == "dispatch:dispatch-123"
-            assert request["params"]["message"] == "system\n\nbody"
+            assert request["params"]["message"] == "body"
+            assert request["params"]["extraSystemPrompt"] == "system"
             assert "instructions" not in request["params"]
             assert "input" not in request["params"]
             assert "meta" not in request["params"]
@@ -151,6 +152,64 @@ async def test_launch_wait_and_abort_round_trip(tmp_path: Path) -> None:
     assert abort_result.accepted is True
     assert abort_result.run_id == "run-123"
     assert seen_methods == ["agent", "agent.wait", "sessions.abort"]
+
+
+@pytest.mark.asyncio
+async def test_launch_falls_back_when_gateway_rejects_extra_system_prompt(
+    tmp_path: Path,
+) -> None:
+    seen_agent_params: list[dict[str, Any]] = []
+
+    async def handler(connection: ServerConnection) -> None:
+        await send_json(connection, connect_challenge_fixture())
+        connect_request = await recv_json(connection)
+        hello_ok = hello_ok_fixture(device_token=None)
+        hello_ok["id"] = connect_request["id"]
+        await send_json(connection, hello_ok)
+
+        first_request = await recv_json(connection)
+        assert first_request["method"] == "agent"
+        seen_agent_params.append(dict(first_request["params"]))
+        await send_json(
+            connection,
+            {
+                "type": "res",
+                "id": first_request["id"],
+                "ok": False,
+                "error": {
+                    "code": "INVALID_REQUEST",
+                    "message": "params.extraSystemPrompt: additional property not allowed",
+                },
+            },
+        )
+
+        fallback_request = await recv_json(connection)
+        assert fallback_request["method"] == "agent"
+        seen_agent_params.append(dict(fallback_request["params"]))
+        response = agent_accepted_fixture()
+        response["id"] = fallback_request["id"]
+        await send_json(connection, response)
+
+    async with gateway_server(handler) as base_url:
+        adapter = build_test_adapter(base_url=base_url, data_dir=tmp_path / "data")
+        launch_result = await adapter.launch_run(build_test_launch_request())
+
+    assert launch_result.run_id == "run-123"
+    assert seen_agent_params == [
+        {
+            "sessionKey": "agent:worker-agent:session-123",
+            "message": "body",
+            "channel": "webchat",
+            "extraSystemPrompt": "system",
+            "idempotencyKey": "dispatch:dispatch-123",
+        },
+        {
+            "sessionKey": "agent:worker-agent:session-123",
+            "message": "# AutoClaw Dispatch Prompt\n\nsystem\n\nbody",
+            "channel": "webchat",
+            "idempotencyKey": "dispatch:dispatch-123",
+        },
+    ]
 
 
 @pytest.mark.asyncio
@@ -246,7 +305,8 @@ async def test_launch_accepts_case_insensitive_already_scoped_session_key_withou
         launch_result = await adapter.launch_run(
             OpenClawAgentLaunchInput(
                 session_key="AGENT:Main:main",
-                message="system\n\nbody",
+                message="body",
+                extra_system_prompt="system",
                 idempotency_key="dispatch:dispatch-123",
             )
         )
@@ -277,7 +337,8 @@ async def test_launch_rejects_malformed_already_scoped_session_key(tmp_path: Pat
             await adapter.launch_run(
                 OpenClawAgentLaunchInput(
                     session_key="agent:worker-agent",
-                    message="system\n\nbody",
+                    message="body",
+                    extra_system_prompt="system",
                     idempotency_key="dispatch:dispatch-123",
                 )
             )

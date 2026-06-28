@@ -45,6 +45,8 @@ class OpenClawCompatibilityReport(OpenClawProtocolModel):
 class OpenClawAgentLaunchInput(OpenClawProtocolModel):
     session_key: str
     message: str
+    extra_system_prompt: str | None = None
+    flattened_message_fallback: str | None = None
     idempotency_key: str
 
 

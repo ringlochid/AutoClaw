@@ -5,19 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoclaw.config import get_settings
 from autoclaw.integrations.openclaw.gateway import (
     OpenClawAgentLaunchInput,
-    OpenClawCompatibilityError,
-    OpenClawCompatibilityReport,
     OpenClawLaunchResult,
 )
 from autoclaw.integrations.openclaw.gateway.protocol import (
     OpenClawAgentAcceptedPayload,
     parse_response_payload,
-)
-from autoclaw.integrations.openclaw.gateway.request_builders import (
-    OpenClawGatewayRequest,
-    build_openclaw_agent_request,
-    next_openclaw_request_id,
-    serialize_openclaw_gateway_request,
 )
 from autoclaw.integrations.openclaw.gateway.runtime_handle import OpenClawRequestDispatchError
 from autoclaw.integrations.openclaw.gateway.session_keys import normalize_agent_launch_input
@@ -53,9 +45,9 @@ async def perform_gateway_dispatch_launch(
         session_key_override=gateway_session_key,
     )
     return await launch_gateway_run_with_tracking(
-        OpenClawAgentLaunchInput(
+        build_gateway_launch_input(
             session_key=gateway_session_key,
-            message=build_gateway_launch_message(prompt_record.transport_request),
+            transport_request=prompt_record.transport_request,
             idempotency_key=f"dispatch:{dispatch.dispatch_id}",
         ),
         prompt_path=str(prompt_record.rendered_markdown_path),
@@ -72,17 +64,11 @@ async def launch_gateway_run_with_tracking(
     settings = get_settings()
     launch_input = normalize_agent_launch_input(request, settings.openclaw.agent_id)
     lease = await open_dispatch_launch_lease()
-    gateway_request = build_openclaw_agent_request(
-        request_id=next_openclaw_request_id("agent"),
-        launch_input=launch_input,
-    )
     request_sent = False
     try:
-        validate_gateway_launch_pre_send_policy(
-            gateway_request,
-            compatibility=lease.handle.require_compatibility(),
+        response, request_sent = await lease.handle.send_agent_launch_request_with_tracking(
+            launch_input
         )
-        response, request_sent = await lease.handle.send_request_with_tracking(gateway_request)
         accepted = parse_response_payload(response, OpenClawAgentAcceptedPayload)
         return GatewayDispatchLaunchOutcome(
             launch_result=OpenClawLaunchResult(
@@ -115,21 +101,19 @@ async def launch_gateway_run_with_tracking(
         ) from exc
 
 
-def validate_gateway_launch_pre_send_policy(
-    gateway_request: OpenClawGatewayRequest,
+def build_gateway_launch_input(
     *,
-    compatibility: OpenClawCompatibilityReport,
-) -> None:
-    max_payload = compatibility.max_payload
-    if max_payload is None:
-        return
-    serialized_request = serialize_openclaw_gateway_request(gateway_request)
-    if len(serialized_request.encode("utf-8")) <= max_payload:
-        return
-    raise OpenClawCompatibilityError(
-        f"OpenClaw request exceeded hello-ok.policy.maxPayload={max_payload}"
+    session_key: str,
+    transport_request: PromptTransportRequest,
+    idempotency_key: str,
+) -> OpenClawAgentLaunchInput:
+    instructions_text = transport_request.instructions_text
+    if instructions_text is None:
+        raise ValueError("full_prompt transport requests require instructions_text")
+    return OpenClawAgentLaunchInput(
+        session_key=session_key,
+        message=transport_request.input_text,
+        extra_system_prompt=instructions_text,
+        flattened_message_fallback=render_prompt_transport_markdown(transport_request),
+        idempotency_key=idempotency_key,
     )
-
-
-def build_gateway_launch_message(transport_request: PromptTransportRequest) -> str:
-    return render_prompt_transport_markdown(transport_request)

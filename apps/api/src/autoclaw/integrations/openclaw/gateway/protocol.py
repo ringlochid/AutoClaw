@@ -185,6 +185,7 @@ class OpenClawAgentParams(OpenClawProtocolModel):
     session_key: str = Field(alias="sessionKey")
     message: str
     channel: str | None = None
+    extra_system_prompt: str | None = Field(default=None, alias="extraSystemPrompt")
     idempotency_key: str = Field(alias="idempotencyKey")
 
 

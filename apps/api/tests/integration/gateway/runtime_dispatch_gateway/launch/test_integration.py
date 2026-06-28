@@ -68,7 +68,7 @@ async def test_launch_runtime_persists_gateway_session_run_and_node_session_trut
         )
 
     monkeypatch.setattr(
-        "autoclaw.runtime.dispatch.gateway.launch.build_openclaw_agent_request",
+        "autoclaw.integrations.openclaw.gateway.runtime_handle.build_openclaw_agent_request",
         record_gateway_agent_request,
     )
 
@@ -117,7 +117,7 @@ async def test_launch_runtime_ignores_additive_session_key_in_accepted_payload(
         )
 
     monkeypatch.setattr(
-        "autoclaw.runtime.dispatch.gateway.launch.build_openclaw_agent_request",
+        "autoclaw.integrations.openclaw.gateway.runtime_handle.build_openclaw_agent_request",
         record_gateway_agent_request,
     )
     openclaw_gateway_test_server.set_default_method_payload("agent", accepted)

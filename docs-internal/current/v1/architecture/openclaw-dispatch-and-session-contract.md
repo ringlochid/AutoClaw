@@ -2,7 +2,7 @@
 
 Status: Current
 
-Last verified: 2026-05-24
+Last verified: 2026-06-28
 
 This page defines the current delegated worker contract between AutoClaw runtime, the OpenClaw bridge boundary, and the shipped session-authority model.
 
@@ -120,15 +120,24 @@ Current `agent` payload includes:
 
 - `sessionKey`
 - `message`
+- `extraSystemPrompt`
 - `idempotencyKey`
 
 Current controller mapping is:
 
 - `sessionKey` is the agent-scoped Gateway session key persisted on the dispatch row
-- `message` is the combined prompt readback rendered from the split `instructions_text` plus `input_text`, with `# AutoClaw Dispatch Prompt`, `## Instructions`, and `## Dispatch Input` wrappers
+- `extraSystemPrompt` carries AutoClaw `instructions_text`: the AutoClaw-owned system/instruction layer for the dispatch
+- `message` carries AutoClaw `input_text`: the regenerated node-facing dispatch input for the current turn
 - `idempotencyKey` is fresh per dispatch, currently `dispatch:<dispatch_id>`
 - accepted responses return a fresh `runId`, which is also persisted on the dispatch row
 - any request-local compatibility residue such as empty `observed_events` fields is not current runtime truth and does not participate in dispatch binding, liveness, or provider-event persistence
+
+The persisted `_runtime/dispatch/<dispatch_id>/prompt.md` artifact remains the combined human-readable readback rendered from the same split prompt with `# AutoClaw Dispatch Prompt`, `## Instructions`, and `## Dispatch Input` wrappers. That readback is not flattened into the live OpenClaw `message` payload.
+
+Compatibility fallback:
+
+- if an older Gateway explicitly rejects `extraSystemPrompt` before acceptance, AutoClaw may retry the same launch with the combined `prompt.md` readback in `message` and no `extraSystemPrompt`
+- fallback is not used for accepted launches, ambiguous transport failures, post-send normalization failures, or ordinary provider errors
 
 ## Current transport continuity rule
 
