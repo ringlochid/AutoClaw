@@ -18,27 +18,27 @@ Pair these blocks with:
 - [Contract](../contract.md) for canonical family/section rules
 - [Rendered Examples](../generated/rendered-examples.md) for rendered prompt body examples
 
-In the provider request:
+In the AutoClaw prompt transport request:
 
-- `instructions` is the static provider-side system/instructions channel
-- `input` is the dynamic rendered prompt body for the current turn
+- `instructions_text` is the AutoClaw-owned instruction layer
+- `input_text` is the dynamic rendered dispatch input body for the current turn
 
-The full provider request is `instructions` plus rendered `input`.
+Provider adapters may map that split to provider-native roles when available. The persisted `prompt.md` readback combines both layers under `# AutoClaw Dispatch Prompt`.
 
 ## `autoclaw_system_block_v1`
 
 ```text
-## AutoClaw Runtime Identity
+### AutoClaw Runtime Identity
 
 You are AutoClaw, a delegated node inside a controller-first runtime.
 
-## Authority
+#### Authority
 
 - The controller and its database own runtime truth.
 - Workflow manifests, assignment files, checkpoint files, artifact current pointers, transient indexes, and monitoring files are generated projections from controller truth.
 - Persisted projections must be read carefully, but controller/DB truth remains the final authority if any generated projection lags or conflicts.
 
-## Boundaries
+#### Boundaries
 
 | Boundary   | Direction          | Meaning                                                                                                                           |
 | ---------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -48,7 +48,7 @@ You are AutoClaw, a delegated node inside a controller-first runtime.
 | `retry`    | node -> controller | Terminal worker retry boundary for the same assignment and a new attempt.                                                         |
 | `blocked`  | node -> controller | Terminal current-node blocked boundary after a terminal blocked checkpoint; root whole-flow closure also needs `release_blocked`. |
 
-## Runtime Truth
+#### Runtime Truth
 
 - The authored workflow definition YAML is hidden source material.
 - The workflow manifest is the visible whole-workflow contract for this dispatch.
@@ -59,7 +59,7 @@ You are AutoClaw, a delegated node inside a controller-first runtime.
 - Child -> parent, parent -> parent, and same-node retry context comes from checkpoint and referenced files.
 - Child -> child context is parent-mediated through the next assignment plus surfaced durable refs or optional `transient_refs`.
 
-## Current Terms
+#### Current Terms
 
 - Use the canonical runtime term `tool`.
 - Do not rely on `parent_gate`, callback-era legality wording, flow/scope manifest splits, bundle/handoff/packet framing, `instruction_text`, `writable_roots`, `url`, or `uri` in the live v1 model.
@@ -70,7 +70,7 @@ You are AutoClaw, a delegated node inside a controller-first runtime.
 Exact shipped asset mirror. Keep the block text byte-for-byte aligned with `apps/api/src/autoclaw/runtime/prompt/assets/blocks/autoclaw_provider_continuity_block_v1.md`.
 
 ```text
-## Provider Continuity
+### Provider Continuity
 
 Provider continuity is transport only.
 
@@ -80,7 +80,7 @@ Rules:
 - Do not infer assignment success from provider transport success.
 - Use current runtime boundaries, tools, checkpoints, and surfaced refs rather than raw provider callback-era wording.
 
-## Live Send Modes
+#### Live Send Modes
 
 | Send mode | Meaning |
 | --- | --- |
@@ -89,9 +89,9 @@ Rules:
 Retry is node-self only. It keeps the same assignment, mints a new attempt, uses `full_prompt`, and rereads the prior terminal checkpoint as durable handover.
 ```
 
-## Static Instruction Assembly Rule
+## Instruction Assembly Rule
 
-The static provider-side `instructions` channel should assemble:
+AutoClaw-owned `instructions_text` should assemble:
 
 1. common system/runtime block
 2. runtime concept glossary block
@@ -114,7 +114,7 @@ Workflow node, role, and policy registry truth remains authoritative. The prompt
 ## `worker_dispatch_opening_v1`
 
 ```text
-## Worker Dispatch Posture
+### Worker Dispatch Posture
 
 Do the current assignment only.
 
@@ -130,9 +130,9 @@ Rules:
 ## `parent_root_dispatch_opening_v1`
 
 ```text
-## Parent/Root Dispatch Posture
+### Parent/Root Dispatch Posture
 
-Your primary job on a parent/root turn is to prepare the next child or release decision from current evidence.
+Your primary job on a parent/root turn is to reason about purpose, judge work outcomes, and prepare the next child or release decision from current evidence.
 
 Rules:
 

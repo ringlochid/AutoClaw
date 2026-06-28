@@ -38,39 +38,63 @@ DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE = (
 )
 
 
-def render_prompt_sections(request: PromptRenderRequest) -> list[tuple[str, str]]:
+def render_prompt_sections(
+    request: PromptRenderRequest,
+    *,
+    heading_level: int = 2,
+) -> list[tuple[str, str]]:
     sections: list[tuple[str, str]] = [
-        ("operating_model", render_operating_model()),
-        ("task_identity", render_task_identity(request)),
-        ("node_purpose", render_node_purpose(request)),
-        ("current_dispatch", render_current_dispatch(request)),
-        ("capabilities_now", render_capabilities_now(request)),
-        ("workflow_manifest", render_workflow_manifest(request)),
-        ("current_assignment", render_current_assignment(request)),
-        ("latest_checkpoint_context", render_latest_checkpoint_context(request)),
-        ("boundary_followup_guidance", render_boundary_followup_guidance(request)),
+        ("operating_model", render_operating_model(heading_level=heading_level)),
+        ("task_identity", render_task_identity(request, heading_level=heading_level)),
+        ("node_purpose", render_node_purpose(request, heading_level=heading_level)),
+        ("current_dispatch", render_current_dispatch(request, heading_level=heading_level)),
+        ("capabilities_now", render_capabilities_now(request, heading_level=heading_level)),
+        ("workflow_manifest", render_workflow_manifest(request, heading_level=heading_level)),
+        ("current_assignment", render_current_assignment(request, heading_level=heading_level)),
+        (
+            "latest_checkpoint_context",
+            render_latest_checkpoint_context(request, heading_level=heading_level),
+        ),
+        (
+            "boundary_followup_guidance",
+            render_boundary_followup_guidance(request, heading_level=heading_level),
+        ),
     ]
-    human_request_context = render_human_request_continuation_context(request)
+    human_request_context = render_human_request_continuation_context(
+        request,
+        heading_level=heading_level,
+    )
     if human_request_context is not None:
         sections.append(("human_request_continuation_context", human_request_context))
-    command_run_context = render_command_run_continuation_context(request)
+    command_run_context = render_command_run_continuation_context(
+        request,
+        heading_level=heading_level,
+    )
     if command_run_context is not None:
         sections.append(("command_run_continuation_context", command_run_context))
-    consumed_durable_refs = render_consumed_durable_refs(request)
+    consumed_durable_refs = render_consumed_durable_refs(
+        request,
+        heading_level=heading_level,
+    )
     if consumed_durable_refs is not None:
         sections.append(("consumed_durable_refs", consumed_durable_refs))
-    transient_refs = render_transient_refs(request.assignment)
+    transient_refs = render_transient_refs(
+        request.assignment,
+        heading_level=heading_level,
+    )
     if transient_refs is not None:
         sections.append(("transient_refs", transient_refs))
-    task_memory = render_task_memory(request)
+    task_memory = render_task_memory(request, heading_level=heading_level)
     if task_memory is not None:
         sections.append(("task_memory", task_memory))
-    sections.append(("allowed_actions_now", render_allowed_actions_now(request)))
-    sections.append(("publication_rule", render_publication_rule()))
+    sections.append(
+        ("allowed_actions_now", render_allowed_actions_now(request, heading_level=heading_level))
+    )
+    sections.append(("publication_rule", render_publication_rule(heading_level=heading_level)))
     return sections
 
 
-def render_operating_model() -> str:
+def render_operating_model(*, heading_level: int = 2) -> str:
     return render_markdown_section(
         "Operating Model",
         (
@@ -85,10 +109,11 @@ def render_operating_model() -> str:
             "- `workspace/` is mutable work and `_runtime/dispatch/` monitoring files "
             "are observability-only projections",
         ),
+        level=heading_level,
     )
 
 
-def render_task_identity(request: PromptRenderRequest) -> str:
+def render_task_identity(request: PromptRenderRequest, *, heading_level: int = 2) -> str:
     task = request.manifest.task
     lines = [
         f"- task key: {task.task_key}",
@@ -97,10 +122,10 @@ def render_task_identity(request: PromptRenderRequest) -> str:
     ]
     if task.instruction is not None:
         lines.append(f"- task instruction: {task.instruction}")
-    return render_markdown_section("Task Identity", lines)
+    return render_markdown_section("Task Identity", lines, level=heading_level)
 
 
-def render_node_purpose(request: PromptRenderRequest) -> str:
+def render_node_purpose(request: PromptRenderRequest, *, heading_level: int = 2) -> str:
     node = request.current_node
     lines = [
         f"- node key: {node.node_key}",
@@ -113,10 +138,11 @@ def render_node_purpose(request: PromptRenderRequest) -> str:
     return render_markdown_section(
         "Node Purpose",
         lines,
+        level=heading_level,
     )
 
 
-def render_current_dispatch(request: PromptRenderRequest) -> str:
+def render_current_dispatch(request: PromptRenderRequest, *, heading_level: int = 2) -> str:
     node_kind = request.current_node.node_kind
     bound_turn = f"current {node_kind.value} turn (internal dispatch id hidden)"
     if node_kind == NodeKind.WORKER:
@@ -141,10 +167,11 @@ def render_current_dispatch(request: PromptRenderRequest) -> str:
             "- When calling node tools, include the exact `task_id` and `session_key` shown "
             "here. Do not print them in normal output, checkpoint prose, or artifacts.",
         ),
+        level=heading_level,
     )
 
 
-def render_capabilities_now(request: PromptRenderRequest) -> str:
+def render_capabilities_now(request: PromptRenderRequest, *, heading_level: int = 2) -> str:
     capabilities = request.effective_capabilities
     return render_markdown_section(
         "Capabilities Now",
@@ -160,10 +187,11 @@ def render_capabilities_now(request: PromptRenderRequest) -> str:
             _human_request_capability_line(request, HumanRequestKind.REVIEW),
             _command_run_capability_line(request),
         ),
+        level=heading_level,
     )
 
 
-def render_workflow_manifest(request: PromptRenderRequest) -> str:
+def render_workflow_manifest(request: PromptRenderRequest, *, heading_level: int = 2) -> str:
     context = request.manifest.current_context
     lines = [
         f"- path: {request.manifest.filesystem_roots.runtime_path / 'workflow-manifest.md'}",
@@ -181,10 +209,10 @@ def render_workflow_manifest(request: PromptRenderRequest) -> str:
             lines.append(f"- surfaced path: {ref.path}")
         else:
             lines.append(f"- surfaced runtime file: {ref.path}")
-    return render_markdown_section("Workflow Manifest", lines)
+    return render_markdown_section("Workflow Manifest", lines, level=heading_level)
 
 
-def render_current_assignment(request: PromptRenderRequest) -> str:
+def render_current_assignment(request: PromptRenderRequest, *, heading_level: int = 2) -> str:
     assignment = request.assignment
     lines = [
         f"- path: {request.manifest.current_context.active_assignment_path}",
@@ -214,11 +242,13 @@ def render_current_assignment(request: PromptRenderRequest) -> str:
         lines.append("- task_memory_search_hints:")
         for hint in assignment.task_memory_search_hints:
             lines.append(f"  - {hint}")
-    return render_markdown_section("Current Assignment", lines)
+    return render_markdown_section("Current Assignment", lines, level=heading_level)
 
 
 def render_human_request_continuation_context(
     request: PromptRenderRequest,
+    *,
+    heading_level: int = 2,
 ) -> str | None:
     human_request = request.human_request_continuation_context
     if human_request is None or human_request.resolution is None:
@@ -262,11 +292,17 @@ def render_human_request_continuation_context(
             lines.append(f"    freeform_answer: {item_response.freeform_answer}")
             lines.append(f"    extra_notes: {item_response.extra_notes}")
             lines.append(f"    response_payload: {item_response.response_payload}")
-    return render_markdown_section("Human Request Continuation Context", lines)
+    return render_markdown_section(
+        "Human Request Continuation Context",
+        lines,
+        level=heading_level,
+    )
 
 
 def render_command_run_continuation_context(
     request: PromptRenderRequest,
+    *,
+    heading_level: int = 2,
 ) -> str | None:
     command_run = request.command_run_continuation_context
     if command_run is None:
@@ -293,102 +329,39 @@ def render_command_run_continuation_context(
         f"  - log_ref: {terminal_result.log_ref}",
         "- raw logs: excluded from ordinary prompt truth",
     ]
-    return render_markdown_section("Command Run Continuation Context", lines)
-
-
-def render_boundary_followup_guidance(request: PromptRenderRequest) -> str:
-    checkpoint = request.latest_checkpoint
-    node_kind = request.current_node.node_kind
-    lines = [
-        "- use this section to interpret why the current dispatch exists now",
-        "- read it together with Latest Checkpoint Context, Current Assignment, "
-        "and Consumed Durable Refs",
-    ]
-    if checkpoint is None or checkpoint.outcome is None:
-        lines.extend(
-            (
-                "- boundary context: initial or ordinary current dispatch without a "
-                "terminal handoff outcome",
-                "- start from manifest, assignment, current refs, and surfaced "
-                "task-memory hints before acting",
-            )
-        )
-    elif checkpoint.outcome == CheckpointOutcome.RETRY:
-        lines.extend(
-            (
-                "- boundary context: retry handoff from a prior terminal checkpoint",
-                "- retry keeps the same assignment and creates a new attempt; fix "
-                "the documented failure instead of starting over from hidden "
-                "session memory",
-                "- compare current surfaced refs against prior checkpoint prose "
-                "before deciding what changed",
-            )
-        )
-    elif checkpoint.outcome == CheckpointOutcome.BLOCKED:
-        lines.append("- boundary context: blocked handoff from current surfaced evidence")
-        if node_kind == NodeKind.WORKER:
-            lines.extend(
-                (
-                    "- use the blocker as the problem to resolve only if the current "
-                    "assignment and refs provide a lawful path forward",
-                    "- if the blocker still prevents completion, checkpoint the "
-                    "current blocker clearly before closing blocked again",
-                )
-            )
-        else:
-            lines.extend(
-                (
-                    "- blocked child or prior-attempt evidence is routing input, not "
-                    "automatic whole-flow blocked closure",
-                    "- choose explicitly among sharper reassignment, specialist "
-                    "review, structural replan, or current-node blocked closure",
-                    "- root whole-flow blocked closure still requires committed "
-                    "release_blocked before terminal blocked",
-                )
-            )
-    elif checkpoint.outcome == CheckpointOutcome.GREEN:
-        lines.append("- boundary context: green handoff from current surfaced evidence")
-        if node_kind == NodeKind.WORKER:
-            lines.extend(
-                (
-                    "- treat prior green evidence as context only; complete the "
-                    "current assignment and checkpoint the current result",
-                    "- do not assume prior green satisfies new or changed criteria",
-                )
-            )
-        else:
-            lines.extend(
-                (
-                    "- child green is evidence, not automatic release authority",
-                    "- inspect produced artifacts, checkpoint reasoning, and criteria "
-                    "coverage before deciding release, review, verification, fix, "
-                    "or replan",
-                    "- if evidence is weak or criteria are broad, assign a reviewer "
-                    "or verifier instead of trusting the claim",
-                )
-            )
-    else:
-        lines.extend(
-            (
-                f"- boundary context: checkpoint outcome `{checkpoint.outcome.value}`",
-                "- treat the checkpoint as durable handoff context and decide from "
-                "current refs, not transcript memory",
-            )
-        )
-    return render_markdown_section("Boundary Follow-Up Guidance", lines)
-
-
-def render_allowed_actions_now(request: PromptRenderRequest) -> str:
-    node_kind = request.current_node.node_kind
-    if node_kind == NodeKind.WORKER:
-        return render_markdown_section("Allowed Actions Now", _worker_allowed_action_lines())
     return render_markdown_section(
-        "Allowed Actions Now",
-        _parent_root_allowed_action_lines(node_kind),
+        "Command Run Continuation Context",
+        lines,
+        level=heading_level,
     )
 
 
-def render_publication_rule() -> str:
+def render_boundary_followup_guidance(
+    request: PromptRenderRequest,
+    *,
+    heading_level: int = 2,
+) -> str:
+    lines = list(_boundary_followup_intro_lines())
+    lines.extend(_boundary_followup_outcome_lines(request))
+    return render_markdown_section("Boundary Follow-Up Guidance", lines, level=heading_level)
+
+
+def render_allowed_actions_now(request: PromptRenderRequest, *, heading_level: int = 2) -> str:
+    node_kind = request.current_node.node_kind
+    if node_kind == NodeKind.WORKER:
+        return render_markdown_section(
+            "Allowed Actions Now",
+            _worker_allowed_action_lines(),
+            level=heading_level,
+        )
+    return render_markdown_section(
+        "Allowed Actions Now",
+        _parent_root_allowed_action_lines(node_kind),
+        level=heading_level,
+    )
+
+
+def render_publication_rule(*, heading_level: int = 2) -> str:
     return render_markdown_section(
         "Publication Rule",
         (
@@ -398,6 +371,91 @@ def render_publication_rule() -> str:
             "not hidden transcript memory",
             "- ordinary prompt surfaces keep artifact refs compact and path-only",
         ),
+        level=heading_level,
+    )
+
+
+def _boundary_followup_intro_lines() -> tuple[str, ...]:
+    return (
+        "- use this section to interpret why the current dispatch exists now",
+        "- read it together with Latest Checkpoint Context, Current Assignment, "
+        "and Consumed Durable Refs",
+    )
+
+
+def _boundary_followup_outcome_lines(request: PromptRenderRequest) -> tuple[str, ...]:
+    checkpoint = request.latest_checkpoint
+    if checkpoint is None or checkpoint.outcome is None:
+        return _initial_boundary_followup_lines()
+    if checkpoint.outcome == CheckpointOutcome.RETRY:
+        return _retry_boundary_followup_lines()
+    if checkpoint.outcome == CheckpointOutcome.BLOCKED:
+        return _blocked_boundary_followup_lines(request.current_node.node_kind)
+    if checkpoint.outcome == CheckpointOutcome.GREEN:
+        return _green_boundary_followup_lines(request.current_node.node_kind)
+    return (
+        f"- boundary context: checkpoint outcome `{checkpoint.outcome.value}`",
+        "- treat the checkpoint as durable handoff context and decide from "
+        "current refs, not transcript memory",
+    )
+
+
+def _initial_boundary_followup_lines() -> tuple[str, ...]:
+    return (
+        "- boundary context: initial or ordinary current dispatch without a "
+        "terminal handoff outcome",
+        "- start from manifest, assignment, current refs, and surfaced "
+        "task-memory hints before acting",
+    )
+
+
+def _retry_boundary_followup_lines() -> tuple[str, ...]:
+    return (
+        "- boundary context: retry handoff from a prior terminal checkpoint",
+        "- retry keeps the same assignment and creates a new attempt; fix "
+        "the documented failure instead of starting over from hidden "
+        "session memory",
+        "- compare current surfaced refs against prior checkpoint prose "
+        "before deciding what changed",
+    )
+
+
+def _blocked_boundary_followup_lines(node_kind: NodeKind) -> tuple[str, ...]:
+    if node_kind == NodeKind.WORKER:
+        return (
+            "- boundary context: blocked handoff from current surfaced evidence",
+            "- use the blocker as the problem to resolve only if the current "
+            "assignment and refs provide a lawful path forward",
+            "- if the blocker still prevents completion, checkpoint the "
+            "current blocker clearly before closing blocked again",
+        )
+    return (
+        "- boundary context: blocked handoff from current surfaced evidence",
+        "- blocked child or prior-attempt evidence is routing input, not "
+        "automatic whole-flow blocked closure",
+        "- choose explicitly among sharper reassignment, specialist "
+        "review, structural replan, or current-node blocked closure",
+        "- root whole-flow blocked closure still requires committed "
+        "release_blocked before terminal blocked",
+    )
+
+
+def _green_boundary_followup_lines(node_kind: NodeKind) -> tuple[str, ...]:
+    if node_kind == NodeKind.WORKER:
+        return (
+            "- boundary context: green handoff from current surfaced evidence",
+            "- treat prior green evidence as context only; complete the "
+            "current assignment and checkpoint the current result",
+            "- do not assume prior green satisfies new or changed criteria",
+        )
+    return (
+        "- boundary context: green handoff from current surfaced evidence",
+        "- child green is evidence, not automatic release authority",
+        "- inspect produced artifacts, checkpoint reasoning, and criteria "
+        "coverage before deciding release, review, verification, fix, "
+        "or replan",
+        "- if evidence is weak or criteria are broad, assign a reviewer "
+        "or verifier instead of trusting the claim",
     )
 
 

@@ -41,8 +41,8 @@ def test_task_memory_renders_assignment_hints_checkpoint_hints_and_surfaced_cura
 
     task_memory_section = extract_section(
         bundle.full_markdown,
-        "## Task Memory",
-        "## Allowed Actions Now",
+        "### Task Memory",
+        "### Allowed Actions Now",
     )
 
     assert "- search hints:" in task_memory_section
@@ -84,8 +84,8 @@ def test_task_memory_can_render_from_surfaced_curated_refs_without_assignment_hi
 
     task_memory_section = extract_section(
         bundle.full_markdown,
-        "## Task Memory",
-        "## Allowed Actions Now",
+        "### Task Memory",
+        "### Allowed Actions Now",
     )
 
     assert "- search hints:" not in task_memory_section
@@ -99,8 +99,8 @@ def test_latest_checkpoint_context_renders_stable_checkpoint_path(tmp_path: Path
 
     checkpoint_section = extract_section(
         bundle.full_markdown,
-        "## Latest Checkpoint Context",
-        "## Consumed Durable Refs",
+        "### Latest Checkpoint Context",
+        "### Consumed Durable Refs",
     )
 
     assert str(request.manifest.current_context.latest_checkpoint_path) in checkpoint_section
@@ -136,13 +136,13 @@ def test_latest_checkpoint_context_prefers_latest_relevant_checkpoint_path(tmp_p
 
     checkpoint_section = extract_section(
         bundle.full_markdown,
-        "## Latest Checkpoint Context",
-        "## Consumed Durable Refs",
+        "### Latest Checkpoint Context",
+        "### Consumed Durable Refs",
     )
     consumed_refs_section = extract_section(
         bundle.full_markdown,
-        "## Consumed Durable Refs",
-        "## Transient Refs",
+        "### Consumed Durable Refs",
+        "### Transient Refs",
     )
 
     assert str(relevant_checkpoint_path) in checkpoint_section
@@ -160,8 +160,8 @@ def test_latest_checkpoint_context_stays_explicit_when_no_checkpoint_is_surfaced
 
     checkpoint_section = extract_section(
         bundle.full_markdown,
-        "## Latest Checkpoint Context",
-        "## Consumed Durable Refs",
+        "### Latest Checkpoint Context",
+        "### Consumed Durable Refs",
     )
 
     assert "- path: null" in checkpoint_section
@@ -206,11 +206,11 @@ def test_assignment_consumes_support_checkpoint_refs_without_widening_current_as
 
     assignment_section = extract_section(
         bundle.full_markdown,
-        "## Current Assignment",
-        "## Latest Checkpoint Context",
+        "### Current Assignment",
+        "### Latest Checkpoint Context",
     )
     consumed_refs_section = bundle.full_markdown.split(
-        "## Consumed Durable Refs",
+        "### Consumed Durable Refs",
         maxsplit=1,
     )[1]
 

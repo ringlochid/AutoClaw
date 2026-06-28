@@ -1,4 +1,4 @@
-## Parent/Root Runtime Legality
+### Parent/Root Runtime Legality
 
 If you use `assign_child`, author only semantic staging fields:
 

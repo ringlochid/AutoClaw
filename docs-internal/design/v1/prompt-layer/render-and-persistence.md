@@ -64,15 +64,23 @@ persisted_dispatch_prompt:
 Rules:
 
 - dispatch control emits `full_prompt` for every live dispatch
-- `full_prompt` sends the full prompt package inline:
-  - static provider-side `instructions`
-  - plus dynamic rendered `input`
-- persisted prompt artifacts still keep the whole full prompt body for every dispatch
+- `full_prompt` preserves the semantic split between AutoClaw-owned `instructions_text` and rendered `input_text`
+- persisted `prompt.md` keeps a readable combined readback of that effective AutoClaw prompt:
+  - `# AutoClaw Dispatch Prompt`
+  - `## Instructions`
+  - `## Dispatch Input`
+- `instructions_text` starts with `## Instructions` and carries static doctrine, exact prompt assets, and current-node guidance
+- `input_text` starts with `## Dispatch Input` and carries regenerated dispatch input sections such as `### Current Dispatch`, `### Current Assignment`, and `### Allowed Actions Now`
+- reusable prompt asset blocks render as `###` fragments inside `## Instructions`
+- dynamic dispatch-input sections render as `###` fragments inside `## Dispatch Input`
+- `prompt-request.json` remains the exact transport envelope with separate `instructions_text` and `input_text`
 - send mode differences must not redefine section meaning or runtime truth.
 
 The live prompt transport does not use `same_session_continue`, `previous_response_id`, wrapper blocks, generated examples, or prompt-catalog compatibility entries. Canonical parent/root same-session redispatch still uses `full_prompt` and a full regenerated resend on the Gateway `agent` path.
 
-The persisted `prompt.md` artifact still contains the full canonical prompt. The sibling `prompt-request.json` artifact is the transport request envelope for that same dispatch; it does not replace `prompt.md` as the full canonical prompt readback.
+The persisted `prompt.md` artifact is a human-readable audit and replay surface for the effective prompt AutoClaw intended to send. It includes AutoClaw-generated dispatch instructions but not any opaque provider/platform prompt outside controller truth.
+
+The sibling `prompt-request.json` artifact is the transport request envelope for that same dispatch; it does not replace `prompt.md` as the full canonical prompt readback. Adapters that support separate provider roles should map `instructions_text` to their system/developer/instructions channel and `input_text` to their user/input channel. The current OpenClaw Gateway path has one `message` field, so it flattens the same combined readback shape used by `prompt.md`.
 
 The v1 static `node MCP` bridge may surface `task_id` and `session_key` in the dispatch-local prompt body and dispatch-local prompt-request documentation, but those values must not be promoted into stable `_runtime` projections such as manifest, assignment, or checkpoint files.
 

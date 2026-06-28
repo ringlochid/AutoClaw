@@ -65,14 +65,14 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
         result.paths.runtime_path / "attempts" / "attempt.root.01" / "latest-checkpoint.md"
     ).exists()
     assert (result.paths.criteria_path / "implementation_rules.md").is_file()
-    assert "## Current Assignment" in result.prompt_bundle.full_markdown
-    assert "## Latest Checkpoint Context" in result.prompt_bundle.full_markdown
-    assert "## Consumed Durable Refs" in result.prompt_bundle.full_markdown
+    assert "### Current Assignment" in result.prompt_bundle.full_markdown
+    assert "### Latest Checkpoint Context" in result.prompt_bundle.full_markdown
+    assert "### Consumed Durable Refs" in result.prompt_bundle.full_markdown
     assert "- no current relevant checkpoint is surfaced" in result.prompt_bundle.full_markdown
     assert str(result.paths.criteria_path / "implementation_rules.v01.md") in (
         result.prompt_bundle.full_markdown
     )
-    assert "## Allowed Actions Now" in result.prompt_bundle.full_markdown
+    assert "### Allowed Actions Now" in result.prompt_bundle.full_markdown
     assert "architect (allowed node kinds: worker)" in result.prompt_bundle.full_markdown
     assert "standard-parent-planning (applies_to: parent)" in result.prompt_bundle.full_markdown
     manifest_markdown = (result.paths.runtime_path / "workflow-manifest.md").read_text(
@@ -293,7 +293,7 @@ def test_bootstrap_materializes_supplied_checkpoint_projection(tmp_path: Path) -
     assert latest_checkpoint_path.is_file()
     assert result.manifest.current_context.latest_checkpoint_path == latest_checkpoint_path
     assert result.manifest.current_context.latest_relevant_checkpoint_path is None
-    assert "## Latest Checkpoint Context" in result.prompt_bundle.full_markdown
+    assert "### Latest Checkpoint Context" in result.prompt_bundle.full_markdown
     assert result.latest_checkpoint is not None
     assert result.latest_checkpoint.checkpoint_kind == CheckpointKind.PROGRESS
     assert result.latest_checkpoint.outcome is None

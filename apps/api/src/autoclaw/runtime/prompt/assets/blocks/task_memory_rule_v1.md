@@ -1,4 +1,4 @@
-## Task Memory Search Hints
+### Task Memory Search Hints
 
 `task_memory_search_hints` are retrieval prompts, not generic tags and not implicit consumes.
 

@@ -17,7 +17,11 @@ from autoclaw.runtime.prompt.sections.primitives import (
 )
 
 
-def render_latest_checkpoint_context(request: PromptRenderRequest) -> str:
+def render_latest_checkpoint_context(
+    request: PromptRenderRequest,
+    *,
+    heading_level: int = 2,
+) -> str:
     checkpoint = request.latest_checkpoint
     checkpoint_path = latest_checkpoint_context_path(request)
     if checkpoint is None:
@@ -27,6 +31,7 @@ def render_latest_checkpoint_context(request: PromptRenderRequest) -> str:
                 "- path: null",
                 "- no current relevant checkpoint is surfaced",
             ),
+            level=heading_level,
         )
     lines = [
         (f"- path: {checkpoint_path}" if checkpoint_path is not None else "- path: null"),
@@ -53,35 +58,48 @@ def render_latest_checkpoint_context(request: PromptRenderRequest) -> str:
     if checkpoint.task_memory_search_hints:
         lines.append("- task_memory_search_hints:")
         lines.extend(f"  - {hint}" for hint in checkpoint.task_memory_search_hints)
-    return render_markdown_section("Latest Checkpoint Context", lines)
+    return render_markdown_section("Latest Checkpoint Context", lines, level=heading_level)
 
 
-def render_consumed_durable_refs(request: PromptRenderRequest) -> str | None:
+def render_consumed_durable_refs(
+    request: PromptRenderRequest,
+    *,
+    heading_level: int = 2,
+) -> str | None:
     durable_refs = consumed_durable_refs_for_turn(request)
     if not durable_refs:
         if request.prompt_family == PromptFamily.WORKER_DISPATCH:
             return render_markdown_section(
                 "Consumed Durable Refs",
                 ("- no current durable refs are surfaced for this turn",),
+                level=heading_level,
             )
         return None
     lines: list[str] = []
     for ref in durable_refs:
         lines.extend(render_ref_with_path(ref))
-    return render_markdown_section("Consumed Durable Refs", lines)
+    return render_markdown_section("Consumed Durable Refs", lines, level=heading_level)
 
 
-def render_transient_refs(assignment: AssignmentProjection) -> str | None:
+def render_transient_refs(
+    assignment: AssignmentProjection,
+    *,
+    heading_level: int = 2,
+) -> str | None:
     if not assignment.transient_refs:
         return None
     lines = ["- transient refs are optional carryover only; they are not durable truth"]
     for ref in assignment.transient_refs:
         lines.append(f"- path: {ref.path}")
         lines.append(f"  description: {ref.description}")
-    return render_markdown_section("Transient Refs", lines)
+    return render_markdown_section("Transient Refs", lines, level=heading_level)
 
 
-def render_task_memory(request: PromptRenderRequest) -> str | None:
+def render_task_memory(
+    request: PromptRenderRequest,
+    *,
+    heading_level: int = 2,
+) -> str | None:
     hints = unique_task_memory_hints(request)
     context_refs = task_memory_context_refs(request)
     if not hints and not context_refs:
@@ -101,7 +119,7 @@ def render_task_memory(request: PromptRenderRequest) -> str | None:
     lines.append("- `context/wiki/` contains curated task-memory pages")
     lines.append("- other curated docs under `context/` are source/reference material")
     lines.append("- direct file/path search is the v1 retrieval model")
-    return render_markdown_section("Task Memory", lines)
+    return render_markdown_section("Task Memory", lines, level=heading_level)
 
 
 def consumed_durable_refs_for_turn(

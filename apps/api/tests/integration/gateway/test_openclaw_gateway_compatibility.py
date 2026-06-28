@@ -19,6 +19,8 @@ from autoclaw.integrations.openclaw.gateway.fixtures import (
     hello_ok_fixture,
 )
 from autoclaw.main import create_app
+from autoclaw.runtime import PromptSendMode, PromptTransportRequest
+from autoclaw.runtime.dispatch.gateway.launch import build_gateway_launch_message
 from pytest import MonkeyPatch
 from tests.helpers.openclaw_gateway_support import (
     build_test_adapter,
@@ -289,6 +291,26 @@ async def test_ambiguous_loopback_auth_mode_is_blocked(
     )
     with pytest.raises(Exception, match=r"AMBIGUOUS_GATEWAY_AUTH_MODE|unsupported"):
         await adapter.check_compatibility()
+
+
+def test_gateway_launch_message_uses_combined_prompt_readback_shape() -> None:
+    transport_request = PromptTransportRequest(
+        send_mode=PromptSendMode.FULL_PROMPT,
+        instructions_text="## Instructions\n\n### Runtime Identity\n\nFollow AutoClaw rules.",
+        input_text="## Dispatch Input\n\n### Current Dispatch\n\n- node kind: worker",
+    )
+
+    message = build_gateway_launch_message(transport_request)
+
+    assert message == (
+        "# AutoClaw Dispatch Prompt\n\n"
+        "## Instructions\n\n"
+        "### Runtime Identity\n\n"
+        "Follow AutoClaw rules.\n\n"
+        "## Dispatch Input\n\n"
+        "### Current Dispatch\n\n"
+        "- node kind: worker"
+    )
 
 
 @pytest.mark.asyncio

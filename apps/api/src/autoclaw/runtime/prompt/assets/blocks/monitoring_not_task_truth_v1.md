@@ -1,4 +1,4 @@
-## Monitoring Is Not Task Truth
+### Monitoring Is Not Task Truth
 
 Files under `_runtime/dispatch/<dispatch_id>/` are monitoring and incident-debug projections only.
 

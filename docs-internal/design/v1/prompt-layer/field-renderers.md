@@ -175,7 +175,7 @@ Render the assignment fields in this order:
 Good render:
 
 ```text
-## Current Assignment
+### Current Assignment
 - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/assignment.md
 - summary: repair the auth-refresh defect and publish the required evidence
 - instruction: change only the bounded auth-refresh logic and rerun the scoped verification
@@ -210,7 +210,7 @@ Render in this order when a checkpoint exists:
 Good render:
 
 ```text
-## Latest Checkpoint Context
+### Latest Checkpoint Context
 - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/latest-checkpoint.md
 - checkpoint_kind: terminal
 - outcome: blocked
@@ -229,7 +229,7 @@ Good render:
 If no checkpoint is surfaced, render the explicit empty state:
 
 ```text
-## Latest Checkpoint Context
+### Latest Checkpoint Context
 - path: null
 - no current relevant checkpoint is surfaced
 ```

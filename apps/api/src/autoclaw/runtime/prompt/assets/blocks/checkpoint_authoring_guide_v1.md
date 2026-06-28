@@ -1,10 +1,10 @@
-## Checkpoint Authoring Guide
+### Checkpoint Authoring Guide
 
 Treat every checkpoint as a durable handoff, not a diary entry or polished status report.
 
 Write only the decision-relevant delta that the next reader should not have to rediscover.
 
-## Required Shape
+#### Required Shape
 
 | Field                      | Use                                                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------ |

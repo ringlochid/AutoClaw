@@ -25,7 +25,12 @@ __all__ = [
 
 
 def section_index(markdown: str, heading: str) -> int:
-    return markdown.index(heading)
+    offset = 0
+    for line in markdown.splitlines(keepends=True):
+        if line.strip() == heading:
+            return offset
+        offset += len(line)
+    raise ValueError(f"missing markdown heading line: {heading}")
 
 
 def normalize_whitespace(text: str) -> str:
@@ -33,7 +38,9 @@ def normalize_whitespace(text: str) -> str:
 
 
 def extract_section(markdown: str, heading: str, next_heading: str | None = None) -> str:
-    section = markdown.split(heading, maxsplit=1)[1]
+    start = section_index(markdown, heading) + len(heading)
+    section = markdown[start:]
     if next_heading is not None:
-        section = section.split(next_heading, maxsplit=1)[0]
+        end = section_index(section, next_heading)
+        section = section[:end]
     return section

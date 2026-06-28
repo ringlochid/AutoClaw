@@ -1,4 +1,4 @@
-## Durable Artifact Refs
+### Durable Artifact Refs
 
 When you cite a surfaced durable artifact ref in a prompt, checkpoint, or reasoning, use this compact shape:
 

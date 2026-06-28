@@ -6,9 +6,14 @@ from typing import Any, cast
 from autoclaw.runtime.contracts import NodeRuntimeFileRef
 
 
-def render_markdown_section(title: str, lines: Iterable[str]) -> str:
+def render_markdown_section(title: str, lines: Iterable[str], *, level: int = 2) -> str:
+    if not 1 <= level <= 6:
+        raise ValueError("markdown heading level must be between 1 and 6")
     collected = [line for line in lines if line]
-    return f"## {title}\n" + "\n".join(collected)
+    heading = "#" * level
+    if not collected:
+        return f"{heading} {title}"
+    return f"{heading} {title}\n\n" + "\n".join(collected)
 
 
 def render_ref_without_path(ref: object) -> list[str]:

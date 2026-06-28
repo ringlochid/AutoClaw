@@ -25,6 +25,9 @@ Rules:
 
 - prompt generation stays asset-backed and controller-truth-derived
 - render still produces `instructions_text`, `input_text`, `full_markdown`, and `content_hash`
+- `instructions_text` remains the provider-role-ready AutoClaw instruction layer, while `input_text` remains the dispatch input layer
+- `full_markdown` is the readable combined readback of those two layers, headed `# AutoClaw Dispatch Prompt` with `## Instructions` and `## Dispatch Input`
+- adapter paths that can send separate provider roles should preserve the split; one-message transports may flatten through the same combined readback shape
 - dispatch-local prompt artifacts remain the canonical persisted prompt read surface
 - prompt text must not fork into UI-owned shadow variants
 - exact current render/persist paths remain defined by the V1 current prompt-layer contract until implementation deliberately changes them

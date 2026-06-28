@@ -9,7 +9,13 @@ from autoclaw.runtime.contracts import (
     ManifestNodeProjection,
     ManifestProjection,
     PromptRenderRequest,
+    PromptTransportRequest,
     RenderedPromptBundle,
+)
+from autoclaw.runtime.prompt.document import (
+    DISPATCH_INPUT_SECTION_TITLE,
+    PROMPT_DOCUMENT_TITLE,
+    PROMPT_FRAGMENT_HEADING_LEVEL,
 )
 from autoclaw.runtime.prompt.instructions import render_prompt_instructions
 from autoclaw.runtime.prompt.sections import render_prompt_sections, render_ref_with_path
@@ -17,10 +23,12 @@ from autoclaw.runtime.prompt.structural_edit_palette import structural_edit_pale
 
 
 def render_prompt_bundle(request: PromptRenderRequest) -> RenderedPromptBundle:
-    sections = render_prompt_sections(request)
-    full_markdown = "\n\n".join(section for _section_id, section in sections)
-    input_markdown = full_markdown
+    input_markdown = render_prompt_input_markdown(request)
     instructions_text = render_prompt_instructions(request)
+    full_markdown = render_combined_prompt_markdown(
+        instructions_text=instructions_text,
+        input_text=input_markdown,
+    )
     return RenderedPromptBundle(
         prompt_family=request.prompt_family,
         send_mode=request.send_mode,
@@ -29,6 +37,34 @@ def render_prompt_bundle(request: PromptRenderRequest) -> RenderedPromptBundle:
         full_markdown=full_markdown,
         content_hash=_content_hash(full_markdown),
     )
+
+
+def render_prompt_input_markdown(request: PromptRenderRequest) -> str:
+    sections = render_prompt_sections(
+        request,
+        heading_level=PROMPT_FRAGMENT_HEADING_LEVEL,
+    )
+    return render_titled_markdown_section(
+        DISPATCH_INPUT_SECTION_TITLE,
+        "\n\n".join(section for _section_id, section in sections),
+    )
+
+
+def render_prompt_transport_markdown(transport_request: PromptTransportRequest) -> str:
+    if transport_request.instructions_text is None:
+        raise ValueError("full_prompt transport requests require instructions_text")
+    return render_combined_prompt_markdown(
+        instructions_text=transport_request.instructions_text,
+        input_text=transport_request.input_text,
+    )
+
+
+def render_combined_prompt_markdown(*, instructions_text: str, input_text: str) -> str:
+    return f"# {PROMPT_DOCUMENT_TITLE}\n\n{instructions_text.rstrip()}\n\n{input_text.rstrip()}"
+
+
+def render_titled_markdown_section(title: str, body: str) -> str:
+    return f"## {title}\n\n{body.rstrip()}\n"
 
 
 def render_manifest_markdown(manifest: ManifestProjection) -> str:

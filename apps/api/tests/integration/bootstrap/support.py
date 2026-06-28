@@ -107,8 +107,8 @@ async def require_dispatch_flow_node(
 
 
 def consumed_durable_refs_section(full_markdown: str) -> str:
-    return full_markdown.split("## Consumed Durable Refs", maxsplit=1)[1].split(
-        "## Allowed Actions Now",
+    return full_markdown.split("### Consumed Durable Refs", maxsplit=1)[1].split(
+        "### Allowed Actions Now",
         maxsplit=1,
     )[0]
 

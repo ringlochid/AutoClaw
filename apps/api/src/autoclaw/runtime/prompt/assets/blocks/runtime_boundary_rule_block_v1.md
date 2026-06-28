@@ -1,4 +1,4 @@
-## Runtime Boundary Rules
+### Runtime Boundary Rules
 
 Use boundaries exactly this way.
 

@@ -11,14 +11,14 @@ Shipped exact prompt blocks are app-owned assets under `apps/api/src/autoclaw/ru
 | Source surface                                       | Canonical fields                                                                                                                                                   | Rendered destination                                                                                                 |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | controller/runtime rule pack                         | boundary model, `AssignChildPayload` semantics, `record_checkpoint` handoff model, durable-vs-transient rules, filesystem rules                                    | `operating_model`, `allowed_actions_now`, `publication_rule`                                                         |
-| `_runtime/workflow-manifest.*`                       | task identity, current node purpose, whole-workflow structure, filesystem roots, current surfaced paths                                                            | `task_identity`, `node_purpose`, `workflow_manifest`, and static provider-side current-node instruction assembly     |
+| `_runtime/workflow-manifest.*`                       | task identity, current node purpose, whole-workflow structure, filesystem roots, current surfaced paths                                                            | `task_identity`, `node_purpose`, `workflow_manifest`, and AutoClaw-owned current-node instruction assembly           |
 | internal dispatch/session state                    | current bound turn, caller node kind, live controller send mode, closure expectations                                                                                | `current_dispatch`, `capabilities_now`, `allowed_actions_now`                                                        |
 | current semantic assignment handoff                  | `summary`, optional `instruction`, reduced `criteria`, reduced `consumes`, `produces` requirements, explicit `transient_refs`, optional `task_memory_search_hints` | `current_assignment`, part of `task_memory`, part of `publication_rule`                                              |
 | `_runtime/attempts/<attempt_id>/latest-checkpoint.*` | `checkpoint_kind`, `outcome`, `summary`, `next_step`, `blockers`, `risks`, surfaced refs, task-memory hints                                                        | `latest_checkpoint_context`, `boundary_followup_guidance`                                                            |
 | runtime-resolved durable refs                        | exact current criteria, checkpoint, artifact, doc, and wiki refs surfaced for this turn                                                                            | `consumed_durable_refs`                                                                                              |
 | surfaced transient refs                              | explicit transient carryover paths                                                                                                                                 | `transient_refs`                                                                                                     |
 | task-memory hints + curated files                    | `task_memory_search_hints`, `context/wiki/`, other curated docs under `context/`                                                                                   | `task_memory`                                                                                                        |
-| surfaced role/policy guidance for structural edits   | current node role/policy descriptions and instructions, plus the compact registry-backed `structural_edit_palette` of currently valid role/policy names for structural edits and optional current-only definition lookup availability when that read-only escalation lane is surfaced | static provider-side `instructions` channel, `workflow_manifest`, and `allowed_actions_now` when parent/root structural edits are relevant |
+| surfaced role/policy guidance for structural edits   | current node role/policy descriptions and instructions, plus the compact registry-backed `structural_edit_palette` of currently valid role/policy names for structural edits and optional current-only definition lookup availability when that read-only escalation lane is surfaced | AutoClaw-owned `instructions_text`, `workflow_manifest`, and `allowed_actions_now` when parent/root structural edits are relevant |
 
 ## Section Contracts
 
@@ -59,7 +59,7 @@ This section must expose:
 
 Rules:
 
-- the current node purpose and optional node instruction also belong in the static provider-side instruction layer for every node
+- the current node purpose and optional node instruction also belong in the AutoClaw-owned instruction layer for every node
 - this section is a short visible runtime echo, not the only place node purpose is taught
 
 ### `current_dispatch`
@@ -133,7 +133,7 @@ Rules:
 Render like:
 
 ```text
-## Current Assignment
+### Current Assignment
 - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.11/assignment.md
 - summary: repair the auth-refresh defect and publish the required evidence
 - instruction: keep the fix scoped to the surfaced evidence and close only after the required outputs exist

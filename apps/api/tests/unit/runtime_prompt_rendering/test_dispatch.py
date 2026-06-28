@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -126,11 +127,12 @@ def _assert_parent_instruction_guidance(instructions_text: str) -> None:
     )
     assert "read-only lookup lane before guessing" in instructions_text
     assert (
-        "Your primary job on a parent/root turn is to prepare the next child or "
-        "release decision from current evidence." in instructions_text
+        "Your primary job on a parent/root turn is to reason about purpose, judge "
+        "work outcomes, and prepare the next child or release decision from current evidence."
+        in instructions_text
     )
     assert "Use bounded research to improve delegation quality" in instructions_text
-    assert "## Parent/Root Orchestration Doctrine" in instructions_text
+    assert "### Parent/Root Orchestration Doctrine" in instructions_text
     assert "Be purpose-first: preserve the user's task intent" in instructions_text
     assert "Treat child green as evidence, not proof." in instructions_text
     assert "mission packet: purpose, current state, mode" in instructions_text
@@ -170,14 +172,14 @@ def _assert_parent_instruction_guidance(instructions_text: str) -> None:
 
 
 def _assert_worker_checkpoint_guidance(instructions_text: str) -> None:
-    assert "## AutoClaw Concept Glossary" in instructions_text
+    assert "### AutoClaw Concept Glossary" in instructions_text
     normalized_instructions = normalize_whitespace(instructions_text)
     assert "`criteria` | Hard acceptance or guardrail requirements." in normalized_instructions
     assert "`consumes` | Durable refs or slots this assignment must read before acting" in (
         normalized_instructions
     )
     assert "`produces` | Required output slots for this assignment." in normalized_instructions
-    assert "## Worker Doctrine" in instructions_text
+    assert "### Worker Doctrine" in instructions_text
     assert (
         "Start by understanding the task purpose, current assignment, constraints, "
         "criteria, consumes, and required produces before acting." in instructions_text
@@ -200,30 +202,44 @@ def test_render_prompt_bundle_keeps_canonical_section_order(tmp_path: Path) -> N
     )
 
     ordered_headings = [
-        "## Operating Model",
-        "## Task Identity",
-        "## Node Purpose",
-        "## Current Dispatch",
-        "## Capabilities Now",
-        "## Workflow Manifest",
-        "## Current Assignment",
-        "## Latest Checkpoint Context",
-        "## Boundary Follow-Up Guidance",
-        "## Consumed Durable Refs",
-        "## Transient Refs",
-        "## Task Memory",
-        "## Allowed Actions Now",
-        "## Publication Rule",
+        "### Operating Model",
+        "### Task Identity",
+        "### Node Purpose",
+        "### Current Dispatch",
+        "### Capabilities Now",
+        "### Workflow Manifest",
+        "### Current Assignment",
+        "### Latest Checkpoint Context",
+        "### Boundary Follow-Up Guidance",
+        "### Consumed Durable Refs",
+        "### Transient Refs",
+        "### Task Memory",
+        "### Allowed Actions Now",
+        "### Publication Rule",
     ]
     assert [
         section_index(full_prompt.full_markdown, heading) for heading in ordered_headings
     ] == sorted(section_index(full_prompt.full_markdown, heading) for heading in ordered_headings)
-    assert full_prompt.input_text == full_prompt.full_markdown
-    assert full_prompt.full_markdown.startswith("## Operating Model")
+    assert full_prompt.full_markdown.startswith("# AutoClaw Dispatch Prompt")
+    assert full_prompt.instructions_text is not None
+    assert full_prompt.full_markdown == (
+        "# AutoClaw Dispatch Prompt\n\n"
+        f"{full_prompt.instructions_text.rstrip()}\n\n"
+        f"{full_prompt.input_text.rstrip()}"
+    )
+    assert full_prompt.content_hash == (
+        "sha256:" + hashlib.sha256(full_prompt.full_markdown.encode("utf-8")).hexdigest()
+    )
+    assert full_prompt.instructions_text.startswith("## Instructions")
+    assert full_prompt.input_text.startswith("## Dispatch Input")
+    assert section_index(full_prompt.full_markdown, "## Instructions") < section_index(
+        full_prompt.full_markdown,
+        "## Dispatch Input",
+    )
     node_purpose = extract_section(
         full_prompt.full_markdown,
-        "## Node Purpose",
-        "## Current Dispatch",
+        "### Node Purpose",
+        "### Current Dispatch",
     )
     assert "- node instruction: Inspect the failing auth path before patching." in node_purpose
 
@@ -242,8 +258,8 @@ def test_capabilities_now_overlay_surfaces_explicit_decisions(tmp_path: Path) ->
 
     capabilities_section = extract_section(
         bundle.full_markdown,
-        "## Capabilities Now",
-        "## Workflow Manifest",
+        "### Capabilities Now",
+        "### Workflow Manifest",
     )
 
     assert "controller-owned effective capability set for this dispatch is authoritative" in (
@@ -321,18 +337,18 @@ def test_boundary_followup_guidance_interprets_checkpoint_outcomes(tmp_path: Pat
 
     worker_blocked_section = extract_section(
         worker_bundle.full_markdown,
-        "## Boundary Follow-Up Guidance",
-        "## Consumed Durable Refs",
+        "### Boundary Follow-Up Guidance",
+        "### Consumed Durable Refs",
     )
     parent_green_section = extract_section(
         parent_green_bundle.full_markdown,
-        "## Boundary Follow-Up Guidance",
-        "## Consumed Durable Refs",
+        "### Boundary Follow-Up Guidance",
+        "### Consumed Durable Refs",
     )
     worker_retry_section = extract_section(
         worker_retry_bundle.full_markdown,
-        "## Boundary Follow-Up Guidance",
-        "## Consumed Durable Refs",
+        "### Boundary Follow-Up Guidance",
+        "### Consumed Durable Refs",
     )
 
     assert "boundary context: blocked handoff from current surfaced evidence" in (
@@ -359,7 +375,7 @@ def test_exact_prompt_blocks_load_from_packaged_assets_not_prompt_docs() -> None
     system_asset = next(asset for asset in assets if asset.id == "autoclaw_system_block_v1")
     assert system_asset.asset_path == "blocks/autoclaw_system_block_v1.md"
     assert system_asset.mirror_doc == "prompt-pack/system-and-provider-block.md"
-    assert load_exact_prompt_block(system_asset.id).startswith("## AutoClaw Runtime Identity")
+    assert load_exact_prompt_block(system_asset.id).startswith("### AutoClaw Runtime Identity")
 
 
 def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path: Path) -> None:
@@ -370,13 +386,13 @@ def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path
 
     worker_dispatch = extract_section(
         worker_bundle.full_markdown,
-        "## Current Dispatch",
-        "## Workflow Manifest",
+        "### Current Dispatch",
+        "### Workflow Manifest",
     )
     parent_dispatch = extract_section(
         parent_bundle.full_markdown,
-        "## Current Dispatch",
-        "## Workflow Manifest",
+        "### Current Dispatch",
+        "### Workflow Manifest",
     )
 
     assert "- current bound turn: current worker turn (internal dispatch id hidden)" in (
@@ -413,8 +429,8 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
 
     allowed_actions_section = extract_section(
         bundle.full_markdown,
-        "## Allowed Actions Now",
-        "## Publication Rule",
+        "### Allowed Actions Now",
+        "### Publication Rule",
     )
 
     assert "registry read lane" not in allowed_actions_section
@@ -490,8 +506,8 @@ def test_task_memory_section_teaches_retrieval_prompts_not_tags(tmp_path: Path) 
 
     task_memory_section = extract_section(
         bundle.full_markdown,
-        "## Task Memory",
-        "## Allowed Actions Now",
+        "### Task Memory",
+        "### Allowed Actions Now",
     )
 
     assert "- search hints:" in task_memory_section
@@ -509,8 +525,8 @@ def test_parent_prompt_surfaces_structural_edit_palette_in_manifest_and_instruct
 
     workflow_manifest_section = extract_section(
         bundle.full_markdown,
-        "## Workflow Manifest",
-        "## Current Assignment",
+        "### Workflow Manifest",
+        "### Current Assignment",
     )
     assert bundle.instructions_text is not None
     assert "- structural edit palette:" in workflow_manifest_section
@@ -532,8 +548,8 @@ def test_non_root_parent_prompt_excludes_root_only_release_and_allows_blocked_cl
 
     allowed_actions_section = extract_section(
         bundle.full_markdown,
-        "## Allowed Actions Now",
-        "## Publication Rule",
+        "### Allowed Actions Now",
+        "### Publication Rule",
     )
 
     assert (

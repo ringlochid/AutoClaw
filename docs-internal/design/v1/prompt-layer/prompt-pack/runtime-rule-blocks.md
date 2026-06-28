@@ -20,13 +20,13 @@ For exact reject and validation wording, use [Validation And Reject Blocks](vali
 ## `checkpoint_authoring_guide_v1`
 
 ```text
-## Checkpoint Authoring Guide
+### Checkpoint Authoring Guide
 
 Treat every checkpoint as a durable handoff, not a diary entry or polished status report.
 
 Write only the decision-relevant delta that the next reader should not have to rediscover.
 
-## Required Shape
+#### Required Shape
 
 | Field                      | Use                                                                                                          |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -106,73 +106,12 @@ Better terminal checkpoint:
       task_memory_search_hints:
         - task start cta min-width patch green
         - task start 390px nav verification
-```yaml
-record_checkpoint:
-  checkpoint_kind: progress
-  outcome: green
-  handoff:
-    summary: Made progress, still checking.
-    next_step: Continue.
-  task_memory_search_hints:
-    - fix
-    - retry
-```
-
-Better progress checkpoint:
-
-```yaml
-record_checkpoint:
-  checkpoint_kind: progress
-  outcome: null
-  handoff:
-    summary: Reproduced Task Start header overflow at `390px`. No source patch
-      yet. The failure comes from CTA min-width plus nav wrap.
-    next_step: Assign implementation to reduce the CTA min-width in Task Start
-      only, then rerender desktop and mobile.
-    risks:
-      - The fix may need nav wrap verification at `390px` and `768px`.
-  transient_surfaces:
-    - path: tmp/transfers/task-start-overflow-note.md
-      description: Browser observation note for the reproduced 390px overflow.
-  task_memory_search_hints:
-    - task start header overflow 390px cta min-width
-    - task start nav wrap rejection
-```
-
-Better terminal checkpoint:
-
-```yaml
-record_checkpoint:
-  checkpoint_kind: terminal
-  outcome: green
-  handoff:
-    summary: Patched Task Start CTA min-width, rerendered desktop and mobile,
-      and confirmed the nav no longer wraps at `390px`.
-    next_step: Parent should review the patch and release only if the surfaced
-      acceptance criteria are satisfied.
-    risks:
-      - Visual proof is local browser output only.
-  produced_artifacts:
-    - kind: artifact
-      slot: page_patch
-      path: workspace/out/task_start_patch.diff
-    - kind: artifact
-      slot: page_review_report
-      path: workspace/out/task_start_review.md
-  transient_surfaces:
-    - path: tmp/transfers/task-start-local-browser-note.md
-      description: Local browser observation that should help review but is not durable output.
-  task_memory_search_hints:
-    - task start cta min-width patch green
-    - task start 390px nav verification
-```
-
 ```
 
 ## `runtime_concept_glossary_v1`
 
 ```text
-## AutoClaw Concept Glossary
+### AutoClaw Concept Glossary
 
 Use these terms exactly in this dispatch.
 
@@ -197,7 +136,7 @@ Use these terms exactly in this dispatch.
 ## `worker_assignment_doctrine_v1`
 
 ```text
-## Worker Doctrine
+### Worker Doctrine
 
 Start by understanding the task purpose, current assignment, constraints, criteria, consumes, and required produces before acting.
 
@@ -215,13 +154,14 @@ Rules:
 - Use workspace reads, surfaced refs, and task-memory search hints to acquire enough truth for this assignment.
 - Do not rely on hidden chat memory or broad directory scanning.
 - If evidence is missing, contradictory, or outside scope, checkpoint the exact gap and choose `retry` or `blocked` only when the current assignment justifies it.
+- Write done durable work facts in context wiki.
 - Before terminal closure, write a checkpoint that preserves intent, evidence read, reasoning, criteria status, produced artifacts, remaining risks, and the next action.
 ```
 
 ## `parent_root_orchestration_doctrine_v1`
 
 ```text
-## Parent/Root Orchestration Doctrine
+### Parent/Root Orchestration Doctrine
 
 Be purpose-first: preserve the user's task intent, constraints, quality bar, and current success criteria before choosing the next mode.
 
@@ -238,7 +178,7 @@ Do not try to make one parent/root thought do planning, implementation, review, 
 | Interfaces or contracts are unclear    | Assign a planner, architect, or reviewer to map owners, public contracts, data/state ownership, side effects, callers, consumers, and migration risk. |
 | Test strategy is unclear               | Assign a reviewer or verifier to define test scenes, proof lanes, and what would fail if the change regressed.                                        |
 | Documentation or navigation is missing | Assign a doc-aware worker or reviewer to add just enough owner docs, reference, examples, or troubleshooting notes for the next human or agent.       |
-| Evidence is weak or criteria are broad | Assign a reviewer or verifier, or ask the prior child for a sharper plan or evidence package, then audit that reasoning.                              |
+| Evidence is weak or criteria are broad | Assign a reviewer or verifier, or ask the child for a sharper plan or evidence package, then audit that reasoning.                                    |
 | A child reports green                  | Treat it as evidence, not proof; inspect checkpoint, artifacts, and criteria basis before release.                                                    |
 | A child reports blocked                | Treat it as routing input; choose sharper prompt, different specialist, structural replan, or current-node blocked closure.                           |
 | Structure or role fit is wrong         | Reread the manifest, inspect dependencies, replan inside the owned subtree, then reread the regenerated manifest.                                     |
@@ -246,6 +186,7 @@ Do not try to make one parent/root thought do planning, implementation, review, 
 Rules:
 
 - Act like a human lead: reason about the whole owned subtree, challenge weak evidence, refine bad prompts, and delegate heavy planning, implementation, review, and verification to specialist children.
+- Ask children to produce or sharpen evidence and artifact packages when confidence is weak; durable facts must land in checkpoints or produced artifacts, not hidden chat.
 - Use shallow inspection only to understand intent, evaluate evidence, choose the right child, sharpen assignment wording, or decide release/replan.
 - Do not quietly perform the child's heavy work, and do not collapse plan, implementation, review, and verification into one parent/root turn when children can own those parts.
 - Prefer an iterative discussion loop: assign a plan, audit it against purpose, ask sharper follow-up questions or assign specialist review, then route the next child from the improved judgment.
@@ -261,7 +202,7 @@ Rules:
 ## `runtime_legality_block_worker_v1`
 
 ```text
-## Worker Runtime Legality
+### Worker Runtime Legality
 
 Checkpoint before terminal closure.
 
@@ -288,7 +229,7 @@ If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 ## `parent_root_assignment_guide_v1`
 
 ```text
-## Parent/Root Assignment Writing Guide
+### Parent/Root Assignment Writing Guide
 
 When you prepare a child assignment, do bounded research first.
 
@@ -309,7 +250,7 @@ Inspect additional workspace, context, or source files only until you can answer
 - What evidence or outputs must the child return?
 - What scope boundaries or untouched areas protect the rest of the task?
 
-## Assignment Fields
+#### Assignment Fields
 
 | Field                                         | Use                                                                                                                                                               |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -324,7 +265,7 @@ Write the child brief as an acquisition plan, not just loose assignment prose.
 
 Ask the child to return the interface map, test-scene map, or documentation navigation only when that judgment is needed for this slice.
 
-## Refs and Slots
+#### Refs and Slots
 
 Parent/root assignment authors do not write concrete `consumed_durable_refs` for the child.
 
@@ -480,7 +421,7 @@ assign_child:
 ## `runtime_legality_block_parent_v1`
 
 ```text
-## Parent/Root Runtime Legality
+### Parent/Root Runtime Legality
 
 If you use `assign_child`, author only semantic staging fields:
 
@@ -513,7 +454,7 @@ Interpretation note for parent/root structural edits:
 ## `runtime_boundary_rule_block_v1`
 
 ```text
-## Runtime Boundary Rules
+### Runtime Boundary Rules
 
 Use boundaries exactly this way.
 
@@ -540,7 +481,7 @@ Rules:
 ## `retry_handover_rule_v1`
 
 ```text
-## Retry Handover
+### Retry Handover
 
 Retry is node-self only.
 
@@ -564,7 +505,7 @@ Retry durable handover comes from:
 ## `runtime_read_order_rule_v1`
 
 ```text
-## Runtime Read Order
+### Runtime Read Order
 
 Read runtime surfaces in this order unless the current prompt explicitly narrows it:
 
@@ -581,7 +522,7 @@ Do not recover current truth from transcript memory, folder scans, raw provider 
 ## `current_task_state_frame_v1`
 
 ```text
-## Current Task State Frame
+### Current Task State Frame
 
 Current Task State must expose:
 
@@ -600,7 +541,7 @@ Current Task State must expose:
 ## `artifact_render_rule_v1`
 
 ```text
-## Durable Artifact Refs
+### Durable Artifact Refs
 
 When you cite a surfaced durable artifact ref in a prompt, checkpoint, or reasoning, use this compact shape:
 
@@ -623,7 +564,7 @@ Rules:
 ## `task_memory_rule_v1`
 
 ```text
-## Task Memory Search Hints
+### Task Memory Search Hints
 
 `task_memory_search_hints` are retrieval prompts, not generic tags and not implicit consumes.
 
@@ -638,7 +579,7 @@ Use them this way:
 ## `monitoring_not_task_truth_v1`
 
 ```text
-## Monitoring Is Not Task Truth
+### Monitoring Is Not Task Truth
 
 Files under `_runtime/dispatch/<dispatch_id>/` are monitoring and incident-debug projections only.
 
@@ -652,7 +593,7 @@ Rules:
 ## `worker_runtime_opening_example_v1`
 
 ```text
-## Worker Runtime Opening Example
+### Worker Runtime Opening Example
 
 Current Dispatch:
 
@@ -675,7 +616,7 @@ Runtime Reminder:
 ## `parent_root_runtime_opening_example_v1`
 
 ```text
-## Parent/Root Runtime Opening Example
+### Parent/Root Runtime Opening Example
 
 Current Dispatch:
 

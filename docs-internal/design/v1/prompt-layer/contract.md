@@ -45,15 +45,18 @@ If you need copy-ready prompt text instead of just the semantic contract, assemb
 7. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_assignment_guide_v1` for parent/root prompts plus `checkpoint_authoring_guide_v1` for both prompt families
 8. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
 9. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
-10. render current node kind, current node purpose/description, node instruction, role description, role instruction, policy description, and policy instruction into the static provider-side `instructions` channel
-11. render the canonical section order from this page into the dynamic prompt `input` body using the section-source rules in [Source And Sections](source-and-sections.md)
+10. render current node kind, current node purpose/description, node instruction, role description, role instruction, policy description, and policy instruction into AutoClaw-owned `instructions_text`
+11. render the canonical section order from this page into dynamic prompt `input_text` using the section-source rules in [Source And Sections](source-and-sections.md)
 12. check the final assembled shape against [Rendered Examples](generated/rendered-examples.md)
 
 The full provider dispatch request is therefore:
 
-- `instructions` = static provider-side system/instructions channel
-- `input` = dynamic rendered prompt body for this turn
+- `instructions_text` = AutoClaw-owned instruction layer, rendered under `## Instructions`
+- `input_text` = dynamic dispatch input layer for this turn, rendered under `## Dispatch Input`
+- `full_markdown` = readable combined readback headed `# AutoClaw Dispatch Prompt`
 - reserved internal transport metadata such as prior-provider response binding when a later owning phase explicitly activates it
+
+Provider adapters that support separate roles should map `instructions_text` to their system/developer/instructions channel and `input_text` to their user/input channel. One-message transports may flatten through `full_markdown`. `prompt.md` stores AutoClaw's effective prompt readback; it does not claim to contain opaque provider/platform prompts outside controller truth.
 
 ## Canonical Section Order
 
@@ -83,7 +86,8 @@ Canonical consequence:
 - every live dispatch sends the full canonical prompt package
 - parent/root same-attempt redispatch still resends the full canonical prompt package, reusing the same `sessionKey` when continuity reuse remains lawful and otherwise falling back to a fresh `sessionKey`
 - no canonical live redispatch path omits static sections from the provider request
-- the persisted full prompt artifact contains the whole section set in canonical order
+- the persisted full prompt artifact contains `# AutoClaw Dispatch Prompt`, `## Instructions`, and `## Dispatch Input`
+- reusable prompt assets and dynamic dispatch-input sections render as `###` fragments inside those two wrapper sections
 - there is no live wrapper, catalog, or generated-example residue below this contract
 
 If shipped current code still exposes that residue before cleanup lands, `docs-internal/current/v1/**` owns the contrast. Design canon should delete the residue instead of carrying it forward as a protected future path.

@@ -125,7 +125,7 @@ Current `agent` payload includes:
 Current controller mapping is:
 
 - `sessionKey` is the agent-scoped Gateway session key persisted on the dispatch row
-- `message` is the joined prompt package from `instructions_text` plus `input_text`
+- `message` is the combined prompt readback rendered from the split `instructions_text` plus `input_text`, with `# AutoClaw Dispatch Prompt`, `## Instructions`, and `## Dispatch Input` wrappers
 - `idempotencyKey` is fresh per dispatch, currently `dispatch:<dispatch_id>`
 - accepted responses return a fresh `runId`, which is also persisted on the dispatch row
 - any request-local compatibility residue such as empty `observed_events` fields is not current runtime truth and does not participate in dispatch binding, liveness, or provider-event persistence

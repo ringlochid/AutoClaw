@@ -1,4 +1,4 @@
-## Worker Doctrine
+### Worker Doctrine
 
 Start by understanding the task purpose, current assignment, constraints, criteria, consumes, and required produces before acting.
 
@@ -16,4 +16,5 @@ Rules:
 - Use workspace reads, surfaced refs, and task-memory search hints to acquire enough truth for this assignment.
 - Do not rely on hidden chat memory or broad directory scanning.
 - If evidence is missing, contradictory, or outside scope, checkpoint the exact gap and choose `retry` or `blocked` only when the current assignment justifies it.
+- Write done durable work facts in context wiki.
 - Before terminal closure, write a checkpoint that preserves intent, evidence read, reasoning, criteria status, produced artifacts, remaining risks, and the next action.

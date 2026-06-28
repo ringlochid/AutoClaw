@@ -81,7 +81,7 @@ async def test_launch_materializes_dispatch_files_for_full_prompt_dispatch(
         full_prompt_request = json.loads(prompt_request_path.read_text(encoding="utf-8"))
         assert full_prompt_request["send_mode"] == "full_prompt"
         assert full_prompt_request["instructions_text"] is not None
-        assert "## Operating Model" in prompt_path.read_text(encoding="utf-8")
+        assert "### Operating Model" in prompt_path.read_text(encoding="utf-8")
         assert provider_events_path.read_text(encoding="utf-8") == ""
     finally:
         await dispose_db_engine()
@@ -210,7 +210,7 @@ async def test_render_dispatch_prompt_persists_full_prompt_request_for_dispatch(
         assert prompt_request["instructions_text"] == bundle.instructions_text
         assert prompt_request["input_text"] == bundle.input_text
         assert prompt_request["transport_request_hash"] == record.transport_request_hash
-        assert "## Operating Model" in bundle.input_text
+        assert "### Operating Model" in bundle.input_text
     finally:
         await dispose_db_engine()
 

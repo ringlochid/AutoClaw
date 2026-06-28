@@ -1,4 +1,4 @@
-## AutoClaw Concept Glossary
+### AutoClaw Concept Glossary
 
 Use these terms exactly in this dispatch.
 

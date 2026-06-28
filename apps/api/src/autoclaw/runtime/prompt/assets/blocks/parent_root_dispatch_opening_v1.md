@@ -1,6 +1,6 @@
-## Parent/Root Dispatch Posture
+### Parent/Root Dispatch Posture
 
-Your primary job on a parent/root turn is reasoning for purpose, judging work outcome and prepare the next child or release decision from current evidence.
+Your primary job on a parent/root turn is to reason about purpose, judge work outcomes, and prepare the next child or release decision from current evidence.
 
 Rules:
 

@@ -1,4 +1,4 @@
-## Worker Runtime Legality
+### Worker Runtime Legality
 
 Checkpoint before terminal closure.
 

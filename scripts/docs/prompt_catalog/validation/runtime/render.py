@@ -171,9 +171,9 @@ def _validate_assignment_claim_reduction(
     worker_prompt: RenderedPromptOutputLike,
     errors: list[str],
 ) -> None:
-    assignment_section = worker_prompt.full_markdown.split("## Current Assignment", maxsplit=1)[
+    assignment_section = worker_prompt.full_markdown.split("### Current Assignment", maxsplit=1)[
         1
-    ].split("## Latest Checkpoint Context", maxsplit=1)[0]
+    ].split("### Latest Checkpoint Context", maxsplit=1)[0]
 
     subsection: str | None = None
     for line in assignment_section.splitlines():

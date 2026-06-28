@@ -46,7 +46,11 @@ def _validate_current_assignment_examples(
         criteria_entry_has_kind = False
         for line_number, line in enumerate(lines, start=1):
             stripped = line.strip()
-            if stripped in {"Current Assignment", "## Current Assignment"}:
+            if stripped in {
+                "Current Assignment",
+                "## Current Assignment",
+                "### Current Assignment",
+            }:
                 in_current_assignment = True
                 subsection = None
                 criteria_entry_has_kind = False
@@ -58,7 +62,7 @@ def _validate_current_assignment_examples(
                 subsection = None
                 criteria_entry_has_kind = False
                 continue
-            if stripped.startswith("## ") or stripped == "```":
+            if stripped.startswith(("## ", "### ")) or stripped == "```":
                 in_current_assignment = False
                 subsection = None
                 criteria_entry_has_kind = False
@@ -125,7 +129,11 @@ def _validate_assignment_and_checkpoint_path_lines(
         saw_section = False
         for line_number, line in enumerate(lines, start=1):
             stripped = line.strip()
-            if stripped in {section_heading, f"## {section_heading}"}:
+            if stripped in {
+                section_heading,
+                f"## {section_heading}",
+                f"### {section_heading}",
+            }:
                 saw_section = True
                 in_section = True
                 saw_required_line = False
@@ -140,7 +148,7 @@ def _validate_assignment_and_checkpoint_path_lines(
                     )
                 in_section = False
                 continue
-            if stripped.startswith("## ") or stripped == "```":
+            if stripped.startswith(("## ", "### ")) or stripped == "```":
                 if not saw_required_line:
                     errors.append(
                         f"{path.relative_to(ROOT)} section `{section_heading}` is "
@@ -200,8 +208,8 @@ def _validate_generated_example_parity(errors: list[str]) -> None:
 
 
 def _section_between(text: str, heading: str, next_heading: str) -> str:
-    marker = f"## {heading}"
-    next_marker = f"## {next_heading}"
+    marker = f"### {heading}"
+    next_marker = f"### {next_heading}"
     if marker not in text:
         return ""
     section = text.split(marker, maxsplit=1)[1]

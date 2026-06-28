@@ -26,16 +26,19 @@ For the fully rendered prompt body examples, use [Rendered Examples](generated/r
 
 The live v1 composition stack is:
 
-1. static provider-side `instructions_text` on `full_prompt`
-2. regenerated dynamic `input_text` body in canonical section order
-3. persisted full prompt artifact at `_runtime/dispatch/<dispatch_id>/prompt.md`
+1. AutoClaw-owned `instructions_text` on `full_prompt`, starting at `## Instructions`
+2. regenerated dynamic `input_text` body, starting at `## Dispatch Input`
+3. persisted combined readback at `_runtime/dispatch/<dispatch_id>/prompt.md`, headed `# AutoClaw Dispatch Prompt`
 4. persisted request artifact at `_runtime/dispatch/<dispatch_id>/prompt-request.json`
 
 Rules:
 
 - `instructions_text` is present only for `full_prompt`
-- `input_text` is always present and carries the node-facing prompt body for the current send mode
-- persisted `prompt.md` always keeps the full canonical prompt
+- `instructions_text` carries AutoClaw-generated dispatch instructions and exact prompt assets, not opaque provider/platform prompt text outside controller truth
+- `input_text` is always present and carries the node-facing dispatch input body for the current send mode
+- reusable prompt asset blocks render as `###` fragments under `## Instructions`
+- dynamic dispatch-input sections render as `###` fragments under `## Dispatch Input`
+- persisted `prompt.md` always keeps the readable combined prompt readback
 - design canon does not preserve a live optional wrapper layer in the composition stack
 
 ## Exact `full_prompt` request shape: `worker_dispatch_prompt`
@@ -51,9 +54,15 @@ prompt_request_json:
   prompt_name: worker_dispatch_prompt
   send_mode: full_prompt
   instructions_text: |
+    ## Instructions
+
+    ### AutoClaw Runtime Identity
+
     You are AutoClaw, a delegated node inside a controller-first runtime.
     ...
-    Current node-kind, role, and policy guidance for this dispatch:
+
+    ### Current Node Guidance
+
     - node kind: worker
     - node key: implement_fix
     - node description: Repair the bounded auth-refresh defect.
@@ -64,13 +73,15 @@ prompt_request_json:
     - policy: standard-worker
     - policy description: Default worker behavior for bounded work.
   input_text: |
-    ## Workflow Manifest
+    ## Dispatch Input
+
+    ### Workflow Manifest
     - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
     - description: whole-workflow visible contract for the current task
     - current node anchor: implement_fix
     - surfaced path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
 
-    ## Current Assignment
+    ### Current Assignment
     - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/assignment.md
     - summary: Repair the auth-refresh defect and publish the required evidence.
     - instruction: Change only the bounded auth-refresh logic and rerun scoped verification.
@@ -92,7 +103,7 @@ prompt_request_json:
       - auth refresh
       - cookie rotation note
 
-    ## Latest Checkpoint Context
+    ### Latest Checkpoint Context
     - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/latest-checkpoint.md
     - checkpoint_kind: terminal
     - outcome: retry
@@ -101,7 +112,7 @@ prompt_request_json:
     - task_memory_search_hints:
       - recovery branch note
 
-    ## Consumed Durable Refs
+    ### Consumed Durable Refs
     - kind: criteria
       slot: fix_acceptance
       path: C:/tasks/task_2026_0042/_runtime/criteria/fix_acceptance.v01.md
@@ -132,9 +143,15 @@ prompt_request_json:
   prompt_name: parent_root_dispatch_prompt
   send_mode: full_prompt
   instructions_text: |
+    ## Instructions
+
+    ### AutoClaw Runtime Identity
+
     You are AutoClaw, a delegated node inside a controller-first runtime.
     ...
-    Current node-kind, role, and policy guidance for this dispatch:
+
+    ### Current Node Guidance
+
     - node kind: root
     - node key: root
     - node description: Coordinate the whole flow and decide the next bounded child step.
@@ -145,14 +162,16 @@ prompt_request_json:
     - policy: standard-root-planning
     - policy description: Default root planning and closure behavior.
   input_text: |
-    ## Workflow Manifest
+    ## Dispatch Input
+
+    ### Workflow Manifest
     - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
     - description: whole-workflow visible contract for the current task
     - current node anchor: root
     - surfaced runtime file: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
     - surfaced path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
 
-    ## Current Assignment
+    ### Current Assignment
     - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
     - summary: Decide the next bounded child step after the current investigation result.
     - instruction: Stay inside the current owned subtree and preserve reasoning durably when needed.
@@ -176,7 +195,7 @@ prompt_request_json:
       - refresh token expiry branch
       - cookie rotation note
 
-    ## Latest Checkpoint Context
+    ### Latest Checkpoint Context
     - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
     - checkpoint_kind: progress
     - outcome: null
@@ -185,7 +204,7 @@ prompt_request_json:
     - task_memory_search_hints:
       - refresh token expiry branch
 
-    ## Consumed Durable Refs
+    ### Consumed Durable Refs
     - kind: criteria
       slot: root_release_rule
       path: C:/tasks/task_2026_0042/_runtime/criteria/root_release_rule.md
@@ -208,7 +227,7 @@ prompt_request_json:
 When a checkpoint surfaces durable output claims, the rendered field names are `produced_artifacts`, `transient_refs`, and `task_memory_search_hints`.
 
 ```text
-## Latest Checkpoint Context
+### Latest Checkpoint Context
 - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.02/latest-checkpoint.md
 - checkpoint_kind: terminal
 - outcome: green

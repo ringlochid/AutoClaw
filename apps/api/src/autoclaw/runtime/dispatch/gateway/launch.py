@@ -33,6 +33,7 @@ from autoclaw.runtime.dispatch.openclaw.lease import (
     open_dispatch_launch_lease,
 )
 from autoclaw.runtime.projection.dispatch.prompt import build_dispatch_prompt
+from autoclaw.runtime.prompt.bundle import render_prompt_transport_markdown
 
 
 async def perform_gateway_dispatch_launch(
@@ -131,8 +132,4 @@ def validate_gateway_launch_pre_send_policy(
 
 
 def build_gateway_launch_message(transport_request: PromptTransportRequest) -> str:
-    parts = [
-        transport_request.instructions_text,
-        transport_request.input_text,
-    ]
-    return "\n\n".join(part for part in parts if part)
+    return render_prompt_transport_markdown(transport_request)

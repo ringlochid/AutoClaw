@@ -65,11 +65,11 @@ def test_current_assignment_renders_reduced_claims_and_consumed_refs_keep_exact_
 
     assignment_section = extract_section(
         bundle.full_markdown,
-        "## Current Assignment",
-        "## Latest Checkpoint Context",
+        "### Current Assignment",
+        "### Latest Checkpoint Context",
     )
     consumed_refs_section = bundle.full_markdown.split(
-        "## Consumed Durable Refs",
+        "### Consumed Durable Refs",
         maxsplit=1,
     )[1]
 
@@ -114,8 +114,8 @@ def test_consumed_durable_refs_follow_turn_surface_not_only_assignment_claims(
 
     consumed_refs_section = extract_section(
         bundle.full_markdown,
-        "## Consumed Durable Refs",
-        "## Transient Refs",
+        "### Consumed Durable Refs",
+        "### Transient Refs",
     )
 
     assert "fix_acceptance.v01.md" in consumed_refs_section
@@ -144,8 +144,8 @@ def test_worker_prompt_keeps_consumed_durable_refs_when_turn_surface_is_empty(
 
     consumed_refs_section = extract_section(
         bundle.full_markdown,
-        "## Consumed Durable Refs",
-        "## Transient Refs",
+        "### Consumed Durable Refs",
+        "### Transient Refs",
     )
 
     assert "fix_acceptance.v01.md" in consumed_refs_section
@@ -191,8 +191,8 @@ def test_worker_prompt_surfaces_terminal_command_run_context_without_raw_logs(
 
     command_run_section = extract_section(
         bundle.full_markdown,
-        "## Command Run Continuation Context",
-        "## Consumed Durable Refs",
+        "### Command Run Continuation Context",
+        "### Consumed Durable Refs",
     )
 
     assert "command-run.task_2026_0042.01" in command_run_section
@@ -261,8 +261,8 @@ def test_worker_prompt_surfaces_terminal_human_request_context(
 
     human_request_section = extract_section(
         bundle.full_markdown,
-        "## Human Request Continuation Context",
-        "## Consumed Durable Refs",
+        "### Human Request Continuation Context",
+        "### Consumed Durable Refs",
     )
 
     assert "human-request.task_2026_0042.01" in human_request_section
@@ -285,13 +285,13 @@ def test_parent_prompt_surfaces_current_decision_criteria_and_artifact_refs(
 
     checkpoint_section = extract_section(
         bundle.full_markdown,
-        "## Latest Checkpoint Context",
-        "## Consumed Durable Refs",
+        "### Latest Checkpoint Context",
+        "### Consumed Durable Refs",
     )
     consumed_refs_section = extract_section(
         bundle.full_markdown,
-        "## Consumed Durable Refs",
-        "## Transient Refs",
+        "### Consumed Durable Refs",
+        "### Transient Refs",
     )
 
     assert "attempt.investigate_issue.02/latest-checkpoint.md" in checkpoint_section
@@ -344,8 +344,8 @@ def test_parent_prompt_surfaces_current_child_artifact_refs_from_manifest_contex
 
     consumed_refs_section = extract_section(
         bundle.full_markdown,
-        "## Consumed Durable Refs",
-        "## Transient Refs",
+        "### Consumed Durable Refs",
+        "### Transient Refs",
     )
 
     assert "review_report.v03.md" in consumed_refs_section

@@ -7,6 +7,11 @@ from autoclaw.runtime.contracts import (
     validate_prompt_family_for_node_kind,
 )
 from autoclaw.runtime.prompt.asset_catalog import load_exact_prompt_block
+from autoclaw.runtime.prompt.document import (
+    INSTRUCTIONS_SECTION_TITLE,
+    PROMPT_FRAGMENT_HEADING_LEVEL,
+)
+from autoclaw.runtime.prompt.sections.primitives import render_markdown_section
 from autoclaw.runtime.prompt.sections.rendering import (
     CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE,
     DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE,
@@ -55,7 +60,8 @@ def render_prompt_instructions(request: PromptRenderRequest) -> str:
         node_kind=request.current_node.node_kind,
     )
     exact_blocks = tuple(load_exact_prompt_block(block_id) for block_id in block_ids)
-    return "\n\n".join((*exact_blocks, _render_node_guidance_block(request)))
+    body = "\n\n".join((*exact_blocks, _render_node_guidance_block(request))).rstrip()
+    return render_markdown_section(INSTRUCTIONS_SECTION_TITLE, (body,), level=2) + "\n"
 
 
 def live_instruction_block_inventory() -> dict[str, dict[str, tuple[str, ...]]]:
@@ -86,7 +92,6 @@ def _instruction_block_ids(
 def _render_node_guidance_block(request: PromptRenderRequest) -> str:
     node = request.current_node
     lines = [
-        "Current node-kind, role, and policy guidance for this dispatch:",
         f"- node kind: {node.node_kind.value}",
         f"- node key: {node.node_key}",
         f"- node description: {node.node_description}",
@@ -115,4 +120,8 @@ def _render_node_guidance_block(request: PromptRenderRequest) -> str:
         )
         lines.append(f"- {CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE}")
         lines.append(f"- {DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE}")
-    return "\n".join(lines)
+    return render_markdown_section(
+        "Current Node Guidance",
+        lines,
+        level=PROMPT_FRAGMENT_HEADING_LEVEL,
+    )

@@ -1,4 +1,4 @@
-## Parent/Root Assignment Writing Guide
+### Parent/Root Assignment Writing Guide
 
 When you prepare a child assignment, do bounded research first.
 
@@ -19,7 +19,7 @@ Inspect additional workspace, context, or source files only until you can answer
 - What evidence or outputs must the child return?
 - What scope boundaries or untouched areas protect the rest of the task?
 
-## Assignment Fields
+#### Assignment Fields
 
 | Field                                         | Use                                                                                                                                                               |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -34,7 +34,7 @@ Write the child brief as an acquisition plan, not just loose assignment prose.
 
 Ask the child to return the interface map, test-scene map, or documentation navigation only when that judgment is needed for this slice.
 
-## Refs and Slots
+#### Refs and Slots
 
 Parent/root assignment authors do not write concrete `consumed_durable_refs` for the child.
 

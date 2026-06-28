@@ -48,6 +48,24 @@ Each render returns:
 - `full_markdown`
 - `content_hash`
 
+The persisted `full_markdown` readback has this Markdown wrapper:
+
+```text
+# AutoClaw Dispatch Prompt
+
+## Instructions
+### AutoClaw Runtime Identity
+...
+
+## Dispatch Input
+### Operating Model
+...
+```
+
+`instructions_text` starts at `## Instructions`. It contains AutoClaw-owned dispatch instructions and reusable prompt assets, not opaque provider/platform prompt text outside controller truth.
+
+`input_text` starts at `## Dispatch Input`. It contains the regenerated dispatch input sections; those sections render as `###` fragments.
+
 The full markdown prompt artifact is persisted to:
 
 - `_runtime/dispatch/<dispatch_id>/prompt.md`
@@ -108,9 +126,13 @@ Current shipped checkpoint-handoff split is:
 Current instruction text is assembled from:
 
 - system block
+- runtime concept glossary block
+- runtime read order block
+- artifact render rule block
+- task memory rule block
+- monitoring-not-task-truth rule block
 - provider continuity block
 - worker or parent/root opening block for the current prompt family
-- runtime concept glossary block
 - worker assignment doctrine block or parent/root orchestration doctrine block
 - parent/root assignment guide block for parent/root prompts
 - checkpoint authoring guide block

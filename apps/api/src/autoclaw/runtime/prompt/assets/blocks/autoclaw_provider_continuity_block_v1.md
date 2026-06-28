@@ -1,4 +1,4 @@
-## Provider Continuity
+### Provider Continuity
 
 Provider continuity is transport only.
 
@@ -8,7 +8,7 @@ Rules:
 - Do not infer assignment success from provider transport success.
 - Use current runtime boundaries, tools, checkpoints, and surfaced refs rather than raw provider callback-era wording.
 
-## Live Send Modes
+#### Live Send Modes
 
 | Send mode | Meaning |
 | --- | --- |
