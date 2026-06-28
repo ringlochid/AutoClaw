@@ -180,3 +180,147 @@ def test_compile_maximal_workflow_normalizes_structure_edges_and_policy_pins() -
         ("qa_sweep", "release_closure", "artifact", "qa_report"),
         ("root", "release_closure", "criteria", "root_closure_criteria"),
     ]
+
+
+def test_compile_bugfix_review_release_workflow_normalizes_specialist_edges() -> None:
+    plan = compile_packaged_workflow_fixture("bugfix_review_release", revision_no=13)
+
+    assert plan.workflow_key == "bugfix-review-release"
+    assert [node.node_key for node in plan.nodes] == [
+        "root",
+        "triage_defect",
+        "plan_fix",
+        "implement_fix",
+        "verify_fix",
+        "review_fix",
+        "analyze_failure",
+        "release_closure",
+    ]
+    assert {node.node_key: node.structural_kind.value for node in plan.nodes} == {
+        "root": "root",
+        "triage_defect": "worker",
+        "plan_fix": "worker",
+        "implement_fix": "worker",
+        "verify_fix": "worker",
+        "review_fix": "worker",
+        "analyze_failure": "worker",
+        "release_closure": "worker",
+    }
+
+    triage_defect = node_by_key(plan, "triage_defect")
+    assert triage_defect.role_revision_no == ROLE_REVISIONS["bug_triage"]
+    assert triage_defect.policy_revision_no == POLICY_REVISIONS["standard-worker"]
+
+    plan_fix = node_by_key(plan, "plan_fix")
+    assert plan_fix.role_revision_no == ROLE_REVISIONS["delivery_planner"]
+    assert plan_fix.policy_revision_no == POLICY_REVISIONS["standard-delivery-planning"]
+
+    verify_fix = node_by_key(plan, "verify_fix")
+    assert verify_fix.role_revision_no == ROLE_REVISIONS["test_verifier"]
+    assert verify_fix.policy_revision_no == POLICY_REVISIONS["standard-verification"]
+
+    analyze_failure = node_by_key(plan, "analyze_failure")
+    assert analyze_failure.role_revision_no == ROLE_REVISIONS["failure_analyst"]
+    assert analyze_failure.policy_revision_no == POLICY_REVISIONS["standard-failure-analysis"]
+
+    assert [
+        (
+            edge.provider_node_key,
+            edge.consumer_node_key,
+            edge.kind.value,
+            edge.slot,
+        )
+        for edge in plan.dependency_edges
+    ] == [
+        ("triage_defect", "plan_fix", "artifact", "triage_report"),
+        ("triage_defect", "implement_fix", "artifact", "triage_report"),
+        ("plan_fix", "implement_fix", "artifact", "fix_plan"),
+        ("triage_defect", "verify_fix", "artifact", "triage_report"),
+        ("implement_fix", "verify_fix", "artifact", "change_patch"),
+        ("implement_fix", "verify_fix", "criteria", "fix_implementation_criteria"),
+        ("implement_fix", "review_fix", "artifact", "change_patch"),
+        ("verify_fix", "review_fix", "artifact", "verification_report"),
+        ("root", "review_fix", "criteria", "root_bugfix_release_criteria"),
+        ("triage_defect", "analyze_failure", "artifact", "triage_report"),
+        ("verify_fix", "analyze_failure", "artifact", "verification_report"),
+        ("review_fix", "analyze_failure", "artifact", "review_report"),
+        ("triage_defect", "release_closure", "artifact", "triage_report"),
+        ("implement_fix", "release_closure", "artifact", "change_patch"),
+        ("verify_fix", "release_closure", "artifact", "verification_report"),
+        ("review_fix", "release_closure", "artifact", "review_report"),
+        ("root", "release_closure", "criteria", "root_bugfix_release_criteria"),
+    ]
+
+
+def test_compile_delivery_batch_workflow_normalizes_parent_and_worker_edges() -> None:
+    plan = compile_packaged_workflow_fixture("delivery_batch", revision_no=17)
+
+    assert plan.workflow_key == "delivery-batch"
+    assert [node.node_key for node in plan.nodes] == [
+        "root",
+        "plan_packages",
+        "execute_package",
+        "implement_package",
+        "verify_package",
+        "review_package",
+        "release_closure",
+    ]
+    assert {node.node_key: node.structural_kind.value for node in plan.nodes} == {
+        "root": "root",
+        "plan_packages": "worker",
+        "execute_package": "parent",
+        "implement_package": "worker",
+        "verify_package": "worker",
+        "review_package": "worker",
+        "release_closure": "worker",
+    }
+
+    plan_packages = node_by_key(plan, "plan_packages")
+    assert plan_packages.role_revision_no == ROLE_REVISIONS["delivery_planner"]
+    assert plan_packages.policy_revision_no == POLICY_REVISIONS["standard-delivery-planning"]
+
+    execute_package = node_by_key(plan, "execute_package")
+    assert execute_package.role_revision_no == ROLE_REVISIONS["planning_lead"]
+    assert execute_package.policy_revision_no == POLICY_REVISIONS["standard-parent-planning"]
+
+    review_package = node_by_key(plan, "review_package")
+    assert review_package.role_revision_no == ROLE_REVISIONS["code_reviewer"]
+    assert review_package.policy_revision_no == POLICY_REVISIONS["standard-review"]
+
+    assert [
+        (
+            edge.provider_node_key,
+            edge.consumer_node_key,
+            edge.kind.value,
+            edge.slot,
+        )
+        for edge in plan.dependency_edges
+    ] == [
+        ("plan_packages", "execute_package", "artifact", "package_plan"),
+        ("plan_packages", "implement_package", "artifact", "package_plan"),
+        ("plan_packages", "verify_package", "artifact", "package_plan"),
+        ("implement_package", "verify_package", "artifact", "package_patch"),
+        ("implement_package", "review_package", "artifact", "package_patch"),
+        (
+            "verify_package",
+            "review_package",
+            "artifact",
+            "package_verification_report",
+        ),
+        ("execute_package", "review_package", "criteria", "package_subtree_criteria"),
+        ("plan_packages", "release_closure", "artifact", "package_plan"),
+        ("implement_package", "release_closure", "artifact", "package_patch"),
+        (
+            "verify_package",
+            "release_closure",
+            "artifact",
+            "package_verification_report",
+        ),
+        (
+            "review_package",
+            "release_closure",
+            "artifact",
+            "package_review_report",
+        ),
+        ("root", "release_closure", "criteria", "package_release_criteria"),
+    ]

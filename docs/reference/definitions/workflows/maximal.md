@@ -7,19 +7,20 @@ This example mirrors the shipped `maximal-parent-first-release` workflow fixture
 ```yaml
 kind: workflow
 id: maximal-parent-first-release
-description: Execute staged discovery, planning, implementation, review, QA, and release work for the authentication overhaul.
+description: Execute staged discovery, planning, implementation, review, QA, and release work for the authentication overhaul with purpose-first parent control.
 root:
   id: root
   role: root_planning_lead
   policy: standard-root-planning
-  description: Coordinate the whole authentication overhaul and decide final bounded closure from current evidence.
-  instruction: Coordinate staged work and close only from current surfaced evidence.
+  description: Preserve the authentication-overhaul purpose, coordinate staged work, and decide final bounded closure from current evidence.
+  instruction: Read manifest, root assignment, child checkpoints, surfaced refs, criteria, and task-memory hints. Challenge weak evidence before release.
   criteria:
     - slot: root_delivery_rules
       description: Shared delivery rules before final closure.
       criteria:
         - unresolved high-risk issues block green
         - final release evidence cites the exact current refs consumed
+        - root routes weak evidence to review, verification, failure analysis, or replan before release
     - slot: root_closure_criteria
       description: Final release criteria.
       criteria:
@@ -29,22 +30,23 @@ root:
     - id: discovery
       role: planning_lead
       policy: standard-parent-planning
-      description: Coordinate discovery work and verify discovery outputs before downstream use.
-      instruction: Keep discovery scoped to evidence needed for downstream planning.
+      description: Coordinate discovery work and verify that discovery outputs are useful before downstream planning.
+      instruction: Keep discovery scoped to evidence needed for downstream planning. Preserve rejected leads and uncertainty in checkpoints.
       criteria:
         - slot: discovery_requirements
           description: Shared discovery requirements.
           criteria:
             - findings are internally consistent
             - findings are specific enough for downstream planning
+            - open uncertainties are named before downstream assignment
       child_defaults:
         criteria:
           - discovery_requirements
       children:
         - id: gather_evidence
           role: researcher
-          description: Gather discovery evidence and publish a findings report.
-          instruction: Publish discovery findings and notes needed by downstream stages only.
+          description: Gather discovery evidence and publish findings plus notes needed by downstream stages.
+          instruction: Publish discovery findings, raw notes, uncertainties, and next-decision implications only.
           produces:
             artifacts:
               - slot: findings_report
@@ -57,13 +59,14 @@ root:
       role: planning_lead
       policy: standard-parent-planning
       description: Coordinate planning, implementation, review, and QA from current surfaced discovery outputs.
-      instruction: Coordinate planning, implementation, review, and QA from current discovery outputs.
+      instruction: Prepare child mission packets with purpose, mode, refs, criteria, required outputs, known failures, and untouched scope.
       criteria:
         - slot: implementation_loop_requirements
           description: Shared implementation requirements.
           criteria:
             - implementation stays inside the assigned subtree
             - verification and review evidence must be mutually consistent before green
+            - child checkpoints explain evidence read, reasoning, criteria status, and next action
         - slot: implementation_review_criteria
           description: Review criteria for implementation verification.
           criteria:
@@ -75,8 +78,8 @@ root:
       children:
         - id: plan_iteration
           role: planner
-          description: Publish the current delivery plan.
-          instruction: Publish the current delivery plan from surfaced discovery evidence only.
+          description: Publish the current delivery plan from surfaced discovery evidence.
+          instruction: Convert discovery findings into bounded sequencing, dependencies, criteria, risks, and verification gates. Do not implement the plan.
           consumes:
             artifacts:
               - slot: findings_report
@@ -89,7 +92,7 @@ root:
           role: engineer
           policy: standard-worker
           description: Implement the scoped change and publish patch plus verification evidence.
-          instruction: Read findings, plan, and criteria before editing; keep patch scoped.
+          instruction: Read findings, plan, and criteria before editing. Keep patch scoped, verify behavior, and checkpoint residual risks.
           consumes:
             artifacts:
               - slot: findings_report
@@ -100,6 +103,7 @@ root:
               criteria:
                 - patch matches the scoped assignment
                 - verification evidence supports the claimed fix
+                - checkpoint names evidence read, checks run, and any residual risk
           produces:
             artifacts:
               - slot: change_patch
@@ -111,8 +115,8 @@ root:
         - id: review_change
           role: reviewer
           policy: standard-review
-          description: Review the implementation evidence and publish an ordinary review report.
-          instruction: Review only the current patch and verification evidence.
+          description: Critically review implementation evidence and publish an ordinary review report.
+          instruction: Review current patch, verification evidence, and criteria. Record approval, rejection, evidence gaps, and residual risk.
           consumes:
             artifacts:
               - slot: change_patch
@@ -127,7 +131,7 @@ root:
         - id: qa_sweep
           role: architect
           description: Run a bounded QA or architecture sweep over current implementation evidence.
-          instruction: Inspect current implementation, verification, and review evidence only.
+          instruction: Inspect current implementation, verification, review evidence, and criteria only. Publish risk tradeoffs and pass/fail reasoning.
           consumes:
             artifacts:
               - slot: change_patch
@@ -141,8 +145,8 @@ root:
     - id: release_closure
       role: release_operator
       policy: standard-release
-      description: Perform the final bounded release work from current surfaced evidence.
-      instruction: Use only surfaced release evidence and closure criteria.
+      description: Perform final bounded release work from current surfaced evidence.
+      instruction: Use only surfaced release evidence and closure criteria. Report release gaps instead of reopening planning or implementation scope.
       consumes:
         artifacts:
           - slot: findings_report

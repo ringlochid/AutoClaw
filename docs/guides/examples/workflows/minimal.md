@@ -13,30 +13,32 @@ This example teaches:
 ```yaml
 kind: workflow
 id: minimal-implement-change
-description: Execute one bounded engineering change under parent ownership.
+description: Execute one bounded engineering change under parent ownership with explicit purpose, evidence, criteria, and verification handoff.
 root:
   id: root
   role: planning_lead
-  description: Verify one bounded engineering worker and release only when current evidence is sufficient.
-  instruction: Keep the release decision tied to current controller evidence.
+  description: Preserve the task purpose, delegate one bounded engineering change, and release only when current evidence satisfies criteria.
+  instruction: Read manifest, assignment, checkpoint, surfaced refs, and criteria before assigning or releasing. Verify worker evidence instead of trusting green alone.
   criteria:
     - slot: implementation_rules
       description: Parent acceptance criteria for the bounded engineering child.
       criteria:
         - keep the child inside the current bounded assignment
         - publish patch and verification evidence only through declared produce slots
+        - root verifies current patch and verification evidence before release
   children:
     - id: implement_change
       role: engineer
       policy: standard-worker
-      description: Implement the change and publish patch plus verification evidence only for the current bounded assignment.
-      instruction: Read the current criteria before editing and publish only scoped patch and verification evidence.
+      description: Understand the purpose, implement the bounded change, and publish patch plus verification evidence for the current assignment.
+      instruction: Read current criteria and any surfaced refs before editing. Keep the patch scoped, verify the intended behavior, and checkpoint reasoning plus criteria status.
       criteria:
         - slot: implement_change_delivery_criteria
           description: Delivery criteria for the bounded engineering change.
           criteria:
             - patch is limited to the assigned path
             - verification evidence demonstrates the intended fix
+            - checkpoint explains evidence read, changed files, test or review evidence, and residual risk
       produces:
         artifacts:
           - slot: change_patch

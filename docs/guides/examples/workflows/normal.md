@@ -13,18 +13,19 @@ This example teaches:
 ```yaml
 kind: workflow
 id: normal-parent-first-release
-description: Execute one implementation subtree, review it through ordinary child work, and release only after root verifies current evidence.
+description: Execute one implementation subtree, review it through ordinary child work, and release only after root verifies current purpose, criteria, and evidence.
 root:
     id: root
     role: root_planning_lead
     policy: standard-root-planning
-    description: Verify implementation and release evidence before final closure.
-    instruction: Verify current subtree and release evidence before final closure.
+    description: Preserve the whole-task purpose, verify implementation and release evidence, and close only from current controller truth.
+    instruction: Read manifest, assignment, child checkpoints, surfaced refs, criteria, and task-memory hints before release. Treat child green as evidence, not proof.
     criteria:
         - slot: root_delivery_rules
           description: Root acceptance criteria.
           criteria:
               - final closure happens only after root verifies current code, review, and test evidence
+              - broad or weak evidence is routed to review, verification, fix, or replan instead of release
         - slot: root_closure_criteria
           description: Final release criteria.
           criteria:
@@ -34,13 +35,14 @@ root:
         - id: implementation_subtree
           role: planning_lead
           policy: standard-parent-planning
-          description: Coordinate investigation, implementation, and ordinary review work inside the bounded subtree only.
-          instruction: Assign only bounded investigation, implementation, and review child work.
+          description: Coordinate investigation, implementation, and ordinary review work inside the bounded subtree from current evidence.
+          instruction: "Prepare mission packets for children: purpose, mode, refs to read first, constraints, criteria, required outputs, known failures, and untouched areas."
           criteria:
               - slot: implementation_subtree_requirements
                 description: Local execution requirements for this implementation subtree.
                 criteria:
                     - findings and implementation stay inside the current subtree
+                    - each child checkpoint explains evidence read, reasoning, criteria status, and next action
                     - review evidence must address the current patch and verification evidence
           child_defaults:
               criteria:
@@ -48,8 +50,8 @@ root:
           children:
               - id: investigate_issue
                 role: researcher
-                description: Inspect the issue and publish a findings report for downstream implementation.
-                instruction: Publish findings needed by downstream implementation only.
+                description: Inspect the issue purpose, constraints, and evidence, then publish findings for downstream implementation.
+                instruction: Publish findings, uncertainties, rejected leads, and implementation implications needed by downstream work only.
                 produces:
                     artifacts:
                         - slot: findings_report
@@ -58,8 +60,8 @@ root:
               - id: implement_change
                 role: engineer
                 policy: standard-worker
-                description: Implement the change and publish patch plus verification evidence.
-                instruction: Read findings and criteria before editing; keep patch and verification scoped.
+                description: Implement the bounded change from current findings and publish patch plus verification evidence.
+                instruction: Read findings and criteria before editing. Keep patch and verification scoped, and checkpoint residual risks.
                 consumes:
                     artifacts:
                         - slot: findings_report
@@ -69,6 +71,7 @@ root:
                       criteria:
                           - patch matches the scoped assignment
                           - verification evidence supports the claimed fix
+                          - checkpoint names evidence read, commands or checks run, and any residual risk
                 produces:
                     artifacts:
                         - slot: change_patch
@@ -80,8 +83,8 @@ root:
               - id: review_change
                 role: reviewer
                 policy: standard-review
-                description: Review the implementation evidence and publish a bounded review report.
-                instruction: Review only the current patch and verification evidence.
+                description: Critically review current implementation evidence and publish a bounded review report.
+                instruction: Review current patch, verification evidence, and criteria. Record approval, rejection, evidence gaps, and residual risk.
                 consumes:
                     artifacts:
                         - slot: change_patch
@@ -96,8 +99,8 @@ root:
         - id: release_closure
           role: release_operator
           policy: standard-release
-          description: Perform the final bounded release work from current surfaced evidence.
-          instruction: Use only surfaced implementation and review evidence for closure.
+          description: Perform final bounded release work from current surfaced implementation and review evidence.
+          instruction: Use only surfaced implementation, verification, review evidence, and closure criteria. Report release gaps instead of reopening scope.
           consumes:
               artifacts:
                   - slot: change_patch

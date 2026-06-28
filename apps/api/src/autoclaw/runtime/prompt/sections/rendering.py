@@ -7,7 +7,11 @@ from autoclaw.runtime.capabilities import (
     capability_rejection_for_human_request,
 )
 from autoclaw.runtime.contracts import EvidenceRef, NodeKind, PromptRenderRequest
-from autoclaw.runtime.contracts.primitives import CapabilityDecision, HumanRequestKind
+from autoclaw.runtime.contracts.primitives import (
+    CapabilityDecision,
+    CheckpointOutcome,
+    HumanRequestKind,
+)
 from autoclaw.runtime.prompt.sections.context import (
     render_consumed_durable_refs,
     render_latest_checkpoint_context,
@@ -44,6 +48,7 @@ def render_prompt_sections(request: PromptRenderRequest) -> list[tuple[str, str]
         ("workflow_manifest", render_workflow_manifest(request)),
         ("current_assignment", render_current_assignment(request)),
         ("latest_checkpoint_context", render_latest_checkpoint_context(request)),
+        ("boundary_followup_guidance", render_boundary_followup_guidance(request)),
     ]
     human_request_context = render_human_request_continuation_context(request)
     if human_request_context is not None:
@@ -289,6 +294,88 @@ def render_command_run_continuation_context(
         "- raw logs: excluded from ordinary prompt truth",
     ]
     return render_markdown_section("Command Run Continuation Context", lines)
+
+
+def render_boundary_followup_guidance(request: PromptRenderRequest) -> str:
+    checkpoint = request.latest_checkpoint
+    node_kind = request.current_node.node_kind
+    lines = [
+        "- use this section to interpret why the current dispatch exists now",
+        "- read it together with Latest Checkpoint Context, Current Assignment, "
+        "and Consumed Durable Refs",
+    ]
+    if checkpoint is None or checkpoint.outcome is None:
+        lines.extend(
+            (
+                "- boundary context: initial or ordinary current dispatch without a "
+                "terminal handoff outcome",
+                "- start from manifest, assignment, current refs, and surfaced "
+                "task-memory hints before acting",
+            )
+        )
+    elif checkpoint.outcome == CheckpointOutcome.RETRY:
+        lines.extend(
+            (
+                "- boundary context: retry handoff from a prior terminal checkpoint",
+                "- retry keeps the same assignment and creates a new attempt; fix "
+                "the documented failure instead of starting over from hidden "
+                "session memory",
+                "- compare current surfaced refs against prior checkpoint prose "
+                "before deciding what changed",
+            )
+        )
+    elif checkpoint.outcome == CheckpointOutcome.BLOCKED:
+        lines.append("- boundary context: blocked handoff from current surfaced evidence")
+        if node_kind == NodeKind.WORKER:
+            lines.extend(
+                (
+                    "- use the blocker as the problem to resolve only if the current "
+                    "assignment and refs provide a lawful path forward",
+                    "- if the blocker still prevents completion, checkpoint the "
+                    "current blocker clearly before closing blocked again",
+                )
+            )
+        else:
+            lines.extend(
+                (
+                    "- blocked child or prior-attempt evidence is routing input, not "
+                    "automatic whole-flow blocked closure",
+                    "- choose explicitly among sharper reassignment, specialist "
+                    "review, structural replan, or current-node blocked closure",
+                    "- root whole-flow blocked closure still requires committed "
+                    "release_blocked before terminal blocked",
+                )
+            )
+    elif checkpoint.outcome == CheckpointOutcome.GREEN:
+        lines.append("- boundary context: green handoff from current surfaced evidence")
+        if node_kind == NodeKind.WORKER:
+            lines.extend(
+                (
+                    "- treat prior green evidence as context only; complete the "
+                    "current assignment and checkpoint the current result",
+                    "- do not assume prior green satisfies new or changed criteria",
+                )
+            )
+        else:
+            lines.extend(
+                (
+                    "- child green is evidence, not automatic release authority",
+                    "- inspect produced artifacts, checkpoint reasoning, and criteria "
+                    "coverage before deciding release, review, verification, fix, "
+                    "or replan",
+                    "- if evidence is weak or criteria are broad, assign a reviewer "
+                    "or verifier instead of trusting the claim",
+                )
+            )
+    else:
+        lines.extend(
+            (
+                f"- boundary context: checkpoint outcome `{checkpoint.outcome.value}`",
+                "- treat the checkpoint as durable handoff context and decide from "
+                "current refs, not transcript memory",
+            )
+        )
+    return render_markdown_section("Boundary Follow-Up Guidance", lines)
 
 
 def render_allowed_actions_now(request: PromptRenderRequest) -> str:

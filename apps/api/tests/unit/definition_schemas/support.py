@@ -32,26 +32,38 @@ ROLE_POLICY_SCHEMA_DOC = (
 )
 
 EXPECTED_WORKFLOW_IDS = {
+    "bugfix-review-release",
     "minimal-implement-change",
     "normal-parent-first-release",
     "maximal-parent-first-release",
+    "delivery-batch",
 }
 EXPECTED_ROLE_IDS = {
     "architect",
+    "bug_fix_engineer",
+    "bug_triage",
+    "code_reviewer",
     "engineer",
+    "failure_analyst",
     "planner",
     "planning_lead",
     "release_operator",
+    "replan_planner",
     "researcher",
     "reviewer",
     "root_planning_lead",
+    "test_verifier",
+    "delivery_planner",
 }
 EXPECTED_POLICY_IDS = {
+    "standard-failure-analysis",
     "standard-parent-planning",
     "standard-release",
     "standard-review",
     "standard-root-planning",
+    "standard-verification",
     "standard-worker",
+    "standard-delivery-planning",
 }
 
 type RoleOrPolicyDefinitionModel = (

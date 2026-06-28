@@ -69,7 +69,7 @@ Rules:
 - `handoff.summary` and `handoff.next_step` are required authored prose
 - `produced_artifacts` is a reduced durable claim keyed by artifact slot plus produced file path only
 - child-authored `produced_artifacts` must not include final `version`, `description`, `owner_node_key`, `assignment_key`, `attempt_id`, or currentness claims
-- `transient_surfaces` is explicit surfaced carryover only
+- `transient_surfaces` is a JSON array/YAML sequence of `{ path, description }` objects for explicit surfaced carryover only
 - `transient_surfaces` does not create any transient current-pointer family
 - `control_effects` is not part of the live checkpoint contract
 
@@ -192,6 +192,8 @@ record_checkpoint:
   transient_surfaces:
     - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-local-notes.md
       description: Optional transient local notes for follow-up validation.
+    - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-proof-caveat.md
+      description: Temporary caveat about staging-only token-expiry proof.
 ```
 
 Projected checkpoint readback after controller validation:
@@ -223,6 +225,11 @@ latest_checkpoint:
       version: null
       path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-local-notes.md
       description: Optional transient local notes for follow-up validation.
+    - kind: transient
+      slot: null
+      version: null
+      path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-proof-caveat.md
+      description: Temporary caveat about staging-only token-expiry proof.
 ```
 
 ## Related contracts

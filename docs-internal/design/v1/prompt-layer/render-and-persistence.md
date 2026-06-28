@@ -18,7 +18,7 @@ flowchart TD
 
 ## Render Rule
 
-The renderer always rebuilds the full canonical prompt from current projections. It loads exact static wording from app-owned packaged text assets under `apps/api/src/autoclaw/runtime/prompt/assets/` and treats the prompt-pack docs as mirrors, not as the shipped runtime source.
+The renderer always rebuilds the full canonical prompt from current projections. It loads exact static wording from app-owned packaged Markdown assets under `apps/api/src/autoclaw/runtime/prompt/assets/` and treats the prompt-pack docs as mirrors, not as the shipped runtime source.
 
 It does not:
 

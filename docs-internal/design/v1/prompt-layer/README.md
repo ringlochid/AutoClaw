@@ -16,7 +16,7 @@ Read this folder with this mental model first:
 - `tool` is the canonical runtime term
 - `plugin` is adapter-specific only
 - v1 surfaced refs are path-only
-- shipped exact prompt blocks are app-owned packaged text assets under `apps/api/src/autoclaw/runtime/prompt/assets/`
+- shipped exact prompt blocks are app-owned packaged Markdown assets under `apps/api/src/autoclaw/runtime/prompt/assets/`
 - prompt-pack markdown pages are audited mirrors of those shipped assets
 
 A retained secondary search router exists for legacy entry points. This `README.md` is the canonical prompt-layer front door.
@@ -63,6 +63,9 @@ Use these routes when the question is "what exact text do I send or expect?"
 - exact provider continuity block: [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1`
 - exact boundary wording reused by every prompt family: [System And Provider Block](prompt-pack/system-and-provider-block.md) and [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)
 - exact worker or parent/root opening block: [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `worker_dispatch_opening_v1` or `parent_root_dispatch_opening_v1`
+- exact runtime concept glossary: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_concept_glossary_v1`
+- exact worker assignment doctrine: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `worker_assignment_doctrine_v1`
+- exact parent/root orchestration doctrine: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_orchestration_doctrine_v1`
 - exact parent/root assignment packaging guide: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_assignment_guide_v1`
 - exact checkpoint authoring guide: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `checkpoint_authoring_guide_v1`
 - exact worker or parent/root legality block: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)

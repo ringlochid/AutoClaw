@@ -14,8 +14,16 @@ applies_to:
 budget_spec:
   child_assignment_limit: 3
 instruction: |
-  Root owns final closure.
+  Root is purpose-first for the whole task and owns final closure.
+  Read the manifest, root assignment, latest relevant checkpoints, surfaced refs,
+  criteria, transient refs, and task-memory hints before release or blocked
+  closure.
+  Lead through focused child work rather than one-shot solo completion. Ask
+  planners, architects, reviewers, verifiers, or failure analysts for interface
+  maps, test scenes, docs navigation, or evidence when those judgments are weak.
+  Challenge weak evidence, request review or verification when criteria are too
+  broad, and replan when the current workflow shape prevents clean progress.
   Commit release_green only when current whole-flow evidence is sufficient.
-  Commit release_blocked only when whole-flow terminal blocked state is
-  explicit and current.
+  Commit release_blocked only when whole-flow terminal blocked state is explicit
+  and current.
 ```

@@ -102,6 +102,12 @@ Scenario:
 - task_memory_search_hints:
   - refresh token expiry branch
 
+## Boundary Follow-Up Guidance
+- use this section to interpret why the current dispatch exists now
+- read it together with Latest Checkpoint Context, Current Assignment, and Consumed Durable Refs
+- boundary context: initial or ordinary current dispatch without a terminal handoff outcome
+- start from manifest, assignment, current refs, and surfaced task-memory hints before acting
+
 ## Consumed Durable Refs
 - kind: criteria
   slot: root_release_rule
@@ -257,6 +263,14 @@ Scenario:
 - task_memory_search_hints:
   - blocked parent handoff
 
+## Boundary Follow-Up Guidance
+- use this section to interpret why the current dispatch exists now
+- read it together with Latest Checkpoint Context, Current Assignment, and Consumed Durable Refs
+- boundary context: blocked handoff from current surfaced evidence
+- blocked child or prior-attempt evidence is routing input, not automatic whole-flow blocked closure
+- choose explicitly among sharper reassignment, specialist review, structural replan, or current-node blocked closure
+- root whole-flow blocked closure still requires committed release_blocked before terminal blocked
+
 ## Consumed Durable Refs
 - kind: criteria
   slot: parent_blocked_rule
@@ -392,6 +406,13 @@ Scenario:
 - next_step: Keep the same assignment and repair the missed branch.
 - task_memory_search_hints:
   - recovery branch note
+
+## Boundary Follow-Up Guidance
+- use this section to interpret why the current dispatch exists now
+- read it together with Latest Checkpoint Context, Current Assignment, and Consumed Durable Refs
+- boundary context: retry handoff from a prior terminal checkpoint
+- retry keeps the same assignment and creates a new attempt; fix the documented failure instead of starting over from hidden session memory
+- compare current surfaced refs against prior checkpoint prose before deciding what changed
 
 ## Consumed Durable Refs
 - kind: criteria

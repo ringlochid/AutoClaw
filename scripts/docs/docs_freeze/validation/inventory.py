@@ -128,8 +128,7 @@ def print_execution_linked_design_coverage(unreferenced_paths: list[Path]) -> No
     print("Maintained-doc linked design coverage:")
     if not unreferenced_paths:
         print(
-            "- all design markdown/yaml files are linked from AGENTS.md "
-            "or maintained markdown docs"
+            "- all design markdown/yaml files are linked from AGENTS.md or maintained markdown docs"
         )
         return
     for path in unreferenced_paths:
@@ -296,10 +295,7 @@ def print_current_doc_closeout_heading_issues(paths: list[Path]) -> None:
         print("- none")
         return
     for path in paths:
-        print(
-            f"- {path.relative_to(ROOT)}: missing exact `## Evidence` or "
-            "`## Verification`"
-        )
+        print(f"- {path.relative_to(ROOT)}: missing exact `## Evidence` or `## Verification`")
 
 
 def execution_program_wording_issues() -> list[LinePatternIssue]:

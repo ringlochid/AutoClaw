@@ -51,6 +51,7 @@ Rules:
 - `exact_blocks` registers reusable exact wording blocks, not extra prompt families
 - shipped exact block bytes come from `apps/api/src/autoclaw/runtime/prompt/assets/**`, while the prompt-pack docs mirror those bytes for human review
 - each `exact_blocks` entry must declare whether it is a live `live_instruction_block` consumed by runtime instruction assembly or a `reference_only` exact block
+- `section_order` includes `capabilities_now` and `boundary_followup_guidance` in the live renderer order
 
 ## Prompt Family Registry
 
@@ -83,6 +84,9 @@ The live catalog must register these exact reusable prompt blocks:
 - `autoclaw_provider_continuity_block_v1`
 - `worker_dispatch_opening_v1`
 - `parent_root_dispatch_opening_v1`
+- `runtime_concept_glossary_v1`
+- `worker_assignment_doctrine_v1`
+- `parent_root_orchestration_doctrine_v1`
 - `parent_root_assignment_guide_v1`
 - `checkpoint_authoring_guide_v1`
 - `runtime_legality_block_worker_v1`
@@ -121,8 +125,10 @@ Required sections:
 - `task_identity`
 - `node_purpose`
 - `current_dispatch`
+- `capabilities_now`
 - `workflow_manifest`
 - `current_assignment`
+- `boundary_followup_guidance`
 - `consumed_durable_refs`
 - `allowed_actions_now`
 - `publication_rule`
@@ -141,8 +147,10 @@ Required sections:
 - `task_identity`
 - `node_purpose`
 - `current_dispatch`
+- `capabilities_now`
 - `workflow_manifest`
 - `current_assignment`
+- `boundary_followup_guidance`
 - `allowed_actions_now`
 - `publication_rule`
 
@@ -160,6 +168,8 @@ Catalog, renderer, and generated examples must agree on:
 - prompt family ids
 - section order
 - static sections
+- purpose/mode concept guidance
+- boundary follow-up guidance
 - send modes
 - semantic `current_assignment`
 - runtime-resolved `consumed_durable_refs`
@@ -181,6 +191,7 @@ Machine validation should reject live catalog/examples that:
 - route live prompt-layer owner or generated surfaces to legacy source packs instead of current owner docs
 - register a third canonical dispatch prompt family
 - keep non-canonical send modes in live prompt-family registries or live generated-example registries
+- omit `capabilities_now` or `boundary_followup_guidance` from live section-order owner artifacts
 
 Concrete validator failures:
 

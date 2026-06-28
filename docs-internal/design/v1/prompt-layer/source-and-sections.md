@@ -12,9 +12,9 @@ Shipped exact prompt blocks are app-owned assets under `apps/api/src/autoclaw/ru
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | controller/runtime rule pack                         | boundary model, `AssignChildPayload` semantics, `record_checkpoint` handoff model, durable-vs-transient rules, filesystem rules                                    | `operating_model`, `allowed_actions_now`, `publication_rule`                                                         |
 | `_runtime/workflow-manifest.*`                       | task identity, current node purpose, whole-workflow structure, filesystem roots, current surfaced paths                                                            | `task_identity`, `node_purpose`, `workflow_manifest`, and static provider-side current-node instruction assembly     |
-| internal dispatch/session state                    | current bound turn, caller node kind, live controller send mode, closure expectations                                                                                | `current_dispatch`, `allowed_actions_now`                                                                            |
+| internal dispatch/session state                    | current bound turn, caller node kind, live controller send mode, closure expectations                                                                                | `current_dispatch`, `capabilities_now`, `allowed_actions_now`                                                        |
 | current semantic assignment handoff                  | `summary`, optional `instruction`, reduced `criteria`, reduced `consumes`, `produces` requirements, explicit `transient_refs`, optional `task_memory_search_hints` | `current_assignment`, part of `task_memory`, part of `publication_rule`                                              |
-| `_runtime/attempts/<attempt_id>/latest-checkpoint.*` | `checkpoint_kind`, `outcome`, `summary`, `next_step`, `blockers`, `risks`, surfaced refs, task-memory hints                                                        | `latest_checkpoint_context`                                                                                          |
+| `_runtime/attempts/<attempt_id>/latest-checkpoint.*` | `checkpoint_kind`, `outcome`, `summary`, `next_step`, `blockers`, `risks`, surfaced refs, task-memory hints                                                        | `latest_checkpoint_context`, `boundary_followup_guidance`                                                            |
 | runtime-resolved durable refs                        | exact current criteria, checkpoint, artifact, doc, and wiki refs surfaced for this turn                                                                            | `consumed_durable_refs`                                                                                              |
 | surfaced transient refs                              | explicit transient carryover paths                                                                                                                                 | `transient_refs`                                                                                                     |
 | task-memory hints + curated files                    | `task_memory_search_hints`, `context/wiki/`, other curated docs under `context/`                                                                                   | `task_memory`                                                                                                        |
@@ -77,6 +77,21 @@ This section must expose:
 Internal route ids such as `dispatch_id` may exist in transport or persistence, but they are not part of the canonical node-facing prompt section. Stable manifest, assignment, and checkpoint projections must not carry `session_key` or this tool-call context; it is dispatch-local only.
 
 The live target section contract does not preserve a second send-mode-specific section variant.
+
+### `capabilities_now`
+
+This section must expose controller-derived effective capability truth for the current dispatch:
+
+- execution scope
+- whether human request kinds are allowed or denied
+- whether command-run is allowed or denied
+- denial reason and next legal action when a capability is denied
+
+Rules:
+
+- omitted or denied capabilities render explicitly rather than disappearing
+- adapter, UI, or local-tool restrictions may narrow but must not widen controller-owned capability truth
+- this section explains capability authority; it does not replace `allowed_actions_now`
 
 ### `workflow_manifest`
 
@@ -160,6 +175,22 @@ This section must expose the durable handoff published through `record_checkpoin
 It must not teach `yield` as a checkpoint outcome. It must not teach or surface `control_effects`. It should keep `task_memory_search_hints` retrieval-oriented so later readers can recover this same defect, rejection, root cause, or artifact thread without rediscovering it from scratch.
 
 If there is no current relevant checkpoint yet, the section should say so explicitly rather than implying the worker should discover one by directory scan. This section must not silently rewrite the manifest's `latest_checkpoint_path`; current-attempt checkpoint truth and surfaced relevant-checkpoint handoff stay split. If `path` resolves from `latest_relevant_checkpoint_path`, that same checkpoint path should not be repeated in `consumed_durable_refs`. Do not infer `latest_relevant_checkpoint_path` by scanning other surfaced checkpoints in `current_relevant_paths`; that path comes only from controller-selected truth already projected into the manifest.
+
+### `boundary_followup_guidance`
+
+This section must interpret why this dispatch exists now from current checkpoint outcome and node kind:
+
+- no terminal outcome means initial or ordinary current dispatch
+- `retry` means same assignment, new attempt, prior terminal checkpoint as handoff, and no hidden session-memory dependency
+- worker `blocked` means resolve the blocker only if current assignment and refs provide a lawful path forward
+- parent/root `blocked` means routing input, not automatic whole-flow failure
+- parent/root `green` means child evidence to inspect, not automatic release authority
+
+Rules:
+
+- this section does not create new prompt families
+- it must direct parent/root toward sharper reassignment, specialist review, structural replan, release, or current-node blocked closure from current evidence
+- it must preserve root-only `release_blocked` for whole-flow blocked closure
 
 ### `consumed_durable_refs`
 

@@ -56,6 +56,24 @@ Rules:
 - controller may materialize dispatch-local capability readbacks such as `_runtime/dispatch/<dispatch_id>/capabilities.json` or `_runtime/dispatch/<dispatch_id>/capabilities.md`, but those files are read-only projections over the same controller-owned effective capability snapshot
 - prompt text must not ask the node to infer capability from tool absence, adapter wording, or missing UI controls
 
+## Workflow and prompting doctrine overlay
+
+V2 keeps purpose, mode, role, policy, workflow, criteria, consumes, produces,
+refs, checkpoints, and boundaries inside the existing definition and prompt
+fields rather than adding a new workflow schema layer for them.
+
+Rules:
+
+- root and parent dispatches are purpose-first and mode-aware: preserve task intent, constraints, quality bar, current evidence, and criteria before choosing assign, review, verify, replan, release, or block
+- root and parent dispatches lead through iteration rather than one-shot solo completion: assign focused children, audit their plans and evidence, ask sharper follow-up questions, and route the next child from improved judgment
+- root and parent dispatches must not quietly perform worker-heavy planning, implementation, review, and verification when those parts can be assigned to specialist children
+- root and parent prompts should teach interface mapping, test-scene mapping, and documentation navigation as delegation criteria: identify owners, public contracts, state, side effects, callers, proof lanes, and the smallest docs that help the next human or agent
+- worker dispatches are mode-first but purpose-aware: orient on purpose and constraints, then complete the assigned plan, research, implementation, review, verification, failure-analysis, or release mode
+- planner, architect, and project-management workers may be purpose-first inside a bounded assignment, but they publish plans or recommendations rather than performing unassigned heavy work
+- reviewer and verifier workers are criteria/evidence-first and must publish reasoning, gaps, residual risks, and pass/fail disposition for parent/root to audit
+- parent/root assignment text should be a mission packet containing purpose, current state, mode, refs to read first, prior child outputs, interface concerns, test-scene expectations, documentation expectations, constraints, criteria, required evidence, known failure history, and untouched scope
+- boundary-specific guidance is rendered as controller-derived prompt context over the existing base prompt families, not as new prompt families
+
 ## Human request redispatch prompt
 
 When a human request reaches a terminal resolution and the controller continues the same task lineage, the redispatch must use a full regenerated canonical prompt package.

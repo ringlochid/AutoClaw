@@ -77,14 +77,16 @@ Current rendered markdown sections are ordered as:
 2. `Task Identity`
 3. `Node Purpose`
 4. `Current Dispatch`
-5. `Workflow Manifest`
-6. `Current Assignment`
-7. `Latest Checkpoint Context`
-8. `Consumed Durable Refs` when present
-9. `Transient Refs` when present
-10. `Task Memory` when present
-11. `Allowed Actions Now`
-12. `Publication Rule`
+5. `Capabilities Now`
+6. `Workflow Manifest`
+7. `Current Assignment`
+8. `Latest Checkpoint Context`
+9. `Boundary Follow-Up Guidance`
+10. `Consumed Durable Refs` when present
+11. `Transient Refs` when present
+12. `Task Memory` when present
+13. `Allowed Actions Now`
+14. `Publication Rule`
 
 Current manifest-backed prompt inputs now rely on these live manifest payload fields:
 
@@ -108,6 +110,10 @@ Current instruction text is assembled from:
 - system block
 - provider continuity block
 - worker or parent/root opening block for the current prompt family
+- runtime concept glossary block
+- worker assignment doctrine block or parent/root orchestration doctrine block
+- parent/root assignment guide block for parent/root prompts
+- checkpoint authoring guide block
 - runtime boundary block
 - runtime legality block for the current node kind
 - dynamic node guidance lines, including current node policy guidance when present and the compact structural-edit palette for parent/root turns

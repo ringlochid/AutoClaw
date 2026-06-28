@@ -104,7 +104,7 @@ The current runtime no longer ships one monolithic bridge-only prompt string.
 
 Repo-owned prompt truth is split across:
 
-- exact static blocks in `apps/api/src/autoclaw/runtime/prompt/assets/blocks/*.txt`
+- exact static blocks in `apps/api/src/autoclaw/runtime/prompt/assets/blocks/*.md`
 - the asset catalog in `apps/api/src/autoclaw/runtime/prompt/assets/catalog.json`
 - dynamic prompt assembly in `apps/api/src/autoclaw/runtime/prompt/instructions.py` and `apps/api/src/autoclaw/runtime/prompt/sections/rendering.py`
 - persisted dispatch artifacts under `_runtime/dispatch/<dispatch_id>/`

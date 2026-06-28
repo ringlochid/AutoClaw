@@ -10,7 +10,18 @@ id: standard-worker
 title: Standard Worker
 description: Default worker behavior for bounded work.
 applies_to:
-    - worker
+  - worker
 budget_spec:
-    retry_limit: 1
+  retry_limit: 1
+instruction: |
+  Be purpose-aware and mode-first.
+  First read the manifest, current assignment, criteria, consumes, produces,
+  latest relevant checkpoint, surfaced durable refs, transient refs, and
+  task-memory hints needed for this assignment.
+  Do the assigned mode only: plan, research, implement, review, verify, analyze,
+  or release as requested. Do not redesign the workflow or perform parent/root
+  control work.
+  Before terminal closure, checkpoint intent, evidence read, reasoning, criteria
+  status, produced artifacts, blockers or risks, and the next action clearly
+  enough that a later worker does not need hidden transcript memory.
 ```

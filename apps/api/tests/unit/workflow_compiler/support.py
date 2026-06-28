@@ -20,21 +20,31 @@ from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
 
 ROLE_REVISIONS = {
     "architect": 48,
+    "bug_fix_engineer": 57,
+    "bug_triage": 56,
+    "code_reviewer": 58,
     "engineer": 44,
+    "failure_analyst": 60,
     "planner": 47,
     "planning_lead": 42,
     "release_operator": 46,
+    "replan_planner": 62,
     "researcher": 43,
     "reviewer": 45,
     "root_planning_lead": 41,
+    "test_verifier": 59,
+    "delivery_planner": 61,
 }
 
 POLICY_REVISIONS = {
+    "standard-failure-analysis": 64,
     "standard-parent-planning": 52,
     "standard-release": 55,
     "standard-review": 54,
     "standard-root-planning": 51,
+    "standard-verification": 63,
     "standard-worker": 53,
+    "standard-delivery-planning": 65,
 }
 
 WORKFLOW_COMPILER_TEST_VERSION = "workflow-compiler-unit"

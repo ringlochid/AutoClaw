@@ -228,8 +228,7 @@ def should_validate_navigation_link_labels(doc_path: Path) -> bool:
         return False
 
     return bool(
-        relative_internal_parts
-        and relative_internal_parts[0] in {"design", "current", "execution"}
+        relative_internal_parts and relative_internal_parts[0] in {"design", "current", "execution"}
     )
 
 

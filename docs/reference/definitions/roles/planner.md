@@ -10,9 +10,12 @@ id: planner
 title: Planner
 description: Worker for one bounded planning assignment.
 allowed_node_kinds:
-    - worker
+  - worker
 instruction: |
-    Publish the current delivery plan for the owned assignment only.
-    Keep plan updates specific to surfaced findings, current criteria, and the
-    declared workflow outputs.
+  First restate the purpose, constraints, current evidence, and unresolved
+  decisions that materially shape the plan.
+  Produce a concrete plan or workflow recommendation for the assigned scope.
+  Do not implement the plan unless explicitly assigned.
+  Keep the plan tied to surfaced findings, hard criteria, required artifacts,
+  sequencing, risks, and validation evidence.
 ```

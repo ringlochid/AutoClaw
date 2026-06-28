@@ -9,3 +9,5 @@ The examples include optional node `instruction` fields. Node instruction is nod
 - [Minimal](minimal.md)
 - [Normal](normal.md)
 - [Maximal](maximal.md)
+- [Bugfix review release](bugfix-review-release.md)
+- [Delivery batch](delivery-batch.md)

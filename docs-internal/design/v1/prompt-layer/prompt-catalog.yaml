@@ -11,9 +11,11 @@ section_order:
   - task_identity
   - node_purpose
   - current_dispatch
+  - capabilities_now
   - workflow_manifest
   - current_assignment
   - latest_checkpoint_context
+  - boundary_followup_guidance
   - consumed_durable_refs
   - transient_refs
   - task_memory
@@ -41,8 +43,10 @@ prompt_families:
       - task_identity
       - node_purpose
       - current_dispatch
+      - capabilities_now
       - workflow_manifest
       - current_assignment
+      - boundary_followup_guidance
       - consumed_durable_refs
       - allowed_actions_now
       - publication_rule
@@ -60,14 +64,21 @@ prompt_families:
     rules:
       - current_assignment is the runtime-projected mission contract for the current node
       - consumed_durable_refs carries exact runtime-resolved durable refs
+      - boundary_followup_guidance interprets initial, retry, green, and blocked handoffs without creating new prompt families
       - checkpoint guidance teaches decision-relevant handoff delta, exact produced slot/path claims, and retrieval-oriented task-memory hints
       - record_checkpoint publishes durable handoff before terminal boundary
       - produces are requirements, not published refs
     exact_blocks:
       full_prompt_instructions:
         - autoclaw_system_block_v1
+        - runtime_concept_glossary_v1
+        - runtime_read_order_rule_v1
+        - artifact_render_rule_v1
+        - task_memory_rule_v1
+        - monitoring_not_task_truth_v1
         - autoclaw_provider_continuity_block_v1
         - worker_dispatch_opening_v1
+        - worker_assignment_doctrine_v1
         - checkpoint_authoring_guide_v1
         - runtime_boundary_rule_block_v1
         - runtime_legality_block_worker_v1
@@ -86,8 +97,10 @@ prompt_families:
       - task_identity
       - node_purpose
       - current_dispatch
+      - capabilities_now
       - workflow_manifest
       - current_assignment
+      - boundary_followup_guidance
       - allowed_actions_now
       - publication_rule
     conditionally_required_sections:
@@ -105,9 +118,14 @@ prompt_families:
       - blocked
     rules:
       - current_assignment is the runtime-projected mission contract for the current node
+      - parent/root is purpose-first and mode-aware while delegating heavy planning, implementation, review, and verification to children
+      - parent/root leads through iterative assignment, evidence audit, follow-up questioning, and specialist routing rather than one-shot solo completion
+      - parent/root asks children for interface maps, test-scene maps, and documentation navigation when those judgments are needed for the owned slice
       - assign_child guidance packages bounded research into summary, instruction, supplemental durable slots, transient surfaces, and retrieval-oriented task-memory hints
       - assign_child authors only assignment_intent, supplemental_durable_context, and explicit transient_surfaces
       - bounded research sharpens child assignment quality rather than replacing child implementation
+      - child green is evidence rather than release authority, and child blocked is routing input rather than automatic whole-flow blocked closure
+      - boundary_followup_guidance interprets initial, retry, green, and blocked handoffs without creating new prompt families
       - checkpoint guidance teaches decision-relevant handoff delta, exact produced slot/path claims, and retrieval-oriented task-memory hints
       - consumed_durable_refs carries exact runtime-resolved durable refs
       - yield is legal only after exactly one staged child assignment exists
@@ -115,8 +133,14 @@ prompt_families:
     exact_blocks:
       full_prompt_instructions:
         - autoclaw_system_block_v1
+        - runtime_concept_glossary_v1
+        - runtime_read_order_rule_v1
+        - artifact_render_rule_v1
+        - task_memory_rule_v1
+        - monitoring_not_task_truth_v1
         - autoclaw_provider_continuity_block_v1
         - parent_root_dispatch_opening_v1
+        - parent_root_orchestration_doctrine_v1
         - parent_root_assignment_guide_v1
         - checkpoint_authoring_guide_v1
         - runtime_boundary_rule_block_v1
@@ -128,7 +152,7 @@ exact_blocks:
   - id: autoclaw_system_block_v1
     owner_file: prompt-pack/system-and-provider-block.md
     role: exact_system_block
-    purpose: teach controller-owned truth, semantic assignment handoff, runtime-resolved durable refs, and compact surfaced refs
+    purpose: teach controller-owned authority, visible runtime truth, boundary identity, context direction, and current term exclusions
     consumption: live_instruction_block
   - id: autoclaw_provider_continuity_block_v1
     owner_file: prompt-pack/system-and-provider-block.md
@@ -149,6 +173,21 @@ exact_blocks:
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: parent_root_assignment_guide
     purpose: teach how bounded research becomes summary, instruction, durable slot sharing, transient carryover, and retrieval-oriented search hints for assign_child
+    consumption: live_instruction_block
+  - id: runtime_concept_glossary_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: runtime_concept_glossary
+    purpose: explain purpose, mode, role, policy, workflow manifest, assignment, criteria, consumes, produces, refs, checkpoints, and boundaries without assuming product vocabulary
+    consumption: live_instruction_block
+  - id: worker_assignment_doctrine_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: worker_assignment_doctrine
+    purpose: teach worker purpose orientation, mode discipline, evidence acquisition, criteria judgment, and checkpoint quality
+    consumption: live_instruction_block
+  - id: parent_root_orchestration_doctrine_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: parent_root_orchestration_doctrine
+    purpose: teach purpose-first subtree leadership, iterative specialist delegation, evidence skepticism, interface/test/doc judgment, mission packets, and safe replan sequencing
     consumption: live_instruction_block
   - id: checkpoint_authoring_guide_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
@@ -178,8 +217,8 @@ exact_blocks:
   - id: runtime_read_order_rule_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: read_order_rule
-    purpose: freeze the manifest-first runtime read ladder for prompt consumers
-    consumption: reference_only
+    purpose: freeze the manifest-first runtime read ladder as live instruction instead of duplicating it inside the system block
+    consumption: live_instruction_block
   - id: current_task_state_frame_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: section_coverage_rule
@@ -188,18 +227,18 @@ exact_blocks:
   - id: artifact_render_rule_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: artifact_render_rule
-    purpose: freeze compact runtime durable artifact rendering to slot, version, path, and description
-    consumption: reference_only
+    purpose: freeze compact runtime durable artifact rendering to slot, version, path, and description as live instruction
+    consumption: live_instruction_block
   - id: task_memory_rule_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: task_memory_rule
-    purpose: keep task memory search-oriented and separate from required consumes
-    consumption: reference_only
+    purpose: keep task memory search-oriented and separate from required consumes as live instruction
+    consumption: live_instruction_block
   - id: monitoring_not_task_truth_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: monitoring_rule
-    purpose: teach that _runtime/dispatch projections are observability only
-    consumption: reference_only
+    purpose: teach that _runtime/dispatch projections are observability only as live instruction
+    consumption: live_instruction_block
   - id: worker_runtime_opening_example_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
     role: runtime_opening_example

@@ -47,10 +47,13 @@ Field meaning:
 
 - `id` is the stable logical role key
 - `title` is the human display name used by authoring and control surfaces
-- `description` is reusable descriptive metadata
+- `description` is reusable descriptive metadata; in prompt use, it should express role purpose rather than detailed execution procedure
 - `allowed_node_kinds` is the compatibility set for workflow nodes
 - `labels` are optional portable tags for search, grouping, and UI routing
+- `instruction` is reusable role guidance; use it to explain expected mode, evidence posture, criteria posture, and checkpoint expectations
 - `description` and `instruction` are rendered into the assembled static provider-side instruction layer for the current node
+
+Role guidance should not assume the model already knows AutoClaw concepts. When a role depends on purpose, mode, criteria, consumes, produces, checkpoints, refs, or boundaries, restate the meaning in ordinary language.
 
 Custom role ids are legal in v1 when they are defined in stored registry content and their `allowed_node_kinds` are valid.
 
@@ -130,11 +133,12 @@ Field meaning:
 
 - `id` is the stable logical policy key
 - `title` is the human display name used by authoring and control surfaces
-- `description` is reusable descriptive metadata
+- `description` is reusable descriptive metadata; in prompt use, it should summarize policy purpose
 - `applies_to` selects which structural node kinds may use this policy
 - `budget_spec` is the only live authored policy control object in v1 and configures minimal controller-side limits only
 - `capabilities.human_request` and `capabilities.command_run` are portable V2 capability inputs and default to deny
 - `labels` are optional portable tags for search, grouping, and UI routing
+- `instruction` is reusable policy guidance; use it to explain constraints, evidence gates, allowed posture, and checkpoint expectations
 - `description` and `instruction` are rendered into the assembled static provider-side instruction layer for the current node
 - parent/root policies may author `child_assignment_limit` only
 - worker policies may author `retry_limit` only

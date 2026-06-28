@@ -3,7 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from autoclaw.runtime import PromptFamily, PromptSendMode, PromptTransportRequest
+from autoclaw.runtime import (
+    CheckpointOutcome,
+    PromptFamily,
+    PromptSendMode,
+    PromptTransportRequest,
+)
 from autoclaw.runtime.contracts import EffectiveCapabilitySet, HumanRequestCapabilitySet
 from autoclaw.runtime.contracts.primitives import CapabilityDecision
 from autoclaw.runtime.prompt import (
@@ -30,6 +35,91 @@ def _instruction_block_positions(
     return [normalized_instructions.index(normalize_whitespace(block)) for block in blocks]
 
 
+def _exact_instruction_blocks() -> dict[str, str]:
+    block_ids = {
+        "system": "autoclaw_system_block_v1",
+        "concept_glossary": "runtime_concept_glossary_v1",
+        "read_order": "runtime_read_order_rule_v1",
+        "artifact_rule": "artifact_render_rule_v1",
+        "task_memory_rule": "task_memory_rule_v1",
+        "monitoring_rule": "monitoring_not_task_truth_v1",
+        "provider": "autoclaw_provider_continuity_block_v1",
+        "worker_opening": "worker_dispatch_opening_v1",
+        "parent_opening": "parent_root_dispatch_opening_v1",
+        "parent_assignment_guide": "parent_root_assignment_guide_v1",
+        "worker_doctrine": "worker_assignment_doctrine_v1",
+        "parent_doctrine": "parent_root_orchestration_doctrine_v1",
+        "checkpoint_guide": "checkpoint_authoring_guide_v1",
+        "boundary": "runtime_boundary_rule_block_v1",
+        "worker_legality": "runtime_legality_block_worker_v1",
+        "parent_legality": "runtime_legality_block_parent_v1",
+    }
+    return {
+        block_name: load_exact_prompt_block(block_id) for block_name, block_id in block_ids.items()
+    }
+
+
+def _assert_instruction_blocks_are_ordered(
+    *,
+    worker_instructions: str,
+    parent_instructions: str,
+) -> None:
+    blocks = _exact_instruction_blocks()
+    shared_blocks = (
+        blocks["system"],
+        blocks["concept_glossary"],
+        blocks["read_order"],
+        blocks["artifact_rule"],
+        blocks["task_memory_rule"],
+        blocks["monitoring_rule"],
+        blocks["provider"],
+    )
+    worker_positions = _instruction_block_positions(
+        worker_instructions,
+        *shared_blocks,
+        blocks["worker_opening"],
+        blocks["worker_doctrine"],
+        blocks["checkpoint_guide"],
+        blocks["boundary"],
+        blocks["worker_legality"],
+    )
+    parent_positions = _instruction_block_positions(
+        parent_instructions,
+        *shared_blocks,
+        blocks["parent_opening"],
+        blocks["parent_doctrine"],
+        blocks["parent_assignment_guide"],
+        blocks["checkpoint_guide"],
+        blocks["boundary"],
+        blocks["parent_legality"],
+    )
+    assert worker_positions == sorted(worker_positions)
+    assert parent_positions == sorted(parent_positions)
+
+
+def _assert_rendered_node_guidance(
+    *,
+    worker_instructions: str,
+    parent_instructions: str,
+) -> None:
+    normalized_parent_instructions = normalize_whitespace(parent_instructions)
+    assert "- node description: Repair the bounded auth-refresh defect." in worker_instructions
+    assert "- node instruction: Inspect the failing auth path before patching." in (
+        worker_instructions
+    )
+    assert "- role instruction: Complete only the current assignment." in worker_instructions
+    assert (
+        "- node description: Coordinate the whole flow and decide the next bounded child step."
+        in parent_instructions
+    )
+    assert "- node instruction: Keep planning bounded to the current task evidence." in (
+        parent_instructions
+    )
+    assert "- policy instruction: Root owns final closure" in parent_instructions
+    assert "registry read lane" not in normalized_parent_instructions
+    assert "definition registry/tool read surface" not in normalized_parent_instructions
+
+
 def _assert_parent_instruction_guidance(instructions_text: str) -> None:
     assert "`autoclaw-node__search_definitions` / `autoclaw-node__get_definition`" in (
         instructions_text
@@ -40,13 +130,19 @@ def _assert_parent_instruction_guidance(instructions_text: str) -> None:
         "release decision from current evidence." in instructions_text
     )
     assert "Use bounded research to improve delegation quality" in instructions_text
+    assert "## Parent/Root Orchestration Doctrine" in instructions_text
+    assert "Be purpose-first: preserve the user's task intent" in instructions_text
+    assert "Treat child green as evidence, not proof." in instructions_text
+    assert "mission packet: purpose, current state, mode" in instructions_text
+    consumer_before_producer_guidance = (
+        "prefer removing or updating surviving consumers before removing a required producer"
+    )
+    assert consumer_before_producer_guidance in instructions_text
     assert "Write the child brief as an acquisition plan, not just loose assignment prose." in (
         instructions_text
     )
-    assert (
-        "Use `assignment_intent.instruction` to tell the child how to acquire truth "
-        "before acting" in instructions_text
-    )
+    assert "`assignment_intent.instruction`" in instructions_text
+    assert "How the child should acquire truth before acting" in instructions_text
     assert (
         "Research is for writing a better child assignment, not for quietly doing "
         "the child's implementation in place." in instructions_text
@@ -74,6 +170,18 @@ def _assert_parent_instruction_guidance(instructions_text: str) -> None:
 
 
 def _assert_worker_checkpoint_guidance(instructions_text: str) -> None:
+    assert "## AutoClaw Concept Glossary" in instructions_text
+    normalized_instructions = normalize_whitespace(instructions_text)
+    assert "`criteria` | Hard acceptance or guardrail requirements." in normalized_instructions
+    assert "`consumes` | Durable refs or slots this assignment must read before acting" in (
+        normalized_instructions
+    )
+    assert "`produces` | Required output slots for this assignment." in normalized_instructions
+    assert "## Worker Doctrine" in instructions_text
+    assert (
+        "Start by understanding the task purpose, current assignment, constraints, "
+        "criteria, consumes, and required produces before acting." in instructions_text
+    )
     assert (
         "Treat every checkpoint as a durable handoff, not a diary entry or polished "
         "status report." in instructions_text
@@ -100,6 +208,7 @@ def test_render_prompt_bundle_keeps_canonical_section_order(tmp_path: Path) -> N
         "## Workflow Manifest",
         "## Current Assignment",
         "## Latest Checkpoint Context",
+        "## Boundary Follow-Up Guidance",
         "## Consumed Durable Refs",
         "## Transient Refs",
         "## Task Memory",
@@ -168,78 +277,89 @@ def test_instructions_text_assembles_system_provider_and_worker_blocks(tmp_path:
         parent_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
     )
 
-    system_block = load_exact_prompt_block("autoclaw_system_block_v1")
-    provider_block = load_exact_prompt_block("autoclaw_provider_continuity_block_v1")
-    worker_opening_block = load_exact_prompt_block("worker_dispatch_opening_v1")
-    parent_opening_block = load_exact_prompt_block("parent_root_dispatch_opening_v1")
-    parent_assignment_guide_block = load_exact_prompt_block("parent_root_assignment_guide_v1")
-    checkpoint_guide_block = load_exact_prompt_block("checkpoint_authoring_guide_v1")
-    boundary_block = load_exact_prompt_block("runtime_boundary_rule_block_v1")
-    worker_legality_block = load_exact_prompt_block("runtime_legality_block_worker_v1")
-    parent_legality_block = load_exact_prompt_block("runtime_legality_block_parent_v1")
-
     assert worker_bundle.instructions_text is not None
     assert parent_bundle.instructions_text is not None
-    normalized_parent_instructions = normalize_whitespace(parent_bundle.instructions_text)
-    worker_positions = _instruction_block_positions(
-        worker_bundle.instructions_text,
-        system_block,
-        provider_block,
-        worker_opening_block,
-        checkpoint_guide_block,
-        boundary_block,
-        worker_legality_block,
+    _assert_instruction_blocks_are_ordered(
+        worker_instructions=worker_bundle.instructions_text,
+        parent_instructions=parent_bundle.instructions_text,
     )
-    parent_positions = _instruction_block_positions(
-        parent_bundle.instructions_text,
-        system_block,
-        provider_block,
-        parent_opening_block,
-        parent_assignment_guide_block,
-        checkpoint_guide_block,
-        boundary_block,
-        parent_legality_block,
+    _assert_rendered_node_guidance(
+        worker_instructions=worker_bundle.instructions_text,
+        parent_instructions=parent_bundle.instructions_text,
     )
-    assert worker_positions == sorted(worker_positions)
-    assert parent_positions == sorted(parent_positions)
-    assert (
-        "- node description: Repair the bounded auth-refresh defect."
-        in worker_bundle.instructions_text
-    )
-    assert "- node instruction: Inspect the failing auth path before patching." in (
-        worker_bundle.instructions_text
-    )
-    assert "- role instruction: Complete only the current assignment." in (
-        worker_bundle.instructions_text
-    )
-    assert (
-        "- node description: Coordinate the whole flow and decide the next bounded child step."
-        in parent_bundle.instructions_text
-    )
-    assert "- node instruction: Keep planning bounded to the current task evidence." in (
-        parent_bundle.instructions_text
-    )
-    assert "- policy instruction: Root owns final closure" in parent_bundle.instructions_text
-    assert "registry read lane" not in normalized_parent_instructions
-    assert "definition registry/tool read surface" not in normalized_parent_instructions
     _assert_worker_checkpoint_guidance(worker_bundle.instructions_text)
     _assert_parent_instruction_guidance(parent_bundle.instructions_text)
+
+
+def test_boundary_followup_guidance_interprets_checkpoint_outcomes(tmp_path: Path) -> None:
+    worker_bundle = render_prompt_bundle(
+        worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    )
+    parent_green_request = parent_request(
+        tmp_path,
+        send_mode=PromptSendMode.FULL_PROMPT,
+    )
+    assert parent_green_request.latest_checkpoint is not None
+    parent_green_request = parent_green_request.model_copy(
+        update={
+            "latest_checkpoint": parent_green_request.latest_checkpoint.model_copy(
+                update={"outcome": CheckpointOutcome.GREEN}
+            )
+        }
+    )
+    parent_green_bundle = render_prompt_bundle(parent_green_request)
+    worker_retry_request = worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    assert worker_retry_request.latest_checkpoint is not None
+    worker_retry_request = worker_retry_request.model_copy(
+        update={
+            "latest_checkpoint": worker_retry_request.latest_checkpoint.model_copy(
+                update={"outcome": CheckpointOutcome.RETRY}
+            )
+        }
+    )
+    worker_retry_bundle = render_prompt_bundle(worker_retry_request)
+
+    worker_blocked_section = extract_section(
+        worker_bundle.full_markdown,
+        "## Boundary Follow-Up Guidance",
+        "## Consumed Durable Refs",
+    )
+    parent_green_section = extract_section(
+        parent_green_bundle.full_markdown,
+        "## Boundary Follow-Up Guidance",
+        "## Consumed Durable Refs",
+    )
+    worker_retry_section = extract_section(
+        worker_retry_bundle.full_markdown,
+        "## Boundary Follow-Up Guidance",
+        "## Consumed Durable Refs",
+    )
+
+    assert "boundary context: blocked handoff from current surfaced evidence" in (
+        worker_blocked_section
+    )
+    assert "if the blocker still prevents completion" in worker_blocked_section
+    assert "child green is evidence, not automatic release authority" in (parent_green_section)
+    assert "assign a reviewer or verifier instead of trusting the claim" in (parent_green_section)
+    assert "boundary context: retry handoff from a prior terminal checkpoint" in (
+        worker_retry_section
+    )
+    assert "fix the documented failure instead of starting over from hidden session memory" in (
+        worker_retry_section
+    )
 
 
 def test_exact_prompt_blocks_load_from_packaged_assets_not_prompt_docs() -> None:
     assets = list_exact_prompt_block_assets()
 
     assert assets
-    assert all(asset.asset_path.endswith(".txt") for asset in assets)
-    assert all(not asset.asset_path.endswith(".md") for asset in assets)
+    assert all(asset.asset_path.endswith(".md") for asset in assets)
     assert all(asset.mirror_doc.endswith(".md") for asset in assets)
 
     system_asset = next(asset for asset in assets if asset.id == "autoclaw_system_block_v1")
-    assert system_asset.asset_path == "blocks/autoclaw_system_block_v1.txt"
+    assert system_asset.asset_path == "blocks/autoclaw_system_block_v1.md"
     assert system_asset.mirror_doc == "prompt-pack/system-and-provider-block.md"
-    assert load_exact_prompt_block(system_asset.id).startswith(
-        "You are AutoClaw, a delegated node inside a controller-first runtime."
-    )
+    assert load_exact_prompt_block(system_asset.id).startswith("## AutoClaw Runtime Identity")
 
 
 def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path: Path) -> None:

@@ -37,14 +37,17 @@ Shipped exact prompt blocks live under `apps/api/src/autoclaw/runtime/prompt/ass
 If you need copy-ready prompt text instead of just the semantic contract, assemble it from these exact asset-backed owners in this order:
 
 1. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_system_block_v1`
-2. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when send-mode wording is relevant; keep it aligned to the v1 truth that dispatch control emits `full_prompt` today
-3. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `worker_dispatch_opening_v1` or `parent_root_dispatch_opening_v1`
-4. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_assignment_guide_v1` for parent/root prompts plus `checkpoint_authoring_guide_v1` for both prompt families
-5. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
-6. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
-7. render current node kind, current node purpose/description, node instruction, role description, role instruction, policy description, and policy instruction into the static provider-side `instructions` channel
-8. render the canonical section order from this page into the dynamic prompt `input` body using the section-source rules in [Source And Sections](source-and-sections.md)
-9. check the final assembled shape against [Rendered Examples](generated/rendered-examples.md)
+2. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_concept_glossary_v1`
+3. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_read_order_rule_v1`, `artifact_render_rule_v1`, `task_memory_rule_v1`, and `monitoring_not_task_truth_v1`
+4. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when send-mode wording is relevant; keep it aligned to the v1 truth that dispatch control emits `full_prompt` today
+5. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `worker_dispatch_opening_v1` or `parent_root_dispatch_opening_v1`
+6. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `worker_assignment_doctrine_v1` for worker prompts or `parent_root_orchestration_doctrine_v1` for parent/root prompts
+7. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_assignment_guide_v1` for parent/root prompts plus `checkpoint_authoring_guide_v1` for both prompt families
+8. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
+9. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
+10. render current node kind, current node purpose/description, node instruction, role description, role instruction, policy description, and policy instruction into the static provider-side `instructions` channel
+11. render the canonical section order from this page into the dynamic prompt `input` body using the section-source rules in [Source And Sections](source-and-sections.md)
+12. check the final assembled shape against [Rendered Examples](generated/rendered-examples.md)
 
 The full provider dispatch request is therefore:
 
@@ -60,14 +63,16 @@ Every full prompt renders sections in this order:
 2. `task_identity`
 3. `node_purpose`
 4. `current_dispatch`
-5. `workflow_manifest`
-6. `current_assignment`
-7. `latest_checkpoint_context`
-8. `consumed_durable_refs`
-9. `transient_refs`
-10. `task_memory`
-11. `allowed_actions_now`
-12. `publication_rule`
+5. `capabilities_now`
+6. `workflow_manifest`
+7. `current_assignment`
+8. `latest_checkpoint_context`
+9. `boundary_followup_guidance`
+10. `consumed_durable_refs`
+11. `transient_refs`
+12. `task_memory`
+13. `allowed_actions_now`
+14. `publication_rule`
 
 ## Transport Continuity Exclusions
 
@@ -92,6 +97,8 @@ Every prompt should teach all of the following in ordinary language:
 - monitoring files under `_runtime/dispatch/` are observability projections, not normal assignment truth
 - the manifest is the whole-workflow visible contract
 - task identity is global task input visible to every node
+- prompt text must explain AutoClaw product terms such as purpose, mode, role, policy, workflow manifest, assignment, criteria, consumes, produces, refs, checkpoints, and boundaries instead of assuming the node already knows them
+- purpose explains why the node exists and what success means; mode explains the current process pattern and must not replace purpose
 - the first/root assignment is generated at launch from task identity plus current node purpose, node instruction, and resolved role/policy wording
 - assignment says what this node owns now
 - assignment `summary` plus optional `instruction` are current mission prose:
@@ -102,6 +109,7 @@ Every prompt should teach all of the following in ordinary language:
 - exact current durable refs live in `consumed_durable_refs`
 - when semantic assignment/checkpoint text and `consumed_durable_refs` disagree on artifact slot path/version, `consumed_durable_refs` wins and older mentions are historical context only
 - parent/root turns primarily prepare the next child or release decision from current evidence
+- parent/root should be purpose-first and mode-aware: preserve task intent and quality bar, choose the next mode deliberately, and delegate heavy planning, implementation, review, and verification to children
 - parent/root may do bounded research to understand the task, choose the right refs, and tighten the next child assignment
 - that research serves better delegation rather than quietly doing the child's implementation in place
 - parent/root should translate that research into: a crisp owned objective, an acquisition-order instruction, the right supplemental durable slots, minimal transient carryover, and retrieval-oriented `task_memory_search_hints`
@@ -112,6 +120,9 @@ Every prompt should teach all of the following in ordinary language:
 - parent -> child context comes from semantic assignment handoff
 - child -> parent, parent -> parent, and same-node retry context comes from checkpoint plus surfaced refs
 - child -> child is parent-mediated through the next assignment plus surfaced durable refs or optional `transient_refs`
+- boundary follow-up guidance must interpret initial, retry, green, and blocked checkpoint handoffs without minting extra prompt families
+- child green is evidence rather than proof; parent/root must inspect artifacts, checkpoint reasoning, and criteria coverage before release
+- child blocked is routing input rather than automatic whole-flow blocked closure; parent/root should choose sharper reassignment, specialist review, structural replan, or legal current-node blocked closure
 - `yield` is legal only after exactly one staged child assignment exists for the open parent/root dispatch
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
 - parent/root structural edits start from the compact `structural_edit_palette` already surfaced in the current prompt or manifest context; current-only `search_definitions` / `get_definition` reads are the legal read-only escalation path before commit when the palette is still insufficient, and runtime revalidates committed names on commit

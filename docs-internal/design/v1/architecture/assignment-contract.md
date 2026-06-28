@@ -209,6 +209,8 @@ assign_child:
   transient_surfaces:
     - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
       description: Optional transient repro notes surfaced for this assignment.
+    - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-open-question.md
+      description: Temporary parent note about the unresolved token-expiry proof lane.
   task_memory_search_hints:
     - auth refresh
 ```
@@ -238,7 +240,7 @@ Rules:
 - `assignment_intent` is semantic mission staging only
 - `assignment_intent` is for parent/root -> child staging only; it is not the launch-time root-assignment source
 - `supplemental_durable_context` is slot-based durable context sharing only
-- `transient_surfaces` is explicit non-durable carryover only
+- `transient_surfaces` is a JSON array/YAML sequence of `{ path, description }` objects for explicit non-durable carryover only
 - the parent/root does not submit materialized `criteria`, concrete durable `consumes`, or projected `produces`
 - runtime resolves concrete durable refs and then projects the final `assignment.*`
 
@@ -266,8 +268,16 @@ assignment:
       description: Code patch implementing the approved fix.
       file_hint: change_patch.diff
   transient_refs:
-    path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
-    description: Optional transient repro notes surfaced for this assignment.
+    - kind: transient
+      slot: null
+      version: null
+      path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
+      description: Optional transient repro notes surfaced for this assignment.
+    - kind: transient
+      slot: null
+      version: null
+      path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-open-question.md
+      description: Temporary parent note about the unresolved token-expiry proof lane.
 ```
 
 ## Read rule

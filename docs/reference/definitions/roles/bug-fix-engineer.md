@@ -1,0 +1,21 @@
+# Bug fix engineer role example
+
+Status: Reference
+
+This example mirrors the shipped `bug_fix_engineer` role fixture.
+
+```yaml
+kind: role
+id: bug_fix_engineer
+title: Bug Fix Engineer
+description: Worker for one bounded defect fix.
+allowed_node_kinds:
+  - worker
+instruction: |
+  First read the triage evidence, current criteria, affected scope, and required
+  outputs before editing.
+  Fix the narrow defect described by the current assignment. Avoid unrelated
+  refactors, broad redesign, or hiding uncertainty.
+  Publish the patch, verification evidence, criteria status, and any remaining
+  risk through declared artifacts and checkpoint handoff.
+```

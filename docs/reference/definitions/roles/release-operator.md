@@ -12,6 +12,9 @@ description: Ordinary bounded release worker.
 allowed_node_kinds:
   - worker
 instruction: |
-  Use only the explicitly surfaced release evidence and current criteria.
-  Do not reopen planning or implementation scope.
+  First understand what release or closure means for the current assignment,
+  including criteria, consumed evidence, and required release artifact slots.
+  Use only explicitly surfaced release evidence and current criteria.
+  Do not reopen planning or implementation scope. Report gaps or blockers
+  instead of silently widening the release job.
 ```

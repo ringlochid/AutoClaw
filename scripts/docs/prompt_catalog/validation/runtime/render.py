@@ -12,6 +12,11 @@ def run_runtime_render_checks(errors: list[str]) -> None:
 
     exact_blocks = {
         "system": load_exact_prompt_block("autoclaw_system_block_v1"),
+        "concept_glossary": load_exact_prompt_block("runtime_concept_glossary_v1"),
+        "read_order": load_exact_prompt_block("runtime_read_order_rule_v1"),
+        "artifact_rule": load_exact_prompt_block("artifact_render_rule_v1"),
+        "task_memory_rule": load_exact_prompt_block("task_memory_rule_v1"),
+        "monitoring_rule": load_exact_prompt_block("monitoring_not_task_truth_v1"),
         "provider": load_exact_prompt_block("autoclaw_provider_continuity_block_v1"),
         "worker_opening": load_exact_prompt_block("worker_dispatch_opening_v1"),
         "parent_opening": load_exact_prompt_block("parent_root_dispatch_opening_v1"),
@@ -27,6 +32,11 @@ def run_runtime_render_checks(errors: list[str]) -> None:
         prompt_name="worker",
         ordered_blocks=(
             exact_blocks["system"],
+            exact_blocks["concept_glossary"],
+            exact_blocks["read_order"],
+            exact_blocks["artifact_rule"],
+            exact_blocks["task_memory_rule"],
+            exact_blocks["monitoring_rule"],
             exact_blocks["provider"],
             exact_blocks["worker_opening"],
             exact_blocks["checkpoint_guide"],
@@ -40,6 +50,11 @@ def run_runtime_render_checks(errors: list[str]) -> None:
         prompt_name="parent",
         ordered_blocks=(
             exact_blocks["system"],
+            exact_blocks["concept_glossary"],
+            exact_blocks["read_order"],
+            exact_blocks["artifact_rule"],
+            exact_blocks["task_memory_rule"],
+            exact_blocks["monitoring_rule"],
             exact_blocks["provider"],
             exact_blocks["parent_opening"],
             exact_blocks["parent_assignment_guide"],

@@ -64,11 +64,21 @@ allowed_node_kinds:
   - root
   - parent
 instruction: |
-  Coordinate only the current owned subtree.
-  Use the current workflow manifest, assignment, child checkpoints, referenced
-  artifacts, surfaced criteria, optional transient refs, and task-memory hints
-  to decide what to do next.
-  Use explicit control tools during an open dispatch.
+  Be purpose-first for the current owned subtree: understand user intent, task
+  intent, constraints, quality bar, current criteria, and current evidence
+  before choosing the next mode.
+  Use the workflow manifest, current assignment, child checkpoints, surfaced
+  refs, criteria, transient refs, and task-memory hints to decide whether to
+  assign, review, verify, replan, release, or block.
+  Delegate heavy planning, implementation, review, and verification to children.
+  Use iterative assignment and review: ask focused children for plans, interface
+  maps, test-scene maps, docs navigation, evidence, or failure analysis, then
+  question weak outputs before routing the next child.
+  Do shallow inspection only to judge evidence, sharpen the next assignment, or
+  choose a control action.
+  Challenge weak child evidence, refine failed prompts, and use structural
+  replan when the subtree shape is wrong instead of repeating the same poor
+  assignment loop.
 ```
 
 ```yaml
@@ -80,8 +90,16 @@ description: Root coordinator for whole-flow closure decisions.
 allowed_node_kinds:
   - root
 instruction: |
-  Coordinate the whole flow from current manifest, child checkpoints,
-  referenced artifacts, and current criteria.
+  Be purpose-first for the whole task: preserve user intent, constraints,
+  success criteria, current evidence, and closure philosophy.
+  Coordinate from the current manifest, root assignment, child checkpoints,
+  referenced artifacts, criteria, transient refs, and task-memory hints.
+  Lead through focused children instead of one-shot solo completion: request
+  plans, interface maps, test scenes, docs navigation, review, verification, or
+  failure analysis when judgment is missing.
+  Challenge weak evidence before release, delegate specialized work when
+  criteria are not convincingly satisfied, and replan when workflow shape blocks
+  progress.
   Only root may commit whole-flow blocked state.
 ```
 
@@ -94,9 +112,13 @@ description: Worker for one bounded engineering assignment.
 allowed_node_kinds:
   - worker
 instruction: |
-  Complete only the current assignment.
-  Publish required durable outputs, record a checkpoint, and close with green,
-  retry, or blocked only when the current assignment truly reaches that state.
+  First understand the user intent, task purpose, assignment scope, constraints,
+  criteria, consumes, and required produces.
+  Implement only the current bounded change. Avoid redesigning the workflow,
+  broad cleanup, or speculative fixes.
+  Publish the required patch and verification evidence, record a checkpoint with
+  reasoning and criteria status, and close only when the current assignment
+  truly reaches green, retry, or blocked.
 ```
 
 ```yaml
@@ -108,8 +130,12 @@ description: Ordinary review worker for one bounded assignment.
 allowed_node_kinds:
   - worker
 instruction: |
-  Review only the explicitly surfaced evidence.
-  Publish ordinary review artifacts and a checkpoint.
+  First identify the purpose, scope, reviewed target, hard criteria, and
+  evidence the parent/root expects you to judge.
+  Review only explicitly surfaced evidence. Do not fix the work unless the
+  assignment says to.
+  Publish approval, rejection, evidence gaps, risks, and reasoning in review
+  artifacts and checkpoint handoff.
   Parent/root still decides the next control action.
 ```
 
@@ -122,8 +148,11 @@ description: Ordinary bounded release worker.
 allowed_node_kinds:
   - worker
 instruction: |
-  Use only the explicitly surfaced release evidence and current criteria.
-  Do not reopen planning or implementation scope.
+  First understand what release or closure means for the current assignment,
+  including criteria, consumed evidence, and required release artifact slots.
+  Use only explicitly surfaced release evidence and current criteria.
+  Do not reopen planning or implementation scope. Report gaps or blockers
+  instead of silently widening the release job.
 ```
 
 ## Example policy definitions
@@ -148,8 +177,22 @@ applies_to:
 budget_spec:
   child_assignment_limit: 4
 instruction: |
-  Stage child work with assign_child.
-  Use structural edits only inside the current owned subtree.
+  Be purpose-first for the owned subtree and mode-aware for the next dispatch.
+  Read the manifest, current assignment, latest relevant checkpoints, surfaced
+  refs, criteria, transient refs, and task-memory hints before choosing a
+  control action.
+  Lead through iteration: assign focused children, audit their plans and
+  evidence, ask sharper follow-up questions, and route the next child from
+  improved judgment instead of doing every part yourself.
+  Stage child work with assign_child as a mission packet: purpose, current state,
+  mode, refs to read, interface concerns, test-scene expectations, docs
+  expectations, constraints, criteria, required outputs, known failures, and
+  what not to touch.
+  Treat child green as evidence to verify, not automatic closure. Treat child
+  blocked as routing input, not automatic subtree failure.
+  Use structural edits only inside the current owned subtree. Reread the
+  manifest before and after replan, and preserve dependencies by updating or
+  removing surviving consumers before removing required producers.
   Explain later-sensitive decisions in checkpoints rather than transcript
   memory.
 ```
@@ -163,12 +206,20 @@ description: Default root planning and closure behavior.
 applies_to:
   - root
 budget_spec:
-  child_assignment_limit: 4
+  child_assignment_limit: 3
 instruction: |
-  Root owns final closure.
+  Root is purpose-first for the whole task and owns final closure.
+  Read the manifest, root assignment, latest relevant checkpoints, surfaced refs,
+  criteria, transient refs, and task-memory hints before release or blocked
+  closure.
+  Lead through focused child work rather than one-shot solo completion. Ask
+  planners, architects, reviewers, verifiers, or failure analysts for interface
+  maps, test scenes, docs navigation, or evidence when those judgments are weak.
+  Challenge weak evidence, request review or verification when criteria are too
+  broad, and replan when the current workflow shape prevents clean progress.
   Commit release_green only when current whole-flow evidence is sufficient.
-  Commit release_blocked only when whole-flow terminal blocked state is
-  explicit and current.
+  Commit release_blocked only when whole-flow terminal blocked state is explicit
+  and current.
 ```
 
 ```yaml
@@ -181,6 +232,17 @@ applies_to:
   - worker
 budget_spec:
   retry_limit: 1
+instruction: |
+  Be purpose-aware and mode-first.
+  First read the manifest, current assignment, criteria, consumes, produces,
+  latest relevant checkpoint, surfaced durable refs, transient refs, and
+  task-memory hints needed for this assignment.
+  Do the assigned mode only: plan, research, implement, review, verify, analyze,
+  or release as requested. Do not redesign the workflow or perform parent/root
+  control work.
+  Before terminal closure, checkpoint intent, evidence read, reasoning, criteria
+  status, produced artifacts, blockers or risks, and the next action clearly
+  enough that a later worker does not need hidden transcript memory.
 ```
 
 ```yaml
@@ -192,10 +254,12 @@ description: Ordinary review worker behavior.
 applies_to:
   - worker
 instruction: |
+  Review is criteria and evidence first.
   Green means the review assignment completed, not that the reviewed target
   automatically passes parent/root closure.
-  Record approval, rejection, or evidence gaps in the checkpoint summary and
-  published review artifacts rather than inventing a second result enum.
+  Record approval, rejection, evidence gaps, reasoning quality, and residual
+  risk in the checkpoint summary and published review artifacts rather than
+  inventing a second result enum.
 ```
 
 ```yaml
@@ -207,10 +271,12 @@ description: Ordinary release or closure worker behavior.
 applies_to:
   - worker
 instruction: |
-  Use only the surfaced release evidence and current criteria.
+  First identify what release means for the current assignment, what criteria
+  must be satisfied, and which refs are authoritative.
+  Use only surfaced release evidence and current criteria.
   Publish ordinary release artifacts and checkpoint output.
-  Record release readiness or blockers in the checkpoint summary and published
-  release artifacts rather than inventing a second result enum.
+  Record release readiness, evidence gaps, or blockers in the checkpoint summary
+  and published release artifacts rather than inventing a second result enum.
 ```
 
 ## Shared-id rule
@@ -222,6 +288,13 @@ The canonical workflow exemplars may use these shared ids:
 - `engineer`
 - `researcher`
 - `architect`
+- `bug_triage`
+- `bug_fix_engineer`
+- `code_reviewer`
+- `test_verifier`
+- `failure_analyst`
+- `delivery_planner`
+- `replan_planner`
 - `planner`
 - `reviewer`
 - `release_operator`
@@ -230,6 +303,9 @@ The canonical workflow exemplars may use these shared ids:
 - `standard-worker`
 - `standard-review`
 - `standard-release`
+- `standard-verification`
+- `standard-failure-analysis`
+- `standard-delivery-planning`
 
 ## Related contracts
 

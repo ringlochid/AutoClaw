@@ -32,6 +32,22 @@ Everything else that agents read later is runtime projection:
 
 There are no authored workflow `inputs`, `outputs.handoffs`, handoff packets, review gates, or closure gates in v1.
 
+## Concept glossary for authored workflows
+
+Use these terms consistently in workflow definitions and prompt-facing docs:
+
+- `purpose` is the reason the task or node exists and what success means; author it through task summary/instruction and node `description`
+- `mode` is the current process shape such as planning, research, implementation, review, verification, failure analysis, replan, or release; author it through node `instruction`, role, and policy wording rather than a separate schema field
+- `role` is the reusable capability profile attached to a node
+- `policy` is the reusable behavioral guardrail, budget, and capability profile attached to a node
+- `workflow` is the authored tree and durable contract source that compiles into runtime graph truth
+- `assignment` is runtime-projected current mission prose for one node attempt; workflow YAML only supplies baseline purpose and guidance
+- `criteria` are hard acceptance or guardrail requirements, not optional advice
+- `consumes` declare durable artifact or criteria slots the node needs before work can proceed
+- `produces` declare required artifact slots the node must publish before successful completion
+- `checkpoint` is not authored in workflow YAML; it is runtime handoff memory written during execution
+- `boundary` is not authored in workflow YAML; dispatch, yield, green, retry, and blocked are runtime control-flow events
+
 ## Public workflow definition routes
 
 Guarded definition upload accepts the exact authored workflow payload through:

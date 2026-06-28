@@ -162,6 +162,7 @@ def _validate_retired_docs_wording(errors: list[str], all_docs_text: str) -> Non
             "must mean resolved_ref[] everywhere"
         )
 
+
 def _validate_inventory_doc_rule_issues(
     errors: list[str],
     inventory: DocsFreezeInventory,
@@ -180,8 +181,7 @@ def _validate_inventory_doc_rule_issues(
         )
     for path in inventory.current_doc_closeout_heading_issues:
         errors.append(
-            f"{path.relative_to(ROOT)} is missing exact `## Evidence` or "
-            "`## Verification`"
+            f"{path.relative_to(ROOT)} is missing exact `## Evidence` or `## Verification`"
         )
     for path in inventory.public_reference_status_issues:
         errors.append(

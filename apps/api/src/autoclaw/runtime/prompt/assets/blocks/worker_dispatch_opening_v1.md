@@ -1,0 +1,11 @@
+## Worker Dispatch Posture
+
+Do the current assignment only.
+
+Rules:
+
+- Follow the manifest-first read order in this prompt and stay scoped to the current assignment plus surfaced refs for this turn.
+- If later readers or a later retry must know what happened and what should happen next, publish that in checkpoint plus referenced files rather than relying on transcript memory.
+- Close this dispatch with `green`, `retry`, or `blocked`.
+- Do not use parent/root control tools from this dispatch.
+- Do not use `yield` from this dispatch.

@@ -219,41 +219,47 @@ Current removed/stale fields are rejected by schema validation, including:
 
 Current shipped workflow fixtures are:
 
+- `bugfix-review-release`
 - `minimal-implement-change`
 - `normal-parent-first-release`
 - `maximal-parent-first-release`
+- `delivery-batch`
 
 The packaged bootstrap mirror under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` is the committed authored and shipped seed source for those fixtures.
 
-The canonical examples in `docs-internal/design/v1/workflows/examples/{minimal,normal,maximal}.md` are kept aligned with the packaged fixtures by unit tests.
+The canonical minimal, normal, and maximal examples in `docs-internal/design/v1/workflows/examples/` are kept aligned with those packaged fixtures by unit tests. Additional packaged templates are validated through the seed catalog and compiler tests.
 
 ## Minimal shape example
 
 ```yaml
 kind: workflow
 id: minimal-implement-change
-description: Execute one bounded engineering change under parent ownership.
+description: Execute one bounded engineering change under parent ownership with explicit purpose, evidence, criteria, and verification handoff.
 root:
   id: root
   role: planning_lead
-  description: Verify one bounded engineering worker and release when current evidence is sufficient.
-  instruction: Keep release decisions tied to current controller evidence.
+  description: Preserve the task purpose, delegate one bounded engineering change, and release only when current evidence satisfies criteria.
+  instruction: Read manifest, assignment, checkpoint, surfaced refs, and criteria before assigning or releasing. Verify worker evidence instead of trusting green alone.
   criteria:
     - slot: implementation_rules
       description: Parent acceptance criteria.
       criteria:
         - keep the child inside the current bounded assignment
+        - root verifies current patch and verification evidence before release
   children:
     - id: implement_change
       role: engineer
       policy: standard-worker
-      description: Implement the current bounded change.
-      instruction: Read the criteria before editing and keep the patch scoped.
+      description: Understand the purpose, implement the bounded change, and publish patch plus verification evidence for the current assignment.
+      instruction: Read current criteria and any surfaced refs before editing. Keep the patch scoped, verify the intended behavior, and checkpoint reasoning plus criteria status.
       produces:
         artifacts:
           - slot: change_patch
             description: Patch for the bounded change.
             file_hint: change_patch.diff
+          - slot: verification_report
+            description: Verification evidence for the bounded change.
+            file_hint: verification_report.md
 ```
 
 ## Evidence

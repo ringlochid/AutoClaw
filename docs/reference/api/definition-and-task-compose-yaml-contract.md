@@ -47,6 +47,8 @@ Current fields are:
 
 `allowed_node_kinds` is a non-empty list of `root | parent | worker`. `title` is optional display metadata. `labels` is an optional list of portable search or grouping tags and defaults to an empty list.
 
+`description` should explain the reusable role purpose. `instruction` should explain the role's mode, evidence posture, criteria posture, and checkpoint expectations without assuming the node already knows AutoClaw terms.
+
 ### Policy YAML
 
 Current policy schema is `PolicyDefinitionFile`.
@@ -85,6 +87,8 @@ Current validator rules include:
 - omitted `capabilities.command_run` defaults to `deny`
 - `capabilities.human_request.mode: allow` requires non-empty `allowed_kinds`
 - `capabilities.human_request.mode: deny` grants no portable human-request permission
+
+`description` should summarize policy purpose. `instruction` should explain constraints, evidence gates, capabilities, allowed posture, and checkpoint expectations.
 
 ### Workflow YAML
 
@@ -128,6 +132,8 @@ Current non-root node shape is:
 
 `title` is optional node display metadata. `instruction` is optional node-local prompt guidance. `provider_preference`, when present, must be one of `openclaw`, `codex`, or `claude`; omission means runtime resolves through the machine-local default provider.
 
+Node `description` is node purpose: why this node exists and what success means. Node `instruction` is node-local guidance: how to behave for this node without replacing role or policy guidance. Mode words such as planning, implementation, review, verification, failure analysis, replan, or release belong in role/policy/node instruction text, not in a separate workflow field.
+
 ### Consume, produce, criteria, and child-default shapes
 
 Current consume shape is `ConsumeBuckets`:
@@ -162,6 +168,13 @@ Current child-default shape is:
 - `criteria`
 
 `child_defaults.criteria` must reference criteria declared on that same node.
+
+Concept meanings:
+
+- `criteria` are hard acceptance or guardrail requirements
+- `consumes` are durable artifact or criteria slots the node needs to read
+- `produces` are required output slots, not already-published refs
+- runtime `assignment`, `checkpoint`, `consumed_durable_refs`, `transient_refs`, and boundaries are generated during execution and are not authored in workflow YAML
 
 ### Task-compose launch input
 
@@ -219,9 +232,11 @@ Current removed/stale fields are rejected by schema validation, including:
 
 Current shipped workflow fixtures are:
 
+- `bugfix-review-release`
 - `minimal-implement-change`
 - `normal-parent-first-release`
 - `maximal-parent-first-release`
+- `delivery-batch`
 
 The packaged bootstrap mirror under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` is the committed authored and shipped seed source for those fixtures. No repo-root definitions mirror is required by shipped paths.
 
@@ -230,26 +245,30 @@ The packaged bootstrap mirror under `apps/api/src/autoclaw/definitions/seeds/wor
 ```yaml
 kind: workflow
 id: minimal-implement-change
-description: Execute one bounded engineering change under parent ownership.
+description: Execute one bounded engineering change under parent ownership with explicit purpose, evidence, criteria, and verification handoff.
 root:
   id: root
   role: planning_lead
-  description: Verify one bounded engineering worker and release when current evidence is sufficient.
-  instruction: Keep release decisions tied to current controller evidence.
+  description: Preserve the task purpose, delegate one bounded engineering change, and release only when current evidence satisfies criteria.
+  instruction: Read manifest, assignment, checkpoint, surfaced refs, and criteria before assigning or releasing. Verify worker evidence instead of trusting green alone.
   criteria:
     - slot: implementation_rules
       description: Parent acceptance criteria.
       criteria:
         - keep the child inside the current bounded assignment
+        - root verifies current patch and verification evidence before release
   children:
     - id: implement_change
       role: engineer
       policy: standard-worker
-      description: Implement the current bounded change.
-      instruction: Read the criteria before editing and keep the patch scoped.
+      description: Understand the purpose, implement the bounded change, and publish patch plus verification evidence for the current assignment.
+      instruction: Read current criteria and any surfaced refs before editing. Keep the patch scoped, verify the intended behavior, and checkpoint reasoning plus criteria status.
       produces:
         artifacts:
           - slot: change_patch
             description: Patch for the bounded change.
             file_hint: change_patch.diff
+          - slot: verification_report
+            description: Verification evidence for the bounded change.
+            file_hint: verification_report.md
 ```

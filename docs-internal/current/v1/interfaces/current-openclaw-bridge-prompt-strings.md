@@ -14,7 +14,7 @@ The owner page for the current prompt-delivery contract is [Prompt Layer And Wor
 
 The current shipped prompt source is split across:
 
-- exact static block assets in `apps/api/src/autoclaw/runtime/prompt/assets/blocks/*.txt`
+- exact static block assets in `apps/api/src/autoclaw/runtime/prompt/assets/blocks/*.md`
 - the asset catalog in `apps/api/src/autoclaw/runtime/prompt/assets/catalog.json`
 - dynamic instruction assembly in `apps/api/src/autoclaw/runtime/prompt/instructions.py`
 - dynamic section assembly in `apps/api/src/autoclaw/runtime/prompt/sections/rendering.py`

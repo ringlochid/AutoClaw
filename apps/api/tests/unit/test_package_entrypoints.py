@@ -129,7 +129,7 @@ def test_pyproject_ships_canonical_packages_only() -> None:
         "definitions/seeds/workflows/*.yaml",
         "platform/managed_services/resources/systemd/*.service",
         "runtime/prompt/assets/*.json",
-        "runtime/prompt/assets/blocks/*.txt",
+        "runtime/prompt/assets/blocks/*.md",
     ]
 
 

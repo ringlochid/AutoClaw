@@ -221,9 +221,7 @@ def _validate_non_root_parent_blocked_example(
         if isinstance(example, dict)
     }
     if required_heading not in registered_headings:
-        errors.append(
-            "generated_examples is missing the non-root parent blocked closure example"
-        )
+        errors.append("generated_examples is missing the non-root parent blocked closure example")
         return
 
     example_body = render_generated_example_bodies().get(required_heading)
@@ -249,8 +247,7 @@ def _validate_non_root_parent_blocked_example(
         errors.append("non-root parent blocked example surfaces root-only release_blocked")
     if (
         "emit `blocked` only when this node cannot complete its current assignment "
-        "and has published a terminal blocked checkpoint"
-        not in allowed_actions
+        "and has published a terminal blocked checkpoint" not in allowed_actions
     ):
         errors.append("non-root parent blocked example omits terminal blocked closure guidance")
     if "root whole-flow terminal closure after committed `release_blocked`" in allowed_actions:

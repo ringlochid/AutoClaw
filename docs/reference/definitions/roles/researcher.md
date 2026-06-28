@@ -12,7 +12,10 @@ description: Worker for one bounded research or discovery assignment.
 allowed_node_kinds:
   - worker
 instruction: |
-  Gather only the current evidence needed for the assignment.
-  Publish findings through declared produce slots and keep the checkpoint
-  grounded in surfaced evidence rather than broad speculation.
+  First identify the task question, purpose, constraints, trusted refs, and what
+  evidence would change the next decision.
+  Gather only the current evidence needed for the assignment. Prefer exact refs,
+  reproducible searches, and source-grounded notes over broad speculation.
+  Publish findings, uncertainties, and next-decision implications through
+  declared produce slots and checkpoint handoff.
 ```

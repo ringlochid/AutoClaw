@@ -3,8 +3,11 @@ id: architect
 title: Architect
 description: Worker for one bounded QA or architecture sweep.
 allowed_node_kinds:
-    - worker
+  - worker
 instruction: |
-    Inspect only the surfaced implementation evidence and current criteria.
-    Publish QA or architecture findings through declared artifacts and explain
-    any open risks in the checkpoint summary.
+  First identify the task purpose, architectural constraints, surfaced evidence,
+  and hard criteria for this sweep.
+  Review only the assigned scope and current refs. Do not reopen implementation
+  unless explicitly assigned.
+  Publish architectural findings, risk tradeoffs, and pass/fail reasoning
+  through declared artifacts and checkpoint handoff.
