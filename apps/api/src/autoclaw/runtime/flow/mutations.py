@@ -438,7 +438,7 @@ async def _cancel_active_external_wait(
                 task_id=task_id,
                 run_id=command_run.run_id,
                 actor_ref=actor_ref,
-                allow_already_requested=True,
+                is_already_requested_allowed=True,
             )
             return
         await record_command_run_terminal_result(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,8 +17,14 @@ from autoclaw.runtime.capabilities import (
     resolve_effective_capabilities,
 )
 from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.command_run.guards import (
+    ensure_command_run_can_be_cancelled,
+    ensure_command_run_can_be_claimed_for_local_start,
+    ensure_command_run_can_record_owned_process_pid,
+    ensure_command_run_can_record_progress,
+    ensure_command_run_can_record_terminal_result,
+)
 from autoclaw.runtime.command_run.reads import (
-    command_run_conflict,
     list_command_runs,
     load_command_run_for_task,
     read_command_run,
@@ -145,16 +152,16 @@ async def request_command_run_cancellation(
     task_id: str,
     run_id: str,
     actor_ref: str | None = None,
-    allow_already_requested: bool = False,
+    is_already_requested_allowed: bool = False,
 ) -> CommandRunModel:
     flow = await _require_flow_for_task(session, task_id)
     command_run = await load_command_run_for_task(session, task_id=task_id, run_id=run_id)
     wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
-    _ensure_command_run_can_be_cancelled(
+    ensure_command_run_can_be_cancelled(
         command_run=command_run,
         wait_state=wait_state,
         run_id=run_id,
-        allow_already_requested=allow_already_requested,
+        is_already_requested_allowed=is_already_requested_allowed,
     )
     assert command_run is not None
     if command_run.state == CommandRunState.CANCELLATION_REQUESTED.value:
@@ -202,7 +209,7 @@ async def record_command_run_progress(
         run_id=update.run_id,
     )
     wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
-    _ensure_command_run_can_record_progress(
+    ensure_command_run_can_record_progress(
         command_run=command_run,
         wait_state=wait_state,
         run_id=update.run_id,
@@ -253,7 +260,7 @@ async def claim_command_run_for_local_start(
     flow = await _require_flow_for_task(session, task_id)
     command_run = await load_command_run_for_task(session, task_id=task_id, run_id=run_id)
     wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
-    _ensure_command_run_can_be_claimed_for_local_start(
+    ensure_command_run_can_be_claimed_for_local_start(
         command_run=command_run,
         wait_state=wait_state,
         run_id=run_id,
@@ -280,7 +287,7 @@ async def record_command_run_owned_process_pid(
     flow = await _require_flow_for_task(session, task_id)
     command_run = await load_command_run_for_task(session, task_id=task_id, run_id=run_id)
     wait_state = await session.get(FlowWaitStateModel, flow.flow_id)
-    _ensure_command_run_can_record_owned_process_pid(
+    ensure_command_run_can_record_owned_process_pid(
         command_run=command_run,
         wait_state=wait_state,
         run_id=run_id,
@@ -313,7 +320,7 @@ async def record_command_run_terminal_result(
     terminal_state = CommandRunState(result.state)
     if terminal_state not in TERMINAL_COMMAND_RUN_STATES:
         raise illegal_state_error(f"command run '{result.run_id}' did not reach a terminal state")
-    _ensure_command_run_can_record_terminal_result(
+    ensure_command_run_can_record_terminal_result(
         command_run=command_run,
         wait_state=wait_state,
         run_id=result.run_id,
@@ -321,46 +328,96 @@ async def record_command_run_terminal_result(
     assert command_run is not None
     assert wait_state is not None
 
-    ended_at = result.ended_at
+    terminal_actor_ref = _apply_command_run_terminal_result(
+        command_run,
+        result=result,
+        terminal_state=terminal_state,
+        event_source=event_source,
+        actor_ref=actor_ref,
+    )
+    await session.delete(wait_state)
+    flow.updated_at = result.ended_at
+    if _should_release_command_run_workspace(flow):
+        await release_workspace_root_lease(session, task_id=task_id)
+    await append_task_event(
+        session,
+        task_id=task_id,
+        event_type=COMMAND_RUN_TERMINAL_EVENT_TYPES[terminal_state],
+        event_source=event_source,
+        occurred_at=result.ended_at,
+        flow_revision_id=command_run.flow_revision_id,
+        dispatch_id=command_run.dispatch_id,
+        attempt_id=command_run.attempt_id,
+        node_key=command_run.requester_node_key,
+        actor_ref=terminal_actor_ref,
+        payload=_build_command_run_terminal_event_payload(
+            command_run,
+            result=result,
+            terminal_state=terminal_state,
+            terminal_actor_ref=terminal_actor_ref,
+        ),
+    )
+    await session.flush()
+    return command_run_record_from_model(command_run)
+
+
+def _apply_command_run_terminal_result(
+    command_run: CommandRunModel,
+    *,
+    result: CommandRunTerminalResultRead,
+    terminal_state: CommandRunState,
+    event_source: TaskEventSource,
+    actor_ref: str | None,
+) -> str | None:
+    terminal_actor_ref = actor_ref
+    if terminal_state == CommandRunState.CANCELLED and terminal_actor_ref is None:
+        terminal_actor_ref = command_run.cancellation_requested_by_actor_ref
+
     command_run.state = terminal_state.value
     command_run.owned_process_pid = None
-    command_run.ended_at = ended_at
+    command_run.ended_at = result.ended_at
     command_run.terminal_summary = result.summary
     command_run.terminal_exit_code = result.exit_code
     command_run.terminal_signal = result.signal
     command_run.terminal_log_ref = result.log_ref
     command_run.terminal_event_source = event_source.value
-    terminal_actor_ref = actor_ref
-    if terminal_state == CommandRunState.CANCELLED and terminal_actor_ref is None:
-        terminal_actor_ref = command_run.cancellation_requested_by_actor_ref
     command_run.terminal_actor_ref = terminal_actor_ref
     command_run.latest_update = result.summary
     command_run.latest_log_ref = result.log_ref
+    command_run.updated_at = result.ended_at
     if terminal_state == CommandRunState.CANCELLED:
-        command_run.cancellation_requested_at = command_run.cancellation_requested_at or ended_at
+        command_run.cancellation_requested_at = (
+            command_run.cancellation_requested_at or result.ended_at
+        )
         command_run.cancellation_requested_by_actor_ref = (
             command_run.cancellation_requested_by_actor_ref or terminal_actor_ref
         )
-    command_run.updated_at = ended_at
-    await session.delete(wait_state)
-    flow.updated_at = ended_at
-    if (
-        flow.status
-        in {
-            FlowStatus.SUCCEEDED.value,
-            FlowStatus.BLOCKED.value,
-            FlowStatus.CANCELLED.value,
-        }
-        and flow.current_open_dispatch_id is None
-    ):
-        await release_workspace_root_lease(session, task_id=task_id)
-    payload = {
+    return terminal_actor_ref
+
+
+def _should_release_command_run_workspace(flow: FlowModel) -> bool:
+    terminal_flow_states = {
+        FlowStatus.SUCCEEDED.value,
+        FlowStatus.BLOCKED.value,
+        FlowStatus.CANCELLED.value,
+    }
+    return flow.status in terminal_flow_states and flow.current_open_dispatch_id is None
+
+
+def _build_command_run_terminal_event_payload(
+    command_run: CommandRunModel,
+    *,
+    result: CommandRunTerminalResultRead,
+    terminal_state: CommandRunState,
+    terminal_actor_ref: str | None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
         "run_id": result.run_id,
         "state": terminal_state.value,
         "summary": result.summary,
         "exit_code": result.exit_code,
         "signal": result.signal,
-        "ended_at": ended_at.isoformat(),
+        "ended_at": result.ended_at.isoformat(),
         "log_ref": result.log_ref,
     }
     if terminal_state == CommandRunState.CANCELLED:
@@ -369,21 +426,7 @@ async def record_command_run_terminal_result(
         )
         if initiated_by_actor_ref is not None:
             payload["initiated_by_actor_ref"] = initiated_by_actor_ref
-    await append_task_event(
-        session,
-        task_id=task_id,
-        event_type=COMMAND_RUN_TERMINAL_EVENT_TYPES[terminal_state],
-        event_source=event_source,
-        occurred_at=ended_at,
-        flow_revision_id=command_run.flow_revision_id,
-        dispatch_id=command_run.dispatch_id,
-        attempt_id=command_run.attempt_id,
-        node_key=command_run.requester_node_key,
-        actor_ref=terminal_actor_ref,
-        payload=payload,
-    )
-    await session.flush()
-    return command_run_record_from_model(command_run)
+    return payload
 
 
 def _build_command_run_for_start(
@@ -500,113 +543,6 @@ async def _next_command_run_id(session: AsyncSession, *, task_id: str) -> str:
         select(func.count(CommandRunModel.run_id)).where(CommandRunModel.task_id == task_id)
     )
     return command_run_id(task_id, int(run_count or 0) + 1)
-
-
-def _ensure_command_run_can_be_cancelled(
-    *,
-    command_run: CommandRunModel | None,
-    wait_state: FlowWaitStateModel | None,
-    run_id: str,
-    allow_already_requested: bool = False,
-) -> None:
-    _ensure_command_run_owns_active_wait(
-        command_run=command_run,
-        wait_state=wait_state,
-        run_id=run_id,
-    )
-    assert command_run is not None
-    if command_run.state in {state.value for state in TERMINAL_COMMAND_RUN_STATES}:
-        raise command_run_conflict(f"command run '{run_id}' is already terminal")
-    if command_run.state == CommandRunState.CANCELLATION_REQUESTED.value:
-        if allow_already_requested:
-            return
-        raise command_run_conflict(f"command run '{run_id}' already has cancellation requested")
-
-
-def _ensure_command_run_can_be_claimed_for_local_start(
-    *,
-    command_run: CommandRunModel | None,
-    wait_state: FlowWaitStateModel | None,
-    run_id: str,
-) -> None:
-    _ensure_command_run_owns_active_wait(
-        command_run=command_run,
-        wait_state=wait_state,
-        run_id=run_id,
-    )
-    assert command_run is not None
-    if command_run.state != CommandRunState.PENDING_START.value:
-        raise command_run_conflict(
-            f"command run '{run_id}' is no longer pending local process start"
-        )
-
-
-def _ensure_command_run_can_record_progress(
-    *,
-    command_run: CommandRunModel | None,
-    wait_state: FlowWaitStateModel | None,
-    run_id: str,
-) -> None:
-    _ensure_command_run_owns_active_wait(
-        command_run=command_run,
-        wait_state=wait_state,
-        run_id=run_id,
-    )
-    assert command_run is not None
-    if command_run.state in {state.value for state in TERMINAL_COMMAND_RUN_STATES}:
-        raise command_run_conflict(f"command run '{run_id}' is already terminal")
-
-
-def _ensure_command_run_can_record_owned_process_pid(
-    *,
-    command_run: CommandRunModel | None,
-    wait_state: FlowWaitStateModel | None,
-    run_id: str,
-) -> None:
-    _ensure_command_run_owns_active_wait(
-        command_run=command_run,
-        wait_state=wait_state,
-        run_id=run_id,
-    )
-    assert command_run is not None
-    if command_run.state != CommandRunState.RUNNING.value:
-        raise command_run_conflict(
-            f"command run '{run_id}' is not in the local-running state needed to persist a pid"
-        )
-
-
-def _ensure_command_run_can_record_terminal_result(
-    *,
-    command_run: CommandRunModel | None,
-    wait_state: FlowWaitStateModel | None,
-    run_id: str,
-) -> None:
-    _ensure_command_run_owns_active_wait(
-        command_run=command_run,
-        wait_state=wait_state,
-        run_id=run_id,
-    )
-    assert command_run is not None
-    if command_run.state in {state.value for state in TERMINAL_COMMAND_RUN_STATES}:
-        raise command_run_conflict(f"command run '{run_id}' is already terminal")
-
-
-def _ensure_command_run_owns_active_wait(
-    *,
-    command_run: CommandRunModel | None,
-    wait_state: FlowWaitStateModel | None,
-    run_id: str,
-) -> None:
-    if command_run is None:
-        raise command_run_conflict(f"command run '{run_id}' is not current")
-    if (
-        wait_state is None
-        or wait_state.waiting_cause != WaitingCause.WAITING_FOR_COMMAND_RUN.value
-        or wait_state.command_run_id != command_run.run_id
-    ):
-        raise command_run_conflict(
-            f"command run '{run_id}' no longer owns the active command-run wait"
-        )
 
 
 async def _require_flow_for_task(

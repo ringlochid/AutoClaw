@@ -216,7 +216,7 @@ async def test_command_runner_persists_full_terminal_summary_without_truncation(
 
     monkeypatch.setattr(
         command_run_runner_service,
-        "_start_command_run_process",
+        "start_command_run_process",
         fail_command_run_process,
     )
 
@@ -265,7 +265,7 @@ async def test_command_runner_does_not_release_command_before_owned_pid_persists
 
     monkeypatch.setattr(
         command_run_runner_service,
-        "_record_owned_process_pid",
+        "record_runner_owned_process_pid",
         fail_owned_pid_record,
     )
 

@@ -354,8 +354,7 @@ def _parent_root_allowed_action_lines(node_kind: NodeKind) -> tuple[str, ...]:
             "closure after committed `release_blocked`"
         )
     release_precondition_line = (
-        f"- `{_node_tool('release_green')}` is a terminal precondition, not `yield` "
-        "basis"
+        f"- `{_node_tool('release_green')}` is a terminal precondition, not `yield` basis"
     )
     if node_kind == NodeKind.ROOT:
         release_precondition_line = (

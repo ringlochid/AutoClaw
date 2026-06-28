@@ -49,6 +49,14 @@ class WrapperStateResult:
     agent_profiles_written: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class _WrapperMaterialResult:
+    payload: dict[str, Any]
+    paths: dict[str, Path]
+    mcp_servers_written: tuple[str, ...]
+    agent_profiles_written: tuple[str, ...]
+
+
 async def cmd_openclaw_doctor(args: argparse.Namespace) -> int:
     progress = CliProgress.from_args(args)
     config_path = coerce_path(args.config)
@@ -238,6 +246,38 @@ async def reconcile_openclaw_setup(
         },
     )
 
+    material = _write_openclaw_wrapper_material(
+        config_path=config_path,
+        openclaw_base_url=openclaw_base_url,
+        openclaw_gateway_token=openclaw_gateway_token,
+        host_state=host_state,
+        selection=selection,
+        progress=active_progress,
+    )
+    active_progress.done("openclaw", "OpenClaw integration reconciled")
+    return WrapperStateResult(
+        path=material.paths["state"],
+        is_written=True,
+        payload=material.payload,
+        material_paths=material.paths,
+        worker_agent_id=selection.worker_agent_id,
+        operator_agent_id=selection.operator_agent_id,
+        mcp_servers_written=material.mcp_servers_written,
+        is_worker_bootstrapped=selection.is_worker_bootstrapped,
+        is_operator_bootstrapped=selection.is_operator_bootstrapped,
+        agent_profiles_written=material.agent_profiles_written,
+    )
+
+
+def _write_openclaw_wrapper_material(
+    *,
+    config_path: Path,
+    openclaw_base_url: str | None,
+    openclaw_gateway_token: str | None,
+    host_state: openclaw_discovery.OpenClawResolvedHostState,
+    selection: OpenClawAgentSelection,
+    progress: CliProgress,
+) -> _WrapperMaterialResult:
     with command_env(
         config_path=config_path,
         openclaw_base_url=openclaw_base_url,
@@ -245,26 +285,26 @@ async def reconcile_openclaw_setup(
     ):
         settings = load_settings()
         desired_servers = openclaw_host_setup.build_autoclaw_mcp_servers(settings)
-        active_progress.step("openclaw", "Patching OpenClaw agent profiles")
+        progress.step("openclaw", "Patching OpenClaw agent profiles")
         agent_profiles_written = openclaw_host_setup.set_openclaw_agent_profiles(
             host_state,
             worker_agent_id=selection.worker_agent_id,
             operator_agent_id=selection.operator_agent_id,
-            command_observer=active_progress.command,
-            command_output_observer=active_progress.command_output,
+            command_observer=progress.command,
+            command_output_observer=progress.command_output,
         )
-        active_progress.step("openclaw", "Writing OpenClaw MCP server definitions")
+        progress.step("openclaw", "Writing OpenClaw MCP server definitions")
         mcp_servers_written = openclaw_host_setup.set_openclaw_mcp_servers(
             host_state,
             servers=desired_servers,
-            command_observer=active_progress.command,
-            command_output_observer=active_progress.command_output,
+            command_observer=progress.command,
+            command_output_observer=progress.command_output,
         )
         payload = openclaw_wrapper_contract.desired_wrapper_state(
             settings=settings,
             host_state=host_state,
         )
-        active_progress.step("openclaw", "Writing AutoClaw wrapper material")
+        progress.step("openclaw", "Writing AutoClaw wrapper material")
         paths = openclaw_wrapper_contract.write_wrapper_material(
             data_dir=settings.data_dir,
             state=payload,
@@ -277,17 +317,10 @@ async def reconcile_openclaw_setup(
             ),
             mcp_surfaces=openclaw_wrapper_contract.desired_mcp_surfaces(),
         )
-    active_progress.done("openclaw", "OpenClaw integration reconciled")
-    return WrapperStateResult(
-        path=paths["state"],
-        is_written=True,
+    return _WrapperMaterialResult(
         payload=payload,
-        material_paths=paths,
-        worker_agent_id=selection.worker_agent_id,
-        operator_agent_id=selection.operator_agent_id,
+        paths=paths,
         mcp_servers_written=mcp_servers_written,
-        is_worker_bootstrapped=selection.is_worker_bootstrapped,
-        is_operator_bootstrapped=selection.is_operator_bootstrapped,
         agent_profiles_written=agent_profiles_written,
     )
 

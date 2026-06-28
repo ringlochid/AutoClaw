@@ -236,7 +236,7 @@ async def _candidate_dispatch_ids(
                 DispatchWatchdogStateModel.recovery_action == "redispatch_same_attempt",
                 DispatchWatchdogStateModel.recovery_dispatch_id.is_(None),
             )
-    )
+        )
     )
     return tuple(dict.fromkeys(dispatch_ids))
 

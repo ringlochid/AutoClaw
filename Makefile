@@ -14,7 +14,7 @@ TREE_IGNORE := .git|.venv|node_modules|dist|build|tmp|.pytest_cache|.mypy_cache|
 .PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
 
 tree:
-	@tree -a -L 7 --dirsfirst --prune --gitignore -I '$(TREE_IGNORE)'	
+	@tree -a -L 6 --dirsfirst --prune --gitignore -I '$(TREE_IGNORE)'
 
 clean-local:
 	rm -rf .openclaw-run-logs tmp .pytest_cache .mypy_cache .ruff_cache

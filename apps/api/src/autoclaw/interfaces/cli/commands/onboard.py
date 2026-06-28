@@ -105,18 +105,36 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         progress=progress,
     )
 
-    daemon_installed = False
-    if args.install_daemon:
-        install_result = _install_onboard_daemon(
-            args,
-            config_path=config_path,
-            requested_port=requested_port,
-            progress=progress,
-        )
-        if install_result != 0:
-            return install_result
-        daemon_installed = True
+    daemon_installed, install_result = _maybe_install_onboard_daemon(
+        args,
+        config_path=config_path,
+        requested_port=requested_port,
+        progress=progress,
+    )
+    if install_result is not None:
+        return install_result
 
+    return _emit_onboard_result(
+        args,
+        created_local_config=created_local_config,
+        database_repair=database_repair,
+        wrapper_result=wrapper_result,
+        daemon_installed=daemon_installed,
+        server_payload=server_payload,
+        openclaw_payload=openclaw_payload,
+    )
+
+
+def _emit_onboard_result(
+    args: argparse.Namespace,
+    *,
+    created_local_config: bool,
+    database_repair: dict[str, Any] | None,
+    wrapper_result: Any,
+    daemon_installed: bool,
+    server_payload: dict[str, Any],
+    openclaw_payload: dict[str, Any],
+) -> int:
     payload = _build_onboard_payload(
         created_local_config=created_local_config,
         database_repair=database_repair,
@@ -138,6 +156,26 @@ async def cmd_onboard(args: argparse.Namespace) -> int:
         daemon_installed=daemon_installed,
     )
     return 0
+
+
+def _maybe_install_onboard_daemon(
+    args: argparse.Namespace,
+    *,
+    config_path: Path,
+    requested_port: int | None,
+    progress: CliProgress,
+) -> tuple[bool, int | None]:
+    if not args.install_daemon:
+        return False, None
+    install_result = _install_onboard_daemon(
+        args,
+        config_path=config_path,
+        requested_port=requested_port,
+        progress=progress,
+    )
+    if install_result != 0:
+        return False, install_result
+    return True, None
 
 
 def _emit_prompt_unavailable_exit(command_name: str, exc: PromptUnavailableError) -> int:

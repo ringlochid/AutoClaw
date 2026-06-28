@@ -389,6 +389,38 @@ def host_base_url_from_config(host_state: OpenClawResolvedHostState) -> str | No
     return f"http://127.0.0.1:{raw_port}"
 
 
+def default_openclaw_agent_workspace(agent_id: str) -> Path:
+    return OPENCLAW_AGENT_WORKSPACE_ROOT / agent_id
+
+
+def default_openclaw_agent_dir(agent_id: str) -> Path:
+    return OPENCLAW_AGENT_DIR_ROOT / agent_id / "agent"
+
+
+def load_host_agent_entries_from_config(
+    host_state: OpenClawResolvedHostState,
+) -> dict[str, dict[str, Any]]:
+    payload = load_openclaw_config_payload(Path(host_state.config_path))
+    if not isinstance(payload, dict):
+        return {}
+    agents_payload = payload.get("agents")
+    if not isinstance(agents_payload, dict):
+        return {}
+    raw_list = agents_payload.get("list")
+    if not isinstance(raw_list, list):
+        return {}
+
+    entries: dict[str, dict[str, Any]] = {}
+    for entry in raw_list:
+        if not isinstance(entry, dict):
+            continue
+        raw_id = entry.get("id")
+        if not isinstance(raw_id, str) or not raw_id.strip():
+            continue
+        entries[raw_id.strip()] = entry
+    return entries
+
+
 def run_openclaw_cli(
     host_state: OpenClawResolvedHostState,
     *args: str,
@@ -435,38 +467,6 @@ def _openclaw_command_label(args: tuple[str, ...]) -> str:
 def _redact_openclaw_command_output(value: str) -> str:
     redacted = OPENCLAW_BEARER_PATTERN.sub(r"\1<redacted>", value)
     return OPENCLAW_SECRET_PATTERN.sub(r"\1<redacted>", redacted)
-
-
-def default_openclaw_agent_workspace(agent_id: str) -> Path:
-    return OPENCLAW_AGENT_WORKSPACE_ROOT / agent_id
-
-
-def default_openclaw_agent_dir(agent_id: str) -> Path:
-    return OPENCLAW_AGENT_DIR_ROOT / agent_id / "agent"
-
-
-def load_host_agent_entries_from_config(
-    host_state: OpenClawResolvedHostState,
-) -> dict[str, dict[str, Any]]:
-    payload = load_openclaw_config_payload(Path(host_state.config_path))
-    if not isinstance(payload, dict):
-        return {}
-    agents_payload = payload.get("agents")
-    if not isinstance(agents_payload, dict):
-        return {}
-    raw_list = agents_payload.get("list")
-    if not isinstance(raw_list, list):
-        return {}
-
-    entries: dict[str, dict[str, Any]] = {}
-    for entry in raw_list:
-        if not isinstance(entry, dict):
-            continue
-        raw_id = entry.get("id")
-        if not isinstance(raw_id, str) or not raw_id.strip():
-            continue
-        entries[raw_id.strip()] = entry
-    return entries
 
 
 def _merge_agent_patch(existing: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:

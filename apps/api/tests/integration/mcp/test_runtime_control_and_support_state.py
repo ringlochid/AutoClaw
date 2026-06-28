@@ -22,14 +22,6 @@ from autoclaw.runtime.projection.runtime_state import current_runtime_state
 from sqlalchemy import select
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
 from tests.helpers.operator_trace_readback import current_dispatch_history_entry
-from tests.helpers.support_state_shapes import (
-    assert_continuity_state_shape,
-    assert_delivery_state_shape,
-    assert_provider_event_shape,
-    assert_watchdog_state_shape,
-    load_json_payload,
-    load_provider_event_payloads,
-)
 from tests.integration.mcp.support import (
     assert_tool_result_matches_output_schema,
     bootstrap_runtime_task,
@@ -39,6 +31,11 @@ from tests.integration.mcp.support import (
     mcp_client_session,
     runtime_api_context,
     tool_failure,
+)
+from tests.integration.mcp.support_state_readback import (
+    assert_support_state_ref_filenames,
+    assert_support_state_ref_payloads,
+    load_support_state_refs,
 )
 
 
@@ -250,19 +247,19 @@ async def test_operator_mcp_support_state_refs_freeze_exact_field_sets(
                     continuity_ref,
                     watchdog_ref,
                     provider_events_ref,
-                ) = await _load_support_state_refs(session, task_id=task_id)
+                ) = await load_support_state_refs(session, task_id=task_id)
                 await drive_runtime_once(task_id=task_id)
 
             dispatch_history_entry = current_dispatch_history_entry(trace)
             assert dispatch_history_entry["node_key"] == "root"
-            _assert_support_state_ref_filenames(
+            assert_support_state_ref_filenames(
                 delivery_ref=delivery_ref,
                 continuity_ref=continuity_ref,
                 watchdog_ref=watchdog_ref,
                 provider_events_ref=provider_events_ref,
             )
             await drive_runtime_once(task_id=task_id)
-            _assert_support_state_ref_payloads(
+            assert_support_state_ref_payloads(
                 delivery_ref=delivery_ref,
                 continuity_ref=continuity_ref,
                 watchdog_ref=watchdog_ref,
@@ -288,142 +285,186 @@ async def test_operator_mcp_resolves_human_requests_and_controls_command_runs(
             )
 
             await _allow_human_request_kind(api, task_id=task_id, kind="review")
-            async with api.session_factory() as session:
-                state = await current_runtime_state(session, task_id)
-                dispatch = await session.get(DispatchTurnModel, state.flow.current_open_dispatch_id)
-                assert dispatch is not None
-                opened = await open_human_request(
-                    session,
-                    task_id=task_id,
-                    request=HumanRequestOpenRequest.model_validate(
-                        {
-                            "kind": "review",
-                            "title": "Review the staged change",
-                            "summary": "The node needs a human review before continuing.",
-                            "items": [
-                                {
-                                    "item_id": "review_choice",
-                                    "prompt": "Should the node continue?",
-                                    "options": [
-                                        {"id": "approve", "title": "Approve"},
-                                        {"id": "revise", "title": "Revise"},
-                                    ],
-                                    "recommended_option": "approve",
-                                }
-                            ],
-                            "suggested_human_instruction": "Inspect the staged change first.",
-                        }
-                    ),
-                    state=state,
-                    dispatch=dispatch,
-                )
-                await session.commit()
-
-            async with mcp_client_session(app) as mcp_session:
-                human_requests = await call_tool_structured(
-                    mcp_session,
-                    "get_human_requests",
-                    {"task_id": task_id},
-                )
-                assert human_requests["items"][0]["request"]["request_id"] == opened.request_id
-                assert human_requests["items"][0]["resolution"] is None
-
-                resolved = await call_tool_structured(
-                    mcp_session,
-                    "resolve_human_request",
-                    {
-                        "task_id": task_id,
-                        "request_id": opened.request_id,
-                        "item_responses": [
-                            {
-                                "item_id": "review_choice",
-                                "selected_option": "approve",
-                                "freeform_answer": None,
-                                "extra_notes": "Proceed.",
-                                "response_payload": None,
-                            }
-                        ],
-                    },
-                )
-                assert resolved["resolution"]["resolution_kind"] == "answered"
-
-                resolved_requests = await call_tool_structured(
-                    mcp_session,
-                    "get_human_requests",
-                    {"task_id": task_id},
-                )
-                assert (
-                    resolved_requests["items"][0]["resolution"]["resolved_by_actor_ref"]
-                    == "operator_mcp"
-                )
-
+            request_id = await _open_review_human_request(api, task_id=task_id)
+            await _assert_operator_mcp_resolves_review_request(
+                app,
+                task_id=task_id,
+                request_id=request_id,
+            )
             await drive_runtime_until(
                 lambda: _current_open_dispatch_restored(api, task_id=task_id),
                 task_id=task_id,
                 max_cycles=20,
             )
             await _allow_command_run(api, task_id=task_id)
-            async with api.session_factory() as session:
-                state = await current_runtime_state(session, task_id)
-                dispatch = await session.get(DispatchTurnModel, state.flow.current_open_dispatch_id)
-                assert dispatch is not None
-                command_run = await start_command_run(
-                    session,
-                    task_id=task_id,
-                    request=CommandRunStartRequest.model_validate(
-                        {
-                            "command": "pytest apps/api/tests/unit/runtime -q",
-                            "description": "Run focused runtime unit tests.",
-                            "workdir": "apps/api",
-                            "timeout_seconds": 900,
-                        }
-                    ),
-                    state=state,
-                    dispatch=dispatch,
-                )
-                await session.commit()
-
+            command_run_id = await _start_focused_command_run(api, task_id=task_id)
             command_run_app = create_operator_mcp_app(
                 transport_security=default_transport_security(host="127.0.0.1")
             )
-            async with mcp_client_session(command_run_app) as mcp_session:
-                command_runs = await call_tool_structured(
-                    mcp_session,
-                    "get_command_runs",
-                    {"task_id": task_id},
-                )
-                assert command_runs["items"][0]["run_id"] == command_run.run_id
+            await _assert_operator_mcp_cancels_command_run(
+                command_run_app,
+                task_id=task_id,
+                run_id=command_run_id,
+            )
+            await _assert_operator_mcp_control_persisted(
+                api,
+                request_id=request_id,
+                run_id=command_run_id,
+            )
 
-                command_run_detail = await call_tool_structured(
-                    mcp_session,
-                    "get_command_run",
-                    {"task_id": task_id, "run_id": command_run.run_id},
-                )
-                assert command_run_detail["state"] == "pending_start"
-                assert command_run_detail["terminal_result"] is None
 
-                cancelled = await call_tool_structured(
-                    mcp_session,
-                    "cancel_command_run",
-                    {"task_id": task_id, "run_id": command_run.run_id},
-                )
-                assert cancelled["run"]["state"] == "cancellation_requested"
+async def _open_review_human_request(api: Any, *, task_id: str) -> str:
+    async with api.session_factory() as session:
+        state = await current_runtime_state(session, task_id)
+        dispatch = await session.get(DispatchTurnModel, state.flow.current_open_dispatch_id)
+        assert dispatch is not None
+        opened = await open_human_request(
+            session,
+            task_id=task_id,
+            request=HumanRequestOpenRequest.model_validate(
+                {
+                    "kind": "review",
+                    "title": "Review the staged change",
+                    "summary": "The node needs a human review before continuing.",
+                    "items": [
+                        {
+                            "item_id": "review_choice",
+                            "prompt": "Should the node continue?",
+                            "options": [
+                                {"id": "approve", "title": "Approve"},
+                                {"id": "revise", "title": "Revise"},
+                            ],
+                            "recommended_option": "approve",
+                        }
+                    ],
+                    "suggested_human_instruction": "Inspect the staged change first.",
+                }
+            ),
+            state=state,
+            dispatch=dispatch,
+        )
+        await session.commit()
+        return opened.request_id
 
-                cancelled_detail = await call_tool_structured(
-                    mcp_session,
-                    "get_command_run",
-                    {"task_id": task_id, "run_id": command_run.run_id},
-                )
-                assert cancelled_detail["state"] == "cancellation_requested"
 
-            async with api.session_factory() as session:
-                pending_request = await session.get(PendingHumanRequestModel, opened.request_id)
-                persisted_command_run = await session.get(CommandRunModel, command_run.run_id)
-                assert pending_request is not None
-                assert pending_request.resolved_by_actor_ref == "operator_mcp"
-                assert pending_request.resolved_by_surface == "operator_mcp"
-                assert persisted_command_run is not None
-                assert persisted_command_run.cancellation_requested_by_actor_ref == "operator_mcp"
+async def _assert_operator_mcp_resolves_review_request(
+    app: Any,
+    *,
+    task_id: str,
+    request_id: str,
+) -> None:
+    async with mcp_client_session(app) as mcp_session:
+        human_requests = await call_tool_structured(
+            mcp_session,
+            "get_human_requests",
+            {"task_id": task_id},
+        )
+        assert human_requests["items"][0]["request"]["request_id"] == request_id
+        assert human_requests["items"][0]["resolution"] is None
+
+        resolved = await call_tool_structured(
+            mcp_session,
+            "resolve_human_request",
+            {
+                "task_id": task_id,
+                "request_id": request_id,
+                "item_responses": [
+                    {
+                        "item_id": "review_choice",
+                        "selected_option": "approve",
+                        "freeform_answer": None,
+                        "extra_notes": "Proceed.",
+                        "response_payload": None,
+                    }
+                ],
+            },
+        )
+        assert resolved["resolution"]["resolution_kind"] == "answered"
+
+        resolved_requests = await call_tool_structured(
+            mcp_session,
+            "get_human_requests",
+            {"task_id": task_id},
+        )
+        assert (
+            resolved_requests["items"][0]["resolution"]["resolved_by_actor_ref"] == "operator_mcp"
+        )
+
+
+async def _start_focused_command_run(api: Any, *, task_id: str) -> str:
+    async with api.session_factory() as session:
+        state = await current_runtime_state(session, task_id)
+        dispatch = await session.get(DispatchTurnModel, state.flow.current_open_dispatch_id)
+        assert dispatch is not None
+        command_run = await start_command_run(
+            session,
+            task_id=task_id,
+            request=CommandRunStartRequest.model_validate(
+                {
+                    "command": "pytest apps/api/tests/unit/runtime -q",
+                    "description": "Run focused runtime unit tests.",
+                    "workdir": "apps/api",
+                    "timeout_seconds": 900,
+                }
+            ),
+            state=state,
+            dispatch=dispatch,
+        )
+        await session.commit()
+        return command_run.run_id
+
+
+async def _assert_operator_mcp_cancels_command_run(
+    app: Any,
+    *,
+    task_id: str,
+    run_id: str,
+) -> None:
+    async with mcp_client_session(app) as mcp_session:
+        command_runs = await call_tool_structured(
+            mcp_session,
+            "get_command_runs",
+            {"task_id": task_id},
+        )
+        assert command_runs["items"][0]["run_id"] == run_id
+
+        command_run_detail = await call_tool_structured(
+            mcp_session,
+            "get_command_run",
+            {"task_id": task_id, "run_id": run_id},
+        )
+        assert command_run_detail["state"] == "pending_start"
+        assert command_run_detail["terminal_result"] is None
+
+        cancelled = await call_tool_structured(
+            mcp_session,
+            "cancel_command_run",
+            {"task_id": task_id, "run_id": run_id},
+        )
+        assert cancelled["run"]["state"] == "cancellation_requested"
+
+        cancelled_detail = await call_tool_structured(
+            mcp_session,
+            "get_command_run",
+            {"task_id": task_id, "run_id": run_id},
+        )
+        assert cancelled_detail["state"] == "cancellation_requested"
+
+
+async def _assert_operator_mcp_control_persisted(
+    api: Any,
+    *,
+    request_id: str,
+    run_id: str,
+) -> None:
+    async with api.session_factory() as session:
+        pending_request = await session.get(PendingHumanRequestModel, request_id)
+        persisted_command_run = await session.get(CommandRunModel, run_id)
+        assert pending_request is not None
+        assert pending_request.resolved_by_actor_ref == "operator_mcp"
+        assert pending_request.resolved_by_surface == "operator_mcp"
+        assert persisted_command_run is not None
+        assert persisted_command_run.cancellation_requested_by_actor_ref == "operator_mcp"
 
 
 async def _allow_human_request_kind(
@@ -503,85 +544,3 @@ async def _current_open_dispatch_restored(
     async with api.session_factory() as session:
         flow = await session.scalar(select(FlowModel).where(FlowModel.task_id == task_id))
         return flow is not None and flow.current_open_dispatch_id is not None
-
-
-async def _load_support_state_refs(
-    session: Any,
-    *,
-    task_id: str,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
-    trace = await call_tool_structured(
-        session,
-        "get_operator_trace",
-        {"task_id": task_id, "scope": "current"},
-    )
-    delivery_ref = await call_tool_structured(
-        session,
-        "get_delivery_state_ref",
-        {"task_id": task_id},
-    )
-    continuity_ref = await call_tool_structured(
-        session,
-        "get_continuity_state_ref",
-        {"task_id": task_id},
-    )
-    watchdog_ref = await call_tool_structured(
-        session,
-        "get_watchdog_state_ref",
-        {"task_id": task_id},
-    )
-    provider_events_ref = await call_tool_structured(
-        session,
-        "get_provider_events_ref",
-        {"task_id": task_id},
-    )
-    return trace, delivery_ref, continuity_ref, watchdog_ref, provider_events_ref
-
-
-def _assert_support_state_ref_filenames(
-    *,
-    delivery_ref: dict[str, Any],
-    continuity_ref: dict[str, Any],
-    watchdog_ref: dict[str, Any],
-    provider_events_ref: dict[str, Any],
-) -> None:
-    assert Path(str(delivery_ref["path"])).name == "delivery-state.json"
-    assert Path(str(continuity_ref["path"])).name == "continuity-state.json"
-    assert Path(str(watchdog_ref["path"])).name == "watchdog-state.json"
-    assert Path(str(provider_events_ref["path"])).name == "provider-events.ndjson"
-
-
-def _assert_support_state_ref_payloads(
-    *,
-    delivery_ref: dict[str, Any],
-    continuity_ref: dict[str, Any],
-    watchdog_ref: dict[str, Any],
-    provider_events_ref: dict[str, Any],
-) -> None:
-    delivery_path = Path(str(delivery_ref["path"]))
-    continuity_path = Path(str(continuity_ref["path"]))
-    watchdog_path = Path(str(watchdog_ref["path"]))
-    provider_events_path = Path(str(provider_events_ref["path"]))
-    delivery_payload = load_json_payload(delivery_path)
-    continuity_payload = load_json_payload(continuity_path)
-    watchdog_payload = load_json_payload(watchdog_path)
-    provider_events = load_provider_event_payloads(provider_events_path)
-
-    assert_delivery_state_shape(
-        delivery_payload,
-        dispatch_id_from_path=delivery_path.parent.name,
-    )
-    assert_continuity_state_shape(
-        continuity_payload,
-        dispatch_id_from_path=continuity_path.parent.name,
-    )
-    assert_watchdog_state_shape(
-        watchdog_payload,
-        dispatch_id_from_path=watchdog_path.parent.name,
-    )
-    assert provider_events
-    for event_payload in provider_events:
-        assert_provider_event_shape(
-            event_payload,
-            dispatch_id_from_path=provider_events_path.parent.name,
-        )

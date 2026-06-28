@@ -65,8 +65,7 @@ class DispatchTurnModel(RuntimeBase):
             name="ck_dispatch_turns_accepted_boundary",
         ),
         CheckConstraint(
-            "launch_failure_phase IS NULL OR "
-            "launch_failure_phase IN ('pre_send', 'post_send')",
+            "launch_failure_phase IS NULL OR launch_failure_phase IN ('pre_send', 'post_send')",
             name="ck_dispatch_turns_launch_failure_phase",
         ),
         CheckConstraint(
