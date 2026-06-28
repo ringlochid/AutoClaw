@@ -310,6 +310,60 @@ def _postgres_quote_identifier(value: str) -> str:
     return '"' + value.replace('"', '""') + '"'
 
 
+def _postgres_fk_validity_predicates(
+    connection: Connection,
+    *,
+    table_name: str,
+    source_alias: str,
+    backup_columns: set[str],
+) -> list[str]:
+    predicates: list[str] = []
+    for foreign_key in inspect(connection).get_foreign_keys(table_name):
+        referred_table = foreign_key.get("referred_table")
+        constrained_columns = [
+            str(column) for column in foreign_key.get("constrained_columns", ())
+        ]
+        referred_columns = [str(column) for column in foreign_key.get("referred_columns", ())]
+        if (
+            not referred_table
+            or not constrained_columns
+            or len(constrained_columns) != len(referred_columns)
+            or any(column not in backup_columns for column in constrained_columns)
+        ):
+            continue
+        source_null_checks = [
+            f"{source_alias}.{_postgres_quote_identifier(column)} IS NULL"
+            for column in constrained_columns
+        ]
+        target_matches = [
+            " = ".join(
+                [
+                    f"target.{_postgres_quote_identifier(referred_column)}",
+                    f"{source_alias}.{_postgres_quote_identifier(constrained_column)}",
+                ]
+            )
+            for constrained_column, referred_column in zip(
+                constrained_columns,
+                referred_columns,
+                strict=True,
+            )
+        ]
+        predicates.append(
+            " OR ".join(
+                [
+                    *source_null_checks,
+                    (
+                        "EXISTS ("
+                        f"SELECT 1 FROM public.{_postgres_quote_identifier(str(referred_table))} "
+                        f"AS target WHERE {' AND '.join(target_matches)}"
+                        ")"
+                    ),
+                ]
+            )
+        )
+    return predicates
+
+
 def _postgres_copyable_tables(
     connection: Connection,
     backup_schema: str,
@@ -386,8 +440,23 @@ def _copy_postgres_legacy_data(
         shared_columns = [name for name in current_columns if name in backup_columns]
         quoted_columns = ", ".join(_postgres_quote_identifier(name) for name in shared_columns)
         insert_target = f"public.{_postgres_quote_identifier(table_name)}"
-        select_source = (
-            f"{_postgres_quote_identifier(backup_schema)}.{_postgres_quote_identifier(table_name)}"
+        source_alias = "legacy_source"
+        select_source = " ".join(
+            [
+                f"{_postgres_quote_identifier(backup_schema)}.{_postgres_quote_identifier(table_name)}",
+                f"AS {source_alias}",
+            ]
+        )
+        fk_predicates = _postgres_fk_validity_predicates(
+            connection,
+            table_name=table_name,
+            source_alias=source_alias,
+            backup_columns=backup_columns,
+        )
+        where_clause = (
+            "WHERE " + " AND ".join(f"({predicate})" for predicate in fk_predicates)
+            if fk_predicates
+            else ""
         )
         connection.execute(
             text(
@@ -396,6 +465,7 @@ def _copy_postgres_legacy_data(
                         f"INSERT INTO {insert_target} ({quoted_columns})",
                         f"SELECT {quoted_columns}",
                         f"FROM {select_source}",
+                        where_clause,
                         "ON CONFLICT DO NOTHING",
                     ]
                 )
