@@ -28,6 +28,42 @@ def root_blocked_workflow() -> WorkflowDefinitionFile:
     )
 
 
+def parent_blocked_workflow() -> WorkflowDefinitionFile:
+    return WorkflowDefinitionFile.model_validate(
+        {
+            "kind": "workflow",
+            "id": "parent-blocked-review",
+            "description": "Validate non-root parent blocked boundary propagation.",
+            "root": {
+                "id": "root",
+                "role": "root_planning_lead",
+                "policy": "standard-root-planning",
+                "description": "Root coordinator.",
+                "children": [
+                    {
+                        "id": "investigate_parent",
+                        "role": "planning_lead",
+                        "policy": "standard-parent-planning",
+                        "description": (
+                            "Coordinate the investigation subtree and report blockers."
+                        ),
+                        "children": [
+                            {
+                                "id": "blocked_child",
+                                "role": "researcher",
+                                "description": (
+                                    "Optional child work that should not be required "
+                                    "before the parent can return blocked."
+                                ),
+                            }
+                        ],
+                    }
+                ],
+            },
+        }
+    )
+
+
 def root_replan_publication_workflow() -> WorkflowDefinitionFile:
     return WorkflowDefinitionFile.model_validate(
         {

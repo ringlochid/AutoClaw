@@ -133,6 +133,10 @@ This page inventories the current generated prompt contract surfaces. Static exa
   - rendered heading: `parent_root_dispatch_prompt`
   - family: `parent_root_dispatch_prompt`
   - send mode: `full_prompt`
+- `parent_root_dispatch_prompt_non_root_blocked_full_prompt`
+  - rendered heading: `parent_root_dispatch_prompt non-root blocked closure`
+  - family: `parent_root_dispatch_prompt`
+  - send mode: `full_prompt`
 - `worker_dispatch_prompt_full_prompt`
   - rendered heading: `worker_dispatch_prompt`
   - family: `worker_dispatch_prompt`

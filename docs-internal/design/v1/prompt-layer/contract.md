@@ -167,7 +167,7 @@ The prompt should also make the surfaced read roots explicit:
 | Prompt                        | Audience                                      | Core action surface                                                                                           | Must include                                                                                                                                                                          |
 | ----------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `worker_dispatch_prompt`      | worker, review, QA, release, audit leaf nodes | do the current assignment, use `record_checkpoint`, close with `green`, `retry`, or `blocked`                 | manifest ref, assignment ref, latest relevant checkpoint ref when surfaced, consumed durable refs, optional transient refs, task-memory search hints, result/boundary reminder        |
-| `parent_root_dispatch_prompt` | parent and root nodes                         | use control tools, use `record_checkpoint` when reasoning must persist, close non-terminal turns with `yield` | manifest ref, assignment ref, latest relevant checkpoint ref when surfaced, surfaced durable refs when relevant, task-memory search hints when relevant, tool list, boundary reminder |
+| `parent_root_dispatch_prompt` | parent and root nodes                         | use control tools, use `record_checkpoint` when reasoning must persist, close non-terminal turns with `yield`, close terminal turns with `green` or `blocked` | manifest ref, assignment ref, latest relevant checkpoint ref when surfaced, surfaced durable refs when relevant, task-memory search hints when relevant, tool list, boundary reminder |
 
 ## Worked Family Intent
 
@@ -207,6 +207,7 @@ still insufficient, then reread the regenerated manifest before deciding
 whether one child assignment should be staged.
 Do not use definition revision history as normal parent/root planning input.
 If one child assignment is staged and the dispatch stays non-terminal, call `record_checkpoint` when later readers need the reasoning and then emit `yield`.
+If this parent/root node cannot complete its current assignment, publish a terminal blocked checkpoint and close with `blocked`; non-root parent blocked returns control upward and does not use `release_blocked`.
 If you commit `release_green` or root `release_blocked`, later close with the matching terminal boundary instead of `yield`.
 ```
 

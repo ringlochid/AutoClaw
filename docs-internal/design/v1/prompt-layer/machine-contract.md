@@ -175,7 +175,8 @@ Machine validation should reject live catalog/examples that:
 - omit `consumed_durable_refs` from worker prompts
 - register parent/root terminal closure modes outside `yield | green | blocked`
 - teach `yield` after `release_green` or root `release_blocked`
-- teach `release_blocked` or terminal `blocked` as a non-root parent path
+- teach `release_blocked` as a non-root parent path
+- omit terminal `blocked` as a non-root parent path
 - surface checkpoint `control_effects`
 - route live prompt-layer owner or generated surfaces to legacy source packs instead of current owner docs
 - register a third canonical dispatch prompt family
@@ -191,7 +192,7 @@ Reject:
 - a parent/root catalog family that still includes `retry` as a closure mode
 - a checkpoint render that includes `control_effects`
 - a root example that teaches `yield` after `release_green` or root `release_blocked`
-- a non-root parent example that teaches `release_blocked` or terminal `blocked`
+- a non-root parent example that surfaces `release_blocked` as an allowed non-root action or omits terminal `blocked`
 - a live prompt catalog that registers any non-`full_prompt` send mode or generated example
 ```
 

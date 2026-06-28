@@ -71,7 +71,7 @@ When in doubt:
 1. read the architecture owner pages first
 2. read the prompt-layer and interface owner pages second
 3. use the ADR lane for the durable why, not older implementation leftovers
-4. treat the archived historical review log under `../../archive/design/findings.md` and `../../archive/` as historical context, not live owner docs
+4. do not recreate deleted archive or execution trees just to satisfy stale references
 
 ## Search-first routing
 
@@ -99,7 +99,6 @@ If you are asking:
 - [How-to guides](how-to/README.md)
 - [Tutorials](tutorials/README.md)
 - [Durable decisions](../../adr/README.md)
-- [Historical review log](../../archive/design/findings.md)
 
 ## Keywords
 

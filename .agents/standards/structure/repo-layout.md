@@ -23,8 +23,6 @@ Use this guide when the work includes moving files, splitting packages, renaming
 - `docs/**`: public product, operator, reference, and help docs
 - `docs-internal/design/**`: target design truth, versioned by product era
 - `docs-internal/current/**`: shipped-behavior contrast, versioned by product era
-- `docs-internal/execution/**`: implementation routing, plans, evidence, and reviews, versioned by owning program or product era
-- `docs-internal/archive/**`: historical material only
 - `docs-internal/adr/**`: durable accepted decisions
 - `scripts/docs/**`: docs and prompt tooling
 - `scripts/testing/**`: test runners and support scripts

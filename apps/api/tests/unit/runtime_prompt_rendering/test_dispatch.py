@@ -403,7 +403,7 @@ def test_parent_prompt_surfaces_structural_edit_palette_in_manifest_and_instruct
     assert "standard-parent-planning (applies_to: parent)" in bundle.instructions_text
 
 
-def test_non_root_parent_prompt_excludes_root_only_actions_and_blocked_closure(
+def test_non_root_parent_prompt_excludes_root_only_release_and_allows_blocked_closure(
     tmp_path: Path,
 ) -> None:
     bundle = render_prompt_bundle(
@@ -422,10 +422,13 @@ def test_non_root_parent_prompt_excludes_root_only_actions_and_blocked_closure(
         "`autoclaw-node__release_green`, `autoclaw-node__release_blocked`, "
         "`autoclaw-node__record_checkpoint`"
     ) not in allowed_actions_section
-    assert "choose a legal blocked path" not in allowed_actions_section
+    assert "`autoclaw-node__release_blocked`" not in allowed_actions_section
+    assert "choose a legal blocked boundary" in allowed_actions_section
     assert "emit `green | blocked`" not in allowed_actions_section
-    assert "emit `green` only when this parent node is closing its own current assignment" in (
-        allowed_actions_section
+    assert (
+        "emit `green` only when this parent node is closing its own current assignment; "
+        "emit `blocked` only when this node cannot complete its current assignment and "
+        "has published a terminal blocked checkpoint" in allowed_actions_section
     )
 
 

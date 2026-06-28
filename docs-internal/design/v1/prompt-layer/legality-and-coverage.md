@@ -59,7 +59,7 @@ Must support:
 - structural edit orientation
 - surfaced child evidence review
 - non-terminal closure through `yield`
-- terminal closure through `green` when the parent/root node itself is closing its own current assignment, plus root-only `blocked` after committed `release_blocked`
+- terminal closure through `green | blocked` when the parent/root node itself is closing its own current assignment; root whole-flow `blocked` closure also requires committed `release_blocked`
 
 ## Generated-artifact rule
 

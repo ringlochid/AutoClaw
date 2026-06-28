@@ -49,15 +49,14 @@ We are building it so:
 - public product docs, public reference/internals docs, and internal canon docs should remain distinct methodology layers
 - `docs-internal/design/**` is the long-term home for target design truth
 - `docs-internal/current/**` is the long-term home for shipped-behavior contrast
-- `docs-internal/execution/**` owns execution routing, phase contracts, gates, and execution records
-- the current phase page owns the phase-local delivery contract
+- durable accepted decisions live under `docs-internal/adr/**`
 - design appendix owners own exhaustive API, schema, prompt, and payload detail
 
 ## Instruction layering
 
 - read this file first
 - read `STYLE.md` second
-- read `docs-internal/execution/v1/README.md`, `docs-internal/execution/v1/phases/overview.md`, the current phase page, and `docs-internal/execution/v1/maps/file-priority-map.md` before implementation work
+- read the relevant `docs-internal/design/**` and `docs-internal/current/**` owner pages before implementation work
 - use `.agents/standards/*` for extended cleanup and layout guidance after the root surfaces
 - if a closer subtree `AGENTS.md` is added later, treat it as local routing for that subtree, not a silent replacement for root canon
 
@@ -69,16 +68,14 @@ The current docs layout is:
 - V2 target design truth under `docs-internal/design/v2/**`
 - V1 target baseline and existing execution-era design truth under `docs-internal/design/v1/**`
 - shipped-behavior contrast under `docs-internal/current/v1/**`
-- execution routing, phases, gates, and records under `docs-internal/execution/v1/**`
 - durable accepted decisions under `docs-internal/adr/**`
-- historical material under `docs-internal/archive/**`
 
 Rules:
 
 - prefer `design/` rather than `redesign/` in all live canon naming
 - keep public docs versionless by default
 - keep internal version eras explicit with directories such as `v1/`, `v2/`, and future draft-version directories
-- do not recreate live `docs-internal/design/v1/**`, `docs-internal/current/v1/**`, `docs-internal/execution/v1/**`, or `docs-internal/archive/**` trees
+- do not recreate deleted execution or archive trees just to satisfy stale references
 
 ## Source of truth rule
 
@@ -94,27 +91,20 @@ Rules:
 Read these in order before non-trivial implementation:
 
 1. `STYLE.md`
-2. `docs-internal/execution/v1/README.md`
-3. `docs-internal/execution/v1/phases/overview.md`
-4. the selected current phase page in `docs-internal/execution/v1/phases/`
-5. `docs-internal/execution/v1/maps/file-priority-map.md`
-6. the primary design pages named by the phase page
-7. the required supporting design pages, current-contrast pages, examples, and diagrams named by the phase page
-8. the relevant gate pages in `docs-internal/execution/v1/gates/`
-9. the smallest relevant subset of `.agents/standards/*`
+2. the primary `docs-internal/design/**` owner page for the touched surface
+3. any relevant `docs-internal/current/**` shipped-behavior contrast page
+4. named appendix owners for exact API, schema, prompt, or payload detail
+5. the smallest relevant subset of `.agents/standards/*`
 
 ## Implementation fast path
 
-1. Identify the next blocking design delta and select the owning phase.
-2. Run the pre-implementation review flow from `docs-internal/execution/v1/README.md`.
-3. If stale repo shape still dominates the target-facing behavior, route to Phase 0.5 before patching forward.
-4. Use the current phase page as the sole phase-local contract.
-5. Use `docs-internal/execution/v1/maps/file-priority-map.md` as the owned-surface map.
-6. Read the required design, current-contrast, example, and diagram pages named by the phase page.
-7. Add or update tests early.
-8. Implement only the approved work package or bounded slice.
-9. Run post-implementation review, gates, reset when applicable, and phase-done checks before claiming completion.
-10. If the blocker depends on exact case-sequence timing or sync/async ownership, route it back to the owning Phase 2 or Phase 3 docs instead of inventing new shared canon.
+1. Identify the smallest target/current-doc delta that owns the behavior.
+2. Read the owner design page, current contrast page when it exists, and appendix owners for exact contracts.
+3. If stale repo shape still dominates target-facing behavior, patch canon before treating the answer as settled.
+4. Add or update tests early.
+5. Implement the bounded slice only.
+6. Run the applicable tests, docs validators, and review checks before claiming completion.
+7. If the blocker depends on exact case-sequence timing or sync/async ownership, patch the owning design/current docs instead of inventing new shared canon.
 
 ## Answer-source hierarchy
 
@@ -124,7 +114,6 @@ Use this order when a design or implementation question comes up:
 2. `docs-internal/design/v1/**` and named design appendix owners for baseline or still-V1 surfaces
 3. `docs-internal/current/v1/**`
 4. repo code and tests
-5. `docs-internal/archive/**`, only when canonical docs are still silent
 
 Rules:
 
@@ -169,10 +158,8 @@ Rules:
 
 - add or update tests before claiming a behavior change is done
 - where practical, start with a failing or gap-revealing test
-- keep exact phase-scoped runs, gate results, and blockers in the matching evidence or review artifacts
 - use real DB paths and shipped setup for integration, reset, schema, install, upgrade, and public-surface proof; unit lanes remain unit-scoped
 - do not use mocks to stand in for shipped persistence, shipped runtime truth, or shipped public-surface behavior
-- keep exact phase-scoped plan, evidence, and review artifacts under `docs-internal/execution/v1/plans/`, `docs-internal/execution/v1/evidence/`, and `docs-internal/execution/v1/reviews/`
 - if a command, validator, or lane is skipped, record the exact scope reason or blocker in review
 - if test-command expectations change, update this file and the owning command surface such as `Makefile` together
 
@@ -238,7 +225,7 @@ For touched docs:
 - use subagents only for bounded slices with explicit owned surfaces
 - every plan must say `no subagents` or define the delegated slices
 - every delegated slice must be tagged `edit` or `review-only`
-- every delegated slice must name the selected phase, owned surfaces, do-not-edit surfaces, required reads, expected outputs, required tests or validators, dependencies, evidence to return, parent-owned decisions, and stop conditions
+- every delegated slice must name the owner docs, owned surfaces, do-not-edit surfaces, required reads, expected outputs, required tests or validators, dependencies, evidence to return, parent-owned decisions, and stop conditions
 - subagents must read the docs, tests, code, examples, and diagrams needed for their owned slice before editing
 - keep parallel subagent edit surfaces separated
 - make every subagent aware of the real user task, the approved plan, and the relevant WBS/work package rather than giving it a context-free patch brief
@@ -252,7 +239,7 @@ For touched docs:
 ### Subagent brief standard
 
 - every subagent brief must name the slice type (`edit` or `review-only`)
-- every subagent brief must name the selected phase and the approved work package or bounded slice it serves
+- every subagent brief must name the owner docs and bounded slice it serves
 - every subagent brief must name owned surfaces and explicit do-not-edit surfaces
 - every subagent brief must name the required docs, code, tests, examples, and diagrams the slice must read before editing
 - every subagent brief must name expected outputs, required tests or validators, dependencies, evidence to return, parent-owned decisions, and stop conditions
@@ -268,23 +255,23 @@ For touched docs:
 
 ### Phase barrier rule
 
-- a subagent may not advance work into a different phase, a later work package, or an unrelated lane on its own
-- if landing a slice would require the next phase, a different owning work package, a canon patch, or surfaces outside the approved slice, the subagent must stop and return the blocker or handoff instead of continuing
+- a subagent may not advance work into a different owner surface or unrelated lane on its own
+- if landing a slice would require a different owner doc, a canon patch, or surfaces outside the approved slice, the subagent must stop and return the blocker or handoff instead of continuing
 
 ## Review and closeout rule
 
 Do not claim work complete until:
 
-- the selected phase contract, file-lock map, and approved plan all still agree with the landed diff
+- the owner docs and approved bounded slice still agree with the landed diff
 - code, docs, tests, and evidence are present together
 - the mandatory review gate passes
-- the reset gate passes when the touched phase owns DB schema, runtime record contract, package/install path, or public CLI/API truth
+- the reset gate passes when the touched surface owns DB schema, runtime record contract, package/install path, or public CLI/API truth
 - docs-only progress is not being used where code or tests were required
 - inspected-only evidence is not standing in for executed proof when executed tests were required and viable
 - no locked-surface drift remains without an explicit re-scope or canon update
 - no install, upgrade, or reset proof depends on test-only schema creation, direct helper invocation, or other non-shipped setup
-- no later-phase behavior still reads authority from repo files after canon assigns that authority to controller-owned DB truth
-- the relevant phase kill-list terms have been searched before completion
+- no behavior still reads authority from repo files after canon assigns that authority to controller-owned DB truth
+- relevant stale migration terms have been searched before completion
 - the final diff is clean against `AGENTS.md`, `STYLE.md`, and the relevant `.agents/standards/*` guidance
 - any skipped lane, retained debt, or exception is written down with an exact owner and reason
 - touched Python-owned surfaces do not retain unaccessed private helpers, duplicated logic, redundant branches, or underscore-private shared helpers without exact review justification

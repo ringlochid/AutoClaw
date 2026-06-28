@@ -197,6 +197,19 @@ def build_parent_prompt_request(tmp_path: Path, *, send_mode: Any) -> Any:
     )
 
 
+def build_non_root_parent_blocked_prompt_request(tmp_path: Path, *, send_mode: Any) -> Any:
+    return PromptRenderRequest(
+        prompt_family=PromptFamily.PARENT_ROOT_DISPATCH,
+        send_mode=send_mode,
+        task_id="task_2026_0042",
+        session_key="sess_parent_dispatch_03",
+        current_node=build_non_root_parent_node_context(),
+        manifest=build_non_root_parent_manifest(tmp_path),
+        assignment=build_non_root_parent_assignment(tmp_path),
+        latest_checkpoint=build_non_root_parent_blocked_checkpoint(),
+    )
+
+
 def build_parent_node_context() -> Any:
     return ResolvedNodeContext(
         node_key="root",
@@ -213,6 +226,28 @@ def build_parent_node_context() -> Any:
             "Root owns final closure and may use release tools only when current "
             "evidence makes that legal."
         ),
+    )
+
+
+def build_non_root_parent_node_context() -> Any:
+    return ResolvedNodeContext(
+        node_key="triage_recovery",
+        node_kind=NodeKind.PARENT,
+        node_description=(
+            "Coordinate the recovery subtree and return control upward when the "
+            "current parent assignment cannot continue."
+        ),
+        role_key="planning_lead",
+        role_revision_no=42,
+        role_description="Parent coordinator for scoped recovery planning.",
+        role_instruction=(
+            "Either stage one bounded child assignment or close this parent node "
+            "with a terminal checkpoint."
+        ),
+        policy_key="standard-parent-planning",
+        policy_revision_no=52,
+        policy_description="Default parent planning and escalation behavior.",
+        policy_instruction="Use root-only release tools only when the current node is root.",
     )
 
 
@@ -236,6 +271,41 @@ def build_parent_manifest(tmp_path: Path) -> Any:
                 kind=EvidenceKind.WIKI,
                 path=tmp_path / "context" / "wiki" / "cookie-rotation-note.md",
                 description="Curated task-memory note about cookie rotation.",
+            ),
+        ),
+    )
+
+
+def build_non_root_parent_manifest(tmp_path: Path) -> Any:
+    latest_checkpoint_path = (
+        tmp_path / "_runtime" / "attempts" / "attempt.triage_recovery.03" / "latest-checkpoint.md"
+    )
+    child_checkpoint_path = (
+        tmp_path / "_runtime" / "attempts" / "attempt.repro_fixture.02" / "latest-checkpoint.md"
+    )
+    return build_sample_manifest(
+        tmp_path,
+        node_key="triage_recovery",
+        owner_node_key="triage_recovery",
+        attempt_id="attempt.triage_recovery.03",
+        latest_relevant_checkpoint_path=latest_checkpoint_path,
+        current_relevant_paths=(
+            NodeRuntimeFileRef(
+                kind=NodeRuntimeFileKind.CHECKPOINT,
+                path=child_checkpoint_path,
+                description="Latest child checkpoint proving the recovery branch is blocked.",
+            ),
+            EvidenceRef(
+                kind=EvidenceKind.ARTIFACT,
+                slot="repro_report",
+                version=3,
+                path=tmp_path
+                / "outputs"
+                / "artifacts"
+                / "repro_fixture"
+                / "repro_report"
+                / "repro_report.v03.md",
+                description="Current repro evidence showing the parent cannot continue.",
             ),
         ),
     )
@@ -301,6 +371,61 @@ def build_parent_assignment(tmp_path: Path) -> Any:
     )
 
 
+def build_non_root_parent_assignment(tmp_path: Path) -> Any:
+    child_checkpoint_path = (
+        tmp_path / "_runtime" / "attempts" / "attempt.repro_fixture.02" / "latest-checkpoint.md"
+    )
+    repro_report_path = (
+        tmp_path
+        / "outputs"
+        / "artifacts"
+        / "repro_fixture"
+        / "repro_report"
+        / "repro_report.v03.md"
+    )
+    return AssignmentProjection(
+        assignment_key="triage_recovery.assign-03",
+        node_key="triage_recovery",
+        summary=(
+            "Decide whether the recovery subtree can continue after the latest child evidence."
+        ),
+        instruction=(
+            "If no bounded child assignment can move the recovery branch forward, publish "
+            "a terminal blocked checkpoint and close this parent node with blocked."
+        ),
+        criteria=(
+            EvidenceRef(
+                kind=EvidenceKind.CRITERIA,
+                slot="parent_blocked_rule",
+                path=tmp_path / "_runtime" / "criteria" / "parent_blocked_rule.md",
+                description="Parent blocked escalation criteria.",
+            ),
+        ),
+        consumes=(
+            NodeRuntimeFileRef(
+                kind=NodeRuntimeFileKind.CHECKPOINT,
+                path=child_checkpoint_path,
+                description="Latest child checkpoint proving the recovery branch is blocked.",
+            ),
+            EvidenceRef(
+                kind=EvidenceKind.ARTIFACT,
+                slot="repro_report",
+                version=3,
+                path=repro_report_path,
+                description="Current repro evidence showing the parent cannot continue.",
+            ),
+        ),
+        produces=(
+            ProduceRequirement(
+                slot="parent_handoff",
+                description="Durable parent handoff if this node closes blocked.",
+                file_hint="parent_handoff.md",
+            ),
+        ),
+        task_memory_search_hints=("recovery fixture ownership", "blocked parent handoff"),
+    )
+
+
 def build_parent_checkpoint() -> Any:
     return CheckpointProjection(
         checkpoint_kind=CheckpointKind.PROGRESS,
@@ -315,6 +440,25 @@ def build_parent_checkpoint() -> Any:
     )
 
 
+def build_non_root_parent_blocked_checkpoint() -> Any:
+    return CheckpointProjection(
+        checkpoint_kind=CheckpointKind.TERMINAL,
+        outcome=CheckpointOutcome.BLOCKED,
+        handoff=CheckpointHandoff(
+            summary=(
+                "The recovery subtree cannot continue because the remaining fixture "
+                "ownership sits outside this parent node."
+            ),
+            next_step=(
+                "Return control to the root parent with a blocked handoff; do not use "
+                "root-only release_blocked from this non-root parent dispatch."
+            ),
+            blockers=("fixture owner decision is outside the current parent scope",),
+        ),
+        task_memory_search_hints=("blocked parent handoff",),
+    )
+
+
 def render_live_prompt_outputs() -> dict[str, RenderedPromptOutputLike]:
     tmp_path = example_task_root()
     return {
@@ -323,6 +467,12 @@ def render_live_prompt_outputs() -> dict[str, RenderedPromptOutputLike]:
         ),
         "parent_root_dispatch_prompt": render_prompt_bundle(
             build_parent_prompt_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+        ),
+        "parent_root_dispatch_prompt_non_root_blocked": render_prompt_bundle(
+            build_non_root_parent_blocked_prompt_request(
+                tmp_path,
+                send_mode=PromptSendMode.FULL_PROMPT,
+            )
         ),
     }
 
@@ -371,6 +521,9 @@ def render_generated_example_bodies() -> dict[str, str]:
     prompt_outputs = render_live_prompt_outputs()
     return {
         "parent_root_dispatch_prompt": prompt_outputs["parent_root_dispatch_prompt"].full_markdown,
+        "parent_root_dispatch_prompt non-root blocked closure": prompt_outputs[
+            "parent_root_dispatch_prompt_non_root_blocked"
+        ].full_markdown,
         "worker_dispatch_prompt": prompt_outputs["worker_dispatch_prompt"].full_markdown,
         "worker_dispatch_prompt blocked-ending sketch": render_blocked_ending_sketch(),
     }

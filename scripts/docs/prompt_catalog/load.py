@@ -256,6 +256,14 @@ GENERATED_EXAMPLE_SCENARIOS = {
         "current lineage: root decides the next bounded child step from current surfaced evidence",
         "representative surfaced refs include a child checkpoint and curated wiki memory",
     ],
+    "parent_root_dispatch_prompt non-root blocked closure": [
+        "current node: `triage_recovery`",
+        "node kind: `parent`",
+        "send mode: `full_prompt`",
+        "current lineage: non-root parent closes its own current assignment as blocked",
+        "durable reminder: terminal blocked checkpoint is enough for non-root parent blocked closure",
+        "root-only reminder: this prompt must not surface `release_blocked` as an allowed tool",
+    ],
     "worker_dispatch_prompt": [
         "current node: `implement_fix`",
         "send mode: `full_prompt`",

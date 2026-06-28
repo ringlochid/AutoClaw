@@ -210,6 +210,25 @@ def _validate_boundary_acceptance(
         and boundary == EgressBoundary.RETRY
     ):
         raise illegal_caller_error("parent/root retry is illegal")
+    if dispatch.release_precondition_kind == "release_green" and boundary != EgressBoundary.GREEN:
+        raise boundary_precondition_error(
+            "boundary does not match committed release_green precondition",
+            suggested_next_step=(
+                "Close this dispatch with `green`, or start a fresh dispatch before choosing "
+                "a different terminal boundary."
+            ),
+        )
+    if (
+        dispatch.release_precondition_kind == "release_blocked"
+        and boundary != EgressBoundary.BLOCKED
+    ):
+        raise boundary_precondition_error(
+            "boundary does not match committed release_blocked precondition",
+            suggested_next_step=(
+                "Close this dispatch with `blocked`, or start a fresh dispatch before choosing "
+                "a different terminal boundary."
+            ),
+        )
     if (
         latest_checkpoint is None
         or latest_checkpoint.checkpoint_kind != CheckpointKind.TERMINAL.value

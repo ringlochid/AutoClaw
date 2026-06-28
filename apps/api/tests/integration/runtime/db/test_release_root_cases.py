@@ -9,12 +9,14 @@ from autoclaw.runtime import CheckpointOutcome, EgressBoundary, runtime_flow_rea
 from autoclaw.runtime.post_commit import drive_runtime_once
 from sqlalchemy import select
 from tests.integration.runtime.db.actions import (
+    assign_child_on_current_flow,
     record_terminal_checkpoint_and_continue,
     record_terminal_checkpoint_for_session,
     release_blocked,
     release_green,
     release_green_on_current_flow,
     run_child_outcome,
+    yield_child_assignment,
 )
 from tests.integration.runtime.db.context import (
     RuntimeDatabaseContext,
@@ -24,7 +26,7 @@ from tests.integration.runtime.db.context import (
     runtime_database_context,
     write_task_file,
 )
-from tests.integration.runtime.db.workflows import root_blocked_workflow
+from tests.integration.runtime.db.workflows import parent_blocked_workflow, root_blocked_workflow
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
@@ -95,6 +97,23 @@ async def run_blocked_investigation_return_root(
         outcome=CheckpointOutcome.BLOCKED,
         handoff_summary="The worker is blocked.",
         next_step="Root must decide whether the whole flow is blocked.",
+    )
+
+
+async def run_blocked_parent_return_root(
+    context: RuntimeDatabaseContext,
+    *,
+    task_id: str,
+) -> Any:
+    return await run_child_outcome(
+        context,
+        task_id=task_id,
+        child_node_key="investigate_parent",
+        assignment_summary="Investigate whether this subtree is blocked.",
+        assignment_instruction="Return blocked if the parent assignment cannot proceed.",
+        outcome=CheckpointOutcome.BLOCKED,
+        handoff_summary="The parent subtree is blocked before child work can be assigned.",
+        next_step="Root must decide whether to assign another path or close the flow.",
     )
 
 
@@ -339,3 +358,89 @@ async def test_release_blocked_requires_current_root_and_whole_flow_blocked_basi
             closed_dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
             assert closed_dispatch is not None
             assert reread.status == "blocked"
+
+
+async def test_non_root_parent_blocked_returns_to_root_without_child_coverage(
+    tmp_path: Path,
+) -> None:
+    workflow_definition = parent_blocked_workflow()
+    async with runtime_database_context(
+        tmp_path,
+        task_root_name="task-parent-blocked",
+    ) as context:
+        task_id = "task_parent_blocked"
+        await launch_runtime_case(
+            context,
+            task_id=task_id,
+            workflow_key=workflow_definition.id,
+            compiler_version="runtime-parent-blocked",
+            workflow_definition=workflow_definition,
+        )
+        blocked = await run_blocked_parent_return_root(context, task_id=task_id)
+        assert blocked.status.value == "running"
+        assert blocked.current_node_key == "root"
+
+        async with context.session_factory() as session:
+            blocked_parent = await session.scalar(
+                select(AssignmentModel).where(
+                    AssignmentModel.task_id == task_id,
+                    AssignmentModel.node_key == "investigate_parent",
+                )
+            )
+            assert blocked_parent is not None
+            unassigned_child = await session.scalar(
+                select(AssignmentModel).where(
+                    AssignmentModel.task_id == task_id,
+                    AssignmentModel.node_key == "blocked_child",
+                )
+            )
+            assert unassigned_child is None
+            reread = await runtime_flow_read(session, task_id)
+            assert reread.status == "running"
+            assert reread.current_node_key == "root"
+
+
+async def test_non_root_parent_blocked_cannot_stack_with_staged_child(
+    tmp_path: Path,
+) -> None:
+    workflow_definition = parent_blocked_workflow()
+    async with runtime_database_context(
+        tmp_path,
+        task_root_name="task-parent-blocked-staged-child",
+    ) as context:
+        task_id = "task_parent_blocked_staged_child"
+        await launch_runtime_case(
+            context,
+            task_id=task_id,
+            workflow_key=workflow_definition.id,
+            compiler_version="runtime-parent-blocked-staged-child",
+            workflow_definition=workflow_definition,
+        )
+        await yield_child_assignment(
+            context,
+            task_id=task_id,
+            child_node_key="investigate_parent",
+            summary="Investigate whether this subtree is blocked.",
+            instruction="Coordinate one child if needed.",
+        )
+        await assign_child_on_current_flow(
+            context,
+            task_id=task_id,
+            child_node_key="blocked_child",
+            summary="Inspect the blocker.",
+            instruction="Return the blocker evidence.",
+        )
+        async with context.session_factory() as session:
+            await record_terminal_checkpoint_for_session(
+                session,
+                task_id=task_id,
+                outcome=CheckpointOutcome.BLOCKED,
+                summary="Parent cannot proceed after staging child work.",
+                next_step="This terminal close should be rejected because a child is staged.",
+            )
+            with pytest.raises(ValueError, match="blocked is illegal after staging a child"):
+                await accept_boundary_and_continue(
+                    session,
+                    task_id=task_id,
+                    boundary=EgressBoundary.BLOCKED,
+                )

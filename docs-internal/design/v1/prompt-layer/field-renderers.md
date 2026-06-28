@@ -297,7 +297,7 @@ Render only the bounded action surface that is legal now:
 
 - parent/root tools when current node is parent/root
 - `yield` when exactly one staged child assignment already exists
-- `green` when parent/root terminal closure is relevant, plus root-only `blocked` after committed `release_blocked`
+- `green | blocked` when parent/root terminal closure is relevant, with root-only `release_blocked` required only for whole-flow blocked closure
 - `green | retry | blocked` when worker/leaf terminal closure is relevant
 
 Good parent/root render:
@@ -315,7 +315,7 @@ Good parent/root render:
 - emit `yield` only after exactly one staged child assignment already exists
 - for structural edits, reread the current manifest first, use the surfaced structural edit palette in the current prompt or manifest, and if that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing; then reread the regenerated manifest after the edit
 - do not use definition revision history as dispatched planning input
-- emit `green` only when this parent/root node itself is closing its own assignment; emit `blocked` only for root whole-flow terminal closure after committed `release_blocked`
+- emit `green` only when this parent/root node itself is closing its own assignment; emit `blocked` only after this node cannot complete its current assignment and has published a terminal blocked checkpoint; root whole-flow blocked closure also requires committed `release_blocked`
 ```
 
 Good worker render:

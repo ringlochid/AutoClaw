@@ -125,15 +125,15 @@ def print_required_marker_coverage() -> None:
 
 
 def print_execution_linked_design_coverage(unreferenced_paths: list[Path]) -> None:
-    print("Execution-linked design coverage:")
+    print("Maintained-doc linked design coverage:")
     if not unreferenced_paths:
         print(
             "- all design markdown/yaml files are linked from AGENTS.md "
-            "or docs-internal/execution/v1/"
+            "or maintained markdown docs"
         )
         return
     for path in unreferenced_paths:
-        print(f"- missing execution link: {path.relative_to(ROOT)}")
+        print(f"- missing maintained-doc link: {path.relative_to(ROOT)}")
 
 
 def print_path_hits(title: str, hits: dict[Path, list[int]]) -> None:

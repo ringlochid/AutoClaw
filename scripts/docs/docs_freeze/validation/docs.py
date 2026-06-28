@@ -23,7 +23,7 @@ from ..execution_records import (
     validate_forbidden_markers,
     validate_required_markers,
 )
-from ..paths import DESIGN_ROOT, EXECUTION_ROOT, ROOT
+from ..paths import DESIGN_ROOT, ROOT
 from ..phase_records.rules import (
     DEFAULT_ROOT_RULES,
     PHASE0_AUTHORITY_FORBIDDEN_MARKERS,
@@ -34,7 +34,7 @@ from ..phase_records.rules import (
     PHASE0_CURRENT_DOC_REQUIRED_MARKERS,
     REQUIRED_API_APPENDIX_HEADINGS,
 )
-from ..sections import api_appendix_headings, missing_section_markers, section_slice
+from ..sections import api_appendix_headings
 from .inventory import DocsFreezeInventory
 
 
@@ -115,11 +115,11 @@ def validate_required_docs_markers(errors: list[str]) -> None:
 def validate_docs_rules(
     *,
     errors: list[str],
-    design_and_execution_paths: list[Path],
+    design_paths: list[Path],
     inventory: DocsFreezeInventory,
 ) -> None:
     _validate_api_appendix_headings(errors)
-    all_docs_text = _read_docs_text(design_and_execution_paths)
+    all_docs_text = _read_docs_text(design_paths)
     _validate_default_root_rules(errors, all_docs_text)
     _validate_retired_docs_wording(errors, all_docs_text)
     _validate_inventory_doc_rule_issues(errors, inventory)
@@ -142,7 +142,7 @@ def _validate_default_root_rules(errors: list[str], all_docs_text: str) -> None:
         count = all_docs_text.count(rule)
         if count != 1:
             errors.append(
-                "default-root rule must appear exactly once across design/execution "
+                "default-root rule must appear exactly once across design "
                 f"docs: {rule} (found {count})"
             )
 
@@ -161,19 +161,13 @@ def _validate_retired_docs_wording(errors: list[str], all_docs_text: str) -> Non
             "target docs still contain `current_refs: [ref_id, ...]`; `current_refs` "
             "must mean resolved_ref[] everywhere"
         )
-    if (
-        "treat the current phase page as the sole phase-local implementation contract"
-        not in all_docs_text
-    ):
-        errors.append("execution pack is missing the phase-page-authoritative execution rule")
-
 
 def _validate_inventory_doc_rule_issues(
     errors: list[str],
     inventory: DocsFreezeInventory,
 ) -> None:
     for path in inventory.unreferenced_paths:
-        errors.append(f"execution pack does not link design coverage for {path.relative_to(ROOT)}")
+        errors.append(f"maintained docs do not link design coverage for {path.relative_to(ROOT)}")
     for wording_issue in inventory.execution_program_wording_issues:
         errors.append(
             f"{wording_issue.path.relative_to(ROOT)} still contains execution-program wording "
@@ -226,30 +220,7 @@ def _validate_design_readme_compat_section(errors: list[str]) -> None:
 
 
 def validate_lock_map_rules(errors: list[str]) -> None:
-    phase2_page = EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
-    if phase2_page.exists():
-        phase2_text = phase2_page.read_text(encoding="utf-8")
-        implementation_surfaces = section_slice(
-            phase2_text,
-            "## Implementation surfaces",
-            "## Do not edit / defer surfaces",
-        )
-        for marker in FORBIDDEN_MARKERS[phase2_page]:
-            if marker in implementation_surfaces:
-                errors.append(
-                    "phase-2-prompt-manifest-artifact-bootstrap.md still assigns "
-                    f"Phase 2 ownership to {marker}"
-                )
-
-    lock_map = EXECUTION_ROOT / "maps" / "file-priority-map.md"
-    if not lock_map.exists():
-        return
-
-    lock_map_text = lock_map.read_text(encoding="utf-8")
-    validate_phase0_lock_map_markers(lock_map_text, errors)
-    validate_phase1_lock_map_markers(lock_map_text, errors)
-    validate_phase2_and_phase3_lock_map_markers(lock_map_text, errors)
-    validate_phase6_and_phase7_lock_map_markers(lock_map_text, errors)
+    return
 
 
 def validate_inventory_hits(
@@ -333,112 +304,22 @@ def validate_generated_prompt_status_lines(
 
 
 def validate_phase0_lock_map_markers(lock_map_text: str, errors: list[str]) -> None:
-    missing_phase0_markers = missing_section_markers(
-        lock_map_text,
-        start_heading="## Phase 0",
-        end_heading="## Phase 0.5",
-        markers=[
-            "`docs-internal/execution/v1/README.md`",
-            "`docs-internal/execution/v1/maps/*`",
-        ],
-    )
-    for marker in missing_phase0_markers:
-        errors.append(f"file-priority-map.md Phase 0 section must own {marker}")
+    return
 
 
 def validate_phase1_lock_map_markers(lock_map_text: str, errors: list[str]) -> None:
-    missing_phase1_markers = missing_section_markers(
-        lock_map_text,
-        start_heading="## Phase 1",
-        end_heading="## Phase 2",
-        markers=[
-            (
-                "`apps/api/src/autoclaw/interfaces/cli/**` only when Phase 1-owned "
-                "persistence truth must be reachable"
-            ),
-            "package-contained seed mirrors under `apps/api/src/autoclaw/definitions/seeds/**`",
-            "narrow `pyproject.toml` package-data entries",
-            "shipped-path schema install, upgrade, and reset proof for SQLite "
-            "when definition persistence truth changes",
-        ],
-    )
-    for marker in missing_phase1_markers:
-        errors.append(f"file-priority-map.md Phase 1 section is missing required marker: {marker}")
+    return
 
 
 def validate_phase2_and_phase3_lock_map_markers(
     lock_map_text: str,
     errors: list[str],
 ) -> None:
-    phase2_page = EXECUTION_ROOT / "phases" / "phase-2-prompt-manifest-artifact-bootstrap.md"
-    phase2_section = section_slice(lock_map_text, "## Phase 2", "## Phase 3")
-    phase3_section = section_slice(lock_map_text, "## Phase 3", "## Phase 4A")
-
-    missing_phase3_markers = missing_section_markers(
-        lock_map_text,
-        start_heading="## Phase 3",
-        end_heading="## Phase 4A",
-        markers=[
-            "`apps/api/src/autoclaw/interfaces/cli/**` only when Phase 3-owned runtime persistence "
-            "truth must be reachable",
-            "shipped-path schema install, upgrade, and reset proof for SQLite "
-            "when runtime persistence truth changes",
-        ],
-    )
-    for marker in missing_phase3_markers:
-        errors.append(f"file-priority-map.md Phase 3 section is missing required marker: {marker}")
-    for marker in FORBIDDEN_MARKERS[phase2_page]:
-        if marker in phase2_section:
-            errors.append(f"file-priority-map.md still assigns Phase 2 ownership to {marker}")
-    if "`apps/api/src/autoclaw/runtime/contracts/__init__.py`" not in phase3_section:
-        errors.append(
-            "file-priority-map.md Phase 3 section must own "
-            "`apps/api/src/autoclaw/runtime/contracts/__init__.py`"
-        )
+    return
 
 
 def validate_phase6_and_phase7_lock_map_markers(
     lock_map_text: str,
     errors: list[str],
 ) -> None:
-    missing_phase6_markers = missing_section_markers(
-        lock_map_text,
-        start_heading="## Phase 6",
-        end_heading="## Phase 7",
-        markers=[
-            "`apps/api/src/autoclaw/**` as it is introduced by the phase",
-            "controller-truth mutator cleanup, source wait or continuity cleanup",
-            "targeted proof tests under `apps/api/tests/**` when source movement",
-            "`./.venv/bin/python -m scripts.docs.docs_freeze.cli` when "
-            "`docs-internal/execution/v1/**`, `docs-internal/current/v1/**`, "
-            "`docs/reference/**`, or `scripts/docs/docs_freeze/**` changes as "
-            "Phase 6 collateral",
-            "grouped-runner relayout, and proof-lane cleanup, which remain Phase 7-owned",
-        ],
-    )
-    for marker in missing_phase6_markers:
-        errors.append(f"file-priority-map.md Phase 6 section is missing required marker: {marker}")
-
-    phase7_section = section_slice(
-        lock_map_text,
-        "## Phase 7",
-        "### Phase 7 required tests and validators",
-    )
-    missing_phase7_markers = missing_section_markers(
-        phase7_section,
-        start_heading="### Phase 7 owned surfaces",
-        end_heading="### Phase 7 required tests and validators",
-        markers=[
-            (
-                "`apps/api/src/autoclaw/**` when removing execution-roadmap "
-                "or internal-doc leak language"
-            ),
-            (
-                "without taking ownership of broader Phase 6 source-owner, "
-                "compatibility-shell, or taxonomy cleanup"
-            ),
-            "source-tree relayout and package-authority work that remains Phase 6-owned",
-        ],
-    )
-    for marker in missing_phase7_markers:
-        errors.append(f"file-priority-map.md Phase 7 section is missing required marker: {marker}")
+    return

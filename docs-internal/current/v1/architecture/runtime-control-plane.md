@@ -107,7 +107,7 @@ Current callback legality facts include:
 - parent/root `retry` is illegal
 - terminal boundaries require a terminal checkpoint whose outcome matches the requested boundary
 - `green` for parent/root requires `release_green` first
-- root `blocked` requires `release_blocked` first
+- root whole-flow `blocked` requires `release_blocked` first; non-root parent `blocked` returns control upward after a matching terminal blocked checkpoint
 
 ## Current drift against target
 
@@ -147,7 +147,7 @@ Current high-level status transitions are:
 - worker `green` points current controller truth back to the parent when one exists, otherwise the flow succeeds; the later parent dispatch now reopens internally after inactivity proof
 - worker `retry` opens a new attempt for the same assignment and switches semantic currentness to that new attempt immediately; the later retry dispatch now reopens internally after inactivity proof
 - parent/root `yield` stages the child assignment basis, switches semantic currentness to that child immediately at boundary acceptance, and reopens the child dispatch internally after accepted-boundary inactivity proof
-- root terminal `blocked` or top-level terminal `green` can close the whole flow
+- root terminal `blocked` after `release_blocked` or top-level terminal `green` can close the whole flow
 
 ## Current generated-file rule
 

@@ -125,9 +125,9 @@ When one staged child assignment exists and the dispatch stays non-terminal, clo
 After a successful `yield`, stop the current outer assistant turn immediately. Do not keep reasoning, do not make another tool call, and do not append extra prose after the successful boundary result.
 `green` closes the current node only after a terminal green checkpoint exists and any required durable publication or release basis already exists.
 `retry` closes the current node only after a terminal retry checkpoint exists. Retry keeps the same assignment, mints a new attempt, and uses `full_prompt`.
-`blocked` closes a worker/leaf node only after a terminal blocked checkpoint exists. Root whole-flow `blocked` closure requires that blocked checkpoint basis plus committed `release_blocked`. Non-root parent/root dispatches do not use `blocked` as a terminal path.
+`blocked` closes the current node only after a terminal blocked checkpoint exists. Non-root parent `blocked` returns control to its parent without requiring all children to have run. Root whole-flow `blocked` closure requires that blocked checkpoint basis plus committed `release_blocked`.
 `yield` is boundary truth only. It is not a checkpoint outcome.
-`green | retry | blocked` are terminal checkpoint outcomes and closing boundaries. `blocked` is worker/leaf-only or root whole-flow only.
+`green | retry | blocked` are terminal checkpoint outcomes and closing boundaries. `blocked` is a current-node terminal boundary; only root whole-flow closure needs `release_blocked`.
 After a successful `green`, `retry`, or `blocked`, stop the current outer assistant turn immediately. Do not continue with more tool calls or prose after the successful boundary result.
 ```
 

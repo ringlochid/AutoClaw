@@ -341,20 +341,27 @@ def _parent_root_allowed_action_lines(node_kind: NodeKind) -> tuple[str, ...]:
             f"`{_node_tool('release_green')}`, `{_node_tool('release_blocked')}`, "
             f"`{_node_tool('record_checkpoint')}`"
         )
-    blocked_fallback = (
-        "a legal blocked path"
-        if node_kind == NodeKind.ROOT
-        else "a legal checkpoint or current-node boundary"
-    )
+    blocked_fallback = "a legal blocked boundary"
     closure_line = (
         f"- emit `green` only when this {node_kind.value} node is closing its own "
-        "current assignment"
+        "current assignment; emit `blocked` only when this node cannot complete "
+        "its current assignment and has published a terminal blocked checkpoint"
     )
     if node_kind == NodeKind.ROOT:
         closure_line = (
             f"- emit `green` only when this {node_kind.value} node is closing its own "
             "current assignment; emit `blocked` only for root whole-flow terminal "
             "closure after committed `release_blocked`"
+        )
+    release_precondition_line = (
+        f"- `{_node_tool('release_green')}` is a terminal precondition, not `yield` "
+        "basis"
+    )
+    if node_kind == NodeKind.ROOT:
+        release_precondition_line = (
+            f"- `{_node_tool('release_green')}` and root "
+            f"`{_node_tool('release_blocked')}` are terminal preconditions, not `yield` "
+            "basis"
         )
     return (
         tool_line,
@@ -394,9 +401,7 @@ def _parent_root_allowed_action_lines(node_kind: NodeKind) -> tuple[str, ...]:
         "- if later readers must understand why that child was staged or why "
         f"release is not yet legal, call `{_node_tool('record_checkpoint')}` "
         "before `yield` or terminal closure",
-        f"- `{_node_tool('release_green')}` and root "
-        f"`{_node_tool('release_blocked')}` are terminal preconditions, not `yield` "
-        "basis",
+        release_precondition_line,
         closure_line,
     )
 

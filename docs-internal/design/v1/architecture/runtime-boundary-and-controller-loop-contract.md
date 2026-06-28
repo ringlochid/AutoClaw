@@ -66,7 +66,7 @@ Rules:
 - parent/root may add only assignment-local wording, supplemental durable artifact/criteria slot selectors, and explicit transient surfacing
 - runtime resolves `consumes` and projects `produces` as requirements only
 - successful `assign_child` does not create a child `dispatch_id` and does not create child dispatch-local monitoring projections yet
-- `release_green` and root `release_blocked` are terminal-close preconditions only; they are not boundaries and not continuation outcomes
+- `release_green` and root-only `release_blocked` are terminal-close preconditions only; they are not boundaries and not continuation outcomes
 - parent/root must later emit `yield` for non-terminal closure
 - parent/root must later emit `green` or `blocked` for terminal closure
 - retry is node-self only; parent/root do not issue public child retry, reassignment, or replacement control
@@ -109,10 +109,11 @@ Rules:
 
 ## Boundary matrix
 
-| Caller kind     | Legal non-terminal close                                      | Legal terminal close                                                                                                                          |
-| --------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `root / parent` | `yield` only after exactly one staged child assignment exists | `green` after committed `release_green`; `blocked` after committed root `release_blocked` when that whole-flow blocked close is applicable    |
-| `worker`        | none                                                          | `green                                                                                                                     / retry / blocked` |
+| Caller kind | Legal non-terminal close                                      | Legal terminal close                                                                                                                                                          |
+| ----------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `root`      | `yield` only after exactly one staged child assignment exists | `green` after committed `release_green`; `blocked` after a terminal blocked checkpoint plus committed root `release_blocked` for whole-flow blocked closure                   |
+| `parent`    | `yield` only after exactly one staged child assignment exists | `green` after committed `release_green`; `blocked` after a terminal blocked checkpoint when the current parent assignment cannot complete, returning control to its parent     |
+| `worker`    | none                                                          | `green / retry / blocked` after the matching terminal checkpoint and any required publication basis                                                                            |
 
 Parent/root later turns on the same assignment happen by ordinary `redispatch_same_attempt`, not by a parent/root `retry` boundary.
 

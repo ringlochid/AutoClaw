@@ -19,6 +19,8 @@ flowchart TD
     H --> I["yield"]
     F -- no --> J{"is the assignment terminal?"}
     J -- green --> K["release_green then green"]
+    J -- blocked at non-root parent --> M["blocked"]
+    M --> N["return control upward"]
     J -- blocked at root --> L["release_blocked then blocked"]
 ```
 
@@ -74,7 +76,8 @@ During one open dispatch, parent/root should reason in this exact order:
    - close with `yield`
 5. if the current assignment is terminal and evidence is current:
    - use `release_green` then `green`, or
-   - root-only `release_blocked` then `blocked`
+   - use `blocked` for a non-root parent assignment that cannot proceed, or
+   - root-only `release_blocked` then `blocked` for whole-flow blocked closure
 
 The parent/root must not skip from "structure changed" directly to `yield`. `yield` is legal only after exactly one staged `child_assignment` exists.
 
@@ -217,7 +220,8 @@ If the current parent/root cannot legally apply the needed change inside its aut
 | same structure, more bounded work needed                    | `assign_child`, then `yield`                                         |
 | current direct-child set or owned subtree contract is wrong | `add_child`, `update_child`, or `remove_child`, then reread manifest |
 | current assignment is complete and evidence is current      | `release_green`, then `green`                                        |
-| root determines the whole flow is terminally blocked        | `release_blocked`, then `blocked`                                    |
+| current non-root parent assignment cannot proceed as assigned | terminal blocked checkpoint, then `blocked`                         |
+| root determines the whole flow is terminally blocked          | `release_blocked`, then `blocked`                                   |
 
 ## Related contracts
 

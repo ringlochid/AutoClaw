@@ -169,9 +169,9 @@ Source: [SQLAlchemy declarative mapping](https://docs.sqlalchemy.org/en/20/orm/d
 - keep internal canon under `docs-internal/**` in the steady state
 - version internal canon explicitly with directories such as `v1/`, `v2/`, and `vnext/`
 - keep public docs versionless by default unless multiple supported public product versions must coexist
-- do not recreate `docs-internal/design/v1`, `docs-internal/current/v1`, `docs-internal/execution/v1`, or `docs-internal/archive` as live canon trees
+- do not recreate deleted execution or archive trees just to satisfy stale references
 - keep stable implementation-heavy reference in a dedicated internals or maintainer lane, not in onboarding or general concept pages
-- keep design truth, current contrast, execution records, and archive material in internal canon paths until explicit replacements exist
+- keep design truth and current contrast in internal canon paths, and record durable accepted decisions under `docs-internal/adr/**`
 
 Extended guidance: [Docs structure guide](.agents/standards/docs/docs-structure.md)
 

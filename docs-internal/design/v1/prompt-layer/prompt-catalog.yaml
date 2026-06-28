@@ -123,6 +123,7 @@ prompt_families:
         - runtime_legality_block_parent_v1
     generated_examples:
       - parent_root_dispatch_prompt_full_prompt
+      - parent_root_dispatch_prompt_non_root_blocked_full_prompt
 exact_blocks:
   - id: autoclaw_system_block_v1
     owner_file: prompt-pack/system-and-provider-block.md
@@ -220,6 +221,12 @@ generated_examples:
     send_mode: full_prompt
     source_file: generated/rendered-examples.md
     focus: bounded research for a tighter child brief, semantic assign_child handoff, runtime-resolved durable refs, record_checkpoint, and staged-child-only yield
+  - id: parent_root_dispatch_prompt_non_root_blocked_full_prompt
+    rendered_heading: parent_root_dispatch_prompt non-root blocked closure
+    family: parent_root_dispatch_prompt
+    send_mode: full_prompt
+    source_file: generated/rendered-examples.md
+    focus: non-root parent terminal blocked closure without root-only release_blocked
   - id: worker_dispatch_prompt_full_prompt
     rendered_heading: worker_dispatch_prompt
     family: worker_dispatch_prompt
@@ -268,7 +275,7 @@ validator_checks:
   - criteria owner preservation must remain in manifest/runtime truth rather than widening rendered criteria refs
   - parent_root_dispatch_prompt closure_modes are exactly yield, green, blocked
   - generated examples must not teach yield after release_green or root release_blocked
-  - non-root parent examples must not teach release_blocked or terminal blocked closure
+  - non-root parent examples must teach terminal blocked closure and must not surface release_blocked as an allowed non-root action
   - prompt-layer owner and generated surfaces must keep delivery-state observability separate from controller control-state semantics
   - generated examples must not surface control_effects
   - live prompt-layer owner and generated surfaces must not route normative semantics to legacy source packs

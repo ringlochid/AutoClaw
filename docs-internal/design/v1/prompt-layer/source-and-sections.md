@@ -210,7 +210,7 @@ This section must expose the bounded next-action surface that is legal now:
 - bounded research aimed at better child assignment or release and routing decisions
 - `record_checkpoint` when the handoff must survive redispatch
 - `yield` for non-terminal parent/root closure after exactly one staged child assignment exists
-- `green` for parent/root terminal closure when justified, plus root-only `blocked` after committed `release_blocked`
+- `green | blocked` for parent/root terminal closure when justified, with root-only `release_blocked` required only for whole-flow blocked closure
 - `green | retry | blocked` for worker/leaf terminal closure when justified
 - callback is a write-only semantic lane and not a context-discovery mechanism
 
@@ -243,7 +243,7 @@ Render like:
 - emit `yield` only after exactly one staged child assignment already exists
 - start structural edits from surfaced role/policy names, and if the palette is still insufficient, use the current-only definition lookup lane before the edit
 - do not use definition revision history as dispatched planning input; reread the regenerated manifest after the edit
-- emit `green` only when this parent/root node itself is closing its own assignment; emit `blocked` only for root whole-flow terminal closure after committed `release_blocked`
+- emit `green` only when this parent/root node itself is closing its own assignment; emit `blocked` only after this node cannot complete its current assignment and has published a terminal blocked checkpoint; root whole-flow blocked closure also requires committed `release_blocked`
 ```
 
 ### `publication_rule`

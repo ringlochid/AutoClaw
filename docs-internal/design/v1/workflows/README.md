@@ -13,6 +13,7 @@ If you are asking:
 - "What is the exact compiler validate-preview and launch materialization workflow?" -> [Compiler contract and launch materialization](compiler-contract-and-launch-materialization.md)
 - "What replaces old typed inputs and output slots?" -> [Typed dependency selectors and produce slots](typed-dependency-selectors-and-produce-slots.md)
 - "How do criteria and parent verification work?" -> [Criteria and parent verification](criteria-and-parent-verification.md)
+- "How does a parent inspect worker output before release?" -> [Parent worker review model](parent-worker-review-model.md) and [Criteria projection and consumption example](criteria-projection-and-consumption-example.md)
 - "How do parent/root release and closure work?" -> [Parent/root release and closure](parent-root-release-and-closure.md)
 - "How does runtime local replan work?" -> [Runtime structural replan](runtime-structural-replan.md)
 - "Where is exhaustive authored-shape, patch, and example coverage?" -> [Workflow schema appendix](workflow-schema-appendix.md)
@@ -27,6 +28,8 @@ If you are asking:
 - [Typed dependency selectors and produce slots](typed-dependency-selectors-and-produce-slots.md)
 - [Criteria and parent verification](criteria-and-parent-verification.md)
 - [Parent review and replan](parent-review-and-replan.md)
+- [Parent worker review model](parent-worker-review-model.md)
+- [Criteria projection and consumption example](criteria-projection-and-consumption-example.md)
 - [Parent/root release and closure](parent-root-release-and-closure.md)
 - [Runtime structural replan](runtime-structural-replan.md)
 - [Minimal example](examples/minimal.md) for the smallest teaching subgraph
@@ -55,4 +58,4 @@ If you are asking:
 
 Use this surface for target workflow authoring, dependency, criteria, ordinary review or release work, runtime structural replan, and exemplar contracts.
 
-Use `../../../archive/` and design review logs only for historical contrast, not live owner routing.
+Use ADRs for durable rationale. Do not recreate deleted archive or execution trees for live owner routing.

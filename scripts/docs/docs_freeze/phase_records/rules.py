@@ -2,27 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..paths import ARCHIVE_ROOT, CURRENT_ROOT, EXECUTION_ROOT
+from ..paths import ARCHIVE_ROOT, CURRENT_ROOT
 
-PHASE0_AUTHORITY_REQUIRED_MARKERS = {
-    EXECUTION_ROOT / "gates" / "phase-implementation-prompts.md": [
-        "The read list below is the mandatory minimum read set for the selected phase;",
-        (
-            "The selected current phase page plus "
-            "`docs-internal/execution/v1/maps/file-priority-map.md` remain authoritative "
-            "for phase-local requirements, reads, and owned surfaces."
-        ),
-        "Do not treat implementation surfaces as suggestions;",
-    ],
-}
+PHASE0_AUTHORITY_REQUIRED_MARKERS = {}
 
-PHASE0_AUTHORITY_FORBIDDEN_MARKERS = {
-    EXECUTION_ROOT / "gates" / "phase-implementation-prompts.md": [
-        "The Phase plan, like the pages to read in the plan is only suggested must read files",
-        "Other sections like implementation surfaces and files are also only suggestions",
-        "you need to proactively change that if that suits",
-    ],
-}
+PHASE0_AUTHORITY_FORBIDDEN_MARKERS = {}
 
 PHASE0_CURRENT_DOC_REQUIRED_MARKERS = {
     CURRENT_ROOT / "README.md": [

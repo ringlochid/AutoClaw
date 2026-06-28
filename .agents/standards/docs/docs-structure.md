@@ -17,7 +17,7 @@ Use three layers:
 2. **Public reference and internals docs**
    - for exact CLI, schema, API, contract, maintainer, and stable implementation reference
 3. **Internal canon docs**
-   - for design truth, shipped-behavior contrast, execution routing, evidence, reviews, migration notes, ADRs, and archive material
+   - for design truth, shipped-behavior contrast, migration notes, ADRs, and version-era implementation contracts
 
 ## Public versus internal versioning
 
@@ -43,13 +43,11 @@ The current layout is:
 - public docs under `docs/**`
 - target design truth under `docs-internal/design/v1/**`
 - shipped-behavior contrast under `docs-internal/current/v1/**`
-- plans, evidence, reviews, gates, and maps under `docs-internal/execution/v1/**`
-- historical material under `docs-internal/archive/**`
 - durable accepted decisions under `docs-internal/adr/**`
 
 Treat that as the live information architecture.
 
-Do not recreate live `docs-internal/design/v1/**`, `docs-internal/current/v1/**`, `docs-internal/execution/v1/**`, or `docs-internal/archive/**` trees outside explicit archive material.
+Do not recreate deleted execution or archive trees just to satisfy stale references.
 
 ## Status line rule
 
@@ -59,8 +57,8 @@ Allowed live status values for canon docs are:
 
 - `Status: Target` Use for live design owner pages and design appendix owners under `docs-internal/design/**`.
 - `Status: Current` Use for shipped-behavior contrast pages under `docs-internal/current/**`.
-- `Status: Reference` Use for public docs, standards, ADRs, archive pages, execution routers or gates or maps or records, and any secondary router or search page that is not the live owner of target or current truth.
-- `Status: Template` Use only for reusable execution-record templates.
+- `Status: Reference` Use for public docs, standards, ADRs, and any secondary router or search page that is not the live owner of target or current truth.
+- `Status: Template` Use only for reusable templates.
 - `Status: Accepted` Use only for individual ADR decision records under `docs-internal/adr/**`.
 
 Rules:
@@ -69,15 +67,15 @@ Rules:
 - keep `README.md` as the canonical live front door for a subtree when a live front door is needed
 - if an `INDEX.md` is retained for search or legacy-entry compatibility, it must stay secondary, point back to `README.md`, and use `Status: Reference`
 
-## Execution-program wording rule
+## Retired execution-program wording rule
 
-Execution-program wording belongs in `docs-internal/execution/**` or `docs-internal/archive/**`, not in reader-facing or owner-truth pages.
+Execution-program wording should not leak into reader-facing or owner-truth pages.
 
 Rules:
 
-- keep execution-program terms such as phase selectors, execution-owner page labels, delivery-scope labels, reopen-flow language, and canon-repair language inside execution or archive docs
-- public docs, design docs, and current-contrast docs may link to execution owners when needed, but they should not restate execution-program control language locally
-- if a public, design, or current page needs to explain an implementation-control exception, route to the owning execution page instead of importing execution-program prose
+- remove stale execution-program terms such as phase selectors, execution-owner page labels, delivery-scope labels, reopen-flow language, and canon-repair language from live docs
+- route target truth to design owner pages, shipped-behavior contrast to current pages, and durable rationale to ADRs
+- do not recreate deleted execution or archive trees as a hiding place for stale control language
 
 ## Target public docs methodology
 
@@ -111,18 +109,12 @@ Recommended internal top-level structure:
 - `docs-internal/current/v1/**`
 - `docs-internal/current/v2/**`
 - `docs-internal/current/vnext/**` only when current shipped contrast genuinely exists for a next-era branch or long-lived prerelease line
-- `docs-internal/execution/v1/**`
-- `docs-internal/execution/v2/**`
-- `docs-internal/execution/vnext/**`
-- `docs-internal/archive/**`
 - `docs-internal/adr/**`
 
 Rules:
 
 - `design/` replaces `redesign/` as the steady-state name
 - `current/` remains contrast, not target truth
-- `execution/` remains implementation-control and record-keeping, not product truth
-- `archive/` is historical only
 - `adr/` is for durable accepted decisions, not speculative plans or raw design notes
 
 ## Placement rules
@@ -163,17 +155,15 @@ Examples:
 
 - the page exists to drive implementation, migration, design landing, or execution control
 - the page compares current and target behavior
-- the page records an execution plan, evidence artifact, review, or file-lock rule
+- the page records target design, current contrast, migration rationale, or a durable accepted decision
 - the page is temporary or version-era-specific implementation-control truth rather than stable product/reference truth
 
 Examples:
 
 - design architecture truth
 - current-behavior contrast pages
-- execution plans, evidence, reviews, gates, and maps
 - migration-only decision records
 - version-era specific implementation specs
-- archive and historical provenance
 
 ## Implementation-detail rule
 
@@ -265,7 +255,7 @@ When redesigning the docs tree:
 7. add redirects or routing notes when a moved page had meaningful prior entry points
 8. when renaming `redesign` to `design`, update routing language together with the path move so truth does not fork
 
-Do not flatten `docs-internal/design/v1`, `docs-internal/current/v1`, and `docs-internal/execution/v1` directly into one public tree without reclassifying the audience, page type, and version ownership first.
+Do not flatten `docs-internal/design/v1` and `docs-internal/current/v1` directly into one public tree without reclassifying the audience, page type, and version ownership first.
 
 ## Cross-checks
 
@@ -273,6 +263,5 @@ Do not flatten `docs-internal/design/v1`, `docs-internal/current/v1`, and `docs-
 - if the page claims shipped truth, verify it matches current behavior or explicit migration notes
 - if the page claims public reference, verify the contract is stable enough to expose as durable reference
 - if the page claims internals, verify the audience is contributor or maintainer and the mechanics are not just temporary execution notes
-- if the page claims execution authority, verify it points to the correct phase page and file-lock map
 - if the page is guidance only, verify it does not silently compete with root canon
-- if the page sits under internal canon, verify its version-era home is explicit or intentionally versionless for archive/ADR reasons
+- if the page sits under internal canon, verify its version-era home is explicit or intentionally versionless for ADR reasons

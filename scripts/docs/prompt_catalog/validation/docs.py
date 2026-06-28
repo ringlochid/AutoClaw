@@ -199,6 +199,64 @@ def _validate_generated_example_parity(errors: list[str]) -> None:
             )
 
 
+def _section_between(text: str, heading: str, next_heading: str) -> str:
+    marker = f"## {heading}"
+    next_marker = f"## {next_heading}"
+    if marker not in text:
+        return ""
+    section = text.split(marker, maxsplit=1)[1]
+    if next_marker in section:
+        section = section.split(next_marker, maxsplit=1)[0]
+    return section
+
+
+def _validate_non_root_parent_blocked_example(
+    data: dict[str, Any],
+    errors: list[str],
+) -> None:
+    required_heading = "parent_root_dispatch_prompt non-root blocked closure"
+    registered_headings = {
+        example.get("rendered_heading")
+        for example in data.get("generated_examples", [])
+        if isinstance(example, dict)
+    }
+    if required_heading not in registered_headings:
+        errors.append(
+            "generated_examples is missing the non-root parent blocked closure example"
+        )
+        return
+
+    example_body = render_generated_example_bodies().get(required_heading)
+    if example_body is None:
+        errors.append("non-root parent blocked closure example has no generated body")
+        return
+
+    current_dispatch = _section_between(example_body, "Current Dispatch", "Workflow Manifest")
+    latest_checkpoint = _section_between(
+        example_body,
+        "Latest Checkpoint Context",
+        "Consumed Durable Refs",
+    )
+    allowed_actions = _section_between(example_body, "Allowed Actions Now", "Publication Rule")
+
+    if "- node kind: parent" not in current_dispatch:
+        errors.append("non-root parent blocked example is not rendered as node_kind: parent")
+    if "- checkpoint_kind: terminal" not in latest_checkpoint:
+        errors.append("non-root parent blocked example is missing terminal checkpoint context")
+    if "- outcome: blocked" not in latest_checkpoint:
+        errors.append("non-root parent blocked example is missing blocked checkpoint outcome")
+    if "`autoclaw-node__release_blocked`" in allowed_actions:
+        errors.append("non-root parent blocked example surfaces root-only release_blocked")
+    if (
+        "emit `blocked` only when this node cannot complete its current assignment "
+        "and has published a terminal blocked checkpoint"
+        not in allowed_actions
+    ):
+        errors.append("non-root parent blocked example omits terminal blocked closure guidance")
+    if "root whole-flow terminal closure after committed `release_blocked`" in allowed_actions:
+        errors.append("non-root parent blocked example teaches the root-only blocked path")
+
+
 def run_doc_example_checks(
     data: dict[str, Any],
     errors: list[str],
@@ -214,3 +272,4 @@ def run_doc_example_checks(
     )
     if not skip_inventory_checks:
         _validate_generated_example_parity(errors)
+    _validate_non_root_parent_blocked_example(data, errors)

@@ -24,6 +24,7 @@ Parent/root work is coordination and verification work:
 - edit owned structure with `add_child`, `update_child`, or `remove_child`
 - publish parent/root checkpoints when later agents must understand the decision basis
 - commit upward release with `release_green`
+- close the current parent assignment as `blocked` when the subtree cannot proceed as assigned
 - root-only whole-flow terminal block with `release_blocked`
 
 Review, QA, compliance, release, and closure are authored as ordinary child assignments, not gate subtypes.
@@ -43,6 +44,8 @@ flowchart LR
     F -- no --> I{"terminal and current?"}
     I -- green --> J["release_green"]
     J --> K["green"]
+    I -- blocked at non-root parent --> N["blocked"]
+    N --> O["return control to parent"]
     I -- blocked at root --> L["release_blocked"]
     L --> M["blocked"]
 ```
@@ -122,6 +125,20 @@ The controller-side precondition check is:
 
 When the later `blocked` boundary is accepted after preconditions are revalidated, the controller may likewise stage the exact descendant checkpoint refs and current durable artifact refs that grounded that whole-flow blocked close. Those staged refs remain dispatch-local evidence, not new continuation state. When later read surfaces materialize that blocked release turn, they should consume those staged descendant refs directly instead of rebuilding a direct-child-only view.
 
+### Non-root parent `blocked`
+
+Non-root parent `blocked` is a current-node terminal boundary, not a whole-flow release tool.
+
+The controller-side precondition check is:
+
+1. reread the current parent assignment, latest checkpoint, current criteria, and current continuation slot
+2. validate that no staged `child_assignment` already exists on this open dispatch
+3. validate that the current parent assignment has a terminal blocked checkpoint basis
+4. close the current parent attempt as `blocked`
+5. return control to the parent node by ordinary upward boundary progression
+
+This path does not require every authored child of the blocked parent to have been assigned or worked. It reports that the parent assignment itself cannot proceed as assigned. The higher parent/root then decides whether to assign a different path, edit structure, or eventually close the whole flow.
+
 ## Boundary split rule
 
 Release tools are terminal preconditions, not continuation outcomes.
@@ -131,6 +148,7 @@ That means:
 - `assign_child` stages the only legal parent/root continuation outcome
 - `yield` is for non-terminal close after exactly one staged child assignment
 - `release_green` and `release_blocked` do not justify `yield`
+- non-root parent `blocked` is terminal current-node closure and must not be combined with a staged child assignment
 - a dispatch must choose between child continuation and terminal release; it does not stack both on the same open turn
 
 ## Parent/root-owned artifacts
@@ -166,6 +184,8 @@ Whole-flow blocked closure is the analogous root-only sequence:
 4. the controller closes the dispatch and advances to whole-flow blocked
 
 If root needs more bounded work first, it should stage ordinary child work or make legal structural edits during its open dispatch. Parent/root semantic self-retry is illegal; a later parent/root turn remains ordinary `redispatch_same_attempt`.
+
+Non-root parent blocked closure is not whole-flow closure. It returns to the higher parent/root, which owns the next routing or closure decision.
 
 Semantic `create_new_attempt` stays reserved for legal worker retry lineage, and `escalate` is the controller/operator path when safe redispatch is not legal.
 

@@ -30,6 +30,7 @@ from autoclaw.runtime.flow.queries import next_node_sequence_number
 from autoclaw.runtime.ids import attempt_consumed_ref_id, attempt_id_for_task
 from autoclaw.runtime.post_commit.cases import stage_assign_child_outputs
 from autoclaw.runtime.projection import CurrentRuntimeState
+from autoclaw.runtime.release.guards import ensure_no_staged_child_assignment
 from autoclaw.runtime.release.preconditions import (
     ensure_assignment_required_publications,
     ensure_release_blocked_preconditions,
@@ -273,10 +274,29 @@ async def _handle_parent_blocked(
     dispatch: DispatchTurnModel,
 ) -> None:
     flow = state.flow
-    if (
-        state.current_node.structural_kind != NodeKind.ROOT.value
-        or dispatch.release_precondition_kind != "release_blocked"
-    ):
+    ensure_no_staged_child_assignment(dispatch, action_name="blocked")
+    parent_node = await parent_node_from_relation(session, node=state.current_node)
+    if parent_node is not None:
+        if dispatch.release_precondition_kind is not None:
+            raise boundary_precondition_error(
+                "non-root parent blocked does not use a release precondition",
+                suggested_next_step=(
+                    "Reread the current dispatch and close with the boundary that matches "
+                    "the committed release precondition, or start a fresh dispatch before "
+                    "choosing `blocked`."
+                ),
+            )
+        flow.current_node_key = parent_node.node_key
+        return
+    if state.current_node.structural_kind != NodeKind.ROOT.value:
+        raise missing_resource_error(
+            "blocked parent boundary has no parent node",
+            suggested_next_step=(
+                "Reread the current workflow manifest and repair the runtime structure before "
+                "returning `blocked`."
+            ),
+        )
+    if dispatch.release_precondition_kind != "release_blocked":
         raise boundary_precondition_error(
             "blocked requires root release_blocked first",
             suggested_next_step=(

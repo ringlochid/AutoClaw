@@ -88,7 +88,7 @@ They may also close their own current dispatch through:
 - `yield`
 - `green`
 - `retry`
-- `blocked` for root when whole-flow blocked release is already committed
+- `blocked` for the current node when its assignment cannot proceed; root whole-flow blocked closure also requires committed `release_blocked`
 
 These are runtime node powers, not operator powers.
 
