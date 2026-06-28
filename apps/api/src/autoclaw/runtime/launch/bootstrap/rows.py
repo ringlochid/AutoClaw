@@ -264,6 +264,8 @@ async def _stage_flow_rows(
         binding_mode=context.workspace_binding_mode,
     )
 
+    flow_node_rows = []
+    node_plan_revision_inputs = []
     for node in bootstrap_input.compiled_plan.nodes:
         role, policy = resolve_pinned_role_policy(
             bootstrap_input.role_policy_lookup,
@@ -284,16 +286,39 @@ async def _stage_flow_rows(
             policy_instruction=policy.definition.instruction if policy else None,
         )
         session.add(flow_node)
+        flow_node_rows.append(flow_node)
+        node_plan_revision_inputs.append(
+            (
+                node,
+                role.definition.description,
+                role.definition.instruction,
+                policy.definition.description if policy else None,
+                policy.definition.instruction if policy else None,
+            )
+        )
+
+    await session.flush()
+
+    for (
+        flow_node,
+        (
+            node,
+            role_description,
+            role_instruction,
+            policy_description,
+            policy_instruction,
+        ),
+    ) in zip(flow_node_rows, node_plan_revision_inputs, strict=True):
         session.add(
             build_node_plan_revision_row(
                 flow_revision=flow_revision,
                 flow_node=flow_node,
                 bootstrap_input=bootstrap_input,
                 node=node,
-                role_description=role.definition.description,
-                role_instruction=role.definition.instruction,
-                policy_description=policy.definition.description if policy else None,
-                policy_instruction=policy.definition.instruction if policy else None,
+                role_description=role_description,
+                role_instruction=role_instruction,
+                policy_description=policy_description,
+                policy_instruction=policy_instruction,
             )
         )
     await session.flush()

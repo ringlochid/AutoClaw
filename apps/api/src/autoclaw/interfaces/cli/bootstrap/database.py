@@ -94,6 +94,12 @@ async def ensure_database_ready(
     if progress is not None:
         progress.step("database", "Applying database schema")
     await ensure_database_schema()
+    rebound_constraints = await _repair_postgres_public_foreign_keys_if_needed(database_url)
+    if rebound_constraints and progress is not None:
+        progress.step(
+            "database",
+            f"Rebound {len(rebound_constraints)} legacy PostgreSQL foreign keys",
+        )
     async with get_session_factory()() as session:
         if progress is not None:
             progress.step("seed", "Seeding packaged definitions")
@@ -310,6 +316,102 @@ def _postgres_quote_identifier(value: str) -> str:
     return '"' + value.replace('"', '""') + '"'
 
 
+def _postgres_rebound_constraint_definition(definition: str, backup_schema: str) -> str:
+    rebound = definition.replace(
+        f"REFERENCES {backup_schema}.",
+        "REFERENCES public.",
+    )
+    return rebound.replace(
+        f'REFERENCES "{backup_schema}".',
+        "REFERENCES public.",
+    )
+
+
+def _postgres_constraint_with_not_valid(definition: str) -> str:
+    if "NOT VALID" in definition:
+        return definition
+    return f"{definition} NOT VALID"
+
+
+def _postgres_rebind_public_foreign_keys(
+    connection: Connection,
+    backup_schema: str,
+) -> tuple[str, ...]:
+    rows = connection.execute(
+        text(
+            """
+            SELECT t.relname, c.conname, pg_get_constraintdef(c.oid)
+            FROM pg_constraint c
+            JOIN pg_class t ON t.oid = c.conrelid
+            JOIN pg_namespace n ON n.oid = t.relnamespace
+            WHERE c.contype = 'f'
+              AND n.nspname = 'public'
+            ORDER BY t.relname, c.conname
+            """
+        )
+    ).all()
+    rebound_constraints: list[str] = []
+    for table_name, constraint_name, definition in rows:
+        rebound_definition = _postgres_rebound_constraint_definition(
+            str(definition),
+            backup_schema,
+        )
+        if rebound_definition == definition:
+            continue
+        quoted_table = _postgres_quote_identifier(str(table_name))
+        quoted_constraint = _postgres_quote_identifier(str(constraint_name))
+        connection.execute(
+            text(
+                " ".join(
+                    [
+                        f"ALTER TABLE public.{quoted_table}",
+                        f"DROP CONSTRAINT {quoted_constraint}",
+                    ]
+                )
+            )
+        )
+        connection.execute(
+            text(
+                " ".join(
+                    [
+                        f"ALTER TABLE public.{quoted_table}",
+                        f"ADD CONSTRAINT {quoted_constraint}",
+                        _postgres_constraint_with_not_valid(rebound_definition),
+                    ]
+                )
+            )
+        )
+        rebound_constraints.append(f"{table_name}.{constraint_name}")
+    return tuple(rebound_constraints)
+
+
+async def _repair_postgres_public_foreign_keys_if_needed(database_url: str) -> tuple[str, ...]:
+    if sqlite_database_path(database_url) is not None:
+        return ()
+
+    from autoclaw.persistence.session import get_async_engine
+
+    engine = get_async_engine()
+    async with engine.begin() as connection:
+        schema_names = await connection.run_sync(
+            lambda sync_connection: set(inspect(sync_connection).get_schema_names())
+        )
+        backup_schemas = sorted(
+            schema_name
+            for schema_name in schema_names
+            if schema_name == "autoclaw_legacy" or schema_name.startswith("autoclaw_legacy_")
+        )
+        rebound_constraints: list[str] = []
+        for backup_schema in backup_schemas:
+            rebound_constraints.extend(
+                await connection.run_sync(
+                    _postgres_rebind_public_foreign_keys,
+                    backup_schema,
+                )
+            )
+    return tuple(rebound_constraints)
+
+
 def _postgres_fk_validity_predicates(
     connection: Connection,
     *,
@@ -320,9 +422,7 @@ def _postgres_fk_validity_predicates(
     predicates: list[str] = []
     for foreign_key in inspect(connection).get_foreign_keys(table_name):
         referred_table = foreign_key.get("referred_table")
-        constrained_columns = [
-            str(column) for column in foreign_key.get("constrained_columns", ())
-        ]
+        constrained_columns = [str(column) for column in foreign_key.get("constrained_columns", ())]
         referred_columns = [str(column) for column in foreign_key.get("referred_columns", ())]
         if (
             not referred_table
@@ -498,6 +598,7 @@ async def _repair_postgres_legacy_schema(database_url: str) -> DatabaseRepairRes
             _copy_postgres_legacy_data,
             backup_schema,
         )
+        await connection.run_sync(_postgres_rebind_public_foreign_keys, backup_schema)
     await dispose_db_engine()
     return DatabaseRepairResult(
         is_repaired=True,

@@ -10,6 +10,10 @@ from pathlib import Path
 import autoclaw.interfaces.cli as cli
 import pytest
 from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL, get_settings
+from autoclaw.interfaces.cli.bootstrap.database import (
+    _postgres_constraint_with_not_valid,
+    _postgres_rebound_constraint_definition,
+)
 from autoclaw.interfaces.cli.bootstrap.legacy_copy import (
     postgres_command_run_row,
     postgres_pending_human_request_row,
@@ -208,6 +212,26 @@ def test_legacy_postgres_terminal_row_builders_keep_surface_and_clear_unknown_ac
         "terminal_event_source": "control_api",
         "terminal_actor_ref": None,
     }
+
+
+def test_legacy_postgres_constraint_rebinder_targets_public_schema_and_not_valid() -> None:
+    rebound = _postgres_rebound_constraint_definition(
+        (
+            "FOREIGN KEY (flow_node_id) "
+            "REFERENCES autoclaw_legacy.flow_nodes(flow_node_id) "
+            "DEFERRABLE INITIALLY DEFERRED"
+        ),
+        "autoclaw_legacy",
+    )
+
+    assert rebound == (
+        "FOREIGN KEY (flow_node_id) "
+        "REFERENCES public.flow_nodes(flow_node_id) "
+        "DEFERRABLE INITIALLY DEFERRED"
+    )
+    assert _postgres_constraint_with_not_valid(rebound).endswith(
+        "DEFERRABLE INITIALLY DEFERRED NOT VALID"
+    )
 
 
 def test_legacy_postgres_command_run_builder_preserves_cancellation_actor_ref() -> None:
