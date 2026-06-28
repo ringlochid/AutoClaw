@@ -104,7 +104,7 @@ START_COMMAND_RUN_TEACHING = mutating_tool_teaching(
     summary="Start a controller-managed long-running command run for the current node execution.",
     details=(
         "This creates waiting_for_command_run directly for command work expected to exceed "
-        "about five minutes or otherwise need controller-managed async waiting.",
+        "about two minutes or otherwise need controller-managed async waiting.",
         "It is not a workflow boundary, task continue action, local process runner, or raw "
         "stdout/stderr capture surface.",
         "Denied or stale attempts fail before command-run, waiting-state, or task-event "

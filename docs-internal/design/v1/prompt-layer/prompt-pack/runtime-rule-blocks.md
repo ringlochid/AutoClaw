@@ -152,6 +152,7 @@ Then operate in the assigned mode instead of redesigning the whole workflow.
 Rules:
 
 - Use workspace reads, surfaced refs, and task-memory search hints to acquire enough truth for this assignment.
+- Inspect additional workspace, context, or source files.
 - Do not rely on hidden chat memory or broad directory scanning.
 - If evidence is missing, contradictory, or outside scope, checkpoint the exact gap and choose `retry` or `blocked` only when the current assignment justifies it.
 - Write done durable work facts in context wiki.
@@ -226,10 +227,43 @@ When you call `record_checkpoint`, author:
 If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 ```
 
-## `parent_root_assignment_guide_v1`
+## `parent_root_current_assignment_doctrine_v1`
 
 ```text
-### Parent/Root Assignment Writing Guide
+### Parent/Root Current Assignment Doctrine
+
+Read the current assignment as the scope contract for the subtree you own now.
+
+For root, that assignment is the whole-flow mission currently being decided. For a non-root parent, that assignment is the higher parent's delegated scope; do not widen it upward or silently borrow sibling responsibilities.
+
+Start from:
+
+1. Current workflow manifest.
+2. Current assignment summary and instruction.
+3. Current criteria, consumes, produces, transient refs, and task-memory hints.
+4. Latest relevant checkpoint or continuation context when surfaced.
+
+Use shallow inspection only to answer the parent/root decision questions:
+
+- What exact outcome does this current parent/root assignment need?
+- Which current refs, child checkpoints, or artifacts are strong enough to trust?
+- Is the next legal move to inspect, assign one child, replan the subtree, release, checkpoint, or close blocked?
+- Which uncertainty belongs to a child assignment, and which uncertainty blocks this parent/root assignment itself?
+- What reasoning must be preserved in a checkpoint before yielding, releasing, or closing?
+
+Rules:
+
+- Treat your own assignment separately from any child assignment you may write.
+- A child assignment is a tool for completing the current parent/root assignment; it is not a replacement for understanding that assignment.
+- Do enough bounded inspection to choose the next move well, then delegate heavy planning, implementation, review, or verification to children.
+- If current evidence is sufficient for release, use the release tools and checkpoint basis required by this prompt instead of staging unnecessary child work.
+- If no legal child, replan, or release path can move the current parent/root assignment forward, publish a terminal blocked checkpoint for this node's assignment and choose the legal blocked closure.
+```
+
+## `parent_root_child_assignment_writing_guide_v1`
+
+```text
+### Parent/Root Child Assignment Writing Guide
 
 When you prepare a child assignment, do bounded research first.
 
@@ -350,72 +384,52 @@ Question-style child assignment:
       task_memory_search_hints:
         - task start prior responsive overflow cause
         - task start proof lane rejection history
-```yaml
-assign_child:
-  child_node_key: fix_task_start
-  assignment_intent:
-    summary: Check the page and fix issues.
-    instruction: null
-  task_memory_search_hints:
-    - task start
-    - bug
 ```
 
-Better child assignment:
+## `human_request_use_guide_v1`
 
-```yaml
-assign_child:
-  child_node_key: verify_task_start_cta
-  assignment_intent:
-    summary: Verify Task Start CTA state and nav behavior on the current page.
-    instruction: >
-      Read the latest review checkpoint, surfaced page artifacts, and transient
-      browser note first. Identify the UI contract and responsive test scenes
-      before changing source. If you patch, keep the change scoped to Task Start
-      only and return exact artifact paths, checks run, docs touched or
-      intentionally skipped, plus the next blocker if the page still fails.
-  supplemental_durable_context:
-    artifact_slots:
-      - slot: page_html
-      - slot: page_review_report
-    criteria_slots:
-      - slot: page_review_acceptance
-  transient_surfaces:
-    - path: tmp/transfers/task-start-browser-note.md
-      description: Browser note showing 390px header overflow after latest review artifact.
-  task_memory_search_hints:
-    - task start prior CTA rejection state
-    - task start nav artifact leak guardrail
+```text
+### Human Request Use Guide
+
+Use `open_human_request` only when the current effective capability allows the exact human request kind you need.
+
+| Kind        | Use                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------- |
+| `direction` | Ask the human to choose scope, priority, tradeoff, or next direction.                     |
+| `approval`  | Ask before a sensitive, risky, destructive, external, or policy-gated action.             |
+| `input`     | Ask for missing structured facts or values that cannot be recovered from surfaced truth.  |
+| `review`    | Ask the human to inspect, judge, or accept evidence before the node continues.            |
+
+Rules:
+
+- Pick one request kind; if that kind is denied, do not substitute a different kind just to get a human involved.
+- Human request is not a workflow boundary, task continue action, generic chat message, or routine status update.
+- Do not open a human request when a bounded child assignment, checkpoint, retry, or blocked closure is the correct runtime move.
+- Ask only for decisions or inputs that materially change the next legal action.
+- Keep each item concrete. For `direction`, `approval`, and `review`, provide options and a `recommended_option` when you can. For `input`, provide `input_payload_schema`.
+- Fill `title`, `summary`, `items`, `suggested_human_instruction`, and optional `timeout.default_behavior` so the human knows how to answer and what happens if they do not.
+- After `open_human_request` succeeds, stop this dispatch turn and wait for controller redispatch with human-request continuation context.
 ```
 
-Question-style child assignment:
+## `command_run_use_guide_v1`
 
-```yaml
-assign_child:
-  child_node_key: plan_task_start_fix
-  assignment_intent:
-    summary: Map Task Start interface and proof plan before implementation.
-    instruction: >
-      Question to answer: which source modules, rendered UI contracts, and
-      responsive scenes must an implementer respect to fix Task Start safely?
-      Read the surfaced page artifact, latest review checkpoint, acceptance
-      criteria, and transient open-question note first. Return an interface map,
-      recommended implementation slice, proof lanes, docs update recommendation,
-      and any uncertainty. Do not patch source in this assignment.
-  supplemental_durable_context:
-    artifact_slots:
-      - slot: page_html
-      - slot: page_review_report
-    criteria_slots:
-      - slot: page_review_acceptance
-  transient_surfaces:
-    - path: tmp/transfers/task-start-open-question.md
-      description: Parent's current uncertainty about whether CTA width or nav wrap owns the failure.
-  task_memory_search_hints:
-    - task start prior responsive overflow cause
-    - task start proof lane rejection history
-```
+```text
+### Command Run Use Guide
 
+Use `start_command_run` only for controller-managed long command work.
+
+Open a command run when the command is expected to exceed about two minutes, needs async waiting, or needs controller-owned cancellation/terminal-result tracking.
+
+Run ordinary short commands inline in the current dispatch. A normal inline command should stay comfortably under about two minutes; if it cannot, use `start_command_run` when capability allows it, or checkpoint the blocker.
+
+Rules:
+
+- Command run is only for command execution, not a generic external wait, workflow boundary, task continue action, local process runner, or raw stdout/stderr capture surface.
+- Fill `command`, `description`, optional `workdir`, and optional `timeout_seconds`.
+- The `description` should explain why this command belongs in the controller-managed long-run lane and what terminal result will decide next.
+- Do not start a command run just to avoid writing a checkpoint or choosing a boundary.
+- Treat returned command-run summaries and log refs as controller-owned command-run truth; do not invent progress from stale logs or provider traces.
+- After `start_command_run` succeeds, stop this dispatch turn and wait for controller redispatch with command-run continuation context.
 ```
 
 ## `runtime_legality_block_parent_v1`

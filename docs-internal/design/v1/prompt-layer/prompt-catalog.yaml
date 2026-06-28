@@ -65,6 +65,7 @@ prompt_families:
       - current_assignment is the runtime-projected mission contract for the current node
       - consumed_durable_refs carries exact runtime-resolved durable refs
       - boundary_followup_guidance interprets initial, retry, green, and blocked handoffs without creating new prompt families
+      - human_request and command_run use guides render independently when the current effective capability allows that capability family
       - checkpoint guidance teaches decision-relevant handoff delta, exact produced slot/path claims, and retrieval-oriented task-memory hints
       - record_checkpoint publishes durable handoff before terminal boundary
       - produces are requirements, not published refs
@@ -82,6 +83,9 @@ prompt_families:
         - checkpoint_authoring_guide_v1
         - runtime_boundary_rule_block_v1
         - runtime_legality_block_worker_v1
+      conditional_full_prompt_instructions:
+        - human_request_use_guide_v1
+        - command_run_use_guide_v1
     generated_examples:
       - worker_dispatch_prompt_full_prompt
       - worker_dispatch_prompt_blocked_ending_sketch
@@ -119,8 +123,10 @@ prompt_families:
     rules:
       - current_assignment is the runtime-projected mission contract for the current node
       - parent/root is purpose-first and mode-aware while delegating heavy planning, implementation, review, and verification to children
+      - parent/root reads its own current assignment as the scope contract for the subtree it owns before writing any child assignment
       - parent/root leads through iterative assignment, evidence audit, follow-up questioning, and specialist routing rather than one-shot solo completion
       - parent/root asks children for interface maps, test-scene maps, and documentation navigation when those judgments are needed for the owned slice
+      - current assignment doctrine and child assignment writing guidance stay separate for parent/root prompts
       - assign_child guidance packages bounded research into summary, instruction, supplemental durable slots, transient surfaces, and retrieval-oriented task-memory hints
       - assign_child authors only assignment_intent, supplemental_durable_context, and explicit transient_surfaces
       - bounded research sharpens child assignment quality rather than replacing child implementation
@@ -130,6 +136,7 @@ prompt_families:
       - consumed_durable_refs carries exact runtime-resolved durable refs
       - yield is legal only after exactly one staged child assignment exists
       - release_green and root release_blocked are terminal preconditions, not yield basis
+      - human_request and command_run use guides render independently when the current effective capability allows that capability family
     exact_blocks:
       full_prompt_instructions:
         - autoclaw_system_block_v1
@@ -141,10 +148,14 @@ prompt_families:
         - autoclaw_provider_continuity_block_v1
         - parent_root_dispatch_opening_v1
         - parent_root_orchestration_doctrine_v1
-        - parent_root_assignment_guide_v1
+        - parent_root_current_assignment_doctrine_v1
+        - parent_root_child_assignment_writing_guide_v1
         - checkpoint_authoring_guide_v1
         - runtime_boundary_rule_block_v1
         - runtime_legality_block_parent_v1
+      conditional_full_prompt_instructions:
+        - human_request_use_guide_v1
+        - command_run_use_guide_v1
     generated_examples:
       - parent_root_dispatch_prompt_full_prompt
       - parent_root_dispatch_prompt_non_root_blocked_full_prompt
@@ -169,10 +180,25 @@ exact_blocks:
     role: parent_root_dispatch_opening_block
     purpose: teach parent/root orchestration posture, bounded research for delegation, and staged-child-only yield posture
     consumption: live_instruction_block
-  - id: parent_root_assignment_guide_v1
+  - id: parent_root_current_assignment_doctrine_v1
     owner_file: prompt-pack/runtime-rule-blocks.md
-    role: parent_root_assignment_guide
+    role: parent_root_current_assignment_doctrine
+    purpose: teach how parent/root nodes read and decide from their own current assignment before inspecting, assigning children, replanning, releasing, or blocking
+    consumption: live_instruction_block
+  - id: parent_root_child_assignment_writing_guide_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: parent_root_child_assignment_writing_guide
     purpose: teach how bounded research becomes summary, instruction, durable slot sharing, transient carryover, and retrieval-oriented search hints for assign_child
+    consumption: live_instruction_block
+  - id: human_request_use_guide_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: human_request_use_guide
+    purpose: teach when and how to open typed human requests when the current effective capability allows them
+    consumption: live_instruction_block
+  - id: command_run_use_guide_v1
+    owner_file: prompt-pack/runtime-rule-blocks.md
+    role: command_run_use_guide
+    purpose: teach when and how to start controller-managed long command runs when the current effective capability allows them
     consumption: live_instruction_block
   - id: runtime_concept_glossary_v1
     owner_file: prompt-pack/runtime-rule-blocks.md

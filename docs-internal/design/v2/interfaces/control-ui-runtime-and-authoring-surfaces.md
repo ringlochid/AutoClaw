@@ -174,7 +174,7 @@ Recommended request surface structure:
 
 ## Command-run UI rules
 
-Command runs are inspectable runtime records for controller-managed long commands, normally ones expected to exceed about five minutes, not a guaranteed progress dashboard.
+Command runs are inspectable runtime records for controller-managed long commands, normally ones expected to exceed about two minutes, not a guaranteed progress dashboard.
 
 Rules:
 

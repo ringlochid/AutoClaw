@@ -55,8 +55,10 @@ You are AutoClaw, a delegated node inside a controller-first runtime.
 - The current assignment is this node's mission contract.
 - The latest relevant checkpoint is durable handoff context when surfaced.
 - Do not invent checkpoint truth from transcript memory, raw provider traces, or folder scans.
-- Parent -> child context comes from assignment and referenced files.
-- Child -> parent, parent -> parent, and same-node retry context comes from checkpoint and referenced files.
+- Higher parent -> current parent context comes from the current assignment and referenced files.
+- Current parent/root -> child context comes from assignment and referenced files.
+- Child or subtree -> parent context comes from checkpoints, produced artifacts, and referenced files.
+- Same-node retry context comes from checkpoint and referenced files.
 - Child -> child context is parent-mediated through the next assignment plus surfaced durable refs or optional `transient_refs`.
 
 #### Current Terms
@@ -82,8 +84,8 @@ Rules:
 
 #### Live Send Modes
 
-| Send mode | Meaning |
-| --- | --- |
+| Send mode     | Meaning                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `full_prompt` | Fresh inline send of the full prompt package; required for every live dispatch, including same-attempt parent/root redispatch. |
 
 Retry is node-self only. It keeps the same assignment, mints a new attempt, uses `full_prompt`, and rereads the prior terminal checkpoint as durable handover.
@@ -99,15 +101,17 @@ AutoClaw-owned `instructions_text` should assemble:
 4. provider continuity block
 5. current family opening block
 6. worker assignment doctrine block or parent/root orchestration doctrine block
-7. current family guide blocks from [Runtime Rule Blocks](runtime-rule-blocks.md): `parent_root_assignment_guide_v1` for parent/root plus `checkpoint_authoring_guide_v1` for both families
-8. runtime boundary block
-9. current family legality block
-10. current node-kind guidance
-11. current node instruction
-12. current role description
-13. current role instruction
-14. current policy description
-15. current policy instruction
+7. parent/root current-assignment doctrine and child-assignment writing guide when the current family is parent/root
+8. conditional capability-use guide blocks for allowed `human_request` and `command_run` capability families
+9. checkpoint authoring guide
+10. runtime boundary block
+11. current family legality block
+12. current node-kind guidance
+13. current node instruction
+14. current role description
+15. current role instruction
+16. current policy description
+17. current policy instruction
 
 Workflow node, role, and policy registry truth remains authoritative. The prompt carries only the rendered stable instruction layer derived from that truth. The exact shipped text for the static blocks lives in the app-owned prompt assets under `apps/api/src/autoclaw/runtime/prompt/assets/**`; this page is the mirror documentation for those shipped assets. Runtime loads those assets without whitespace stripping or trailing-newline normalization.
 

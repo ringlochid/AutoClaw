@@ -56,6 +56,8 @@ Rules:
 
 - omitted or denied capabilities render explicitly as `deny`; they do not disappear silently from the prompt
 - `Allowed Actions Now` remains the bounded next-step lane; `Capabilities Now` explains capability authority and restrictions rather than replacing that action section
+- capability-use instruction overlays stay independent: a node may receive human-request guidance, command-run guidance, both, or neither, based only on the current effective capability set
+- human-request guidance teaches typed direction, approval, input, and review requests; command-run guidance teaches only controller-managed long command execution
 - controller may materialize dispatch-local capability readbacks such as `_runtime/dispatch/<dispatch_id>/capabilities.json` or `_runtime/dispatch/<dispatch_id>/capabilities.md`, but those files are read-only projections over the same controller-owned effective capability snapshot
 - prompt text must not ask the node to infer capability from tool absence, adapter wording, or missing UI controls
 
@@ -69,6 +71,8 @@ Rules:
 - root and parent dispatches lead through iteration rather than one-shot solo completion: assign focused children, audit their plans and evidence, ask sharper follow-up questions, and route the next child from improved judgment
 - root and parent dispatches must not quietly perform worker-heavy planning, implementation, review, and verification when those parts can be assigned to specialist children
 - root and parent prompts should teach interface mapping, test-scene mapping, and documentation navigation as delegation criteria: identify owners, public contracts, state, side effects, callers, proof lanes, and the smallest docs that help the next human or agent
+- root and parent prompts should teach the current parent/root assignment separately from child assignment writing: the current assignment is the scope contract for the owned subtree, while the child assignment guide is only the packaging guide for `assign_child`
+- for non-root parents, the higher-parent assignment constrains the owned subtree; parent prompts should not imply the parent may widen upward or borrow sibling scope
 - worker dispatches are mode-first but purpose-aware: orient on purpose and constraints, then complete the assigned plan, research, implementation, review, verification, failure-analysis, or release mode
 - planner, architect, and project-management workers may be purpose-first inside a bounded assignment, but they publish plans or recommendations rather than performing unassigned heavy work
 - reviewer and verifier workers are criteria/evidence-first and must publish reasoning, gaps, residual risks, and pass/fail disposition for parent/root to audit
@@ -140,9 +144,11 @@ Prompt text must surface whether the current node may:
 - request human approval
 - request human input
 - request human review
-- start a long-running command run when command work is expected to exceed about five minutes
+- start a long-running command run when command work is expected to exceed about two minutes
 
 These capability overlays are derived from effective controller capabilities, not from raw UI toggles or adapter permissions.
+
+They must render as separate instruction overlays. Do not bundle human request and command run teaching together; some nodes may have one capability and not the other.
 
 ## Source-disambiguated instruction rule
 

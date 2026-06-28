@@ -43,7 +43,7 @@ The shared logical surfaces are:
 - checkpoint recording
 - boundary close or yield
 - parent or root structural mutation
-- controller-owned `human_request` and `command_run` tools that open external waits directly, with `command_run` reserved for long command work that is expected to exceed about five minutes
+- controller-owned `human_request` and `command_run` tools that open external waits directly, with `command_run` reserved for long command work that is expected to exceed about two minutes
 
 `operator` owns provider-neutral task-control tools such as:
 

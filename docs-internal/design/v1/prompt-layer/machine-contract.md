@@ -87,7 +87,10 @@ The live catalog must register these exact reusable prompt blocks:
 - `runtime_concept_glossary_v1`
 - `worker_assignment_doctrine_v1`
 - `parent_root_orchestration_doctrine_v1`
-- `parent_root_assignment_guide_v1`
+- `parent_root_current_assignment_doctrine_v1`
+- `parent_root_child_assignment_writing_guide_v1`
+- `human_request_use_guide_v1`
+- `command_run_use_guide_v1`
 - `checkpoint_authoring_guide_v1`
 - `runtime_legality_block_worker_v1`
 - `runtime_legality_block_parent_v1`

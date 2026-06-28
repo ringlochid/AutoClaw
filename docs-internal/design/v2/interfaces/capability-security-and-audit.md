@@ -24,7 +24,7 @@ That effective capability set may draw from:
 The controller-owned effective capability set is the only authority for whether the current node may:
 
 - open each kind of human request
-- start a long-running command run for command work expected to exceed about five minutes
+- start a long-running command run for command work expected to exceed about two minutes
 
 Adapter permissions, local tool permissions, and UI affordances may restrict further, but they must not silently widen the controller-owned capability set.
 
@@ -70,7 +70,7 @@ V2 must model these capability families explicitly:
 Rules:
 
 - `human_request` uses explicit deny/allow policy and governs whether the current node may open a typed pending human request
-- `command_run` governs whether the current node may start a controller-managed long-running command run for work expected to exceed about five minutes
+- `command_run` governs whether the current node may start a controller-managed long-running command run for work expected to exceed about two minutes
 - ordinary node MCP access is assumed once provider launch compatibility succeeds
 - control-plane actions such as pause, continue, cancel, and resolve are governed by task authorization plus current task state rather than a node capability family
 

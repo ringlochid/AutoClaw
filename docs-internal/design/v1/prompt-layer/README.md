@@ -66,7 +66,9 @@ Use these routes when the question is "what exact text do I send or expect?"
 - exact runtime concept glossary: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_concept_glossary_v1`
 - exact worker assignment doctrine: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `worker_assignment_doctrine_v1`
 - exact parent/root orchestration doctrine: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_orchestration_doctrine_v1`
-- exact parent/root assignment packaging guide: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_assignment_guide_v1`
+- exact parent/root current assignment doctrine: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_current_assignment_doctrine_v1`
+- exact parent/root child assignment writing guide: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_child_assignment_writing_guide_v1`
+- exact conditional human-request and command-run guides: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `human_request_use_guide_v1`, `command_run_use_guide_v1`
 - exact checkpoint authoring guide: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `checkpoint_authoring_guide_v1`
 - exact worker or parent/root legality block: [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)
 - exact rendered worker or parent/root prompt: [Rendered Examples](generated/rendered-examples.md)

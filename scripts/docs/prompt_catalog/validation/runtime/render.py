@@ -20,7 +20,12 @@ def run_runtime_render_checks(errors: list[str]) -> None:
         "provider": load_exact_prompt_block("autoclaw_provider_continuity_block_v1"),
         "worker_opening": load_exact_prompt_block("worker_dispatch_opening_v1"),
         "parent_opening": load_exact_prompt_block("parent_root_dispatch_opening_v1"),
-        "parent_assignment_guide": load_exact_prompt_block("parent_root_assignment_guide_v1"),
+        "parent_current_assignment_doctrine": load_exact_prompt_block(
+            "parent_root_current_assignment_doctrine_v1"
+        ),
+        "parent_child_assignment_guide": load_exact_prompt_block(
+            "parent_root_child_assignment_writing_guide_v1"
+        ),
         "checkpoint_guide": load_exact_prompt_block("checkpoint_authoring_guide_v1"),
         "boundary": load_exact_prompt_block("runtime_boundary_rule_block_v1"),
         "worker_legality": load_exact_prompt_block("runtime_legality_block_worker_v1"),
@@ -57,7 +62,8 @@ def run_runtime_render_checks(errors: list[str]) -> None:
             exact_blocks["monitoring_rule"],
             exact_blocks["provider"],
             exact_blocks["parent_opening"],
-            exact_blocks["parent_assignment_guide"],
+            exact_blocks["parent_current_assignment_doctrine"],
+            exact_blocks["parent_child_assignment_guide"],
             exact_blocks["checkpoint_guide"],
             exact_blocks["boundary"],
             exact_blocks["parent_legality"],
@@ -134,6 +140,7 @@ def _validate_parent_instruction_rules(
         return
 
     required_rules = (
+        "Read the current assignment as the scope contract for the subtree you own now.",
         "Write the child brief as an acquisition plan, not just loose assignment prose.",
         "Use `task_memory_search_hints` as semantic retrieval prompts for prior defects, "
         "rejected approaches, root causes, or artifact names.",

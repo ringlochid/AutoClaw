@@ -92,6 +92,7 @@ Rules:
 - omitted or denied capabilities render explicitly rather than disappearing
 - adapter, UI, or local-tool restrictions may narrow but must not widen controller-owned capability truth
 - this section explains capability authority; it does not replace `allowed_actions_now`
+- capability-use instruction overlays render separately only when an effective capability family is allowed: human-request guidance and command-run guidance are independent
 
 ### `workflow_manifest`
 

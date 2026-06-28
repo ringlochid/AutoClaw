@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from autoclaw.runtime.contracts import (
-    NodeKind,
+    EffectiveCapabilitySet,
+    HumanRequestCapabilitySet,
     PromptFamily,
     PromptRenderRequest,
     validate_prompt_family_for_node_kind,
 )
+from autoclaw.runtime.contracts.primitives import CapabilityDecision
 from autoclaw.runtime.prompt.asset_catalog import load_exact_prompt_block
 from autoclaw.runtime.prompt.document import (
     INSTRUCTIONS_SECTION_TITLE,
@@ -21,7 +23,7 @@ from autoclaw.runtime.prompt.structural_edit_palette import (
     structural_edit_palette_lines,
 )
 
-_FULL_PROMPT_INSTRUCTION_BLOCK_IDS = {
+_FULL_PROMPT_BASE_INSTRUCTION_BLOCK_IDS = {
     PromptFamily.WORKER_DISPATCH: (
         "autoclaw_system_block_v1",
         "runtime_concept_glossary_v1",
@@ -46,19 +48,28 @@ _FULL_PROMPT_INSTRUCTION_BLOCK_IDS = {
         "autoclaw_provider_continuity_block_v1",
         "parent_root_dispatch_opening_v1",
         "parent_root_orchestration_doctrine_v1",
-        "parent_root_assignment_guide_v1",
+        "parent_root_current_assignment_doctrine_v1",
+        "parent_root_child_assignment_writing_guide_v1",
         "checkpoint_authoring_guide_v1",
         "runtime_boundary_rule_block_v1",
         "runtime_legality_block_parent_v1",
     ),
 }
 
+_FULL_PROMPT_CONDITIONAL_INSTRUCTION_BLOCK_IDS = {
+    PromptFamily.WORKER_DISPATCH: (
+        "human_request_use_guide_v1",
+        "command_run_use_guide_v1",
+    ),
+    PromptFamily.PARENT_ROOT_DISPATCH: (
+        "human_request_use_guide_v1",
+        "command_run_use_guide_v1",
+    ),
+}
+
 
 def render_prompt_instructions(request: PromptRenderRequest) -> str:
-    block_ids = _instruction_block_ids(
-        prompt_family=request.prompt_family,
-        node_kind=request.current_node.node_kind,
-    )
+    block_ids = _instruction_block_ids(request)
     exact_blocks = tuple(load_exact_prompt_block(block_id) for block_id in block_ids)
     body = "\n\n".join((*exact_blocks, _render_node_guidance_block(request))).rstrip()
     return render_markdown_section(INSTRUCTIONS_SECTION_TITLE, (body,), level=2) + "\n"
@@ -67,26 +78,59 @@ def render_prompt_instructions(request: PromptRenderRequest) -> str:
 def live_instruction_block_inventory() -> dict[str, dict[str, tuple[str, ...]]]:
     return {
         prompt_family.value: {
-            "full_prompt": _full_prompt_instruction_block_ids(prompt_family),
+            "full_prompt": _full_prompt_instruction_block_inventory_ids(prompt_family),
         }
         for prompt_family in PromptFamily
     }
 
 
-def _full_prompt_instruction_block_ids(prompt_family: PromptFamily) -> tuple[str, ...]:
-    return _FULL_PROMPT_INSTRUCTION_BLOCK_IDS[prompt_family]
+def _full_prompt_base_instruction_block_ids(prompt_family: PromptFamily) -> tuple[str, ...]:
+    return _FULL_PROMPT_BASE_INSTRUCTION_BLOCK_IDS[prompt_family]
 
 
-def _instruction_block_ids(
-    *,
+def _full_prompt_instruction_block_inventory_ids(
     prompt_family: PromptFamily,
-    node_kind: NodeKind,
 ) -> tuple[str, ...]:
-    validate_prompt_family_for_node_kind(
-        prompt_family=prompt_family,
-        node_kind=node_kind,
+    return (
+        *_full_prompt_base_instruction_block_ids(prompt_family),
+        *_FULL_PROMPT_CONDITIONAL_INSTRUCTION_BLOCK_IDS[prompt_family],
     )
-    return _full_prompt_instruction_block_ids(prompt_family)
+
+
+def _instruction_block_ids(request: PromptRenderRequest) -> tuple[str, ...]:
+    validate_prompt_family_for_node_kind(
+        prompt_family=request.prompt_family,
+        node_kind=request.current_node.node_kind,
+    )
+    return (
+        *_full_prompt_base_instruction_block_ids(request.prompt_family),
+        *_capability_instruction_overlay_ids(request.effective_capabilities),
+    )
+
+
+def _capability_instruction_overlay_ids(
+    effective_capabilities: EffectiveCapabilitySet,
+) -> tuple[str, ...]:
+    overlay_ids: list[str] = []
+    if _human_request_capability_allows_any_request(effective_capabilities.human_request):
+        overlay_ids.append("human_request_use_guide_v1")
+    if effective_capabilities.command_run == CapabilityDecision.ALLOW:
+        overlay_ids.append("command_run_use_guide_v1")
+    return tuple(overlay_ids)
+
+
+def _human_request_capability_allows_any_request(
+    human_request: HumanRequestCapabilitySet,
+) -> bool:
+    return any(
+        decision == CapabilityDecision.ALLOW
+        for decision in (
+            human_request.direction,
+            human_request.approval,
+            human_request.input,
+            human_request.review,
+        )
+    )
 
 
 def _render_node_guidance_block(request: PromptRenderRequest) -> str:

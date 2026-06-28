@@ -42,12 +42,13 @@ If you need copy-ready prompt text instead of just the semantic contract, assemb
 4. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when send-mode wording is relevant; keep it aligned to the v1 truth that dispatch control emits `full_prompt` today
 5. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `worker_dispatch_opening_v1` or `parent_root_dispatch_opening_v1`
 6. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `worker_assignment_doctrine_v1` for worker prompts or `parent_root_orchestration_doctrine_v1` for parent/root prompts
-7. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_assignment_guide_v1` for parent/root prompts plus `checkpoint_authoring_guide_v1` for both prompt families
-8. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
-9. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
-10. render current node kind, current node purpose/description, node instruction, role description, role instruction, policy description, and policy instruction into AutoClaw-owned `instructions_text`
-11. render the canonical section order from this page into dynamic prompt `input_text` using the section-source rules in [Source And Sections](source-and-sections.md)
-12. check the final assembled shape against [Rendered Examples](generated/rendered-examples.md)
+7. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `parent_root_current_assignment_doctrine_v1` and `parent_root_child_assignment_writing_guide_v1` for parent/root prompts plus `checkpoint_authoring_guide_v1` for both prompt families
+8. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `human_request_use_guide_v1` and/or `command_run_use_guide_v1` when current effective capabilities allow those capability families
+9. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`
+10. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1` or `runtime_legality_block_parent_v1`
+11. render current node kind, current node purpose/description, node instruction, role description, role instruction, policy description, and policy instruction into AutoClaw-owned `instructions_text`
+12. render the canonical section order from this page into dynamic prompt `input_text` using the section-source rules in [Source And Sections](source-and-sections.md)
+13. check the final assembled shape against [Rendered Examples](generated/rendered-examples.md)
 
 The full provider dispatch request is therefore:
 
@@ -116,13 +117,16 @@ Every prompt should teach all of the following in ordinary language:
 - parent/root should be purpose-first and mode-aware: preserve task intent and quality bar, choose the next mode deliberately, and delegate heavy planning, implementation, review, and verification to children
 - parent/root may do bounded research to understand the task, choose the right refs, and tighten the next child assignment
 - that research serves better delegation rather than quietly doing the child's implementation in place
-- parent/root should translate that research into: a crisp owned objective, an acquisition-order instruction, the right supplemental durable slots, minimal transient carryover, and retrieval-oriented `task_memory_search_hints`
+- parent/root should read its own current assignment as the scope contract for its owned subtree before writing any child assignment
+- parent/root should translate child-directed research into: a crisp owned objective, an acquisition-order instruction, the right supplemental durable slots, minimal transient carryover, and retrieval-oriented `task_memory_search_hints`
 - when repeated loops or review findings suggest the current structure is weak, parent/root should inspect current available roles/policies and prefer reassignment, specialist lanes, or structural edits over repeating the same assignment shape
 - `task_memory_search_hints` should be retrieval prompts for prior defects, rejected approaches, root causes, or artifact names, not generic tags
 - `record_checkpoint` writes the durable handoff through checkpoint `summary`, `next_step`, blockers, risks, surfaced artifact refs, surfaced transient refs, and task-memory hints
 - checkpoints should preserve the decision-relevant delta rather than diary-style progress notes, and should omit `produced_artifacts` when no durable output exists yet
-- parent -> child context comes from semantic assignment handoff
-- child -> parent, parent -> parent, and same-node retry context comes from checkpoint plus surfaced refs
+- higher parent -> current parent context comes from the current assignment plus surfaced refs
+- current parent/root -> child context comes from semantic assignment handoff
+- child or subtree -> parent context comes from checkpoints, produced artifacts, and surfaced refs
+- same-node retry context comes from checkpoint plus surfaced refs
 - child -> child is parent-mediated through the next assignment plus surfaced durable refs or optional `transient_refs`
 - boundary follow-up guidance must interpret initial, retry, green, and blocked checkpoint handoffs without minting extra prompt families
 - child green is evidence rather than proof; parent/root must inspect artifacts, checkpoint reasoning, and criteria coverage before release

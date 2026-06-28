@@ -22,8 +22,23 @@
       "mirror_doc": "prompt-pack/system-and-provider-block.md"
     },
     {
-      "id": "parent_root_assignment_guide_v1",
-      "asset_path": "blocks/parent_root_assignment_guide_v1.md",
+      "id": "parent_root_current_assignment_doctrine_v1",
+      "asset_path": "blocks/parent_root_current_assignment_doctrine_v1.md",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "parent_root_child_assignment_writing_guide_v1",
+      "asset_path": "blocks/parent_root_child_assignment_writing_guide_v1.md",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "human_request_use_guide_v1",
+      "asset_path": "blocks/human_request_use_guide_v1.md",
+      "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
+    },
+    {
+      "id": "command_run_use_guide_v1",
+      "asset_path": "blocks/command_run_use_guide_v1.md",
       "mirror_doc": "prompt-pack/runtime-rule-blocks.md"
     },
     {

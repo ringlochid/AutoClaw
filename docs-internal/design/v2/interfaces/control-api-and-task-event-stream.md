@@ -689,7 +689,7 @@ Rules:
 
 Rules:
 
-- these reads are for controller-managed long commands, normally commands that were expected to exceed about five minutes
+- these reads are for controller-managed long commands, normally commands that were expected to exceed about two minutes
 - the command-run list row should be derivable from controller fields such as `command`, `description`, `state`, and latest or terminal summary
 - `state` may be `cancellation_requested` when cancel was accepted but terminal closure has not committed yet
 - full logs are opened only through the dedicated per-run log read

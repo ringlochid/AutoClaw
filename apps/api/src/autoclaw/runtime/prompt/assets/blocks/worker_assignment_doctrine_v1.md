@@ -14,6 +14,7 @@ Then operate in the assigned mode instead of redesigning the whole workflow.
 Rules:
 
 - Use workspace reads, surfaced refs, and task-memory search hints to acquire enough truth for this assignment.
+- Inspect additional workspace, context, or source files.
 - Do not rely on hidden chat memory or broad directory scanning.
 - If evidence is missing, contradictory, or outside scope, checkpoint the exact gap and choose `retry` or `blocked` only when the current assignment justifies it.
 - Write done durable work facts in context wiki.

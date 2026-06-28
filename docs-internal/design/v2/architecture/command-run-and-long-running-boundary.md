@@ -2,13 +2,13 @@
 
 Status: Target
 
-This page defines how V2 handles long-running command executions such as `pytest`, builds, linters, capture scripts, and other shell work that is expected to exceed about five minutes or otherwise cannot safely stay inside one model turn.
+This page defines how V2 handles long-running command executions such as `pytest`, builds, linters, capture scripts, and other shell work that is expected to exceed about two minutes or otherwise cannot safely stay inside one model turn.
 
 ## Core rule
 
 The controller must treat a long-running command start as a special node MCP action that opens a controller-owned async wait.
 
-A node should use this lane when the command is expected to exceed about five minutes or otherwise needs controller-managed async waiting. Shorter command work should usually stay inline inside the ordinary dispatch execution path rather than opening controller-owned command-run state.
+A node should use this lane when the command is expected to exceed about two minutes or otherwise needs controller-managed async waiting. Shorter command work should usually stay inline inside the ordinary dispatch execution path rather than opening controller-owned command-run state.
 
 It is not:
 
@@ -106,7 +106,7 @@ command_run_start_response:
 Rules:
 
 - the start request should explain what will run and why the task needs it
-- nodes should open `command_run` when they expect the command to exceed about five minutes or otherwise need controller-managed async waiting
+- nodes should open `command_run` when they expect the command to exceed about two minutes or otherwise need controller-managed async waiting
 - command-run start is not coupled to the human-request lane
 - command-run start does not carry artifact-slot contracts, result schemas, or human-request references
 - the start response is an acknowledgement that controller truth was persisted; it is not the source of current command-run state

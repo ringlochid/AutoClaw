@@ -58,10 +58,25 @@ This page inventories the current generated prompt contract surfaces. Static exa
   - mirror doc: `prompt-pack/system-and-provider-block.md`
   - role: `parent_root_dispatch_opening_block`
   - consumption: `live_instruction_block`
-- `parent_root_assignment_guide_v1`
-  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/parent_root_assignment_guide_v1.md`
+- `parent_root_current_assignment_doctrine_v1`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/parent_root_current_assignment_doctrine_v1.md`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
-  - role: `parent_root_assignment_guide`
+  - role: `parent_root_current_assignment_doctrine`
+  - consumption: `live_instruction_block`
+- `parent_root_child_assignment_writing_guide_v1`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/parent_root_child_assignment_writing_guide_v1.md`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
+  - role: `parent_root_child_assignment_writing_guide`
+  - consumption: `live_instruction_block`
+- `human_request_use_guide_v1`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/human_request_use_guide_v1.md`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
+  - role: `human_request_use_guide`
+  - consumption: `live_instruction_block`
+- `command_run_use_guide_v1`
+  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/command_run_use_guide_v1.md`
+  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
+  - role: `command_run_use_guide`
   - consumption: `live_instruction_block`
 - `runtime_concept_glossary_v1`
   - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/runtime_concept_glossary_v1.md`

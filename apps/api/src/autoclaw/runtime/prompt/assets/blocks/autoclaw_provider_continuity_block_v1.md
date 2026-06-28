@@ -10,8 +10,8 @@ Rules:
 
 #### Live Send Modes
 
-| Send mode | Meaning |
-| --- | --- |
+| Send mode     | Meaning                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `full_prompt` | Fresh inline send of the full prompt package; required for every live dispatch, including same-attempt parent/root redispatch. |
 
 Retry is node-self only. It keeps the same assignment, mints a new attempt, uses `full_prompt`, and rereads the prior terminal checkpoint as durable handover.
