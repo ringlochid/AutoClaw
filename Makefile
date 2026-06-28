@@ -9,12 +9,13 @@ COMPOSE := docker compose
 COMPOSE_ENV := AUTOCLAW_API_KEY=$${AUTOCLAW_API_KEY:-autoclaw-operator-dev-key} AUTOCLAW_INTERNAL_API_KEY=$${AUTOCLAW_INTERNAL_API_KEY:-autoclaw-internal-dev-key}
 TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_INTERNAL_API_KEY=autoclaw-internal-test-key AUTOCLAW_OPENCLAW__GATEWAY_TOKEN=gateway-config-token
 TEST_COMPOSE := COMPOSE_PROJECT_NAME=autoclaw-test-db $(TEST_COMPOSE_ENV) $(COMPOSE)
+TREE_IGNORE := .git|.venv|node_modules|dist|build|tmp|.pytest_cache|.mypy_cache|.ruff_cache|.coverage|coverage|htmlcov|__pycache__|*.egg-info|*.pyc
 
 .PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api install-user-service
 
 tree:
-	@tree -a -L 7 --gitignore --dirsfirst -I '.git'
-	
+	@tree -a -L 7 --dirsfirst --prune --gitignore -I '$(TREE_IGNORE)'	
+
 clean-local:
 	rm -rf .openclaw-run-logs tmp .pytest_cache .mypy_cache .ruff_cache
 	rm -rf apps/api/.pytest_cache apps/api/.mypy_cache apps/api/.ruff_cache
