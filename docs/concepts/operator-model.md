@@ -2,13 +2,23 @@
 
 Status: Reference
 
-Operators inspect and steer running tasks. They use read and control surfaces over controller-owned runtime state.
+Operators inspect and steer running tasks. In AutoClaw's intended product model, the primary operator is a trusted OpenClaw agent profile with operator MCP tools.
 
-An operator is not the worker and not the controller. The operator is the trusted human or tool principal that can inspect task state, resolve waits, and apply recovery controls.
+A human can also act as an operator, but through a different surface: humans use the UI, while operator agents use tools such as operator MCP. Both act over controller-owned runtime state, but they are not the same user experience or execution lane.
+
+An operator is not the worker, parent/root node, or controller. Operator authority is for trusted runtime steering, not for ordinary node execution.
+
+## Operator forms
+
+- **Operator agent:** a trusted OpenClaw agent running with an operator-oriented profile. It uses operator MCP tools or equivalent trusted operator surfaces to inspect, launch, resolve, and recover work.
+- **Human operator:** a human using the UI to inspect state, make decisions, approve actions, resolve waits, or request recovery. The UI should call trusted operator backend surfaces on the human's behalf.
+- **Automation client:** a trusted integration that uses API-key-protected operator HTTP surfaces for automation. This is useful, but it is not the preferred human-facing product shape.
 
 ## What operators inspect
 
-Operators usually start from:
+Operator agents usually inspect through operator MCP/readback tools. Human operators usually inspect the same controller truth through UI views.
+
+Both surfaces read from:
 
 - runtime task list and task readbacks
 - task-root files such as workflow manifest, assignment, checkpoints, and artifacts
@@ -20,13 +30,15 @@ Read models are views. Controller-owned runtime state remains the authority.
 
 ## What operators control
 
-Operators can use control surfaces to:
+Operator agents can use operator tools to:
 
 - pause, continue, or cancel a task
 - resolve a pending human request
 - inspect command runs and logs
 - request command-run cancellation
 - recover from task or dispatch issues when supported by the runtime
+
+Human operators should do the same kind of work through UI controls, not by acting like a worker node or manually calling node tools.
 
 Use the narrowest control that matches the problem. Cancelling a command run is not the same as cancelling the whole task.
 

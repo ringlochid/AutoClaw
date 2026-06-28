@@ -30,7 +30,7 @@ Runtime state is the authority for what is current. Generated task-root files an
 
 ### Operator plane
 
-The operator plane exposes views and controls for trusted runtime steering. Operators inspect snapshots and traces, resolve human requests, read or cancel command runs, pause or continue tasks, and recover from failures.
+The operator plane exposes views and controls for trusted runtime steering. Its intended product shape is a trusted OpenClaw operator agent profile using operator MCP, with humans using UI surfaces for review, approval, and recovery decisions.
 
 Operator readbacks are useful views. They do not replace controller-owned runtime truth.
 
@@ -38,7 +38,8 @@ Operator readbacks are useful views. They do not replace controller-owned runtim
 
 - definition author: writes reusable roles, policies, and workflows
 - task launcher: creates a task-compose body and starts concrete work
-- operator: inspects runtime state, reviews evidence, and uses control or recovery surfaces
+- operator agent: trusted OpenClaw profile that uses operator tools to inspect runtime state and steer tasks
+- human operator: trusted human using UI surfaces to review, approve, resolve waits, or request recovery
 
 ## Node kinds
 
@@ -59,7 +60,7 @@ A workflow is a purpose-specific evidence path, not just a list of roles. Good w
 - where parent orchestration, review, retry, replan, or human judgment may be needed
 - which work must stay out of scope
 
-Choose the lane in a guide. Keep the concept simple: different purposes need different evidence and different coordination.
+Write the workflow for the automation you want to run. The shipped workflows are examples of valid shapes, not the boundary of what AutoClaw can orchestrate.
 
 ## Proof model
 
@@ -90,7 +91,7 @@ A minimal implementation workflow may have one root and one worker. The root rea
 - [Authoring model](authoring-model.md)
 - [Task-compose model](task-compose-model.md)
 - [Runtime model](runtime-model.md)
-- [Choose a workflow lane](../guides/choose-a-workflow-lane.md)
+- [Write a workflow](../guides/write-a-workflow.md)
 - [Workspace model](workspace-model.md)
 - [Capability model](capability-model.md)
 - [Inspect and control a task](../guides/inspect-and-control-a-task.md)

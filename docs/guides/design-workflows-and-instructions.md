@@ -4,6 +4,8 @@ Status: Reference
 
 Use this guide before writing role, policy, or workflow YAML. A good AutoClaw workflow starts from the purpose, evidence path, and completion criteria, then chooses the smallest role and node structure that can prove the work is done.
 
+The shipped definitions are examples, not a menu. Use them to learn valid shapes, then write definitions for the automation you actually want AutoClaw to run.
+
 ## Core rule
 
 Design the workflow around the question it must answer:
@@ -107,11 +109,11 @@ Use parent nodes when the workflow needs local orchestration:
 
 Use workers when the assignment has one bounded mode and one expected output surface.
 
-## Workflow archetypes
+## Automation patterns
 
-Start with small and medium archetypes. Compose larger workflows from them after the evidence path is proven.
+Start with small and medium patterns. Compose larger workflows from them after the evidence path is proven.
 
-| Archetype | Purpose | Primary artifacts |
+| Pattern | Purpose | Primary artifacts |
 | --- | --- | --- |
 | Idea discovery | compare directions before committing | discovery context, option brief, scope critique, recommendation |
 | Planning only | create an execution plan without building | scope brief, work breakdown, plan review, final plan |
@@ -152,4 +154,3 @@ Avoid these patterns:
 - criteria that read like suggestions instead of closure gates
 
 When in doubt, split the workflow by purpose first, then reduce it until every node has a reason to exist.
-

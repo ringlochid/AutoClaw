@@ -4,33 +4,37 @@ Status: Reference
 
 Last verified: 2026-06-28
 
-This page owns the exact current operator definition, trust-lane split, and the difference between operator, callback caller, node-tool caller, worker, parent/root, and controller in the shipped tree.
+This page owns the exact current operator authority, trust-lane split, and the difference between operator agent, human operator, callback caller, node-tool caller, worker, parent/root, and controller in the shipped tree.
 
 For the exact current path families and route nouns, see [API route families and lane map](api-surface-and-route-map.md).
 
 ## Operator definition
 
-In the current system, `operator` means a trusted principal allowed to inspect, mutate, or launch trusted runtime and definition-service work through the API-key-protected HTTP surfaces.
+In the current system, `operator` means a trusted principal allowed to inspect, mutate, or launch trusted runtime and definition-service work through operator-authorized surfaces.
+
+The intended product shape is a trusted OpenClaw operator agent profile using operator MCP when possible. Human operators are also trusted operators, but their natural surface is the UI, which calls operator-authorized backend surfaces on their behalf.
 
 An operator may be:
 
-- a human using HTTP or future UI clients with the configured API key
-- a trusted automation client authenticated into the API-key-protected HTTP surfaces
+- a trusted OpenClaw operator agent profile using mounted operator MCP tools
+- a human using UI clients backed by operator-authorized backend routes
+- a trusted automation client authenticated into API-key-protected HTTP surfaces
 
-Operator is defined by authority and allowed actions, not by embodiment alone.
+Operator is defined by authority and allowed actions, not by embodiment alone. The interface still matters: operator agents use tools, humans use UI, and automation clients use APIs.
 
 ## User and operator roles
 
 - `user` supplies task intent, task root, or surrounding product inputs
-- `operator` starts tasks, manages definition-service HTTP surfaces, inspects runtime state, or steers live runtime control through API-key-protected HTTP routes
+- `operator agent` starts tasks, inspects runtime state, resolves waits, and steers live runtime control through operator MCP or equivalent trusted operator tools
+- `human operator` uses UI surfaces to review state, make decisions, approve or reject actions, resolve waits, and request recovery
 
-The same human may play both roles, but the authority is different.
+The same human may supply user intent and later act as human operator, but the authority and surface are different.
 
 ## Role boundary matrix
 
 | Role         | Current meaning                                         | Owns                                                                                       | Does not own                                       |
 | ------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| `operator`   | trusted runtime-steering principal                      | `/definitions`, `/authoring`, `/tasks/start`, `/runtime`, `/operator`, `/control`, and `/observability` HTTP actions | callback or node write authority, controller truth |
+| `operator`   | trusted runtime-steering principal, preferably an OpenClaw operator agent profile | operator MCP plus `/definitions`, `/authoring`, `/tasks/start`, `/runtime`, `/operator`, `/control`, and `/observability` HTTP actions | callback or node write authority, controller truth |
 | `worker`     | current worker-node caller                              | checkpoint and boundary writes for the bound dispatch                                      | operator reads, parent/root tools                  |
 | `parent`     | current parent-node caller                              | parent/root tool calls and parent/root boundary decisions                                  | operator reads, controller truth                   |
 | `root`       | current root-node caller                                | root-only `release_blocked` and root closure decisions                                     | operator reads, delegated worker execution         |

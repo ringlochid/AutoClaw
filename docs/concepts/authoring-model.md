@@ -54,6 +54,8 @@ Task-compose is intentionally separate from reusable definitions. It is the thin
 ## Related pages
 
 - [Task-compose model](task-compose-model.md)
+- [Write a role](../guides/write-a-role.md)
+- [Write a policy](../guides/write-a-policy.md)
+- [Write a workflow](../guides/write-a-workflow.md)
 - [Design workflows and instructions](../guides/design-workflows-and-instructions.md)
-- [Create a definition set](../guides/create-a-definition-set.md)
 - [Definitions reference](../reference/definitions/README.md)

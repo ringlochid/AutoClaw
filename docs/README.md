@@ -26,8 +26,9 @@ Use this front door for the public docs story: first success, core concepts, pra
 ## Build and operate
 
 - [Write a task-compose file](guides/write-a-task-compose.md)
-- [Create a definition set](guides/create-a-definition-set.md)
-- [Choose a workflow lane](guides/choose-a-workflow-lane.md)
+- [Write a role](guides/write-a-role.md)
+- [Write a policy](guides/write-a-policy.md)
+- [Write a workflow](guides/write-a-workflow.md)
 - [Design workflows and instructions](guides/design-workflows-and-instructions.md)
 - [Use human requests](guides/use-human-requests.md)
 - [Use long command runs](guides/use-long-command-runs.md)

@@ -41,4 +41,4 @@ For the concept behind these files and read models, see the [runtime model](../c
 
 ## Next step
 
-If the seeded minimal workflow makes sense, continue with [create a definition set](../guides/create-a-definition-set.md).
+If the seeded minimal workflow makes sense, continue by writing your own [role](../guides/write-a-role.md), [policy](../guides/write-a-policy.md), or [workflow](../guides/write-a-workflow.md).

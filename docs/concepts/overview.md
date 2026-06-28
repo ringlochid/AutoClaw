@@ -44,7 +44,7 @@ AutoClaw is not a generic shell runner. Ordinary commands should finish inline a
 - **Replan:** the runtime can adopt revised structure when the current flow shape no longer fits the work.
 - **Human-in-the-loop:** policies can allow specific human request kinds such as direction, approval, input, or review.
 - **Long command runs:** policies can allow controller-managed command runs without granting unrelated human request capabilities.
-- **Operator recovery:** operators can inspect task state, trace events, resolve human requests, read or cancel command runs, and recover from runtime issues.
+- **Operator recovery:** a trusted OpenClaw operator agent can inspect task state, trace events, resolve human requests, read or cancel command runs, and recover from runtime issues; humans should do equivalent steering through UI surfaces.
 
 ## Where to go next
 
@@ -52,7 +52,7 @@ AutoClaw is not a generic shell runner. Ordinary commands should finish inline a
 - [Runtime model](runtime-model.md) for task, flow, assignment, attempt, dispatch, checkpoint, artifact, boundary, and wait-state concepts
 - [Authoring model](authoring-model.md) for reusable authored inputs
 - [Task-compose model](task-compose-model.md) for concrete launch input
-- [Choose a workflow lane](../guides/choose-a-workflow-lane.md) for purpose-specific workflow shapes
+- [Write a workflow](../guides/write-a-workflow.md) for purpose-specific automation design
 - [Workspace model](workspace-model.md) for task roots and host path binding
 - [Operator model](operator-model.md) and [Capability model](capability-model.md) for control, human requests, command runs, and replan
 - [API reference](../reference/api/README.md) and [CLI reference](../reference/cli/README.md) for exact contracts

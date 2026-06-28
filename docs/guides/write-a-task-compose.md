@@ -31,7 +31,7 @@ Use this shape for first-run work and isolated local experiments.
 
 Set `workflow.key` to the reusable workflow you want to launch.
 
-Use [choose a workflow lane](choose-a-workflow-lane.md) when you need to pick between minimal delivery, bugfix, MVP, planning, marketing, or project-management lanes.
+Use [write a workflow](write-a-workflow.md) when the shipped examples do not match your automation. `workflow.key` can point at any seeded or uploaded workflow definition.
 
 ## Write the task instruction
 
