@@ -11,14 +11,20 @@ from autoclaw.persistence import (
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     DispatchWatchdogStateModel,
+    FlowModel,
     ProviderEventRecordModel,
 )
 from autoclaw.runtime.watchdog.service import reconcile_watchdog_truth
+from sqlalchemy import select
 from tests.helpers.runtime_support.dispatch import current_open_dispatch_id
 from tests.integration.watchdog.case_support import (
     configure_watchdog_env,
     manual_watchdog_context,
     reset_watchdog_row,
+)
+from tests.integration.watchdog.external_wait_boundary_support import (
+    EXTERNAL_WAIT_BOUNDARY_CASES,
+    add_external_wait_source,
 )
 from tests.integration.watchdog.support import load_watchdog_state
 
@@ -298,6 +304,70 @@ async def test_watchdog_classifies_terminal_provider_without_controller_checkpoi
             == "execution_running.terminal_provider_without_controller_checkpoint"
         )
         assert watchdog_state.recovery_action == "escalate"
+        assert watchdog_state.recovery_dispatch_id is None
+
+
+@pytest.mark.parametrize(
+    "external_wait_case",
+    EXTERNAL_WAIT_BOUNDARY_CASES,
+)
+@pytest.mark.asyncio
+async def test_watchdog_skips_external_wait_dispatch_without_checkpoint(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    external_wait_case: str,
+) -> None:
+    configure_watchdog_env(monkeypatch, auto_recover=False)
+
+    async with manual_watchdog_context(
+        tmp_path,
+        task_id=f"task_watchdog_external_wait_boundary_{external_wait_case}",
+    ) as context:
+        dispatch_id = await current_open_dispatch_id(
+            context.api.session_factory,
+            task_id=context.task_id,
+        )
+        terminal_at = datetime.now(tz=UTC) - timedelta(seconds=3)
+
+        async with context.api.session_factory() as session:
+            flow = await session.scalar(
+                select(FlowModel).where(FlowModel.task_id == context.task_id)
+            )
+            dispatch = await session.get(DispatchTurnModel, dispatch_id)
+            delivery_state = await session.get(DispatchDeliveryStateModel, dispatch_id)
+            watchdog_state = await session.get(DispatchWatchdogStateModel, dispatch_id)
+            assert flow is not None
+            assert dispatch is not None
+            assert delivery_state is not None
+            assert watchdog_state is not None
+            flow.current_open_dispatch_id = None
+            dispatch.control_state = "fenced"
+            dispatch.control_state_reason = "terminal provider after external tool call"
+            dispatch.fenced_at = terminal_at
+            dispatch.closed_at = terminal_at
+            dispatch.delivery_status = "provider_completed"
+            delivery_state.transport_state = "provider_completed"
+            delivery_state.provider_final_status = "ok"
+            delivery_state.last_provider_signal_at = terminal_at
+            delivery_state.last_controller_terminal_at = terminal_at
+            delivery_state.updated_at = terminal_at
+            reset_watchdog_row(watchdog_state)
+            add_external_wait_source(
+                session,
+                flow=flow,
+                dispatch=dispatch,
+                external_wait_case=external_wait_case,
+                observed_at=terminal_at,
+            )
+            await session.commit()
+
+        changed = await reconcile_watchdog_truth(context.api.session_factory)
+        assert changed is False
+        watchdog_state = await load_watchdog_state(context, dispatch_id=dispatch_id)
+        assert watchdog_state.watchdog_state == "clear"
+        assert watchdog_state.current_watchdog_kind is None
+        assert watchdog_state.current_watchdog_reason is None
+        assert watchdog_state.recovery_action is None
         assert watchdog_state.recovery_dispatch_id is None
 
 

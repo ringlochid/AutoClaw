@@ -160,6 +160,8 @@ When the command reaches a terminal state, the controller must:
 
 The terminal-job path must not mint a new task lineage merely because the command completed later.
 
+Provider session continuation may be reused for the redispatch when lawful, but controller command-run lineage continuation is the required behavior.
+
 ## Command result normalization
 
 For command-style jobs such as `pytest`, `pnpm test`, `ruff check`, browser captures, or packaging commands:
@@ -249,6 +251,7 @@ Rules:
 - command-like jobs such as `pytest` must carry `exit_code` plus a compact verdict summary so the next dispatch can reason without scraping logs
 - created, started, ended, and timeout fields are part of the continuation truth because they explain whether the command completed, failed fast, or hit timeout
 - large logs stay out of ordinary prompt truth by default; prompt truth should use the terminal summary plus a deliberate `log_ref` when needed
+- provider or adapter session scope should be reused when it is still lawful and available, but a stale or unsafe provider session must not outrank controller-owned command-run source truth
 
 ## Non-goals
 

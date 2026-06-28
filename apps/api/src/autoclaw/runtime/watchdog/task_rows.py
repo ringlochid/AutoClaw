@@ -8,11 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoclaw.persistence.models import (
     AttemptCheckpointModel,
     AttemptModel,
+    CommandRunModel,
     DispatchContinuityStateModel,
     DispatchDeliveryStateModel,
     DispatchTurnModel,
     DispatchWatchdogStateModel,
     FlowModel,
+    PendingHumanRequestModel,
     ProviderEventRecordModel,
 )
 from autoclaw.runtime.contracts import FlowStatus
@@ -31,6 +33,7 @@ class WatchdogTaskRows:
     continuity_states_by_id: dict[str, DispatchContinuityStateModel]
     latest_checkpoints_by_dispatch_id: dict[str, AttemptCheckpointModel]
     dispatch_ids_with_provider_progress_event: frozenset[str]
+    dispatch_ids_with_external_wait_source: frozenset[str]
 
 
 def build_watchdog_context(
@@ -51,6 +54,7 @@ def build_watchdog_context(
         latest_checkpoint=task_rows.latest_checkpoints_by_dispatch_id.get(dispatch_id),
         has_provider_progress_event=dispatch_id
         in task_rows.dispatch_ids_with_provider_progress_event,
+        has_external_wait_source=dispatch_id in task_rows.dispatch_ids_with_external_wait_source,
     )
 
 
@@ -68,6 +72,7 @@ async def load_watchdog_task_rows(
             continuity_states_by_id={},
             latest_checkpoints_by_dispatch_id={},
             dispatch_ids_with_provider_progress_event=frozenset(),
+            dispatch_ids_with_external_wait_source=frozenset(),
         )
 
     dispatches_by_id = await _load_dispatch_rows_by_id(session, candidate_dispatch_ids)
@@ -104,6 +109,10 @@ async def load_watchdog_task_rows(
         dispatches_by_id=dispatches_by_id,
         latest_checkpoints_by_dispatch_id=latest_checkpoints_by_dispatch_id,
     )
+    dispatch_ids_with_external_wait_source = await _load_external_wait_source_dispatch_ids(
+        session,
+        candidate_dispatch_ids,
+    )
 
     return WatchdogTaskRows(
         dispatches_by_id=dispatches_by_id,
@@ -112,6 +121,7 @@ async def load_watchdog_task_rows(
         continuity_states_by_id=continuity_states_by_id,
         latest_checkpoints_by_dispatch_id=latest_checkpoints_by_dispatch_id,
         dispatch_ids_with_provider_progress_event=dispatch_ids_with_provider_progress_event,
+        dispatch_ids_with_external_wait_source=dispatch_ids_with_external_wait_source,
     )
 
 
@@ -265,3 +275,28 @@ async def _load_provider_progress_dispatch_ids(
         .distinct()
     )
     return frozenset(str(dispatch_id) for dispatch_id in matching_dispatch_ids)
+
+
+async def _load_external_wait_source_dispatch_ids(
+    session: AsyncSession,
+    dispatch_ids: tuple[str, ...],
+) -> frozenset[str]:
+    if not dispatch_ids:
+        return frozenset()
+    human_request_dispatch_ids = set(
+        str(dispatch_id)
+        for dispatch_id in await session.scalars(
+            select(PendingHumanRequestModel.dispatch_id)
+            .where(PendingHumanRequestModel.dispatch_id.in_(dispatch_ids))
+            .distinct()
+        )
+    )
+    command_run_dispatch_ids = set(
+        str(dispatch_id)
+        for dispatch_id in await session.scalars(
+            select(CommandRunModel.dispatch_id)
+            .where(CommandRunModel.dispatch_id.in_(dispatch_ids))
+            .distinct()
+        )
+    )
+    return frozenset(human_request_dispatch_ids | command_run_dispatch_ids)

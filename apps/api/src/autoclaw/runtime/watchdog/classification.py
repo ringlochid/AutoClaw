@@ -29,6 +29,7 @@ class WatchdogContext:
     watchdog_state: DispatchWatchdogStateModel
     latest_checkpoint: AttemptCheckpointModel | None
     has_provider_progress_event: bool
+    has_external_wait_source: bool
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,8 @@ def classify_watchdog(
 ) -> WatchdogClassification | None:
     dispatch = context.dispatch
     if dispatch.superseded_by_dispatch_id is not None:
+        return None
+    if context.has_external_wait_source:
         return None
     if (existing_recovery := _preserve_existing_recovery_classification(context)) is not None:
         return existing_recovery

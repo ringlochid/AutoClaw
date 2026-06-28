@@ -89,8 +89,9 @@ Current session reuse is narrower than the older flow-node-scoped model:
 
 - each accepted dispatch that completes local acceptance persistence cleanly gets its own `NodeSessionModel` row
 - parent/root same-attempt redispatch reuses the previous fenced dispatch's Gateway `sessionKey` when that continuity basis remains lawful and otherwise falls back to a fresh Gateway `sessionKey`
+- human-request and command-run terminal external-wait continuations may reuse the previous dispatch's Gateway `sessionKey` for any node when the previous dispatch is the explicit `previous_dispatch_id`, the task, node, assignment, and attempt lineage still match, the previous dispatch and node-session are fenced and closed, and the previous dispatch owns a terminal `pending_human_requests` or `command_runs` source row
 - that reuse does not reuse the previous node-session row; a new accepted dispatch normally gets a fresh node-session row tied to the new dispatch id when local acceptance persistence succeeds cleanly
-- worker retry, child dispatch, and fresh-attempt recovery flows mint a fresh Gateway `sessionKey`
+- ordinary worker retry, child dispatch, and fresh-attempt recovery flows mint a fresh Gateway `sessionKey`
 
 ## Current manifest and callback lineage
 
@@ -149,7 +150,8 @@ Current code facts are:
 - the prompt package includes dispatch-local `task_id` and `session_key` node-tool context
 - the bridge does not populate a `previous_response_id` chain
 - parent/root same-attempt redispatch reuses the earlier fenced dispatch's Gateway `sessionKey` when that continuity basis remains lawful and otherwise falls back to a fresh Gateway `sessionKey`; either way it gets a fresh `runId`, sends a fresh `idempotencyKey`, and resends the full regenerated prompt package
-- worker retry, child dispatch, and fresh-attempt recovery flows stay fresh-session
+- terminal human-request and command-run external-wait continuations use the same reuse rule for any node when the previous dispatch owns the terminal source row and the previous node-session is fenced and closed
+- ordinary worker retry, child dispatch, and fresh-attempt recovery flows stay fresh-session
 - persisted continuity-state truth is limited to `session_key_present` plus `invalidation_reason`
 
 Current OpenClaw continuity therefore does not model:
@@ -255,11 +257,20 @@ root dispatch accepted with Gateway session key S1
   -> the new root dispatch gets a fresh dispatch id and fresh runId
   -> the reopened root dispatch reuses Gateway session key S1
   -> the reopened root prompt is still sent as full_prompt
+
+worker dispatch accepted with Gateway session key W1
+  -> worker opens a human request or command run through a node tool
+  -> the previous worker dispatch and node-session close as the external-wait boundary
+  -> the human request or command run source row reaches terminal state
+  -> the controller reopens the same worker assignment and attempt
+  -> the reopened worker dispatch gets a fresh dispatch id and fresh runId
+  -> the reopened worker dispatch reuses Gateway session key W1 when the source row and node-session authority still prove lawful continuity
 ```
 
 ## Evidence
 
 - inspected code in `apps/api/src/autoclaw/runtime/dispatch/authority.py`
+- inspected code in `apps/api/src/autoclaw/runtime/dispatch/gateway/session.py`
 - inspected code in `apps/api/src/autoclaw/runtime/dispatch/gateway/__init__.py`
 - inspected code in `apps/api/src/autoclaw/runtime/dispatch/gateway_launch_state.py`
 - inspected code in `apps/api/src/autoclaw/runtime/dispatch/launch_retry.py`
@@ -276,6 +287,7 @@ root dispatch accepted with Gateway session key S1
 - inspected tests in `apps/api/tests/integration/gateway/test_foreground_lifecycle_gateway.py`
 - inspected tests in `apps/api/tests/integration/gateway/runtime_dispatch_gateway/launch/test_integration.py`, `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_cleanup_integration.py`, and `apps/api/tests/integration/gateway/runtime_dispatch_gateway/test_ingest_integration.py`
 - inspected tests in `apps/api/tests/integration/gateway/runtime_dispatch_gateway/launch/test_retry_integration.py`
+- inspected tests in `apps/api/tests/integration/gateway/test_gateway_session_reuse.py`
 - inspected tests in `apps/api/tests/integration/mcp/node_server`
 
 ## Related current pages

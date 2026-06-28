@@ -155,6 +155,17 @@ async def latest_parent_root_continuity_basis(
     )
 
 
+def parent_root_continuity_basis_is_lawful(
+    basis: ParentRootContinuityBasis | None,
+) -> bool:
+    return (
+        basis is not None
+        and basis.session_key is not None
+        and basis.is_fenced
+        and basis.has_continuity_authority
+    )
+
+
 async def _previous_dispatch_for_external_wait_continuity(
     session: AsyncSession,
     *,
@@ -260,14 +271,3 @@ async def _dispatch_opened_terminal_command_run(
         .limit(1)
     )
     return run_id is not None
-
-
-def parent_root_continuity_basis_is_lawful(
-    basis: ParentRootContinuityBasis | None,
-) -> bool:
-    return (
-        basis is not None
-        and basis.session_key is not None
-        and basis.is_fenced
-        and basis.has_continuity_authority
-    )

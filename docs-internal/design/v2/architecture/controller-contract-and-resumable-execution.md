@@ -85,6 +85,7 @@ Rules:
 - the source row owns the transition, for example a pending human request reaching terminal state or a command run reaching terminal state
 - the source row and waiting-cause state are the database truth the controller loop evaluates
 - the controller recomputes current legality from persisted truth before opening any next dispatch
+- monitoring and watchdog logic must treat human-request and command-run source rows as legal external-wait boundaries rather than inferring failure from provider terminal shape, prompt text, or reason strings
 - the controller may continue only when the referenced task lineage is still current and the waiting cause still matches
 - stale, superseded, or already-terminal source transitions must not open work again
 - no separate transition-record truth family is required
