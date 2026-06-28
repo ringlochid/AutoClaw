@@ -237,7 +237,7 @@ async def test_control_task_events_include_structural_revision_adopted_for_updat
         )
         assert structural_payload["target_node_key"] == "implementation_subtree"
         assert structural_payload["affected_node_keys"] == ["implementation_subtree"]
-        assert structural_payload["summary"] == "Updated child node 'implementation_subtree'."
+        assert structural_payload["summary"] == "Updated workflow node 'implementation_subtree'."
         assert workflow_manifest_name(structural_payload) == "workflow-manifest.md"
 
         await cancel_route_task(

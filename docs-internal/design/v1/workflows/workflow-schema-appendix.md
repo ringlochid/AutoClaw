@@ -166,13 +166,13 @@ Do not treat runtime structural CRUD as whole-subtree replacement by default.
 
 ## Worked runtime structural edit cross-check
 
-Suppose the current parent/root owns direct children:
+Suppose the current parent/root owns a subtree whose immediate children are:
 
 - `investigate_issue`
 - `implement_change`
 - `review_change`
 
-and decides it needs one more direct child:
+and decides it needs one more child under that owned subtree:
 
 ```yaml
 node_key: qa_sweep
@@ -192,7 +192,7 @@ produces:
 
 Runtime must validate:
 
-1. the current caller still owns that direct-child set
+1. the current caller still owns the target parent node inside its subtree
 2. no continuation outcome is already staged
 3. `qa_sweep` is a new semantic runtime `node_key`
 4. `architect` resolves through the definition registry

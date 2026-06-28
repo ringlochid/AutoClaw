@@ -68,7 +68,7 @@ async def add_child_to_current_flow(
         active_flow_revision_id=next_revision.flow_revision_id,
         target_node_key=child.node_key,
         affected_node_keys=new_node_keys,
-        summary=f"Added child node '{child.node_key}'.",
+        summary=f"Added workflow node '{child.node_key}'.",
         occurred_at=next_revision.adopted_at,
     )
     return child.node_key
@@ -85,7 +85,7 @@ async def update_child_in_current_flow(
     target, _parent = _resolve_structural_mutation_target(
         state,
         nodes=nodes,
-        child_node_key=child_node_key,
+        target_node_key=child_node_key,
         action_name="update_child",
     )
     affected_node_keys = (
@@ -146,7 +146,7 @@ async def update_child_in_current_flow(
         active_flow_revision_id=next_revision.flow_revision_id,
         target_node_key=child_node_key,
         affected_node_keys=affected_node_keys,
-        summary=f"Updated child node '{child_node_key}'.",
+        summary=f"Updated workflow node '{child_node_key}'.",
         occurred_at=next_revision.adopted_at,
     )
 
@@ -161,7 +161,7 @@ async def remove_child_from_current_flow(
     _target, _parent = _resolve_structural_mutation_target(
         state,
         nodes=nodes,
-        child_node_key=child_node_key,
+        target_node_key=child_node_key,
         action_name="remove_child",
     )
     descendants = {child_node_key}
@@ -191,7 +191,7 @@ async def remove_child_from_current_flow(
         active_flow_revision_id=next_revision.flow_revision_id,
         target_node_key=child_node_key,
         affected_node_keys=affected_node_keys,
-        summary=f"Removed child node '{child_node_key}'.",
+        summary=f"Removed workflow node '{child_node_key}'.",
         occurred_at=next_revision.adopted_at,
     )
 
@@ -260,29 +260,35 @@ def _resolve_structural_mutation_target(
     state: Any,
     *,
     nodes: list[NodeSnapshot],
-    child_node_key: str,
+    target_node_key: str,
     action_name: str,
 ) -> tuple[NodeSnapshot, NodeSnapshot]:
-    target = next((node for node in nodes if node["node_key"] == child_node_key), None)
+    current_node_key = str(state.current_node.node_key)
+    nodes_by_key = {str(node["node_key"]): node for node in nodes}
+    target = nodes_by_key.get(target_node_key)
     if target is None:
-        raise illegal_target_relation_error(f"unknown child node '{child_node_key}'")
-    if target["node_key"] == state.current_node.node_key:
+        raise illegal_target_relation_error(f"unknown workflow node '{target_node_key}'")
+    if target["node_key"] == current_node_key:
         raise illegal_target_relation_error(
             f"{action_name} target must be an explicit descendant node"
         )
+    if not _node_is_descendant_of(
+        nodes_by_key,
+        ancestor_node_key=current_node_key,
+        descendant_node_key=target_node_key,
+    ):
+        raise illegal_target_relation_error(
+            f"{action_name} target must be inside the current node's owned subtree"
+        )
+
     parent_node_key = target["parent_node_key"]
-    if parent_node_key == state.current_node.node_key:
-        parent = next(node for node in nodes if node["node_key"] == state.current_node.node_key)
-        return target, parent
-    if state.current_node.structural_kind != NodeKind.ROOT.value:
-        raise illegal_target_relation_error(f"{action_name} target must be a direct child")
     if parent_node_key is None:
         raise illegal_target_relation_error(
             f"{action_name} target must be an explicit descendant node"
         )
-    for node in nodes:
-        if node["node_key"] == parent_node_key:
-            return target, node
+    parent = nodes_by_key.get(str(parent_node_key))
+    if parent is not None:
+        return target, parent
     raise illegal_state_error(f"missing parent node '{parent_node_key}'")
 
 
@@ -292,21 +298,50 @@ def _resolve_add_child_parent(
     nodes: list[NodeSnapshot],
     target_parent_node_key: str | None,
 ) -> NodeSnapshot:
-    if target_parent_node_key is None or target_parent_node_key == state.current_node.node_key:
-        return next(node for node in nodes if node["node_key"] == state.current_node.node_key)
-    if state.current_node.structural_kind != NodeKind.ROOT.value:
-        raise illegal_target_relation_error("add_child target parent must be a direct child")
-    target_parent = next(
-        (node for node in nodes if node["node_key"] == target_parent_node_key),
-        None,
-    )
+    current_node_key = str(state.current_node.node_key)
+    nodes_by_key = {str(node["node_key"]): node for node in nodes}
+    if target_parent_node_key is None or target_parent_node_key == current_node_key:
+        parent = nodes_by_key.get(current_node_key)
+        if parent is None:
+            raise illegal_state_error(f"missing parent node '{current_node_key}'")
+        return parent
+
+    target_parent = nodes_by_key.get(target_parent_node_key)
     if target_parent is None:
         raise illegal_state_error(f"missing parent node '{target_parent_node_key}'")
+    if not _node_is_descendant_of(
+        nodes_by_key,
+        ancestor_node_key=current_node_key,
+        descendant_node_key=target_parent_node_key,
+    ):
+        raise illegal_target_relation_error(
+            "add_child target parent must be inside the current node's owned subtree"
+        )
     if target_parent["structural_kind"] != NodeKind.PARENT.value:
         raise illegal_target_relation_error(
             "add_child target parent must be an explicit descendant parent"
         )
     return target_parent
+
+
+def _node_is_descendant_of(
+    nodes_by_key: dict[str, NodeSnapshot],
+    *,
+    ancestor_node_key: str,
+    descendant_node_key: str,
+) -> bool:
+    current_node_key = descendant_node_key
+    while True:
+        node = nodes_by_key.get(current_node_key)
+        if node is None:
+            return False
+        parent_node_key = node.get("parent_node_key")
+        if parent_node_key is None:
+            return False
+        parent_key = str(parent_node_key)
+        if parent_key == ancestor_node_key:
+            return True
+        current_node_key = parent_key
 
 
 async def _append_structural_revision_adopted_event(

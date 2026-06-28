@@ -361,15 +361,29 @@ Rules:
 ### `AddChildPayload`
 
 - `child` as `ChildNodeDraft`
+- `target_parent_node_key` | optional
+
+Rules:
+
+- omitted `target_parent_node_key` adds under the current parent/root node
+- explicit `target_parent_node_key` must name the current node or a descendant parent inside the caller's owned subtree
 
 ### `UpdateChildPayload`
 
 - `child_node_key`
 - `patch` as `ChildNodePatch`
 
+Rules:
+
+- `child_node_key` must name an explicit descendant node inside the caller's owned subtree
+
 ### `RemoveChildPayload`
 
 - `child_node_key`
+
+Rules:
+
+- `child_node_key` must name an explicit descendant node inside the caller's owned subtree
 
 ### `ReleaseGreenPayload`
 

@@ -54,16 +54,16 @@ Parent/root should not rely on:
 - transcript-only memory
 - provider or watchdog files as task truth
 
-## Child baseline contract rule
+## Baseline contract rule
 
-For any direct child of the current parent/root, the baseline durable contract comes from that child's authored definition plus any legal direct-parent `child_defaults` expansion. During assignment, runtime may merge supplemental current durable sharing into surfaced `consumes` or `criteria`, but parent/root does not rewrite the child's authored `consume_selector`, `produce_slot`, or criteria ownership on that open dispatch.
+For any node inside the current parent/root's owned subtree, the baseline durable contract comes from that node's authored definition plus any legal direct-parent `child_defaults` expansion. During assignment, runtime may merge supplemental current durable sharing into surfaced `consumes` or `criteria`, but parent/root does not rewrite the node's authored `consume_selector`, `produce_slot`, or criteria ownership by assignment.
 
 ## Parent/root decision algorithm
 
 During one open dispatch, parent/root should reason in this exact order:
 
 1. reread the current manifest, current assignment, latest relevant child checkpoints, and the exact current refs surfaced on that assignment
-2. decide whether the current direct-child structure is wrong
+2. decide whether the current owned-subtree structure is wrong
 3. if the structure is wrong:
    - use `add_child`, `update_child`, or `remove_child`
    - reread the regenerated manifest
@@ -105,7 +105,7 @@ Consequences:
 
 On success, the controller:
 
-1. validates current caller authority, direct-child scope, continuation-slot availability, and overwrite rules
+1. validates current caller authority, `assign_child` direct-child target scope, continuation-slot availability, and overwrite rules
 2. mints a fresh child `assignment_key`
 3. mints the first child `attempt_id`
 4. atomically commits the child assignment, first child attempt, and the one staged continuation outcome
@@ -187,9 +187,9 @@ Typical cases:
 
 Typical cases:
 
-- the current direct-child set is missing a needed worker
-- one child contract needs an identity-preserving structural rewrite
-- one child/subtree is obsolete and must be removed
+- the current owned subtree is missing a needed worker
+- one descendant contract needs an identity-preserving structural rewrite
+- one descendant subtree is obsolete and must be removed
 
 Successful structural edits adopt a new structural revision and regenerate the stable workflow manifest before the parent/root decides the next continuation.
 
@@ -218,7 +218,7 @@ If the current parent/root cannot legally apply the needed change inside its aut
 | Situation                                                   | Parent/root action                                                   |
 | ----------------------------------------------------------- | -------------------------------------------------------------------- |
 | same structure, more bounded work needed                    | `assign_child`, then `yield`                                         |
-| current direct-child set or owned subtree contract is wrong | `add_child`, `update_child`, or `remove_child`, then reread manifest |
+| current owned-subtree structure or contract is wrong        | `add_child`, `update_child`, or `remove_child`, then reread manifest |
 | current assignment is complete and evidence is current      | `release_green`, then `green`                                        |
 | current non-root parent assignment cannot proceed as assigned | terminal blocked checkpoint, then `blocked`                         |
 | root determines the whole flow is terminally blocked          | `release_blocked`, then `blocked`                                   |

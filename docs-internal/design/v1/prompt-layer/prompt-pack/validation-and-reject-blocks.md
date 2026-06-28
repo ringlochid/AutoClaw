@@ -94,8 +94,8 @@ Use this when:
 ```text
 operation_failure
 - code: illegal_target_relation
-- summary: The targeted child is not a current direct child of this parent/root node.
-- suggested_next_step: Reread the current workflow manifest and direct-child set, then target only a current direct child or choose a different legal action.
+- summary: The targeted node is not inside this parent/root node's owned subtree, or the selected tool requires a direct child.
+- suggested_next_step: Reread the current workflow manifest and owned subtree, then target only a node this caller may edit or choose a different legal action.
 ```
 
 ### `illegal_state_reject_v1`

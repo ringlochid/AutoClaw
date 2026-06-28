@@ -155,7 +155,7 @@ prompt_request_json:
     ## Current Assignment
     - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
     - summary: Decide the next bounded child step after the current investigation result.
-    - instruction: Stay inside the current direct-child set and preserve reasoning durably when needed.
+    - instruction: Stay inside the current owned subtree and preserve reasoning durably when needed.
     - criteria:
       - kind: criteria
         slot: root_release_rule

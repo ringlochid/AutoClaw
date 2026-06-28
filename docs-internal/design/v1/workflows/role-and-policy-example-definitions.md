@@ -149,7 +149,7 @@ budget_spec:
   child_assignment_limit: 4
 instruction: |
   Stage child work with assign_child.
-  Use structural edits only on current direct children.
+  Use structural edits only inside the current owned subtree.
   Explain later-sensitive decisions in checkpoints rather than transcript
   memory.
 ```

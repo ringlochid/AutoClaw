@@ -167,12 +167,12 @@ def dependency_dedupe_workflow() -> WorkflowDefinitionFile:
     )
 
 
-def root_descendant_replan_workflow() -> WorkflowDefinitionFile:
+def owned_subtree_replan_workflow() -> WorkflowDefinitionFile:
     return WorkflowDefinitionFile.model_validate(
         {
             "kind": "workflow",
-            "id": "root-descendant-replan-review",
-            "description": "Validate root whole-tree replan breadth without widening parent scope.",
+            "id": "owned-subtree-replan-review",
+            "description": "Validate owned-subtree replan breadth.",
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
@@ -199,7 +199,20 @@ def root_descendant_replan_workflow() -> WorkflowDefinitionFile:
                                 ],
                             }
                         ],
-                    }
+                    },
+                    {
+                        "id": "outside_parent",
+                        "role": "planning_lead",
+                        "policy": "standard-parent-planning",
+                        "description": "Sibling subtree outside the main parent scope.",
+                        "children": [
+                            {
+                                "id": "outside_leaf",
+                                "role": "researcher",
+                                "description": "Sibling leaf outside the main parent scope.",
+                            }
+                        ],
+                    },
                 ],
             },
         }

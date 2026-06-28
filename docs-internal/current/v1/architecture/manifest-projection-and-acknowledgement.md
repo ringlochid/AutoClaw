@@ -150,5 +150,5 @@ parent/root structural CRUD callback
 - inspected tests in `apps/api/tests/integration/bootstrap/test_manifest.py`
 - inspected tests in `apps/api/tests/integration/bootstrap/test_manifest_checkpoint_handoff.py`
 - inspected tests in `apps/api/tests/integration/runtime/contracts/test_replan_cases.py`
-- inspected tests in `apps/api/tests/integration/runtime/contracts/test_replan_descendant_cases.py`
+- inspected tests in `apps/api/tests/integration/runtime/contracts/test_replan_owned_subtree_cases.py`
 - inspected tests in `apps/api/tests/integration/runtime/contracts/test_structural_manifest_cases.py`

@@ -14,7 +14,7 @@ Older redesign materials mixed tree ownership with flat workflow language, `pare
 
 The authored workflow model is tree-only.
 
-Parent/root ownership comes from direct `children`, and runtime child control is limited to explicit direct-child tools.
+Parent/root ownership comes from the workflow tree. Runtime assignment control is limited to explicit direct children, while structural replan control may target explicit descendants inside the caller's owned subtree.
 
 The only canonical public runtime boundaries in v1 are:
 
@@ -55,7 +55,7 @@ Parent/root control is now explicit enough to validate directly.
 
 ## Consequences
 
-- authored structure, direct-child control, and runtime advancement use one consistent tree model
+- authored structure, owned-subtree structural control, direct-child assignment, and runtime advancement use one consistent tree model
 - parent/root continuation is explicit and validator-checkable instead of inferred from gate callbacks or boundary subtypes
 - prompt, legality, monitoring, and recovery docs can normalize around the `dispatch` / checkpoint / tool / boundary split
 

@@ -46,8 +46,8 @@ INVALID_REQUEST_SHAPE_NEXT_STEP = (
     "Reread the canonical request shape and resend the request with only the live required fields."
 )
 ILLEGAL_TARGET_RELATION_NEXT_STEP = (
-    "Reread the current workflow manifest and direct-child set, then target only "
-    "a current direct child or choose a different legal action."
+    "Reread the current workflow manifest and owned subtree, then target only "
+    "a node this caller may edit or choose a different legal action."
 )
 STALE_CHECKPOINT_NEXT_STEP = (
     "Reread the latest relevant checkpoint and current surfaced refs, then decide "

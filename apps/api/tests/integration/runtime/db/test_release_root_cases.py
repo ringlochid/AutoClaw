@@ -400,6 +400,55 @@ async def test_non_root_parent_blocked_returns_to_root_without_child_coverage(
             assert reread.current_node_key == "root"
 
 
+async def test_non_root_parent_release_blocked_tool_remains_root_only(
+    tmp_path: Path,
+) -> None:
+    workflow_definition = parent_blocked_workflow()
+    async with runtime_database_context(
+        tmp_path,
+        task_root_name="task-parent-release-blocked-root-only",
+    ) as context:
+        task_id = "task_parent_release_blocked_root_only"
+        await launch_runtime_case(
+            context,
+            task_id=task_id,
+            workflow_key=workflow_definition.id,
+            compiler_version="runtime-parent-release-blocked-root-only",
+            workflow_definition=workflow_definition,
+        )
+        await yield_child_assignment(
+            context,
+            task_id=task_id,
+            child_node_key="investigate_parent",
+            summary="Investigate whether this subtree is blocked.",
+            instruction="Return blocked if the parent assignment cannot proceed.",
+        )
+        async with context.session_factory() as session:
+            flow = await require_flow_model(session, task_id=task_id)
+            assert flow.active_flow_revision_id is not None
+            await record_terminal_checkpoint_for_session(
+                session,
+                task_id=task_id,
+                outcome=CheckpointOutcome.BLOCKED,
+                summary="Parent cannot proceed as assigned.",
+                next_step="Return control to root without root-only release.",
+            )
+            with pytest.raises(ValueError, match="release_blocked is root-only"):
+                await release_blocked(
+                    session,
+                    task_id=task_id,
+                    expected_structural_revision_id=flow.active_flow_revision_id,
+                )
+            await accept_boundary_and_continue(
+                session,
+                task_id=task_id,
+                boundary=EgressBoundary.BLOCKED,
+            )
+            reread = await runtime_flow_read(session, task_id)
+            assert reread.status == "running"
+            assert reread.current_node_key == "root"
+
+
 async def test_non_root_parent_blocked_cannot_stack_with_staged_child(
     tmp_path: Path,
 ) -> None:

@@ -63,20 +63,22 @@ The live v1 model has no public:
 
 ## Authority rule
 
-- non-root parent/root may edit only its current direct-child set and owned subtree contract
+- non-root parent/root may add children under itself or descendant parents inside its owned subtree
+- non-root parent/root may update or remove explicit descendant nodes inside its owned subtree
 - root may edit the whole workflow because the root-owned subtree is the whole tree
-- no node may mutate non-owned descendants by pretending they are direct children
+- no node may update/remove itself or target nodes outside its owned subtree
+- `assign_child` remains direct-child scoped even though structural replan can target deeper descendants
 
 ## Child baseline durable contract rule
 
-Structural CRUD edits the current child definition itself. The baseline durable contract for that child still comes from the candidate child draft plus any legal direct-parent `child_defaults` expansion after adopt. Runtime assignment surfaces may later merge supplemental durable sharing, but they do not repair or replace the child's authored `consume_selector`, `produce_slot`, or criteria ownership.
+Structural CRUD edits the current target node definition itself. The baseline durable contract for that node still comes from the candidate node draft or patch plus any legal direct-parent `child_defaults` expansion after adopt. Runtime assignment surfaces may later merge supplemental durable sharing, but they do not repair or replace the target node's authored `consume_selector`, `produce_slot`, or criteria ownership.
 
 ## Structural CRUD algorithm
 
 The controller validates structural replan in this exact order:
 
-1. reread the current open parent/root dispatch, active structural revision, current direct-child set, and current continuation slot
-2. validate caller authority and direct-child scope
+1. reread the current open parent/root dispatch, active structural revision, owned subtree, and current continuation slot
+2. validate caller authority and owned-subtree scope
 3. reject if a continuation outcome is already staged on that open dispatch
 4. validate operation-specific rules:
    - `add_child` requires a new semantic `node_key`
@@ -150,7 +152,7 @@ Once the structure is acceptable, the parent/root may stage the next bounded chi
 
 The controller-side `assign_child` sequence is:
 
-1. validate the current open parent/root dispatch, target direct-child scope, one-continuation availability, and open-work overwrite rules
+1. validate the current open parent/root dispatch, `assign_child` direct-child target scope, one-continuation availability, and open-work overwrite rules
 2. mint a fresh child `assignment_key`
 3. mint the first child `attempt_id`
 4. atomically commit the child assignment, the first child attempt, and the staged continuation outcome as one `child_assignment`

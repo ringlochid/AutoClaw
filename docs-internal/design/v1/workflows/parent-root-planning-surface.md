@@ -22,7 +22,7 @@ flowchart TD
 
 ## Why this surface is enough
 
-- the manifest provides whole-workflow structure and current direct-child visibility
+- the manifest provides whole-workflow structure, including the current parent/root's owned subtree
 - child checkpoints provide summary-first history and next-step handover
 - durable artifacts provide drilldown evidence
 - criteria provide the current acceptance contract
@@ -47,7 +47,7 @@ The planning surface is enough to choose the next action:
 3. the current criteria explain whether the missing retry-path case still matters
 4. parent/root can now choose either:
    - `assign_child` for follow-up engineering work
-   - `add_child` for a new QA worker if the current direct-child set is wrong and the needed role/policy pair is already surfaced in the current `structural_edit_palette`
+   - `add_child` for a new QA worker if the current owned-subtree shape is wrong and the needed role/policy pair is already surfaced in the current `structural_edit_palette`
    - `release_green` only if the evidence and criteria already justify closure
 
 No hidden gate summary, bundle, or callback envelope is needed to make that decision.
@@ -60,7 +60,7 @@ Parent/root should:
 - drill into referenced artifacts only when summaries are insufficient
 - use the surfaced current `structural_edit_palette` when structural edits need role/policy choices
 - do not treat generic registry reads or revision-history reads as the normal live parent/root input surface
-- use structural edits only on current direct children
+- use structural edits only inside the current owned subtree: `add_child` under self or a descendant parent, and `update_child`/`remove_child` on explicit descendants
 - stage exactly one continuation outcome before `yield`
 - explain later-sensitive decisions in checkpoints rather than hidden controller prose
 

@@ -21,7 +21,7 @@ sequenceDiagram
 - parent/root nodes supervise and coordinate; they do not hide work inside callback-era gate stages
 - worker nodes execute one bounded assignment at a time
 - review workers perform deeper validation through ordinary child execution
-- structural replan stays with the parent/root that owns subtree context and current direct children
+- structural replan stays with the parent/root that owns the current subtree context
 
 ## Parent/root responsibilities
 

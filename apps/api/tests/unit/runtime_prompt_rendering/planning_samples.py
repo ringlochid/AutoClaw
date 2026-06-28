@@ -68,7 +68,7 @@ def root_assignment(tmp_path: Path) -> AssignmentProjection:
         node_key="root",
         summary="Decide the next bounded child step after the current investigation result.",
         instruction=(
-            "Stay inside the current direct-child set and preserve reasoning durably when needed."
+            "Stay inside the current owned subtree and preserve reasoning durably when needed."
         ),
         criteria=(
             EvidenceRef(

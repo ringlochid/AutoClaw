@@ -18,7 +18,7 @@ from tests.helpers.runtime_support import (
     runtime_read_json,
     stage_child_dispatch,
 )
-from tests.integration.runtime.contracts.workflows import root_descendant_replan_workflow
+from tests.integration.runtime.contracts.workflows import owned_subtree_replan_workflow
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
@@ -30,7 +30,7 @@ def _manifest_payload(task_root: Path) -> dict[str, object]:
     )
 
 
-async def assert_root_descendant_update(
+async def assert_root_owned_subtree_update(
     *,
     session_factory: async_sessionmaker[AsyncSession],
     task_id: str,
@@ -62,9 +62,16 @@ async def assert_root_descendant_update(
         assert leaf.description == "Updated by the root whole-tree replan."
         assert qa_probe.parent_node_key == "nested_parent"
         assert nested_parent.child_node_keys_json == ["existing_leaf", "qa_probe"]
+        outside_leaf = await session.scalar(
+            select(FlowNodeModel).where(
+                FlowNodeModel.flow_revision_id == flow.active_flow_revision_id,
+                FlowNodeModel.node_key == "outside_leaf",
+            )
+        )
+        assert outside_leaf is not None
 
 
-async def assert_root_descendant_removal(
+async def assert_root_owned_subtree_removal(
     *,
     session_factory: async_sessionmaker[AsyncSession],
     task_id: str,
@@ -83,9 +90,10 @@ async def assert_root_descendant_removal(
         assert "nested_parent" not in node_by_key
         assert "existing_leaf" not in node_by_key
         assert node_by_key["subtree"].child_node_keys_json == []
+        assert node_by_key["outside_parent"].child_node_keys_json == ["outside_leaf"]
 
 
-async def _run_root_descendant_replan(
+async def _run_root_owned_subtree_replan(
     *,
     task_root: Path,
     task_id: str,
@@ -130,7 +138,7 @@ async def _run_root_descendant_replan(
     }
     assert updated_nodes["existing_leaf"]["description"] == "Updated by the root whole-tree replan."
     assert updated_nodes["qa_probe"]["parent_node_key"] == "nested_parent"
-    await assert_root_descendant_update(
+    await assert_root_owned_subtree_update(
         session_factory=api.session_factory,
         task_id=task_id,
     )
@@ -151,29 +159,121 @@ async def _run_root_descendant_replan(
     assert "nested_parent" not in removed_node_keys
     assert "existing_leaf" not in removed_node_keys
     assert "qa_probe" not in removed_node_keys
-    await assert_root_descendant_removal(
+    await assert_root_owned_subtree_removal(
         session_factory=api.session_factory,
         task_id=task_id,
     )
 
 
 @pytest.mark.asyncio
-async def test_root_can_update_and_remove_explicit_descendant_nodes(tmp_path: Path) -> None:
+async def test_root_can_edit_descendants_inside_owned_subtree(tmp_path: Path) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_root_descendant_replan"
+    task_id = "task_root_owned_subtree_replan"
 
     try:
         await persist_bootstrap(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=root_descendant_replan_workflow(),
+            workflow_definition=owned_subtree_replan_workflow(),
             revision_no=1,
         )
 
         async with runtime_api_context(config_path) as api:
-            await _run_root_descendant_replan(
+            await _run_root_owned_subtree_replan(
+                task_root=task_root,
+                task_id=task_id,
+                api=api,
+            )
+    finally:
+        await dispose_db_engine()
+
+
+async def _run_non_root_owned_subtree_replan(
+    *,
+    task_root: Path,
+    task_id: str,
+    api: Any,
+) -> None:
+    stage = await stage_child_dispatch(api, task_id=task_id, child_node_key="subtree")
+    add_child = await parent_tool(
+        api.client,
+        task_id=task_id,
+        session_key=stage.worker_session_key,
+        tool_name="add_child",
+        payload={
+            "target_parent_node_key": "nested_parent",
+            "child": {
+                "node_key": "qa_probe",
+                "role": "researcher",
+                "description": "Added under the nested parent by its subtree owner.",
+            },
+        },
+        active_flow_revision_id=stage.active_flow_revision_id,
+    )
+    assert add_child.status_code == 200
+    update_child = await parent_tool(
+        api.client,
+        task_id=task_id,
+        session_key=stage.worker_session_key,
+        tool_name="update_child",
+        payload={
+            "child_node_key": "existing_leaf",
+            "patch": {"description": "Updated by the owning parent subtree replan."},
+        },
+        active_flow_revision_id=add_child.json()["flow"]["active_flow_revision_id"],
+    )
+    assert update_child.status_code == 200
+    updated_manifest = _manifest_payload(task_root)
+    updated_nodes = {
+        node["node_key"]: node for node in cast(list[dict[str, Any]], updated_manifest["node_tree"])
+    }
+    assert (
+        updated_nodes["existing_leaf"]["description"]
+        == "Updated by the owning parent subtree replan."
+    )
+    assert updated_nodes["qa_probe"]["parent_node_key"] == "nested_parent"
+
+    remove_child = await parent_tool(
+        api.client,
+        task_id=task_id,
+        session_key=stage.worker_session_key,
+        tool_name="remove_child",
+        payload={"child_node_key": "nested_parent"},
+        active_flow_revision_id=update_child.json()["flow"]["active_flow_revision_id"],
+    )
+    assert remove_child.status_code == 200
+    removed_manifest = _manifest_payload(task_root)
+    removed_node_keys = {
+        node["node_key"] for node in cast(list[dict[str, Any]], removed_manifest["node_tree"])
+    }
+    assert "nested_parent" not in removed_node_keys
+    assert "existing_leaf" not in removed_node_keys
+    assert "qa_probe" not in removed_node_keys
+    assert "outside_parent" in removed_node_keys
+    assert "outside_leaf" in removed_node_keys
+
+
+@pytest.mark.asyncio
+async def test_non_root_parent_can_edit_descendants_inside_owned_subtree(
+    tmp_path: Path,
+) -> None:
+    config_path = await prepare_runtime_db(tmp_path)
+    task_root = tmp_path / "task-root"
+    task_id = "task_parent_owned_subtree_scope"
+
+    try:
+        await persist_bootstrap(
+            config_path=config_path,
+            task_id=task_id,
+            task_root=task_root,
+            workflow_definition=owned_subtree_replan_workflow(),
+            revision_no=1,
+        )
+
+        async with runtime_api_context(config_path) as api:
+            await _run_non_root_owned_subtree_replan(
                 task_root=task_root,
                 task_id=task_id,
                 api=api,
@@ -183,17 +283,17 @@ async def test_root_can_update_and_remove_explicit_descendant_nodes(tmp_path: Pa
 
 
 @pytest.mark.asyncio
-async def test_non_root_parent_cannot_update_non_direct_descendant(tmp_path: Path) -> None:
+async def test_non_root_parent_cannot_edit_outside_owned_subtree(tmp_path: Path) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    task_id = "task_parent_descendant_scope"
+    task_id = "task_parent_outside_subtree_scope"
 
     try:
         await persist_bootstrap(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=root_descendant_replan_workflow(),
+            workflow_definition=owned_subtree_replan_workflow(),
             revision_no=1,
         )
 
@@ -205,37 +305,72 @@ async def test_non_root_parent_cannot_update_non_direct_descendant(tmp_path: Pat
                 session_key=stage.worker_session_key,
                 tool_name="add_child",
                 payload={
-                    "target_parent_node_key": "nested_parent",
+                    "target_parent_node_key": "outside_parent",
                     "child": {
                         "node_key": "qa_probe",
                         "role": "researcher",
-                        "description": "This grandchild add should stay out of scope.",
+                        "description": "Outside-subtree add should be rejected.",
                     },
                 },
                 active_flow_revision_id=stage.active_flow_revision_id,
             )
             assert rejected_add.status_code == 422
             assert rejected_add.json()["detail"]["code"] == "illegal_target_relation"
-            assert "direct child" in rejected_add.json()["detail"]["summary"]
-            rejected = await parent_tool(
+            assert "owned subtree" in rejected_add.json()["detail"]["summary"]
+
+            rejected_worker_parent = await parent_tool(
+                api.client,
+                task_id=task_id,
+                session_key=stage.worker_session_key,
+                tool_name="add_child",
+                payload={
+                    "target_parent_node_key": "existing_leaf",
+                    "child": {
+                        "node_key": "qa_probe",
+                        "role": "researcher",
+                        "description": "Worker targets cannot receive children.",
+                    },
+                },
+                active_flow_revision_id=stage.active_flow_revision_id,
+            )
+            assert rejected_worker_parent.status_code == 422
+            assert rejected_worker_parent.json()["detail"]["code"] == "illegal_target_relation"
+            assert (
+                "explicit descendant parent" in rejected_worker_parent.json()["detail"]["summary"]
+            )
+
+            rejected_update = await parent_tool(
                 api.client,
                 task_id=task_id,
                 session_key=stage.worker_session_key,
                 tool_name="update_child",
                 payload={
-                    "child_node_key": "existing_leaf",
-                    "patch": {"description": "This grandchild update should stay out of scope."},
+                    "child_node_key": "outside_leaf",
+                    "patch": {"description": "Outside-subtree update should be rejected."},
                 },
                 active_flow_revision_id=stage.active_flow_revision_id,
             )
-            assert rejected.status_code == 422
-            assert rejected.json()["detail"]["code"] == "illegal_target_relation"
-            assert "direct child" in rejected.json()["detail"]["summary"]
+            assert rejected_update.status_code == 422
+            assert rejected_update.json()["detail"]["code"] == "illegal_target_relation"
+            assert "owned subtree" in rejected_update.json()["detail"]["summary"]
+
+            rejected_remove = await parent_tool(
+                api.client,
+                task_id=task_id,
+                session_key=stage.worker_session_key,
+                tool_name="remove_child",
+                payload={"child_node_key": "outside_parent"},
+                active_flow_revision_id=stage.active_flow_revision_id,
+            )
+            assert rejected_remove.status_code == 422
+            assert rejected_remove.json()["detail"]["code"] == "illegal_target_relation"
+            assert "owned subtree" in rejected_remove.json()["detail"]["summary"]
     finally:
         await dispose_db_engine()
 
 
 __all__ = [
-    "test_non_root_parent_cannot_update_non_direct_descendant",
-    "test_root_can_update_and_remove_explicit_descendant_nodes",
+    "test_non_root_parent_can_edit_descendants_inside_owned_subtree",
+    "test_non_root_parent_cannot_edit_outside_owned_subtree",
+    "test_root_can_edit_descendants_inside_owned_subtree",
 ]

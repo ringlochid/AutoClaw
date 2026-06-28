@@ -74,7 +74,7 @@ async def perform_structural_add(
     async def should_read_after_commit_add() -> AddChildSuccess:
         return AddChildSuccess(
             tool_name="add_child",
-            summary=f"Added child node '{target_node_key}'.",
+            summary=f"Added workflow node '{target_node_key}'.",
             target_node_key=target_node_key,
             flow=await runtime_flow_read(session, task_id),
             workflow_manifest_ref=await _workflow_manifest_ref_for_task(session, task_id),
@@ -108,7 +108,7 @@ async def perform_structural_update(
     async def should_read_after_commit_update() -> UpdateChildSuccess:
         return UpdateChildSuccess(
             tool_name="update_child",
-            summary=f"Updated child node '{update_payload.child_node_key}'.",
+            summary=f"Updated workflow node '{update_payload.child_node_key}'.",
             target_node_key=update_payload.child_node_key,
             flow=await runtime_flow_read(session, task_id),
             workflow_manifest_ref=await _workflow_manifest_ref_for_task(session, task_id),
@@ -136,7 +136,7 @@ async def perform_structural_remove(
     async def should_read_after_commit_remove() -> RemoveChildSuccess:
         return RemoveChildSuccess(
             tool_name="remove_child",
-            summary=f"Removed child node '{child_node_key}'.",
+            summary=f"Removed workflow node '{child_node_key}'.",
             target_node_key=child_node_key,
             flow=await runtime_flow_read(session, task_id),
             workflow_manifest_ref=await _workflow_manifest_ref_for_task(session, task_id),

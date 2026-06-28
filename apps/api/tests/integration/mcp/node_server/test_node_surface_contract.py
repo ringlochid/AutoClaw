@@ -25,7 +25,7 @@ from tests.integration.mcp.support import (
     tool_input_schema,
     tool_output_schema,
 )
-from tests.integration.runtime.contracts.workflows import root_descendant_replan_workflow
+from tests.integration.runtime.contracts.workflows import owned_subtree_replan_workflow
 
 
 def _schema_object(value: object) -> dict[str, Any]:
@@ -321,7 +321,7 @@ async def test_node_mcp_exposes_current_only_lookup_and_structural_tools(
         tmp_path,
         task_id=task_id,
         openclaw_gateway_test_server=openclaw_gateway_test_server,
-        workflow_definition=root_descendant_replan_workflow(),
+        workflow_definition=owned_subtree_replan_workflow(),
     )
 
     with openclaw_gateway_test_server.configured_env():

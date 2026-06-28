@@ -34,9 +34,9 @@ Use `tool` as the canonical runtime term. Use `plugin` only for adapter-specific
 | Tool              | Exact meaning                                                           |
 | ----------------- | ----------------------------------------------------------------------- |
 | `assign_child`    | Stage one fresh child assignment as the next continuation outcome.      |
-| `add_child`       | Add one new direct child under the current parent/root node.            |
-| `update_child`    | Update one existing direct child in place while preserving identity.    |
-| `remove_child`    | Remove one existing direct child and its owned subtree.                 |
+| `add_child`       | Add one new child under a parent inside the current owned subtree.      |
+| `update_child`    | Update one descendant node in place while preserving identity.          |
+| `remove_child`    | Remove one descendant node and its owned subtree.                       |
 | `release_green`   | Commit upward green release readiness for the current parent/root node. |
 | `release_blocked` | Root-only commit of whole-flow terminal blocked state.                  |
 

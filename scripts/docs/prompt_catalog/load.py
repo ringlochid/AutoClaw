@@ -261,7 +261,10 @@ GENERATED_EXAMPLE_SCENARIOS = {
         "node kind: `parent`",
         "send mode: `full_prompt`",
         "current lineage: non-root parent closes its own current assignment as blocked",
-        "durable reminder: terminal blocked checkpoint is enough for non-root parent blocked closure",
+        (
+            "durable reminder: terminal blocked checkpoint is enough for "
+            "non-root parent blocked closure"
+        ),
         "root-only reminder: this prompt must not surface `release_blocked` as an allowed tool",
     ],
     "worker_dispatch_prompt": [
