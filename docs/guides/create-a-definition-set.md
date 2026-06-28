@@ -1,4 +1,4 @@
-# Create your first definition set
+# Create a definition set
 
 Status: Reference
 

@@ -50,7 +50,9 @@ AutoClaw is not a generic shell runner. Ordinary commands should finish inline a
 
 - [Core concepts](core-concepts.md) for the main nouns and truth boundaries
 - [Runtime model](runtime-model.md) for task, flow, assignment, attempt, dispatch, checkpoint, artifact, boundary, and wait-state concepts
-- [Definitions model](definitions-model.md) for reusable authored inputs
+- [Authoring model](authoring-model.md) for reusable authored inputs
+- [Task-compose model](task-compose-model.md) for concrete launch input
 - [Choose a workflow lane](../guides/choose-a-workflow-lane.md) for purpose-specific workflow shapes
 - [Workspace model](workspace-model.md) for task roots and host path binding
+- [Operator model](operator-model.md) and [Capability model](capability-model.md) for control, human requests, command runs, and replan
 - [API reference](../reference/api/README.md) and [CLI reference](../reference/cli/README.md) for exact contracts

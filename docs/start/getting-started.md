@@ -57,6 +57,6 @@ For the Postgres-enabled package, use either:
 
 After the install path is healthy:
 
-1. Run [your first task](first-task.md).
-2. Learn where runtime outputs land in [inspect your first run](inspect-your-first-run.md).
+1. Run [start a task](start-a-task.md).
+2. Learn where runtime outputs land in [inspect a task](inspect-a-task.md).
 3. Use [install and start locally](../reference/cli/install-and-start-local.md) for the exact support boundary and the contributor/dev repo-checkout lane.

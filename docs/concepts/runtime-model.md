@@ -85,6 +85,6 @@ If a generated projection and controller readback disagree, prefer controller/ru
 ## Related pages
 
 - [Core concepts](core-concepts.md)
-- [Inspect your first run](../start/inspect-your-first-run.md)
+- [Inspect a task](../start/inspect-a-task.md)
 - [Inspect and control a task](../guides/inspect-and-control-a-task.md)
 - [Operator reference](../reference/operator/README.md)

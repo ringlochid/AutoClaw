@@ -29,4 +29,4 @@ The workspace model decides whether the controller creates task-local directorie
 
 ## Next step
 
-See [bind a real workspace](../guides/bind-a-real-workspace.md) for concrete task-compose examples.
+See [write a task-compose file](../guides/write-a-task-compose.md) for concrete root binding examples.

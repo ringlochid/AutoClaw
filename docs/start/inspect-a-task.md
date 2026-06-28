@@ -1,8 +1,8 @@
-# Inspect your first run
+# Inspect a task
 
 Status: Reference
 
-After the first task starts, the important proof is in the runtime outputs and operator read surfaces.
+After a task starts, the important proof is in the runtime outputs and operator read surfaces.
 
 ## Generated task-root surfaces
 
@@ -13,7 +13,7 @@ Start with these files inside the task root:
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
 - `outputs/artifacts/`
 
-The first three explain the current workflow shape, the active assignment, and the latest durable progress. `outputs/artifacts/` holds published outputs.
+The workflow manifest explains the current workflow shape. The assignment file shows the current node mission. The latest checkpoint records durable progress or terminal handoff. `outputs/artifacts/` holds published outputs.
 
 ## Observability-only files
 
@@ -41,4 +41,4 @@ For the concept behind these files and read models, see the [runtime model](../c
 
 ## Next step
 
-If the seeded minimal workflow makes sense, continue with [create your first definition set](../guides/create-your-first-definition-set.md).
+If the seeded minimal workflow makes sense, continue with [create a definition set](../guides/create-a-definition-set.md).

@@ -5,5 +5,5 @@ Status: Reference
 Use this subtree for the first-success public path.
 
 - [Getting started](getting-started.md)
-- [Run your first task](first-task.md)
-- [Inspect your first run](inspect-your-first-run.md)
+- [Start a task](start-a-task.md)
+- [Inspect a task](inspect-a-task.md)

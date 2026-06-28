@@ -87,8 +87,10 @@ A minimal implementation workflow may have one root and one worker. The root rea
 
 ## Related pages
 
-- [Definitions model](definitions-model.md)
+- [Authoring model](authoring-model.md)
+- [Task-compose model](task-compose-model.md)
 - [Runtime model](runtime-model.md)
 - [Choose a workflow lane](../guides/choose-a-workflow-lane.md)
 - [Workspace model](workspace-model.md)
+- [Capability model](capability-model.md)
 - [Inspect and control a task](../guides/inspect-and-control-a-task.md)
