@@ -2,20 +2,55 @@
 
 Status: Reference
 
-AutoClaw is a local-first workflow control plane for structured work that needs explicit runtime truth, durable artifacts, and operator recovery surfaces.
+AutoClaw is an orchestration layer for structured AI-assisted work. It turns reusable workflow definitions and one concrete launch request into controller-owned runtime state that can be inspected, resumed, replanned, or closed with evidence.
 
-At a high level it combines:
+Use AutoClaw when a task needs more structure than a chat transcript can provide: multiple roles, bounded assignments, durable checkpoints, artifacts, human-in-the-loop decisions, long command runs, or operator recovery.
+
+## The short model
+
+An AutoClaw run moves through a small set of surfaces:
+
+1. Author reusable role, policy, and workflow definitions.
+2. Seed or upload those definitions into the registry.
+3. Start a concrete task from a task-compose launch body.
+4. Compile the current registry revisions into a runtime flow.
+5. Dispatch the current root, parent, or worker node.
+6. Record checkpoints, artifacts, boundaries, waits, and replans as controller-owned runtime state.
+7. Inspect or control the task through operator read and recovery surfaces.
+
+The important rule is that authored files describe reusable intent. Runtime records describe what happened in one launched task.
+
+## What AutoClaw owns
 
 - authored definitions for roles, policies, and workflows
-- authored task-compose launch input that stays separate from the importable definition files
-- deterministic compile and task-start behavior
-- controller-owned runtime state
-- OpenClaw-backed delegated execution
-- operator-visible read, control, and recovery surfaces
+- task-compose launch input for one concrete task
+- registry revisions used by compile and launch
+- runtime flow, node, assignment, attempt, and dispatch records
+- durable evidence through criteria, checkpoints, and artifacts
+- human request and command-run wait states
+- operator read, control, and recovery surfaces
+
+## What AutoClaw is not
+
+AutoClaw is not just a prompt library. Prompt text is one projection of controller-owned task state, not the source of truth.
+
+AutoClaw is not hidden chat memory. A run should be understandable from its workflow manifest, assignment surfaces, checkpoints, artifacts, and operator readbacks.
+
+AutoClaw is not a generic shell runner. Ordinary commands should finish inline and comfortably under about two minutes. Controller-managed command runs are for long-running command work that must outlive a single dispatch.
+
+## Built-in orchestration features
+
+- **Parent and root orchestration:** parent nodes can assign child work, inspect child evidence, release completed subtrees, or block honestly.
+- **Replan:** the runtime can adopt revised structure when the current flow shape no longer fits the work.
+- **Human-in-the-loop:** policies can allow specific human request kinds such as direction, approval, input, or review.
+- **Long command runs:** policies can allow controller-managed command runs without granting unrelated human request capabilities.
+- **Operator recovery:** operators can inspect task state, trace events, resolve human requests, read or cancel command runs, and recover from runtime issues.
 
 ## Where to go next
 
-- [Core concepts](core-concepts.md) for the main nouns
-- [Workflow lanes](workflow-lanes.md) for minimal, normal, and maximal shapes
-- [Definitions model](definitions-model.md) for the authored inputs
+- [Core concepts](core-concepts.md) for the main nouns and truth boundaries
+- [Runtime model](runtime-model.md) for task, flow, assignment, attempt, dispatch, checkpoint, artifact, boundary, and wait-state concepts
+- [Definitions model](definitions-model.md) for reusable authored inputs
+- [Workflow lanes](workflow-lanes.md) for purpose-specific workflow shapes
+- [Workspace model](workspace-model.md) for task roots and host path binding
 - [API reference](../reference/api/README.md) and [CLI reference](../reference/cli/README.md) for exact contracts

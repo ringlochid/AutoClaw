@@ -30,6 +30,8 @@ Use the operator reference when you want runtime readbacks beyond the task root:
 - [Runtime read models and operator surfaces](../reference/operator/runtime-read-models-and-operator-surfaces.md)
 - [Inspect approvals and watchdog state](../reference/operator/inspect-approvals-and-watchdog.md)
 
+For the concept behind these files and read models, see the [runtime model](../concepts/runtime-model.md).
+
 ## What to check
 
 - the task used the workflow you expected
