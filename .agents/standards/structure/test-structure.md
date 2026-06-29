@@ -17,6 +17,10 @@ Use this guide when adding tests, reorganizing test trees, or deciding what coun
 - `make test-api-integration-local`: compatibility alias for the same local integration lane
 - `make test-api-db`: specialized Docker/Postgres-backed integration behavior using shipped schema/setup paths
 - `make test-api-e2e-minimal|normal|maximal`: progressive end-to-end behavior
+- `make console-test`: frontend unit and component behavior under `apps/console/tests/unit` and `apps/console/tests/component`
+- `make console-test-integration`: MSW-backed frontend flow behavior under `apps/console/tests/integration`
+- `make console-e2e`: browser end-to-end behavior under `apps/console/tests/e2e`
+- `make console-openapi-check`: generated frontend API type drift against the current FastAPI OpenAPI schema
 
 ## Placement rules
 
@@ -24,6 +28,12 @@ Use this guide when adding tests, reorganizing test trees, or deciding what coun
 - put local integration flows in `apps/api/tests/integration/**`
 - put end-to-end workflow and public-surface behavior in `apps/api/tests/e2e/**`
 - keep reusable helpers under `apps/api/tests/helpers/**` and keep them support-only
+- put frontend mapper, reducer, API helper, and small state-machine tests in `apps/console/tests/unit/**`
+- put frontend primitive and feature component tests in `apps/console/tests/component/**`
+- put MSW-backed browser-flow tests in `apps/console/tests/integration/**`
+- put Playwright page-flow and accessibility checks in `apps/console/tests/e2e/**`
+- put screenshot/parity fixtures and visual audit helpers in `apps/console/tests/visual/**`
+- put reusable API-shaped frontend fixtures in `apps/console/tests/fixtures/**`
 
 ## Steady-state test tree
 
@@ -56,6 +66,34 @@ apps/api/tests/
     onboarding/
 ```
 
+For console frontend tests, use app-local proof lanes:
+
+```text
+apps/console/tests/
+  unit/
+    api/
+    mappers/
+    reducers/
+    view-models/
+  component/
+    ui/
+    layout/
+    features/
+  integration/
+    tasks/
+    task-detail/
+    human-requests/
+    command-runs/
+    definitions/
+    definition-editor/
+    task-start/
+  e2e/
+    runtime/
+    authoring/
+  visual/
+  fixtures/
+```
+
 Rules:
 
 - keep the top-level lanes `unit`, `integration`, and `e2e`
@@ -72,6 +110,11 @@ Rules:
 - once a progressive e2e lane becomes viable for a surface, later work should keep it green
 - use `make test-api-integration` as the default final-proof integration lane
 - reserve `make test-api-db` for Docker/Postgres-specific proof such as schema/reset coverage, DB-shell changes, or Postgres-only behavior
+- frontend MSW tests may prove rendering, state transitions, and API-client behavior, but they do not prove backend persistence, runtime legality, or route implementation
+- frontend API fixtures must be generated or hand-shaped from OpenAPI/current contracts and must stay visibly fake
+- frontend e2e must use real browser behavior for navigation, focus, disclosure, forms, SSE-facing flows, and responsive layout when those surfaces changed
+- visual parity checks should compare against accepted design screenshots or fixture routes, not inferred layout math alone
+- accessibility checks should cover shell navigation, rows, tabs, modals/drawers, forms, disclosure lists, request resolution controls, and command-run log disclosure
 
 ## Test authoring rules
 
@@ -97,3 +140,5 @@ Rules:
 - does the lane exercise the shipped boundary that changed
 - did any helper or fixture silently substitute for real runtime or DB behavior
 - if a lane was skipped, is the exact reason written down in review or evidence
+- for frontend work, did the tests cover mapper/view-model drift separately from component rendering
+- for frontend work, did the test prove keyboard/focus, responsive, and a11y behavior when the touched surface is interactive or page-level

@@ -33,6 +33,14 @@ Questions to ask:
 - does the repo already have a stronger canonical term for it
 - would a new reader mistake it for a different existing concept
 
+## Acronyms and abbreviations
+
+- avoid private team abbreviations, deleted vowels, and initials that only make sense to the author
+- treat acronyms as words inside TypeScript and JavaScript identifiers unless a generated type or platform name forces the spelling
+- prefer `taskId`, `apiClient`, `sseClient`, `openApiSchema`, and `httpStatus`
+- avoid `taskID`, `APIClient`, `SSEClient`, `OpenAPISchema`, and `HTTPStatus`
+- keep API wire field names exact when reading generated OpenAPI types; translate only in explicit mappers or view-model builders
+
 ## Public versus local names
 
 - public modules, exported functions, shared helpers, schema classes, ORM models, and CLI/API surfaces should be descriptive out of context
@@ -140,6 +148,21 @@ Rules:
 - do not use `*Payload` for authoritative persisted truth
 - do not mix `*State`, `*Snapshot`, and `*Result` casually; they mean different things
 
+Frontend-specific suffixes:
+
+- `*Props`: React component props only
+- `*ContextValue`: value returned by a React context provider
+- `*Action`: reducer or state-machine action union
+- `*Row`, `*Item`, `*Summary`, `*Details`, `*View`: render-ready view-model shapes
+- `*Draft`: unsaved browser-local form or editor state
+
+Rules:
+
+- do not suffix React render shapes with `*Model`; controller and ORM truth already use model vocabulary elsewhere
+- do not prefix TypeScript interfaces with `I`
+- do not use `VM` when a readable suffix such as `Row`, `Item`, `Summary`, or `View` would say more
+- do not name browser-local state `Record`, `Snapshot`, or `Payload` unless it really has that contract role
+
 ## Weak names to avoid
 
 Avoid these unless the repo has a very specific canonical meaning for them:
@@ -179,6 +202,36 @@ Avoid:
 - `dispatch_common.py`
 - `new_flow_service.py`
 - `task_reconcile_v2_final.py`
+
+## Frontend TypeScript and React naming rules
+
+Use the ecosystem conventions where they carry framework meaning, then apply AutoClaw domain vocabulary inside them.
+
+- React components use `PascalCase`: `TaskTable`, `HumanRequestDrawer`, `CommandRunLog`
+- component files use `PascalCase.tsx` when the file primarily exports one component: `TaskTable.tsx`
+- hooks use `use` plus a domain verb or noun phrase: `useTaskEvents`, `useHumanRequestResolution`
+- hook files should stay feature-local and use a readable module name such as `use-task-events.ts`
+- non-component TypeScript modules use lower kebab-case by responsibility: `task-event-mappers.ts`, `command-run-actions.ts`
+- feature folders use product route nouns in kebab-case: `task-detail`, `human-requests`, `command-runs`
+- exported type aliases, interfaces, reducer actions, and context values use `PascalCase`
+- variables, local functions, mappers, and non-component helpers use `camelCase`
+- constants use `UPPER_CASE` only for true module-level constants that behave like immutable configuration; otherwise use `camelCase`
+- event props use `on*`: `onResolve`, `onCancel`, `onSelectTask`
+- local event handlers use `handle*`: `handleResolve`, `handleCancel`, `handleTaskSelect`
+- boolean props and state use `is*`, `has*`, `can*`, or `should*`
+- reducer actions should name the event that occurred, not the implementation: `taskEventAppended`, `humanRequestResolved`
+- context owners use one family stem: `TaskSelectionContext`, `TaskSelectionProvider`, `useTaskSelection`
+- console CSS custom properties use the `--ac-*` namespace; do not keep ambiguous prototype prefixes from the design handoff
+
+Avoid:
+
+- generic component names such as `Card`, `Panel`, `List`, or `Dialog` outside `components/ui/**` unless the primitive itself owns that generic role
+- route or page components named only `Index`, `Screen`, `Page`, or `View`
+- hook names such as `useData`, `useFetch`, `useStuff`, or `useApi` when the owned route family is known
+- props such as `data`, `item`, `info`, `callback`, or `setThing` when the component contract can name the product concept
+- `index.ts` barrels that hide ownership or create circular import temptation; use them only for deliberate package surfaces
+
+Generated OpenAPI names are allowed to follow generator output. Do not rename generated types manually; wrap them in domain mappers when React needs a clearer render name.
 
 ## Package and directory naming rules
 

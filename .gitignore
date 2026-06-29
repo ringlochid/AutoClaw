@@ -12,12 +12,15 @@ venv/
 # Python caches and coverage
 __pycache__/
 *.pyc
+*.tsbuildinfo
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 coverage/
 htmlcov/
+playwright-report/
+test-results/
 *.egg-info/
 
 # Build and package artifacts

@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme {
+    --color-active: var(--ac-active);
+    --color-active-foreground: var(--ac-active-foreground);
+    --color-background: var(--ac-background);
+    --color-danger: var(--ac-danger);
+    --color-danger-soft: var(--ac-danger-soft);
+    --color-foreground: var(--ac-foreground);
+    --color-muted: var(--ac-muted);
+    --color-outline: var(--ac-outline);
+    --color-outline-soft: var(--ac-outline-soft);
+    --color-primary: var(--ac-primary);
+    --color-primary-foreground: var(--ac-primary-foreground);
+    --color-primary-soft: var(--ac-primary-soft);
+    --color-surface: var(--ac-surface);
+    --color-surface-high: var(--ac-surface-high);
+    --color-surface-low: var(--ac-surface-low);
+    --color-surface-muted: var(--ac-surface-muted);
+    --font-body: var(--ac-font-body);
+    --font-display: var(--ac-font-display);
+    --font-mono: var(--ac-font-mono);
+    --text-body: var(--ac-text-body);
+    --text-body--line-height: var(--ac-text-body-line-height);
+    --text-compact: var(--ac-text-compact);
+    --text-compact--line-height: var(--ac-text-compact-line-height);
+    --text-display: var(--ac-text-display);
+    --text-display--line-height: var(--ac-text-display-line-height);
+    --text-label: var(--ac-text-label);
+    --text-label--line-height: var(--ac-text-label-line-height);
+    --text-utility: var(--ac-text-utility);
+    --text-utility--line-height: var(--ac-text-utility-line-height);
+    --radius-card: var(--ac-radius-card);
+    --radius-control: var(--ac-radius-control);
+    --radius-md: var(--ac-radius-md);
+    --radius-shell: var(--ac-radius-shell);
+    --radius-sm: var(--ac-radius-sm);
+    --radius-xs: var(--ac-radius-xs);
+    --shadow-hairline: var(--ac-shadow-hairline);
+    --shadow-panel: var(--ac-shadow-panel);
+    --shadow-popover: var(--ac-shadow-popover);
+    --shadow-shell: var(--ac-shadow-shell);
+    --spacing-control: var(--ac-size-control);
+    --spacing-icon-control: var(--ac-size-icon-control);
+    --spacing-page-block: var(--ac-space-page-block);
+    --spacing-page-inline: var(--ac-space-page-inline);
+}
+
+* {
+    letter-spacing: 0;
+}
+
+html {
+    background: var(--ac-background);
+    scrollbar-gutter: stable;
+}
+
+body {
+    background: var(--ac-background);
+    color: var(--ac-foreground);
+    font-family: var(--font-body);
+    margin: 0;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+    -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid rgb(59 130 246 / 0.42);
+    outline-offset: 2px;
+}

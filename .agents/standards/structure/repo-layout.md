@@ -91,6 +91,17 @@ Extended guidance: [Naming](../code/naming.md)
 - keep platform-owned setup and environment code under `apps/api/src/autoclaw/platform/**`
 - when provider integration becomes substantial, keep reusable substrate under `apps/api/src/autoclaw/integrations/**` and keep runtime usage under the owning runtime family
 
+## Frontend layout guidance
+
+- keep console app code under `apps/console/**`; do not add another top-level frontend tree for the same browser surface
+- keep package manager, Vite, TypeScript, ESLint, Prettier, Vitest, Playwright, and Tailwind config app-local unless a second JS app later proves a shared workspace is needed
+- keep generated OpenAPI output under `apps/console/src/api/generated/**` and treat it as generated contract input, not authored source
+- keep API/SSE wiring under `apps/console/src/api/**` and keep feature components behind view-model mappers instead of direct raw-payload rendering
+- keep reusable primitives under `apps/console/src/components/ui/**` and layout shells under `apps/console/src/components/layout/**`
+- keep product-owned feature folders under `apps/console/src/features/**`; prefer `tasks`, `task-detail`, `human-requests`, `command-runs`, `definitions`, `definition-editor`, and `task-start`
+- avoid stale feature folders such as `approvals`, `flows`, `registry`, or `observability` unless a later controller-backed page contract reintroduces that exact user-facing owner
+- keep test fixtures and MSW data API-shaped and visibly fake; do not let browser fixtures become shadow controller truth
+
 ## Test layout guidance
 
 - keep unit, integration, and e2e surfaces separate

@@ -284,6 +284,58 @@ If a call becomes unreadable, first try:
 
 Only after that should you accept a visually heavy call shape.
 
+## Frontend readability rules
+
+Frontend code should preserve the same top-down reading shape as backend code: route ownership, data loading, view-model mapping, component rendering, and primitive styling should stay distinct.
+
+Component files should read in this order when practical:
+
+1. type imports and runtime imports
+2. local constants and small helper types
+3. exported component
+4. small local subcomponents when they are not reusable
+5. local pure helpers
+
+Rules:
+
+- keep page and route components as orchestration surfaces; extract rows, forms, drawers, tabs, log blocks, and disclosure bodies when they own their own behavior
+- keep reusable primitives in `components/ui/**` and layout shells in `components/layout/**`; do not hide product-specific behavior inside generic primitives
+- prefer feature-local helpers before global `lib/**`; promote a helper only after at least two owners use the same responsibility
+- keep raw controller payload handling inside API helpers, generated-type adapters, or view-model mappers
+- React components should receive view-models, primitive props, and event callbacks, not generated OpenAPI payloads directly
+- keep server state, selected IDs, local form drafts, modal state, and derived render facts visibly separate
+- do not duplicate derived state; if a fact can be calculated from props, route params, API data, or existing state during render, derive it instead of storing it
+- when multiple state fields always change together, use one state object or a reducer instead of several loosely coordinated `useState` calls
+- use `useReducer` when UI transitions become event-shaped, multi-field, or easy to contradict
+- use React context only when sibling branches genuinely share state; do not create context just to avoid passing one or two local props
+- use effects for external synchronization, subscriptions, focus management, or imperative browser APIs; do not use effects to mirror props into state when rendering can derive the value
+- use `memo`, `useMemo`, and `useCallback` only when they protect a real expensive calculation, stabilize an API that needs identity, or solve measured render churn; blanket memoization makes code harder to read
+
+## Tailwind readability rules
+
+Tailwind utility classes are acceptable at the component boundary, but repeated or conditional class strings should not become the real component model.
+
+Rules:
+
+- prefer design tokens and named primitives over ad hoc color, radius, shadow, and spacing choices
+- use the implementation token namespace `--ac-*` for console CSS variables, not prototype prefixes from the design repo
+- translate design-repo shared CSS into semantic token families and primitives before building pages
+- when the same utility cluster repeats across product features, extract a primitive, layout component, variant helper, or token-backed CSS class
+- keep class strings stable and scan-friendly; if a `className` needs complex branching, compute the named branch above the JSX
+- keep responsive, state, and dark/light variants near the element they affect; do not hide important interaction styling in distant helper magic
+- avoid dynamic Tailwind class construction such as `` `bg-${status}` ``; map status or variant names to explicit class strings instead
+- keep `@apply` rare and token-backed; prefer React primitives for reusable UI structure
+- do not use raw arbitrary values for core UI structure unless the design handoff requires the exact value and a token would be misleading
+- if a Tailwind string is long but belongs to one obvious primitive, keep it with that primitive instead of splitting by visual mechanics
+
+## Accessibility readability rules
+
+- choose semantic HTML before ARIA
+- keep labels, descriptions, `aria-*` relationships, and keyboard behavior near the component they describe
+- stateful controls must expose text or accessible names that match the user-visible action
+- color-only state is not enough; pair state color with text, icon semantics, or a visible label
+- interactive components should make focus order and disabled/loading states obvious in the JSX
+
 ## Comments and docstrings
 
 - comment the intent, invariant, or non-obvious contract
@@ -338,6 +390,7 @@ If the diff is getting too mixed, split the cleanup so the review can still tell
 - split mixed-responsibility modules when the current slice already touches both concerns
 - keep comments for non-obvious intent, not for restating the code
 - collapse naming drift so one concept keeps one canonical term across touched code, tests, and docs
+- for frontend work, keep API client, view-model, component, Tailwind token, and interaction-state responsibilities visible rather than folding them into one page component
 
 ## Review checklist
 

@@ -82,6 +82,8 @@ Rules:
 - `docs-internal/design/v2/**` is the current target product and implementation source of truth for V2-owned surfaces
 - `docs-internal/design/v1/**` remains the target baseline for existing V1 execution-era surfaces that V2 does not supersede
 - `docs-internal/current/v1/**` is the current shipped-behavior contrast lane
+- `apps/console/**` frontend work consumes controller contracts, OpenAPI, and V2 UI docs as data truth
+- external design repos, screenshots, and static HTML handoffs are visual, state, and interaction references only; they do not override controller-owned routes, fields, states, or legality
 - when V2 target pages and V1 target pages disagree about a V2-owned surface, V2 wins
 - when target design truth and shipped contrast disagree about target behavior, target design truth wins
 - code and tests can expose drift, but they do not overrule target design truth unless canon is silent and is being patched
@@ -95,6 +97,16 @@ Read these in order before non-trivial implementation:
 3. any relevant `docs-internal/current/**` shipped-behavior contrast page
 4. named appendix owners for exact API, schema, prompt, or payload detail
 5. the smallest relevant subset of `.agents/standards/*`
+
+For non-trivial `apps/console/**` frontend implementation, also read the relevant UI contract and route sources before touching components:
+
+1. `docs-internal/design/v2/interfaces/control-ui-runtime-and-authoring-surfaces.md`
+2. `docs-internal/design/v2/interfaces/control-api-and-task-event-stream.md` for task-detail, SSE, and task-control surfaces
+3. `docs-internal/design/v2/interfaces/human-request-and-approval-contract.md` for human-request surfaces
+4. `docs-internal/design/v2/architecture/command-run-and-long-running-boundary.md` for command-run surfaces
+5. `docs-internal/design/v2/interfaces/definition-authoring-api-and-draft-set-contract.md` for authoring surfaces
+6. `docs/reference/api/api-surface-and-route-map.md` for current shipped route families
+7. the relevant design-repo product brief, navigation contract, page charter, static HTML, screenshot, and shared CSS handoff
 
 ## Implementation fast path
 
@@ -171,6 +183,9 @@ Rules:
 - `make test-api-integration-local` remains a compatibility alias for `make test-api-integration`
 - `make test-api-db` runs the Docker/Postgres-backed integration groups only
 - `make test-api-e2e-minimal`, `make test-api-e2e-normal`, and `make test-api-e2e-maximal` are the progressive e2e lanes
+- `make console-format-check`, `make console-lint`, `make console-typecheck`, `make console-openapi-check`, `make console-test`, `make console-test-integration`, and `make console-build` are the console proof lanes
+- `make console-e2e` runs browser e2e when Playwright browser dependencies are available
+- `make check-console` runs the non-browser console gate: format check, lint, typecheck, generated OpenAPI drift check, unit/component tests, MSW-backed integration tests, and production build
 - grouped runners must preserve the full coverage of the target they replace and expose readable progress
 
 ### Applicability
@@ -183,6 +198,17 @@ For touched backend behavior under `apps/api/**`, run every applicable lane befo
 - the relevant e2e lane when the touched slice reaches parent-first runtime flows, support-state truth, public CLI/API semantics, or other shipped end-to-end behavior
 
 Prefer focused pytest selection while iterating, but do not claim completion until the applicable command matrix for the touched surface is green.
+
+For touched frontend behavior under `apps/console/**`, run every applicable lane before claiming completion:
+
+- `make console-format-check`
+- `make console-lint`
+- `make console-typecheck`
+- `make console-openapi-check` when API types, route usage, view-models, or API client code are touched
+- `make console-test` for unit/component behavior
+- `make console-test-integration` when the touched slice owns API-backed flows, SSE handling, request resolution, command-run actions, definition authoring, or task start
+- `make console-build`
+- `make console-e2e` when the touched slice changes navigation, page-level flows, browser-only behavior, visual parity, or accessibility-critical interaction and the local browser dependencies are available
 
 ## Repo-native quality gates
 
@@ -204,9 +230,12 @@ For touched prompt assets, prompt-catalog inputs, or generated prompt pages:
 
 For touched TypeScript, frontend, or plugin surfaces:
 
+- repo-native formatter and linter
 - repo-native typecheck
+- repo-native OpenAPI/generated-type drift check when the slice touches API contracts or API-backed view-models
+- repo-native tests for the touched lane
 - repo-native build
-- repo-native tests when present
+- Playwright browser and visual/a11y checks when page-level UI behavior, layout, navigation, or interaction changed
 
 For touched docs:
 

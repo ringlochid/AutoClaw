@@ -138,6 +138,73 @@ Do not scatter the same provider boundary across unrelated runtime, CLI, and wra
 
 If a runtime-specific contract lane exists, it must explain why it is not just another schema tree.
 
+## Console frontend source rule
+
+`apps/console/**` owns the browser console app only.
+
+It consumes controller-owned API truth and design handoff truth; it does not define runtime truth, registry truth, node-tool truth, or support-state truth.
+
+Use one app-local package and toolchain:
+
+```text
+apps/console/
+  package.json
+  index.html
+  vite.config.ts
+  vitest.config.ts
+  playwright.config.ts
+  src/
+    app/
+    api/
+      generated/
+    styles/
+    components/
+      ui/
+      layout/
+    features/
+      tasks/
+      task-detail/
+      human-requests/
+      command-runs/
+      definitions/
+      definition-editor/
+      task-start/
+    mocks/
+    lib/
+  tests/
+```
+
+Rules:
+
+- keep app bootstrap, router, providers, and runtime config under `src/app/**`
+- keep generated OpenAPI types under `src/api/generated/**`; do not edit them manually
+- keep the API client, SSE client, error handling, and request/query helpers under `src/api/**`
+- keep shared design tokens and Tailwind entry CSS under `src/styles/**`
+- keep console CSS custom properties under the `--ac-*` namespace, then expose reusable Tailwind theme tokens from them
+- derive reusable color, typography, spacing, size, radius, border, shadow, and status tokens from the design handoff before building page components
+- do not port design-repo static HTML, page-local CSS selectors, or inline prototype JavaScript into `apps/console/**`
+- keep reusable primitives under `src/components/ui/**` and layout shells under `src/components/layout/**`
+- keep page and flow ownership under feature folders named for product pages, not stale backend nouns or design-process labels
+- keep MSW handlers and API-shaped browser fixtures under `src/mocks/**` or `tests/fixtures/**`
+- keep `src/lib/**` small and responsibility-named; do not let it become a generic dump for view logic
+- route code may compose features, but feature components should not own global router, config, or API-client setup
+- generated API types and raw controller payloads may feed mappers, but React components should render view-models and primitive props
+
+Preferred first-page ownership is:
+
+```text
+features/
+  tasks/
+  task-detail/
+  human-requests/
+  command-runs/
+  definitions/
+  definition-editor/
+  task-start/
+```
+
+Avoid steady-state folders such as `flows`, `approvals`, `registry`, or `observability` when the UI page model is now `Tasks`, `Human Requests`, `Command Runs`, and `Definitions`.
+
 ## Test-tree rule
 
 - steady-state tests should mirror product, feature, or boundary ownership

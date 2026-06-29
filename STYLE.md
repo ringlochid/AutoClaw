@@ -157,10 +157,42 @@ Source: [SQLAlchemy declarative mapping](https://docs.sqlalchemy.org/en/20/orm/d
 
 ## TypeScript, React, and plugin rules
 
-- keep typed TS surfaces explicit
-- avoid implicit-any drift and vague glue modules
+- keep typed TS surfaces explicit and `strict`-clean
+- avoid implicit-any drift, broad `unknown` plumbing, and vague glue modules
 - keep React and plugin modules cohesive and low-responsibility
 - keep build and test behavior aligned with repo-native scripts
+- use `PascalCase` for React components and exported type-like names
+- use `camelCase` for variables, local functions, mappers, hooks, and non-component helpers
+- use `UPPER_CASE` only for true immutable module constants
+- use `use*` names for custom hooks and keep hook files feature-local by default
+- use `*Props`, `*ContextValue`, `*State`, and `*Action` suffixes only for those actual frontend roles
+- do not prefix TypeScript interfaces with `I`, and do not use `VM` when a readable render noun such as `Row`, `Item`, `Summary`, or `View` fits
+- component files should use `PascalCase.tsx` when they primarily export one component; non-component frontend modules should use responsibility-named lower kebab-case
+- event callback props should be named `on*`; local event handlers should be named `handle*`
+- use generated OpenAPI types for controller-backed API payloads; do not hand-maintain duplicate TypeScript API contracts
+- keep one narrow API/SSE client layer for base URL resolution, `X-AutoClaw-API-Key`, error envelopes, query construction, SSE cursor handling, backfill, and reset behavior
+- render frontend view-models such as task rows, event items, human-request items, command-run rows, and definition summaries instead of passing raw controller payloads directly through component trees
+- translate generated snake_case controller fields into camelCase view-model fields only inside explicit mappers
+- keep controller vocabulary exact for route names, states, event families, command-run states, human-request kinds, and definition kinds
+- keep UI-only labels and grouping out of API contracts, generated types, persistence models, and runtime docs
+- use React Router or equivalent route ownership for multi-page console flows instead of large boolean or enum page switches
+- keep page components as route orchestration; extract rows, forms, drawers, tabs, toolbars, log blocks, and disclosure bodies once they own behavior or repeat
+- avoid duplicated or contradictory React state; derive render facts from props, route params, API data, and existing state when practical
+- prefer `useReducer` over scattered `useState` when transitions are event-shaped, multi-field, or easy to contradict
+- use effects only for external synchronization, subscriptions, focus management, and imperative browser APIs; do not mirror props into local state by default
+- use `memo`, `useMemo`, and `useCallback` only for measured churn, expensive calculations, or identity-sensitive APIs
+- keep shared visual language in tokens and reusable primitives; avoid page-local Tailwind utility sprawl once a pattern repeats
+- use design tokens for colors, spacing, radius, shadow, typography, and status treatments instead of ad hoc utility values for controller surfaces
+- console CSS custom properties use the `--ac-*` namespace; do not carry prototype-only token prefixes such as `--oc-*` into implementation
+- derive reusable style tokens from the design handoff once, including color, typography, spacing, size, radius, border, shadow, and status treatments
+- do not copy design-repo static HTML, page-local CSS selectors, or inline prototype JavaScript into the console app
+- map state and variants to explicit Tailwind class strings; do not build dynamic classes such as `` `bg-${status}` ``
+- extract repeated Tailwind utility clusters into primitives, variant helpers, or token-backed CSS rather than copying the cluster across features
+- keep accessibility part of the component contract: semantic elements, labels, keyboard focus, color-with-text state, and stable responsive order
+- do not invent frontend-only lifecycle states, fake metrics, progress percentages, ETA, run/request counts, or support-file-derived truth when the controller does not expose them
+- keep browser-only template generation, preview, diff, and local form state visibly separate from stored registry truth, draft-set truth, runtime truth, and task-start launch truth
+
+Source: [React custom hooks](https://legacy.reactjs.org/docs/hooks-custom.html) Source: [React state structure](https://react.dev/learn/choosing-the-state-structure) Source: [TypeScript ESLint naming convention](https://typescript-eslint.io/rules/naming-convention/) Source: [Tailwind reusing styles](https://tailwindcss.com/docs/reusing-styles)
 
 ## Docs structure rule
 
