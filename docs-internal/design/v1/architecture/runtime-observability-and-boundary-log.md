@@ -18,9 +18,9 @@ This page freezes the v1 observability lane for runtime boundaries, dispatch del
 
 ```yaml
 support_runtime_file_ref:
-  kind: delivery_state | continuity_state | watchdog_state | provider_events
-  path: string
-  description: string
+    kind: delivery_state | continuity_state | watchdog_state | provider_events
+    path: string
+    description: string
 ```
 
 ## Canonical Dispatch Observability Files
@@ -51,23 +51,23 @@ These files are controller-generated support projections. The exact field sets b
 
 ```json
 {
-  "dispatch_id": "dispatch.parent.01",
-  "attempt_id": "attempt.parent.01",
-  "assignment_key": "parent.assign-01",
-  "node_key": "implementation_subtree",
-  "transport_family": "openclaw_gateway_ws_rpc",
-  "transport_state": "provider_signal_seen",
-  "last_provider_event_kind": "output_delta",
-  "provider_final_status": null,
-  "provider_error": null,
-  "previous_dispatch_id": null,
-  "superseded_by_dispatch_id": null,
-  "prepared_at": "2026-05-03T10:00:00Z",
-  "accepted_at": "2026-05-03T10:00:01Z",
-  "last_provider_signal_at": "2026-05-03T10:00:12Z",
-  "last_controller_progress_at": "2026-05-03T10:00:15Z",
-  "last_controller_terminal_at": null,
-  "updated_at": "2026-05-03T10:00:15Z"
+    "dispatch_id": "dispatch.parent.01",
+    "attempt_id": "attempt.parent.01",
+    "assignment_key": "parent.assign-01",
+    "node_key": "implementation_subtree",
+    "transport_family": "openclaw_gateway_ws_rpc",
+    "transport_state": "provider_signal_seen",
+    "last_provider_event_kind": "output_delta",
+    "provider_final_status": null,
+    "provider_error": null,
+    "previous_dispatch_id": null,
+    "superseded_by_dispatch_id": null,
+    "prepared_at": "2026-05-03T10:00:00Z",
+    "accepted_at": "2026-05-03T10:00:01Z",
+    "last_provider_signal_at": "2026-05-03T10:00:12Z",
+    "last_controller_progress_at": "2026-05-03T10:00:15Z",
+    "last_controller_terminal_at": null,
+    "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
 
@@ -86,13 +86,13 @@ Field meanings:
 
 ```json
 {
-  "dispatch_id": "dispatch.parent.01",
-  "attempt_id": "attempt.parent.01",
-  "assignment_key": "parent.assign-01",
-  "node_key": "implementation_subtree",
-  "session_key_present": true,
-  "invalidation_reason": null,
-  "updated_at": "2026-05-03T10:00:15Z"
+    "dispatch_id": "dispatch.parent.01",
+    "attempt_id": "attempt.parent.01",
+    "assignment_key": "parent.assign-01",
+    "node_key": "implementation_subtree",
+    "session_key_present": true,
+    "invalidation_reason": null,
+    "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
 
@@ -102,20 +102,20 @@ Field meanings:
 
 ```json
 {
-  "dispatch_id": "dispatch.parent.01",
-  "attempt_id": "attempt.parent.01",
-  "assignment_key": "parent.assign-01",
-  "node_key": "implementation_subtree",
-  "watchdog_state": "clear",
-  "current_watchdog_kind": null,
-  "current_watchdog_reason": null,
-  "recovery_action": null,
-  "recovery_reason": null,
-  "recovery_dispatch_id": null,
-  "previous_dispatch_id": null,
-  "superseded_by_dispatch_id": null,
-  "classified_at": "2026-05-03T10:00:15Z",
-  "updated_at": "2026-05-03T10:00:15Z"
+    "dispatch_id": "dispatch.parent.01",
+    "attempt_id": "attempt.parent.01",
+    "assignment_key": "parent.assign-01",
+    "node_key": "implementation_subtree",
+    "watchdog_state": "clear",
+    "current_watchdog_kind": null,
+    "current_watchdog_reason": null,
+    "recovery_action": null,
+    "recovery_reason": null,
+    "recovery_dispatch_id": null,
+    "previous_dispatch_id": null,
+    "superseded_by_dispatch_id": null,
+    "classified_at": "2026-05-03T10:00:15Z",
+    "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
 

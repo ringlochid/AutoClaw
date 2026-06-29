@@ -148,20 +148,20 @@ For the v1 static `node MCP` bridge, dispatch-local prompt state may surface `ta
 
 Use this quick table when you need the exact live page for one prompt-layer question.
 
-| Need                                                              | Exact page                                                                                                                           |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| exact shared system block                                         | [System And Provider Block](prompt-pack/system-and-provider-block.md)                                                 |
-| exact provider continuity block                                   | [System And Provider Block](prompt-pack/system-and-provider-block.md)                                                 |
-| exact worker legality block                                       | [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)                                                             |
-| exact parent/root legality block                                  | [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)                                                             |
-| exact worker full prompt example                                  | [Rendered Examples](generated/rendered-examples.md)                                                                     |
-| exact parent/root full prompt example                             | [Rendered Examples](generated/rendered-examples.md)                                                                     |
-| exact `full_prompt` request composition | [Composition Example](composition-example.md)                                                                                     |
-| exact authored task title / summary / instruction launch shape    | [Task Compose Schema](../workflows/task-compose-schema.md)                                                           |
-| exact generated section order                                     | [Inventory](generated/inventory.md)                                                                                     |
-| exact prompt-layer validation/reject wording                      | [Validation And Reject Blocks](prompt-pack/validation-and-reject-blocks.md)                                           |
-| exact API reject carrier fields                                   | [API Schema Appendix](../interfaces/api-schema-appendix.md)                                                         |
-| exact boundary-precondition rule                                  | [Runtime Boundary And Controller Loop Contract](../architecture/runtime-boundary-and-controller-loop-contract.md) |
+| Need                                                           | Exact page                                                                                                        |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| exact shared system block                                      | [System And Provider Block](prompt-pack/system-and-provider-block.md)                                             |
+| exact provider continuity block                                | [System And Provider Block](prompt-pack/system-and-provider-block.md)                                             |
+| exact worker legality block                                    | [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)                                                         |
+| exact parent/root legality block                               | [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md)                                                         |
+| exact worker full prompt example                               | [Rendered Examples](generated/rendered-examples.md)                                                               |
+| exact parent/root full prompt example                          | [Rendered Examples](generated/rendered-examples.md)                                                               |
+| exact `full_prompt` request composition                        | [Composition Example](composition-example.md)                                                                     |
+| exact authored task title / summary / instruction launch shape | [Task Compose Schema](../workflows/task-compose-schema.md)                                                        |
+| exact generated section order                                  | [Inventory](generated/inventory.md)                                                                               |
+| exact prompt-layer validation/reject wording                   | [Validation And Reject Blocks](prompt-pack/validation-and-reject-blocks.md)                                       |
+| exact API reject carrier fields                                | [API Schema Appendix](../interfaces/api-schema-appendix.md)                                                       |
+| exact boundary-precondition rule                               | [Runtime Boundary And Controller Loop Contract](../architecture/runtime-boundary-and-controller-loop-contract.md) |
 
 ## Searchability note
 

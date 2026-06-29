@@ -190,8 +190,8 @@ Current mounted-node facts:
 - mounted node tools use the same shared authority path as callback HTTP writes
 - mounted node inventory stays separate from operator MCP inventory
 - mounted node tools now preserve the strict surfaced wrapper contracts:
-  - `assign_child`, `add_child`, `update_child`, and `remove_child` each take their own typed `payload` body, while `release_green` and `release_blocked` use only `expected_structural_revision_id?`
-  - `record_checkpoint`, `return_boundary`, and the split structural mutation tools return typed structured success bodies
+    - `assign_child`, `add_child`, `update_child`, and `remove_child` each take their own typed `payload` body, while `release_green` and `release_blocked` use only `expected_structural_revision_id?`
+    - `record_checkpoint`, `return_boundary`, and the split structural mutation tools return typed structured success bodies
 - current contrast remains that this mounted node-MCP surface is implementation truth only, not the design owner surface
 
 ## Current route-shape facts

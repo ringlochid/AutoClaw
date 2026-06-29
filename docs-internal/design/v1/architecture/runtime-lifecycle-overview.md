@@ -95,9 +95,9 @@ Controller/DB state is the runtime ground truth. Generated manifests, assignment
 - External `continue` is therefore pause-resume only, not the ordinary path for child handoff, parent wake, or retry redispatch.
 - Target pause timing is an async hard stop: pause commits paused truth, write revocation, and abort-owned dispatch control first, then lifecycle fencing or ambiguity resolution completes asynchronously.
 - Resume target precedence stays normalized in controller truth:
-  - paused after `yield` -> reopen child dispatch
-  - paused after `retry` -> reopen retry-attempt dispatch
-  - paused during ordinary live attempt -> reopen same-attempt dispatch
+    - paused after `yield` -> reopen child dispatch
+    - paused after `retry` -> reopen retry-attempt dispatch
+    - paused during ordinary live attempt -> reopen same-attempt dispatch
 
 ## Boundary-to-next-dispatch gate
 

@@ -144,7 +144,12 @@ AutoClaw must accept only a successful `hello-ok` response:
         },
         "features": {
             "methods": ["agent", "agent.wait", "sessions.abort"],
-            "events": ["agent", "assistant.delta", "assistant.message", "run.completed"]
+            "events": [
+                "agent",
+                "assistant.delta",
+                "assistant.message",
+                "run.completed"
+            ]
         }
     }
 }
@@ -317,19 +322,19 @@ Explicitly rejected as target canon:
 
 ### AutoClaw Event Consumption Table
 
-| Raw material | Consumed by AutoClaw | Required meaning when consumed | Normalized output | Liveness relevance | Dedupe / correlation rule |
-| --- | --- | --- | --- | --- | --- |
-| `connect.challenge` event | yes | pre-connect handshake challenge | none | none | not part of run liveness |
-| `hello-ok.features.events` entry `agent` | yes | required event-family presence check | none | none | discovery-only handshake check |
-| Generic event envelope `type,event,payload,seq?,stateVersion?` | yes | raw carrier only; not semantic truth by itself | none directly | none directly | envelope is accepted before event-specific normalization |
-| Raw event correlated to the active dispatch/run and showing first meaningful provider data | yes | provider stream proved initial live progress | `first_data` | yes | dedupe by `seq` when present; otherwise use bounded fallback heuristics and require dispatch/run correlation before accepting it |
-| Raw event correlated to the active dispatch/run and showing subsequent provider output progress | yes | provider stream advanced after first meaningful data | `output_delta` | yes | same dedupe and correlation rule as above |
-| Raw event correlated to the active dispatch/run and showing tool-side provider activity | yes | provider-side tool activity occurred on the active dispatch/run | `tool_event` | optional hint only | same dedupe and correlation rule as above |
-| Raw event correlated to the active dispatch/run and showing provider terminal success | yes | provider transport ended normally for that run | `response_completed` | yes, terminal | same dedupe and correlation rule as above |
-| Raw event correlated to the active dispatch/run and showing provider terminal failure | yes | provider transport ended with provider-reported failure for that run | `response_failed` | yes, terminal | same dedupe and correlation rule as above |
-| Session-correlated event such as `session.message` or session-only `sessions.changed` without live-run proof | no for liveness | socket/session activity outside authoritative live-run discrimination | none | none | do not use `sessionKey` alone as live-run liveness proof |
-| Unrelated buffered event such as `presence`, `tick`, or other uncorrelated broadcast traffic | no for liveness | observability noise outside the active dispatch/run | none | none | ignore for liveness and do not let it update progress anchors |
-| Broadcast transport event such as `health` or `shutdown` with no active dispatch/run correlation | no for liveness | connection/runtime broadcast outside dispatch truth | none | none | ignore for dispatch-liveness truth |
+| Raw material                                                                                                 | Consumed by AutoClaw | Required meaning when consumed                                        | Normalized output    | Liveness relevance | Dedupe / correlation rule                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------ | -------------------- | --------------------------------------------------------------------- | -------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `connect.challenge` event                                                                                    | yes                  | pre-connect handshake challenge                                       | none                 | none               | not part of run liveness                                                                                                         |
+| `hello-ok.features.events` entry `agent`                                                                     | yes                  | required event-family presence check                                  | none                 | none               | discovery-only handshake check                                                                                                   |
+| Generic event envelope `type,event,payload,seq?,stateVersion?`                                               | yes                  | raw carrier only; not semantic truth by itself                        | none directly        | none directly      | envelope is accepted before event-specific normalization                                                                         |
+| Raw event correlated to the active dispatch/run and showing first meaningful provider data                   | yes                  | provider stream proved initial live progress                          | `first_data`         | yes                | dedupe by `seq` when present; otherwise use bounded fallback heuristics and require dispatch/run correlation before accepting it |
+| Raw event correlated to the active dispatch/run and showing subsequent provider output progress              | yes                  | provider stream advanced after first meaningful data                  | `output_delta`       | yes                | same dedupe and correlation rule as above                                                                                        |
+| Raw event correlated to the active dispatch/run and showing tool-side provider activity                      | yes                  | provider-side tool activity occurred on the active dispatch/run       | `tool_event`         | optional hint only | same dedupe and correlation rule as above                                                                                        |
+| Raw event correlated to the active dispatch/run and showing provider terminal success                        | yes                  | provider transport ended normally for that run                        | `response_completed` | yes, terminal      | same dedupe and correlation rule as above                                                                                        |
+| Raw event correlated to the active dispatch/run and showing provider terminal failure                        | yes                  | provider transport ended with provider-reported failure for that run  | `response_failed`    | yes, terminal      | same dedupe and correlation rule as above                                                                                        |
+| Session-correlated event such as `session.message` or session-only `sessions.changed` without live-run proof | no for liveness      | socket/session activity outside authoritative live-run discrimination | none                 | none               | do not use `sessionKey` alone as live-run liveness proof                                                                         |
+| Unrelated buffered event such as `presence`, `tick`, or other uncorrelated broadcast traffic                 | no for liveness      | observability noise outside the active dispatch/run                   | none                 | none               | ignore for liveness and do not let it update progress anchors                                                                    |
+| Broadcast transport event such as `health` or `shutdown` with no active dispatch/run correlation             | no for liveness      | connection/runtime broadcast outside dispatch truth                   | none                 | none               | ignore for dispatch-liveness truth                                                                                               |
 
 ## Trusted Execution Context Rule
 

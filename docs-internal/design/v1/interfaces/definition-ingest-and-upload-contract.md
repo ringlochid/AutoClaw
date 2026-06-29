@@ -30,9 +30,9 @@ Rules:
 - `kind` is required in the file
 - `id` remains the logical key inside the authored body
 - the remaining top-level fields must match exactly one of:
-  - `RoleDefinitionInput`
-  - `PolicyDefinitionInput`
-  - `WorkflowDefinitionInput`
+    - `RoleDefinitionInput`
+    - `PolicyDefinitionInput`
+    - `WorkflowDefinitionInput`
 - file import strips the transport-only top-level `kind` before calling the guarded registry lifecycle
 - if `kind` and body shape disagree, import rejects
 
@@ -64,9 +64,9 @@ Retained helper shape:
 ```yaml
 bundle_version: 1
 definitions:
-  - kind: role | policy | workflow
-    key: string
-    path: relative/path/from/manifest.yaml
+    - kind: role | policy | workflow
+      key: string
+      path: relative/path/from/manifest.yaml
 ```
 
 If retained, bundle rules are:
@@ -83,15 +83,15 @@ Worked example:
 ```yaml
 bundle_version: 1
 definitions:
-  - kind: role
-    key: review-role
-    path: roles/review-role.yaml
-  - kind: policy
-    key: parent-review-policy
-    path: policies/parent-review-policy.yaml
-  - kind: workflow
-    key: retry-review
-    path: workflows/retry-review.yaml
+    - kind: role
+      key: review-role
+      path: roles/review-role.yaml
+    - kind: policy
+      key: parent-review-policy
+      path: policies/parent-review-policy.yaml
+    - kind: workflow
+      key: retry-review
+      path: workflows/retry-review.yaml
 ```
 
 ## Root CLI import surface
@@ -143,9 +143,10 @@ id: reviewer
 title: Reviewer
 description: Ordinary review worker for one bounded assignment.
 allowed_node_kinds:
-  - worker
+    - worker
 instruction: >-
-  Review only the explicitly surfaced evidence. Publish ordinary review artifacts and a checkpoint. Parent/root still decides the next control action.
+  Review only the explicitly surfaced evidence. Publish ordinary review artifacts and a
+  checkpoint. Parent/root still decides the next control action.
 ```
 
 ```yaml
@@ -155,9 +156,12 @@ id: standard-review
 title: Standard Review
 description: Ordinary review worker behavior.
 applies_to:
-  - worker
+    - worker
 instruction: >-
-  Green means the review assignment completed, not that the reviewed target automatically passes parent/root closure. Record approval, rejection, or evidence gaps in the checkpoint summary and published review artifacts rather than inventing a second result enum.
+  Green means the review assignment completed, not that the reviewed target
+  automatically passes parent/root closure. Record approval, rejection, or evidence gaps
+  in the checkpoint summary and published review artifacts rather than inventing a
+  second result enum.
 ```
 
 ```yaml
@@ -166,33 +170,33 @@ kind: workflow
 id: auth-refresh-bugfix
 description: Fix the auth refresh regression and release only after review.
 root:
-  id: root
-  role: root_planning_lead
-  policy: standard-root-planning
-  description: Coordinate the flow and decide final closure.
-  children:
-    - id: implementation_subtree
-      role: planning_lead
-      policy: standard-parent-planning
-      description: Coordinate investigation, implementation, and review.
-      children:
-        - id: investigate_issue
-          role: researcher
-          description: Gather findings.
-          produces:
-            artifacts:
-              - slot: findings_report
-                description: Findings for downstream implementation.
-        - id: implement_change
-          role: engineer
-          description: Implement the scoped fix.
-          consumes:
-            artifacts:
-              - slot: findings_report
-          produces:
-            artifacts:
-              - slot: change_patch
-                description: Patch for the scoped fix.
+    id: root
+    role: root_planning_lead
+    policy: standard-root-planning
+    description: Coordinate the flow and decide final closure.
+    children:
+        - id: implementation_subtree
+          role: planning_lead
+          policy: standard-parent-planning
+          description: Coordinate investigation, implementation, and review.
+          children:
+              - id: investigate_issue
+                role: researcher
+                description: Gather findings.
+                produces:
+                    artifacts:
+                        - slot: findings_report
+                          description: Findings for downstream implementation.
+              - id: implement_change
+                role: engineer
+                description: Implement the scoped fix.
+                consumes:
+                    artifacts:
+                        - slot: findings_report
+                produces:
+                    artifacts:
+                        - slot: change_patch
+                          description: Patch for the scoped fix.
 ```
 
 Current shipped upload expectations:
@@ -201,9 +205,9 @@ Current shipped upload expectations:
 - readers should upload each referenced role, policy, and workflow definition explicitly unless they are using a separate batch helper
 - partial success is legal only when the selected operator flow batches multiple files
 - result output must distinguish:
-  - imported definitions
-  - unchanged no-op definitions
-  - rejected invalid definitions
+    - imported definitions
+    - unchanged no-op definitions
+    - rejected invalid definitions
 - imported and unchanged entries should be grouped by `role`, `policy`, and `workflow` keys when a batch helper is used
 
 ## `TaskStartEntrypointFileContract`
@@ -227,9 +231,9 @@ Entry-point rules:
 - the shipped root CLI wrapper does the same thing over the same handler
 - there is no separate task-file upload, staged task upload, or multipart task content lane in v1
 - supporting task content enters only through:
-  - `task.instruction`
-  - the bound `workspace` root
-  - the bound `context` root
+    - `task.instruction`
+    - the bound `workspace` root
+    - the bound `context` root
 
 Worked example:
 

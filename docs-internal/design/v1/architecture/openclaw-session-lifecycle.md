@@ -80,21 +80,21 @@ Most important distinctions:
 Canonical session/run mapping in v1 is:
 
 - same parent/root node + same assignment + same attempt + later redispatch:
-  - same `sessionKey` when continuity reuse remains lawful, otherwise a fresh `sessionKey`
-  - fresh `idempotencyKey`
-  - new returned `runId`
+    - same `sessionKey` when continuity reuse remains lawful, otherwise a fresh `sessionKey`
+    - fresh `idempotencyKey`
+    - new returned `runId`
 - same worker node + same assignment + same attempt + later redispatch:
-  - fresh `sessionKey`
-  - fresh `idempotencyKey`
-  - new returned `runId`
+    - fresh `sessionKey`
+    - fresh `idempotencyKey`
+    - new returned `runId`
 - new attempt:
-  - new `sessionKey`
-  - fresh `idempotencyKey`
-  - new returned `runId`
+    - new `sessionKey`
+    - fresh `idempotencyKey`
+    - new returned `runId`
 - fresh child assignment:
-  - new `sessionKey`
-  - fresh `idempotencyKey`
-  - new returned `runId`
+    - new `sessionKey`
+    - fresh `idempotencyKey`
+    - new returned `runId`
 
 This keeps parent/root continuity explicit without reusing the live run and keeps new-attempt and worker retry lineage separate from same-attempt parent/root redispatch.
 
@@ -154,11 +154,11 @@ When the current run may still be live:
 3. wait for terminal confirmation through `agent.wait` and/or canonical session event/history confirmation
 4. if confirmed, mark the old dispatch non-current and terminal
 5. only then choose either:
-   - parent/root `redispatch_same_attempt` with the same `sessionKey` when continuity reuse remains lawful or a fresh `sessionKey` when it does not, plus a fresh `idempotencyKey` and a fresh returned `runId`
-   - `create_new_attempt` with a new `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
+    - parent/root `redispatch_same_attempt` with the same `sessionKey` when continuity reuse remains lawful or a fresh `sessionKey` when it does not, plus a fresh `idempotencyKey` and a fresh returned `runId`
+    - `create_new_attempt` with a new `sessionKey`, a fresh `idempotencyKey`, and a fresh returned `runId`
 6. if terminal confirmation never arrives before deadline:
-   - for accepted-boundary running cleanup, the controller may force-fence while preserving `delivery_status = transport_ambiguous`
-   - otherwise mark the slot `ambiguous` and escalate
+    - for accepted-boundary running cleanup, the controller may force-fence while preserving `delivery_status = transport_ambiguous`
+    - otherwise mark the slot `ambiguous` and escalate
 
 Boundary consequence:
 

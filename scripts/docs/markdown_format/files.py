@@ -11,6 +11,10 @@ ROOT = Path(__file__).resolve().parents[3]
 DOCS_PUBLIC_ROOT = ROOT / "docs"
 DOCS_INTERNAL_ROOT = ROOT / "docs-internal"
 EXCLUDED_SOURCE_PACKS = DOCS_INTERNAL_ROOT / "archive" / "source-packs"
+EXCLUDED_PROMPT_GENERATED_ROOTS = (
+    DOCS_INTERNAL_ROOT / "design" / "v1" / "prompt-layer" / "generated",
+    DOCS_INTERNAL_ROOT / "design" / "v1" / "prompt-layer" / "prompt-pack",
+)
 
 MAINTAINED_MD_ROOTS = (
     DOCS_PUBLIC_ROOT / "product",
@@ -50,6 +54,10 @@ def iter_maintained_markdown_files(root: Path = ROOT) -> list[Path]:
     docs_root = root / "docs"
     docs_internal_root = root / "docs-internal"
     excluded_source_packs = docs_internal_root / "archive" / "source-packs"
+    excluded_prompt_generated_roots = (
+        docs_internal_root / "design" / "v1" / "prompt-layer" / "generated",
+        docs_internal_root / "design" / "v1" / "prompt-layer" / "prompt-pack",
+    )
     maintained_roots = (
         docs_root / "product",
         docs_root / "reference",
@@ -83,6 +91,8 @@ def iter_maintained_markdown_files(root: Path = ROOT) -> list[Path]:
                 continue
             except ValueError:
                 pass
+            if any(_is_relative_to(path, excluded) for excluded in excluded_prompt_generated_roots):
+                continue
             paths.append(path)
 
     for path in maintained_files:
@@ -159,6 +169,10 @@ def resolve_paths(cli_paths: Sequence[str] | None) -> list[Path]:
                     continue
                 except ValueError:
                     pass
+                if any(
+                    _is_relative_to(child, excluded) for excluded in EXCLUDED_PROMPT_GENERATED_ROOTS
+                ):
+                    continue
                 resolved.append(child)
             continue
         resolved.append(path)
@@ -169,3 +183,11 @@ def format_path_text(path: Path, text: str) -> str:
     if path.suffix in {".yaml", ".yml"}:
         return format_yaml_text(text)
     return format_markdown_text(text)
+
+
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+    except ValueError:
+        return False
+    return True

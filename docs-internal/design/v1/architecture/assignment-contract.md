@@ -104,8 +104,8 @@ This staging authority applies only to parent/root -> child assignment creation.
 The assignment sequence is closed:
 
 1. semantic facts exist in the child definition plus any parent/root supplemental slot selectors and transient surfacing
-   - for the first/root assignment, semantic facts start from task identity plus the launch-selected current node purpose, optional node instruction, and node-definition semantics
-   - for later child assignments, semantic facts start from the child node definition plus parent/root staging
+    - for the first/root assignment, semantic facts start from task identity plus the launch-selected current node purpose, optional node instruction, and node-definition semantics
+    - for later child assignments, semantic facts start from the child node definition plus parent/root staging
 2. the controller validates authority, currentness, dependency legality, and selector legality
 3. the controller resolves concrete durable `consumes` refs from runtime truth
 4. the controller persists assignment rows and related consumed-ref truth
@@ -138,32 +138,32 @@ Recommended shape:
 
 ```yaml
 assignment:
-  assignment_key: string
-  node_key: string
-  summary: string
-  instruction: >-
-    string | null
-  criteria:
-    - kind: criteria
-      slot: string
-      path: string
-      description: string
-  consumes:
-    - kind: artifact | doc | wiki
-      slot: string | null
-      version: integer | null
-      path: string
-      description: string
-  produces:
-    - slot: string
-      description: string
-  transient_refs:
-    - kind: transient
-      slot: null
-      path: string
-      description: string
-  task_memory_search_hints:
-    - string
+    assignment_key: string
+    node_key: string
+    summary: string
+    instruction: >-
+      string | null
+    criteria:
+        - kind: criteria
+          slot: string
+          path: string
+          description: string
+    consumes:
+        - kind: artifact | doc | wiki
+          slot: string | null
+          version: integer | null
+          path: string
+          description: string
+    produces:
+        - slot: string
+          description: string
+    transient_refs:
+        - kind: transient
+          slot: null
+          path: string
+          description: string
+    task_memory_search_hints:
+        - string
 ```
 
 Rules:
@@ -198,44 +198,44 @@ Illustrative staging input:
 
 ```yaml
 assign_child:
-  child_node_key: implement_fix
-  assignment_intent:
-    summary: Implement the approved fix for the auth refresh failure.
-    instruction: >-
-      Keep the patch small and preserve retry-safe behavior.
-  supplemental_durable_context:
-    artifact_slots:
-      - slot: findings_report
-    criteria_slots:
-      - slot: implement_fix_delivery_criteria
-  transient_surfaces:
-    - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
-      description: Optional transient repro notes surfaced for this assignment.
-    - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-open-question.md
-      description: Temporary parent note about the unresolved token-expiry proof lane.
-  task_memory_search_hints:
-    - auth refresh
+    child_node_key: implement_fix
+    assignment_intent:
+        summary: Implement the approved fix for the auth refresh failure.
+        instruction: >-
+          Keep the patch small and preserve retry-safe behavior.
+    supplemental_durable_context:
+        artifact_slots:
+            - slot: findings_report
+        criteria_slots:
+            - slot: implement_fix_delivery_criteria
+    transient_surfaces:
+        - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
+          description: Optional transient repro notes surfaced for this assignment.
+        - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-open-question.md
+          description: Temporary parent note about the unresolved token-expiry proof lane.
+    task_memory_search_hints:
+        - auth refresh
 ```
 
 Exact semantic payload shape:
 
 ```yaml
 assign_child:
-  child_node_key: string
-  assignment_intent:
-    summary: string
-    instruction: >-
-      string | null
-  supplemental_durable_context:
-    artifact_slots:
-      - slot: string
-    criteria_slots:
-      - slot: string
-  transient_surfaces:
-    - path: string
-      description: string
-  task_memory_search_hints:
-    - string
+    child_node_key: string
+    assignment_intent:
+        summary: string
+        instruction: >-
+          string | null
+    supplemental_durable_context:
+        artifact_slots:
+            - slot: string
+        criteria_slots:
+            - slot: string
+    transient_surfaces:
+        - path: string
+          description: string
+    task_memory_search_hints:
+        - string
 ```
 
 Rules:
@@ -251,37 +251,37 @@ Resulting projected durable inputs are runtime-resolved, not parent-authored:
 
 ```yaml
 assignment:
-  assignment_key: implement_fix.assign-01
-  node_key: implement_fix
-  summary: Implement the approved fix for the auth refresh failure.
-  instruction: >-
-    Keep the patch small and preserve retry-safe behavior.
-  criteria:
-    - kind: criteria
-      slot: implement_fix_delivery_criteria
-      path: C:/tasks/task_2026_0042/_runtime/criteria/implement_fix_delivery_criteria.v01.md
-      description: Delivery criteria for the implement-fix node.
-  consumes:
-    - kind: artifact
-      slot: findings_report
-      version: 2
-      path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
-      description: Findings for downstream implementation.
-  produces:
-    - slot: code_patch
-      description: Code patch implementing the approved fix.
-      file_hint: change_patch.diff
-  transient_refs:
-    - kind: transient
-      slot: null
-      version: null
-      path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
-      description: Optional transient repro notes surfaced for this assignment.
-    - kind: transient
-      slot: null
-      version: null
-      path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-open-question.md
-      description: Temporary parent note about the unresolved token-expiry proof lane.
+    assignment_key: implement_fix.assign-01
+    node_key: implement_fix
+    summary: Implement the approved fix for the auth refresh failure.
+    instruction: >-
+      Keep the patch small and preserve retry-safe behavior.
+    criteria:
+        - kind: criteria
+          slot: implement_fix_delivery_criteria
+          path: C:/tasks/task_2026_0042/_runtime/criteria/implement_fix_delivery_criteria.v01.md
+          description: Delivery criteria for the implement-fix node.
+    consumes:
+        - kind: artifact
+          slot: findings_report
+          version: 2
+          path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
+          description: Findings for downstream implementation.
+    produces:
+        - slot: code_patch
+          description: Code patch implementing the approved fix.
+          file_hint: change_patch.diff
+    transient_refs:
+        - kind: transient
+          slot: null
+          version: null
+          path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
+          description: Optional transient repro notes surfaced for this assignment.
+        - kind: transient
+          slot: null
+          version: null
+          path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-open-question.md
+          description: Temporary parent note about the unresolved token-expiry proof lane.
 ```
 
 ## Read rule

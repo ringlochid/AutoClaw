@@ -12,7 +12,7 @@ Criteria declarations use this exact authored shape:
 slot: slot_id
 description: string
 criteria:
-  - string
+    - string
 ```
 
 Authored criteria stay in workflow YAML as durable contracts. `child_defaults.criteria` may reference those authored slots, but that shorthand expands only onto direct children at compile time. Workers do not read hidden ancestor layers at runtime. The node that declares a criteria slot owns that durable criteria contract. Downstream consumers get that contract only through surfaced exact criteria refs. Parent/root may merge supplemental current criteria sharing for one attempt, but it does not silently rewrite the authored slot.
@@ -35,9 +35,9 @@ description: string
 Rules:
 
 - parent/root or runtime may assemble assignment `criteria` from:
-  - the node's local authored `criteria`
-  - direct-parent `child_defaults.criteria` expansion
-  - authored `consumes.criteria` selectors
+    - the node's local authored `criteria`
+    - direct-parent `child_defaults.criteria` expansion
+    - authored `consumes.criteria` selectors
 - runtime may also surface intentionally shared supplemental current criteria refs for that attempt
 - every criterion that is in force for the current attempt must be surfaced explicitly in assignment `criteria` as an exact current ref, not as a slot-only selector
 - if a criterion is not surfaced on the current assignment, workers must not infer it from ancestor structure, role names, old prompts, or prior attempts
@@ -72,25 +72,26 @@ Workers may add clarification in checkpoints or produced artifacts, but they do 
 ```yaml
 summary: Review the current patch and verification evidence.
 instruction: >-
-  Decide whether the current implementation evidence satisfies the surfaced review criteria.
+  Decide whether the current implementation evidence satisfies the surfaced review
+  criteria.
 criteria:
-  - slot: implementation_review_criteria
-    path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_review_criteria.v01.md
-    description: Review criteria for the current implementation evidence.
+    - slot: implementation_review_criteria
+      path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_review_criteria.v01.md
+      description: Review criteria for the current implementation evidence.
 consumes:
-  - kind: artifact
-    slot: change_patch
-    version: 2
-    path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/change_patch/change_patch.v02.diff
-    description: Current patch under review.
-  - kind: artifact
-    slot: verification_report
-    version: 3
-    path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/verification_report/verification_report.v03.md
-    description: Current verification evidence for the patch.
+    - kind: artifact
+      slot: change_patch
+      version: 2
+      path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/change_patch/change_patch.v02.diff
+      description: Current patch under review.
+    - kind: artifact
+      slot: verification_report
+      version: 3
+      path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/verification_report/verification_report.v03.md
+      description: Current verification evidence for the patch.
 produces:
-  - slot: review_report
-    description: Review findings for parent and root verification.
+    - slot: review_report
+      description: Review findings for parent and root verification.
 ```
 
 The worker reads the surfaced `criteria` as the must-satisfy rule set and the surfaced `consumes` refs as the evidence set to inspect. Those `criteria` and `consumes` entries are already exact current refs. `produces` is requirement-only: it says what the attempt must publish, not which refs already exist. No hidden parent/root criteria layer remains at read time.
@@ -133,25 +134,25 @@ Suppose parent `implementation_subtree` is redispatched after `review_change` pu
 
 ```yaml
 artifacts:
-  - kind: artifact
-    slot: change_patch
-    version: 2
-    path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/change_patch/change_patch.v02.diff
-    description: Current patch under review.
-  - kind: artifact
-    slot: verification_report
-    version: 3
-    path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/verification_report/verification_report.v03.md
-    description: Current verification evidence for the patch.
-  - kind: artifact
-    slot: review_report
-    version: 1
-    path: C:/tasks/task_2026_0042/outputs/artifacts/review_change/review_report/review_report.v01.md
-    description: Current review findings for the subtree.
+    - kind: artifact
+      slot: change_patch
+      version: 2
+      path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/change_patch/change_patch.v02.diff
+      description: Current patch under review.
+    - kind: artifact
+      slot: verification_report
+      version: 3
+      path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/verification_report/verification_report.v03.md
+      description: Current verification evidence for the patch.
+    - kind: artifact
+      slot: review_report
+      version: 1
+      path: C:/tasks/task_2026_0042/outputs/artifacts/review_change/review_report/review_report.v01.md
+      description: Current review findings for the subtree.
 criteria:
-  - slot: implementation_review_criteria
-    path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_review_criteria.v01.md
-    description: Review criteria for the current implementation evidence.
+    - slot: implementation_review_criteria
+      path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_review_criteria.v01.md
+      description: Review criteria for the current implementation evidence.
 ```
 
 Parent/root should then:

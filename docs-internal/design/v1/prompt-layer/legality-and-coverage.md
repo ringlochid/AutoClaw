@@ -34,8 +34,8 @@ Prompt coverage is complete in v1 when the generated examples, inventories, and 
 - every current dispatchable node turn maps to one of the two base prompt families
 - the generated inventory and rendered examples follow the canonical section order
 - prompts teach only the live boundary model:
-  - ingress: `dispatch`
-  - egress: `yield | green | retry | blocked`
+    - ingress: `dispatch`
+    - egress: `yield | green | retry | blocked`
 - prompts use path-only surfaced refs
 - prompts render `instruction`, not `instruction_text`
 - prompts never teach flow/scope manifest split, packet families, or gate-era callback legality as live contract

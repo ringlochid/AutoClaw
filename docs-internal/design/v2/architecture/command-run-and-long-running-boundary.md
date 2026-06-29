@@ -31,10 +31,10 @@ Canonical command-run states are:
 
 Canonical terminal task-event mapping:
 
-| Job state | Task event |
-| --- | --- |
+| Job state   | Task event              |
+| ----------- | ----------------------- |
 | `succeeded` | `command_run_succeeded` |
-| `failed` | `command_run_failed` |
+| `failed`    | `command_run_failed`    |
 | `timed_out` | `command_run_timed_out` |
 | `cancelled` | `command_run_cancelled` |
 
@@ -57,25 +57,25 @@ The controller should persist command-run truth in an explicit shape such as:
 
 ```yaml
 command_run:
-  run_id: string
-  task_id: string
-  dispatch_id: string
-  attempt_id: string | null
-  command: string
-  description: string
-  workdir: string | null
-  state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
-  created_at: timestamp
-  started_at: timestamp | null
-  ended_at: timestamp | null
-  timeout_seconds: integer | null
-  latest_update: string | null
-  latest_log_ref: string | null
-  terminal_result:
-    summary: string | null
-    exit_code: integer | null
-    signal: string | null
-    log_ref: string | null
+    run_id: string
+    task_id: string
+    dispatch_id: string
+    attempt_id: string | null
+    command: string
+    description: string
+    workdir: string | null
+    state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
+    created_at: timestamp
+    started_at: timestamp | null
+    ended_at: timestamp | null
+    timeout_seconds: integer | null
+    latest_update: string | null
+    latest_log_ref: string | null
+    terminal_result:
+        summary: string | null
+        exit_code: integer | null
+        signal: string | null
+        log_ref: string | null
 ```
 
 Rules:
@@ -92,15 +92,15 @@ The node-facing command-run start path should normalize into a bounded controlle
 
 ```yaml
 command_run_start_request:
-  command: string
-  description: string
-  workdir: string | null
-  timeout_seconds: integer | null
+    command: string
+    description: string
+    workdir: string | null
+    timeout_seconds: integer | null
 
 command_run_start_response:
-  run_id: string
-  task_id: string
-  state: pending_start | running
+    run_id: string
+    task_id: string
+    state: pending_start | running
 ```
 
 Rules:
@@ -136,10 +136,10 @@ When the controller persists a progress update or emits `command_run_progressed`
 
 ```yaml
 command_run_progress_update:
-  run_id: string
-  summary: string
-  log_ref: string | null
-  occurred_at: timestamp
+    run_id: string
+    summary: string
+    log_ref: string | null
+    occurred_at: timestamp
 ```
 
 Rules:
@@ -177,13 +177,13 @@ Terminal command-run completion should normalize into a bounded controller resul
 
 ```yaml
 command_run_terminal_result:
-  run_id: string
-  state: succeeded | failed | timed_out | cancelled
-  summary: string
-  exit_code: integer | null
-  signal: string | null
-  log_ref: string | null
-  ended_at: timestamp
+    run_id: string
+    state: succeeded | failed | timed_out | cancelled
+    summary: string
+    exit_code: integer | null
+    signal: string | null
+    log_ref: string | null
+    ended_at: timestamp
 ```
 
 Rules:
@@ -228,21 +228,21 @@ When a terminal command run triggers continuation of the same task lineage, the 
 
 ```yaml
 command_run_continuation_context:
-  run_id: string
-  command: string
-  description: string
-  workdir: string | null
-  state: succeeded | failed | timed_out | cancelled
-  created_at: timestamp
-  started_at: timestamp | null
-  ended_at: timestamp | null
-  timeout_seconds: integer | null
-  latest_update: string | null
-  terminal_result:
-    summary: string
-    exit_code: integer | null
-    signal: string | null
-    log_ref: string | null
+    run_id: string
+    command: string
+    description: string
+    workdir: string | null
+    state: succeeded | failed | timed_out | cancelled
+    created_at: timestamp
+    started_at: timestamp | null
+    ended_at: timestamp | null
+    timeout_seconds: integer | null
+    latest_update: string | null
+    terminal_result:
+        summary: string
+        exit_code: integer | null
+        signal: string | null
+        log_ref: string | null
 ```
 
 Rules:

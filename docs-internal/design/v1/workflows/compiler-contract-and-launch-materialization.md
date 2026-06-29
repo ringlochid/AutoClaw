@@ -67,29 +67,29 @@ Each normalized criteria entry must include:
 
 ```yaml
 normalized_node:
-  node_key: implement_change
-  parent_node_key: implementation_subtree
-  structural_kind: worker
-  role: engineer
-  role_revision_no: 4
-  policy: standard-worker
-  policy_revision_no: 2
-  consumes:
-    artifacts:
-      - slot: findings_report
-        required: true
-  produces:
-    artifacts:
-      - slot: change_patch
-        description: Patch for the scoped change.
-        file_hint: change_patch.diff
-      - slot: verification_report
-        description: Verification evidence for the scoped change.
-        file_hint: verification_report.md
-  criteria:
-    - slot: implement_change_delivery_criteria
-      owner_node_key: implement_change
-      description: Delivery criteria for the implementation step.
+    node_key: implement_change
+    parent_node_key: implementation_subtree
+    structural_kind: worker
+    role: engineer
+    role_revision_no: 4
+    policy: standard-worker
+    policy_revision_no: 2
+    consumes:
+        artifacts:
+            - slot: findings_report
+              required: true
+    produces:
+        artifacts:
+            - slot: change_patch
+              description: Patch for the scoped change.
+              file_hint: change_patch.diff
+            - slot: verification_report
+              description: Verification evidence for the scoped change.
+              file_hint: verification_report.md
+    criteria:
+        - slot: implement_change_delivery_criteria
+          owner_node_key: implement_change
+          description: Delivery criteria for the implementation step.
 ```
 
 The normalized plan is still authored-contract-derived. It is not yet a live assignment or live checkpoint surface.
@@ -108,20 +108,20 @@ Internal launch and materialization occur in this exact order:
 
 1. parse `TaskStartRequest`
 2. resolve the current workflow revision for `workflow.key`
-   - the registry identity row key is authoritative for launch identity
-   - if the stored workflow body `id` no longer matches that registry key, launch validation rejects before materialization
+    - the registry identity row key is authoritative for launch identity
+    - if the stored workflow body `id` no longer matches that registry key, launch validation rejects before materialization
 3. resolve required role and policy definitions from the registry
-   - load only the role ids and explicit policy ids actually referenced by that workflow revision
+    - load only the role ids and explicit policy ids actually referenced by that workflow revision
 4. validate workflow, role/policy compatibility, and task compose
 5. normalize the authored workflow into one immutable compiled plan with pinned workflow, role, and policy revision numbers
 6. atomically commit:
-   - `Task`
-   - one immutable `TaskCompose`
-   - bound task roots
-   - the initial active structural revision and runtime graph
-   - the first generated current assignment
-   - the first current attempt
-   - the first dispatch in `launching`
+    - `Task`
+    - one immutable `TaskCompose`
+    - bound task roots
+    - the initial active structural revision and runtime graph
+    - the first generated current assignment
+    - the first current attempt
+    - the first dispatch in `launching`
 7. reread committed truth
 8. materialize stable `_runtime/workflow-manifest.json` and `_runtime/workflow-manifest.md`
 9. materialize `_runtime/attempts/<attempt_id>/assignment.json` and `_runtime/attempts/<attempt_id>/assignment.md`
@@ -223,8 +223,8 @@ After launch:
 - structural adopt commits first and regenerates second
 - generated projections do not own currentness
 - launch/start/adopt must not fabricate:
-  - `latest-checkpoint.*` before a real checkpoint row exists
-  - dispatch-local monitoring projections before a real `dispatch_id` and its backing rows exist
+    - `latest-checkpoint.*` before a real checkpoint row exists
+    - dispatch-local monitoring projections before a real `dispatch_id` and its backing rows exist
 
 Runtime structural edits, assignment staging, and release decisions therefore belong to runtime control, not compiler reuse.
 

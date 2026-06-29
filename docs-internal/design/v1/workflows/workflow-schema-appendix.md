@@ -102,23 +102,23 @@ Authored input:
 ```yaml
 id: implementation_subtree
 criteria:
-  - slot: subtree_rules
-    description: Shared subtree rules.
-    criteria:
-      - every child stays inside the current subtree
+    - slot: subtree_rules
+      description: Shared subtree rules.
+      criteria:
+          - every child stays inside the current subtree
 child_defaults:
-  criteria:
-    - subtree_rules
-children:
-  - id: investigate_issue
-    role: researcher
-  - id: implement_change
-    role: engineer
     criteria:
-      - slot: implement_change_delivery_criteria
-        description: Local engineering criteria.
-        criteria:
-          - patch matches the assigned scope
+        - subtree_rules
+children:
+    - id: investigate_issue
+      role: researcher
+    - id: implement_change
+      role: engineer
+      criteria:
+          - slot: implement_change_delivery_criteria
+            description: Local engineering criteria.
+            criteria:
+                - patch matches the assigned scope
 ```
 
 Expansion consequence:
@@ -179,15 +179,15 @@ node_key: qa_sweep
 role: architect
 description: Run a bounded QA sweep over current implementation evidence.
 consumes:
-  artifacts:
-    - slot: change_patch
-    - slot: verification_report
-    - slot: review_report
+    artifacts:
+        - slot: change_patch
+        - slot: verification_report
+        - slot: review_report
 produces:
-  artifacts:
-    - slot: qa_report
-      description: QA findings for the subtree.
-      file_hint: qa_report.md
+    artifacts:
+        - slot: qa_report
+          description: QA findings for the subtree.
+          file_hint: qa_report.md
 ```
 
 Runtime must validate:

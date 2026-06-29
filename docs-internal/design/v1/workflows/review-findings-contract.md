@@ -54,10 +54,10 @@ There is no special review-specific output family in the live v1 model.
 
 ```yaml
 produces:
-  artifacts:
-    - slot: review_report
-      description: Review findings and disposition for the subtree.
-      file_hint: review_report.md
+    artifacts:
+        - slot: review_report
+          description: Review findings and disposition for the subtree.
+          file_hint: review_report.md
 ```
 
 Example review checkpoint core:
@@ -68,10 +68,10 @@ outcome: green
 summary: Review completed; patch matches the findings report, but one retry-path test is still missing.
 next_step: Stage a follow-up engineering assignment for the missing retry-path coverage.
 artifacts:
-  - slot: review_report
-    version: 1
-    path: C:/tasks/task_2026_0042/outputs/artifacts/review_change/review_report/review_report.v01.md
-    description: Review findings and disposition for the subtree.
+    - slot: review_report
+      version: 1
+      path: C:/tasks/task_2026_0042/outputs/artifacts/review_change/review_report/review_report.v01.md
+      description: Review findings and disposition for the subtree.
 ```
 
 The checkpoint outcome remains `green` because the review assignment completed. The missing test is recorded as review content, not as a second review-only attempt result.

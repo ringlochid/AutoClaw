@@ -174,62 +174,62 @@ Authored checkpoint write:
 
 ```yaml
 record_checkpoint:
-  checkpoint_kind: terminal
-  outcome: green
-  handoff:
-    summary: Implemented the retry-safe auth refresh patch and validated the
-      failure path locally.
-    next_step: Parent should review the patch and rerun the auth smoke tests.
-    risks:
-      - Token-expiry coverage still depends on the shared staging environment.
-  produced_artifacts:
-    - kind: artifact
-      slot: code_patch
-      path: C:/tasks/task_2026_0042/workspace/out/code_patch.diff
-    - kind: artifact
-      slot: verification_note
-      path: C:/tasks/task_2026_0042/workspace/out/verification_note.md
-  transient_surfaces:
-    - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-local-notes.md
-      description: Optional transient local notes for follow-up validation.
-    - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-proof-caveat.md
-      description: Temporary caveat about staging-only token-expiry proof.
+    checkpoint_kind: terminal
+    outcome: green
+    handoff:
+        summary: Implemented the retry-safe auth refresh patch and validated the
+            failure path locally.
+        next_step: Parent should review the patch and rerun the auth smoke tests.
+        risks:
+            - Token-expiry coverage still depends on the shared staging environment.
+    produced_artifacts:
+        - kind: artifact
+          slot: code_patch
+          path: C:/tasks/task_2026_0042/workspace/out/code_patch.diff
+        - kind: artifact
+          slot: verification_note
+          path: C:/tasks/task_2026_0042/workspace/out/verification_note.md
+    transient_surfaces:
+        - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-local-notes.md
+          description: Optional transient local notes for follow-up validation.
+        - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-proof-caveat.md
+          description: Temporary caveat about staging-only token-expiry proof.
 ```
 
 Projected checkpoint readback after controller validation:
 
 ```yaml
 latest_checkpoint:
-  checkpoint_kind: terminal
-  outcome: green
-  handoff:
-    summary: Implemented the retry-safe auth refresh patch and validated the
-      failure path locally.
-    next_step: Parent should review the patch and rerun the auth smoke tests.
-    risks:
-      - Token-expiry coverage still depends on the shared staging environment.
-  produced_artifacts:
-    - kind: artifact
-      slot: code_patch
-      version: 3
-      path: C:/tasks/task_2026_0042/outputs/artifacts/implement_fix/code_patch/code_patch.v03.diff
-      description: Code patch implementing the approved fix.
-    - kind: artifact
-      slot: verification_note
-      version: 1
-      path: C:/tasks/task_2026_0042/outputs/artifacts/implement_fix/verification_note/verification_note.v01.md
-      description: Verification note for the implement-fix node.
-  transient_refs:
-    - kind: transient
-      slot: null
-      version: null
-      path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-local-notes.md
-      description: Optional transient local notes for follow-up validation.
-    - kind: transient
-      slot: null
-      version: null
-      path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-proof-caveat.md
-      description: Temporary caveat about staging-only token-expiry proof.
+    checkpoint_kind: terminal
+    outcome: green
+    handoff:
+        summary: Implemented the retry-safe auth refresh patch and validated the
+            failure path locally.
+        next_step: Parent should review the patch and rerun the auth smoke tests.
+        risks:
+            - Token-expiry coverage still depends on the shared staging environment.
+    produced_artifacts:
+        - kind: artifact
+          slot: code_patch
+          version: 3
+          path: C:/tasks/task_2026_0042/outputs/artifacts/implement_fix/code_patch/code_patch.v03.diff
+          description: Code patch implementing the approved fix.
+        - kind: artifact
+          slot: verification_note
+          version: 1
+          path: C:/tasks/task_2026_0042/outputs/artifacts/implement_fix/verification_note/verification_note.v01.md
+          description: Verification note for the implement-fix node.
+    transient_refs:
+        - kind: transient
+          slot: null
+          version: null
+          path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-local-notes.md
+          description: Optional transient local notes for follow-up validation.
+        - kind: transient
+          slot: null
+          version: null
+          path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-proof-caveat.md
+          description: Temporary caveat about staging-only token-expiry proof.
 ```
 
 ## Related contracts

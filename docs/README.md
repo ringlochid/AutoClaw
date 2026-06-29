@@ -25,11 +25,13 @@ Use this front door for the public docs story: first success, core concepts, pra
 
 ## Build and operate
 
-- [Write a task-compose file](guides/write-a-task-compose.md)
+- [Design workflows and instructions](guides/design-workflows-and-instructions.md)
+- [Write layered instructions](guides/write-layered-instructions.md)
 - [Write a role](guides/write-a-role.md)
 - [Write a policy](guides/write-a-policy.md)
 - [Write a workflow](guides/write-a-workflow.md)
-- [Design workflows and instructions](guides/design-workflows-and-instructions.md)
+- [Write a task-compose file](guides/write-a-task-compose.md)
+- [Handle ambiguity and incidents](guides/handle-ambiguity-and-incidents.md)
 - [Use human requests](guides/use-human-requests.md)
 - [Use long command runs](guides/use-long-command-runs.md)
 - [Recover or replan a task](guides/recover-or-replan-a-task.md)

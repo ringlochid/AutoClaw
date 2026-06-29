@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Last verified: 2026-06-28
+Last verified: 2026-06-29
 
 This page owns the exact current HTTP route families, mounted surface nouns, and auth grouping for the shipped FastAPI tree.
 
@@ -95,6 +95,8 @@ Current operator-visible routes are:
 - `GET /control/tasks/{task_id}/human-requests`
 - `POST /control/tasks/{task_id}/human-requests/{request_id}/resolve`
 - `GET /control/tasks/{task_id}/command-runs`
+- `GET /control/tasks/{task_id}/command-runs/{run_id}`
+- `GET /control/tasks/{task_id}/command-runs/{run_id}/log`
 - `POST /control/tasks/{task_id}/command-runs/{run_id}/cancel`
 - `GET /control/tasks/{task_id}/events`
 - `GET /control/tasks/{task_id}/events/stream`
@@ -110,6 +112,8 @@ Current query-backed route details include:
 - `/operator/tasks/{task_id}/trace` supports `scope`, `q`, `limit`, `cursor`, and `sort`
 - `/control/tasks/{task_id}/events` supports `cursor`, `limit`, and `through_event_id`
 - `/control/tasks/{task_id}/command-runs` supports `cursor` and `limit`
+- `/control/tasks/{task_id}/command-runs/{run_id}` returns the full command-run record
+- `/control/tasks/{task_id}/command-runs/{run_id}/log` returns decoded log content when a log ref exists
 - `/control/tasks/{task_id}/command-runs/{run_id}/cancel` requests cancellation of the current active nonterminal command run without cancelling the whole task
 
 ## Current mounted operator MCP surface
@@ -216,6 +220,8 @@ operator HTTP:
   POST /runtime/tasks/{task_id}/pause?expected_active_flow_revision_id=...
   GET  /operator/tasks/{task_id}/trace
   GET  /control/tasks/{task_id}/command-runs
+  GET  /control/tasks/{task_id}/command-runs/{run_id}
+  GET  /control/tasks/{task_id}/command-runs/{run_id}/log
   POST /control/tasks/{task_id}/command-runs/{run_id}/cancel
   GET  /observability/tasks/{task_id}/delivery-state
 

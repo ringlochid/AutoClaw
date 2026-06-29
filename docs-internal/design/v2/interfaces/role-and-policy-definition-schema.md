@@ -21,9 +21,9 @@ id: string
 title: string
 description: string
 allowed_node_kinds:
-  - root | parent | worker
+    - root | parent | worker
 labels:
-  - string
+    - string
 instruction: string | optional
 ```
 
@@ -45,18 +45,18 @@ id: string
 title: string
 description: string
 applies_to:
-  - root | parent | worker
+    - root | parent | worker
 budget_spec:
-  child_assignment_limit: integer | optional
-  retry_limit: integer | optional
+    child_assignment_limit: integer | optional
+    retry_limit: integer | optional
 capabilities:
-  human_request:
-    mode: deny | allow
-    allowed_kinds:
-      - direction | approval | input | review
-  command_run: deny | allow
+    human_request:
+        mode: deny | allow
+        allowed_kinds:
+            - direction | approval | input | review
+    command_run: deny | allow
 labels:
-  - string
+    - string
 instruction: string | optional
 ```
 

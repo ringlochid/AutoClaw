@@ -51,21 +51,21 @@ V1 uses three shared surfaced-ref families. Do not collapse them into one generi
 
 ```yaml
 node_runtime_file_ref:
-  kind: manifest | assignment | checkpoint | artifact_index | transient_index
-  path: string
-  description: string
+    kind: manifest | assignment | checkpoint | artifact_index | transient_index
+    path: string
+    description: string
 
 support_runtime_file_ref:
-  kind: delivery_state | continuity_state | watchdog_state | provider_events
-  path: string
-  description: string
+    kind: delivery_state | continuity_state | watchdog_state | provider_events
+    path: string
+    description: string
 
 evidence_ref:
-  kind: artifact | criteria | doc | wiki | transient
-  slot: string | null
-  version: integer | null
-  path: string
-  description: string
+    kind: artifact | criteria | doc | wiki | transient
+    slot: string | null
+    version: integer | null
+    path: string
+    description: string
 ```
 
 Rules:
@@ -140,11 +140,11 @@ Ordinary manifests, assignments, checkpoints, and prompt renders should surface 
 
 ```yaml
 evidence_ref:
-  kind: artifact
-  slot: string
-  version: integer
-  path: string
-  description: string
+    kind: artifact
+    slot: string
+    version: integer
+    path: string
+    description: string
 ```
 
 Rules:
@@ -201,15 +201,15 @@ Recommended generated file:
 
 ```yaml
 artifact_current_pointer:
-  owner_node_key: investigate_issue
-  slot: findings_report
-  current_version: 2
-  current_path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
-  description: Current durable findings report for this slot.
-  assignment_key: investigate_issue.assign-01
-  attempt_id: attempt.investigate_issue.02
-  published_at: 2026-04-30T00:18:42Z
-  supersedes_path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v01.md
+    owner_node_key: investigate_issue
+    slot: findings_report
+    current_version: 2
+    current_path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
+    description: Current durable findings report for this slot.
+    assignment_key: investigate_issue.assign-01
+    attempt_id: attempt.investigate_issue.02
+    published_at: 2026-04-30T00:18:42Z
+    supersedes_path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v01.md
 ```
 
 Rules:
@@ -237,17 +237,17 @@ Recommended shape:
 
 ```yaml
 artifact_index:
-  attempt_id: attempt.investigate_issue.02
-  node_key: investigate_issue
-  assignment_key: investigate_issue.assign-01
-  publications:
-    - owner_node_key: investigate_issue
-      slot: findings_report
-      version: 2
-      path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
-      description: Findings for downstream implementation.
-      published_at: 2026-04-30T00:18:42Z
-      became_current: true
+    attempt_id: attempt.investigate_issue.02
+    node_key: investigate_issue
+    assignment_key: investigate_issue.assign-01
+    publications:
+        - owner_node_key: investigate_issue
+          slot: findings_report
+          version: 2
+          path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
+          description: Findings for downstream implementation.
+          published_at: 2026-04-30T00:18:42Z
+          became_current: true
 ```
 
 Rules:

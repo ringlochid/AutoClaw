@@ -86,10 +86,10 @@ Ref rules:
 - parent -> child context comes from assignment
 - child -> parent, parent -> parent, and same-node retry context comes from checkpoint
 - retry is node-self only:
-  - same assignment
-  - new attempt
-  - full prompt
-  - prior terminal checkpoint as durable handover
+    - same assignment
+    - new attempt
+    - full prompt
+    - prior terminal checkpoint as durable handover
 - controller recovery actions are `redispatch_same_attempt`, semantic `create_new_attempt`, and `escalate`
 - any retained `same_session_continue` detail is current/debt transport compatibility only and not the live redispatch model
 - progress checkpoints use `checkpoint_kind: progress` with `outcome: null`

@@ -36,8 +36,8 @@ Assume the current parent/root has just been redispatched after `implement_chang
 
 - checkpoint summary: "Patch implemented; verification report still lacks one retry-path case."
 - artifact refs:
-  - `change_patch` version `2`
-  - `verification_report` version `3`
+    - `change_patch` version `2`
+    - `verification_report` version `3`
 - current subtree criteria
 
 The planning surface is enough to choose the next action:
@@ -46,9 +46,9 @@ The planning surface is enough to choose the next action:
 2. the artifact refs show exactly where to drill down
 3. the current criteria explain whether the missing retry-path case still matters
 4. parent/root can now choose either:
-   - `assign_child` for follow-up engineering work
-   - `add_child` for a new QA worker if the current owned-subtree shape is wrong and the needed role/policy pair is already surfaced in the current `structural_edit_palette`
-   - `release_green` only if the evidence and criteria already justify closure
+    - `assign_child` for follow-up engineering work
+    - `add_child` for a new QA worker if the current owned-subtree shape is wrong and the needed role/policy pair is already surfaced in the current `structural_edit_palette`
+    - `release_green` only if the evidence and criteria already justify closure
 
 No hidden gate summary, bundle, or callback envelope is needed to make that decision.
 

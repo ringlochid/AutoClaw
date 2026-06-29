@@ -56,27 +56,27 @@ The controller-owned pending request record must include:
 
 ```yaml
 pending_human_request:
-  request_id: string
-  task_id: string
-  title: string
-  summary: string
-  kind: direction | approval | input | review
-  requester_node: string
-  items:
-    - item_id: string
-      prompt: string
-      options:
-        - id: string
-          title: string
-          description: string | optional
-      recommended_option: string | null
-      input_payload_schema: object | null
-  timeout:
-    due_at: timestamp | null
-    default_behavior: string | null
-  suggested_human_instruction: string
-  opened_at: timestamp
-  status: open | resolved | timed_out | cancelled
+    request_id: string
+    task_id: string
+    title: string
+    summary: string
+    kind: direction | approval | input | review
+    requester_node: string
+    items:
+        - item_id: string
+          prompt: string
+          options:
+              - id: string
+                title: string
+                description: string | optional
+          recommended_option: string | null
+          input_payload_schema: object | null
+    timeout:
+        due_at: timestamp | null
+        default_behavior: string | null
+    suggested_human_instruction: string
+    opened_at: timestamp
+    status: open | resolved | timed_out | cancelled
 ```
 
 Rules:
@@ -117,27 +117,27 @@ The node-facing human-request open path should normalize into a bounded controll
 
 ```yaml
 human_request_open_request:
-  kind: direction | approval | input | review
-  title: string
-  summary: string
-  items:
-    - item_id: string
-      prompt: string
-      options:
-        - id: string
-          title: string
-          description: string | optional
-      recommended_option: string | null
-      input_payload_schema: object | null
-  timeout:
-    due_at: timestamp | null
-    default_behavior: string | null
-  suggested_human_instruction: string
+    kind: direction | approval | input | review
+    title: string
+    summary: string
+    items:
+        - item_id: string
+          prompt: string
+          options:
+              - id: string
+                title: string
+                description: string | optional
+          recommended_option: string | null
+          input_payload_schema: object | null
+    timeout:
+        due_at: timestamp | null
+        default_behavior: string | null
+    suggested_human_instruction: string
 
 human_request_open_response:
-  request_id: string
-  task_id: string
-  status: open
+    request_id: string
+    task_id: string
+    status: open
 ```
 
 Rules:
@@ -164,17 +164,17 @@ Every resolution must be persisted as a controller-owned record:
 
 ```yaml
 human_request_resolution:
-  request_id: string
-  task_id: string
-  resolution_kind: answered | timed_out | cancelled
-  item_responses:
-    - item_id: string
-      selected_option: string | null
-      freeform_answer: string | null
-      extra_notes: string | null
-      response_payload: object | null
-  resolved_at: timestamp
-  resolved_by_actor_ref: string | null
+    request_id: string
+    task_id: string
+    resolution_kind: answered | timed_out | cancelled
+    item_responses:
+        - item_id: string
+          selected_option: string | null
+          freeform_answer: string | null
+          extra_notes: string | null
+          response_payload: object | null
+    resolved_at: timestamp
+    resolved_by_actor_ref: string | null
 ```
 
 Rules:

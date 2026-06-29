@@ -56,10 +56,10 @@ Worker/leaf `green` is legal only when all of the following are true:
 2. every required `produces` slot for the current assignment was published as a durable artifact version
 3. the terminal checkpoint references the exact published artifact paths that matter for later review or consumption
 4. the current evidence basis is not stale against:
-   - the current assignment
-   - current surfaced `criteria`
-   - current published artifact versions
-   - current structural subject
+    - the current assignment
+    - current surfaced `criteria`
+    - current published artifact versions
+    - current structural subject
 
 ```mermaid
 flowchart LR

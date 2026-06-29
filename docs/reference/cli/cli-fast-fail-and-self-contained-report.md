@@ -49,41 +49,41 @@ Current parser, exported through `apps/api/src/autoclaw/interfaces/cli/main.py` 
 
 ### Commands that now fail-fast check OpenClaw support first
 
-| Command | Current behavior |
-| --- | --- |
-| `autoclaw serve` | checks support before API startup |
-| `autoclaw onboard` | checks support before local config write, DB work, or service install |
-| `autoclaw configure --section all` | checks support before runtime/openclaw/service reconciliation |
-| `autoclaw configure --section openclaw` | checks support before wrapper reconciliation |
-| `autoclaw configure --section service` | checks support before service reconciliation |
-| `autoclaw doctor --fix` | checks support before local and wrapper repair |
-| `autoclaw openclaw setup` | checks support before wrapper writes |
-| `autoclaw openclaw doctor --fix` | checks support before wrapper repair |
-| `autoclaw service install` | checks support before writing env file or unit |
-| `autoclaw service start` | checks support before starting the managed service |
-| `autoclaw service restart` | checks support before restarting the managed service |
-| `systemd` unit `ExecStartPre` | runs `autoclaw openclaw check` before DB upgrade and `serve` |
+| Command                                 | Current behavior                                                      |
+| --------------------------------------- | --------------------------------------------------------------------- |
+| `autoclaw serve`                        | checks support before API startup                                     |
+| `autoclaw onboard`                      | checks support before local config write, DB work, or service install |
+| `autoclaw configure --section all`      | checks support before runtime/openclaw/service reconciliation         |
+| `autoclaw configure --section openclaw` | checks support before wrapper reconciliation                          |
+| `autoclaw configure --section service`  | checks support before service reconciliation                          |
+| `autoclaw doctor --fix`                 | checks support before local and wrapper repair                        |
+| `autoclaw openclaw setup`               | checks support before wrapper writes                                  |
+| `autoclaw openclaw doctor --fix`        | checks support before wrapper repair                                  |
+| `autoclaw service install`              | checks support before writing env file or unit                        |
+| `autoclaw service start`                | checks support before starting the managed service                    |
+| `autoclaw service restart`              | checks support before restarting the managed service                  |
+| `systemd` unit `ExecStartPre`           | runs `autoclaw openclaw check` before DB upgrade and `serve`          |
 
 ### Commands intentionally not gated by the OpenClaw support preflight
 
 These remain usable because they are read-only, teardown-oriented, or AutoClaw-local primitives.
 
-| Command | Reason |
-| --- | --- |
-| `autoclaw init` | local config/bootstrap primitive |
-| `autoclaw config path` | read-only local path readback |
-| `autoclaw config show` | read-only config readback |
-| `autoclaw doctor` | read-only health reporting; still reports OpenClaw integration first |
-| `autoclaw db upgrade` | local DB primitive |
-| `autoclaw db reset` | local DB primitive |
-| `autoclaw definitions import ...` | local definition import surface |
-| `autoclaw task-compose start --file ...` | local task-start wrapper; no new preflight gate yet |
-| `autoclaw openclaw check` | the canonical read-only support/compatibility probe |
-| `autoclaw openclaw doctor` | inspection is allowed; only `--fix` is gated |
-| `autoclaw service render` | local template render only |
-| `autoclaw service stop` | teardown path should stay available |
-| `autoclaw service status` | read-only managed-service readback |
-| `autoclaw service uninstall` | teardown path should stay available |
+| Command                                  | Reason                                                               |
+| ---------------------------------------- | -------------------------------------------------------------------- |
+| `autoclaw init`                          | local config/bootstrap primitive                                     |
+| `autoclaw config path`                   | read-only local path readback                                        |
+| `autoclaw config show`                   | read-only config readback                                            |
+| `autoclaw doctor`                        | read-only health reporting; still reports OpenClaw integration first |
+| `autoclaw db upgrade`                    | local DB primitive                                                   |
+| `autoclaw db reset`                      | local DB primitive                                                   |
+| `autoclaw definitions import ...`        | local definition import surface                                      |
+| `autoclaw task-compose start --file ...` | local task-start wrapper; no new preflight gate yet                  |
+| `autoclaw openclaw check`                | the canonical read-only support/compatibility probe                  |
+| `autoclaw openclaw doctor`               | inspection is allowed; only `--fix` is gated                         |
+| `autoclaw service render`                | local template render only                                           |
+| `autoclaw service stop`                  | teardown path should stay available                                  |
+| `autoclaw service status`                | read-only managed-service readback                                   |
+| `autoclaw service uninstall`             | teardown path should stay available                                  |
 
 ## Current support classification rules
 

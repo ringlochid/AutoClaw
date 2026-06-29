@@ -8,19 +8,19 @@ This page owns authored selector shape, produce-slot declarations, slot identity
 
 ```yaml
 consume_selector:
-  slot: slot_id
-  required: true | false # optional; defaults to true
+    slot: slot_id
+    required: true | false # optional; defaults to true
 
 produce_slot:
-  slot: slot_id
-  description: string
-  file_hint: string | optional
+    slot: slot_id
+    description: string
+    file_hint: string | optional
 
 criteria_declaration:
-  slot: slot_id
-  description: string
-  criteria:
-    - string
+    slot: slot_id
+    description: string
+    criteria:
+        - string
 ```
 
 `required` meaning is intentionally narrow:
@@ -86,18 +86,18 @@ Authored producer:
 
 ```yaml
 produces:
-  artifacts:
-    - slot: findings_report
-      description: Findings for downstream implementation.
-      file_hint: findings_report.md
+    artifacts:
+        - slot: findings_report
+          description: Findings for downstream implementation.
+          file_hint: findings_report.md
 ```
 
 Authored consumer:
 
 ```yaml
 consumes:
-  artifacts:
-    - slot: findings_report
+    artifacts:
+        - slot: findings_report
 ```
 
 Resolution meaning:
@@ -186,21 +186,21 @@ Runtime surfaces authored contracts through explicit ref families.
 
 ```yaml
 node_runtime_file_ref:
-  kind: manifest | assignment | checkpoint | artifact_index | transient_index
-  path: string
-  description: string
+    kind: manifest | assignment | checkpoint | artifact_index | transient_index
+    path: string
+    description: string
 
 support_runtime_file_ref:
-  kind: delivery_state | continuity_state | watchdog_state | provider_events
-  path: string
-  description: string
+    kind: delivery_state | continuity_state | watchdog_state | provider_events
+    path: string
+    description: string
 
 evidence_ref:
-  kind: artifact | criteria | doc | wiki | transient
-  slot: string | null
-  version: integer | null
-  path: string
-  description: string
+    kind: artifact | criteria | doc | wiki | transient
+    slot: string | null
+    version: integer | null
+    path: string
+    description: string
 ```
 
 Rules:
@@ -217,26 +217,26 @@ Rules:
 
 ```yaml
 consumes:
-  - kind: checkpoint
-    path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_change.01/latest-checkpoint.md
-    description: Latest child checkpoint relevant to this parent decision.
-  - kind: artifact
-    slot: review_report
-    version: 1
-    path: C:/tasks/task_2026_0042/outputs/artifacts/review_change/review_report/review_report.v01.md
-    description: Current review report surfaced for parent verification.
-  - kind: criteria
-    slot: root_closure_criteria
-    path: C:/tasks/task_2026_0042/_runtime/criteria/root_closure_criteria.md
-    description: Root closure criteria in force for the current decision.
+    - kind: checkpoint
+      path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_change.01/latest-checkpoint.md
+      description: Latest child checkpoint relevant to this parent decision.
+    - kind: artifact
+      slot: review_report
+      version: 1
+      path: C:/tasks/task_2026_0042/outputs/artifacts/review_change/review_report/review_report.v01.md
+      description: Current review report surfaced for parent verification.
+    - kind: criteria
+      slot: root_closure_criteria
+      path: C:/tasks/task_2026_0042/_runtime/criteria/root_closure_criteria.md
+      description: Root closure criteria in force for the current decision.
 ```
 
 ### Worked assignment produce requirement example
 
 ```yaml
 produces:
-  - slot: review_report
-    description: Required review findings report for parent/root verification.
+    - slot: review_report
+      description: Required review findings report for parent/root verification.
 ```
 
 `Assignment produces` says what the attempt must publish before it can close green. It is not a realized ref surface and does not predeclare `path` or `version`.

@@ -63,10 +63,10 @@ Surface rules:
 
 ## Canonical MCP attachment map
 
-| MCP surface | Bound route families | Trust boundary |
-| --- | --- | --- |
-| `operator MCP` | `/runtime`, `/operator`, any explicitly allowed task-scoped `/observability` reads, `/definitions`, and `/tasks/start` from the shared definition service | external operator-safe and task-scoped |
-| `node MCP` | static MCP tool wrappers over `/callback` semantic operations plus the internal current-only `role` / `policy` lookup path surfaced for live structural edits | static v1 surface with explicit node-tool authority args |
+| MCP surface    | Bound route families                                                                                                                                          | Trust boundary                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `operator MCP` | `/runtime`, `/operator`, any explicitly allowed task-scoped `/observability` reads, `/definitions`, and `/tasks/start` from the shared definition service     | external operator-safe and task-scoped                   |
+| `node MCP`     | static MCP tool wrappers over `/callback` semantic operations plus the internal current-only `role` / `policy` lookup path surfaced for live structural edits | static v1 surface with explicit node-tool authority args |
 
 Rules:
 
@@ -82,14 +82,14 @@ Rules:
 
 ### Definition registry
 
-| Method | Route                                                      | Request contract                      | Success response                    |
-| ------ | ---------------------------------------------------------- | ------------------------------------- | ----------------------------------- |
-| `GET`  | `/definitions/roles`                                       | query `q`, `limit`, `cursor`, `sort`, `allowed_node_kind` | `DefinitionSummaryListResponse`     |
-| `GET`  | `/definitions/policies`                                    | query `q`, `limit`, `cursor`, `sort`, `applies_to`       | `DefinitionSummaryListResponse`     |
-| `GET`  | `/definitions/workflows`                                   | query `q`, `limit`, `cursor`, `sort`  | `DefinitionSummaryListResponse`     |
-| `GET`  | `/definitions/{kind}/{key}`                                | path `kind`, `key`                    | `DefinitionRevisionDetailResponse`  |
-| `GET`  | `/definitions/{kind}/{key}/versions`                       | path `kind`, `key`; query `limit`, `cursor`, `sort` | `DefinitionRevisionHistoryResponse` |
-| `POST` | `/definitions`                                             | `DefinitionUploadRequest`             | `DefinitionRevisionDetailResponse`  |
+| Method | Route                                | Request contract                                          | Success response                    |
+| ------ | ------------------------------------ | --------------------------------------------------------- | ----------------------------------- |
+| `GET`  | `/definitions/roles`                 | query `q`, `limit`, `cursor`, `sort`, `allowed_node_kind` | `DefinitionSummaryListResponse`     |
+| `GET`  | `/definitions/policies`              | query `q`, `limit`, `cursor`, `sort`, `applies_to`        | `DefinitionSummaryListResponse`     |
+| `GET`  | `/definitions/workflows`             | query `q`, `limit`, `cursor`, `sort`                      | `DefinitionSummaryListResponse`     |
+| `GET`  | `/definitions/{kind}/{key}`          | path `kind`, `key`                                        | `DefinitionRevisionDetailResponse`  |
+| `GET`  | `/definitions/{kind}/{key}/versions` | path `kind`, `key`; query `limit`, `cursor`, `sort`       | `DefinitionRevisionHistoryResponse` |
+| `POST` | `/definitions`                       | `DefinitionUploadRequest`                                 | `DefinitionRevisionDetailResponse`  |
 
 Definition-registry rules:
 
@@ -110,13 +110,13 @@ Task-start rules:
 
 ### Public runtime
 
-| Method | Route                               | Request contract                         | Success response                 |
-| ------ | ----------------------------------- | ---------------------------------------- | -------------------------------- |
+| Method | Route                               | Request contract                               | Success response                 |
+| ------ | ----------------------------------- | ---------------------------------------------- | -------------------------------- |
 | `GET`  | `/runtime/tasks`                    | query `q`, `limit`, `cursor`, `sort`, `status` | `RuntimeFlowSummaryListResponse` |
-| `GET`  | `/runtime/tasks/{task_id}`          | path `task_id`                           | `RuntimeFlowRead`                |
-| `POST` | `/runtime/tasks/{task_id}/continue` | query `expected_active_flow_revision_id` | `RuntimeFlowRead`                |
-| `POST` | `/runtime/tasks/{task_id}/pause`    | query `expected_active_flow_revision_id` | `RuntimeFlowPauseResponse`       |
-| `POST` | `/runtime/tasks/{task_id}/cancel`   | query `expected_active_flow_revision_id` | `RuntimeFlowRead`                |
+| `GET`  | `/runtime/tasks/{task_id}`          | path `task_id`                                 | `RuntimeFlowRead`                |
+| `POST` | `/runtime/tasks/{task_id}/continue` | query `expected_active_flow_revision_id`       | `RuntimeFlowRead`                |
+| `POST` | `/runtime/tasks/{task_id}/pause`    | query `expected_active_flow_revision_id`       | `RuntimeFlowPauseResponse`       |
+| `POST` | `/runtime/tasks/{task_id}/cancel`   | query `expected_active_flow_revision_id`       | `RuntimeFlowRead`                |
 
 Public runtime rules:
 
@@ -127,9 +127,9 @@ Public runtime rules:
 
 ### Operator read/control
 
-| Method | Route                                | Request contract                           | Success response               |
-| ------ | ------------------------------------ | ------------------------------------------ | ------------------------------ |
-| `GET`  | `/operator/tasks/{task_id}/snapshot` | path `task_id`                             | `OperatorFlowSnapshotResponse` |
+| Method | Route                                | Request contract                              | Success response               |
+| ------ | ------------------------------------ | --------------------------------------------- | ------------------------------ |
+| `GET`  | `/operator/tasks/{task_id}/snapshot` | path `task_id`                                | `OperatorFlowSnapshotResponse` |
 | `GET`  | `/operator/tasks/{task_id}/trace`    | query `scope`, `q`, `limit`, `cursor`, `sort` | `OperatorFlowTraceResponse`    |
 
 Operator rules:
@@ -157,16 +157,16 @@ In v1, callback is write-only, task-scoped, and internally validated:
 
 Canonical semantic operations:
 
-| Semantic operation  | Internal callback route example                          | Request contract | Success response        |
-| ------------------- | -------------------------------------------------------- | ---------------- | ----------------------- |
-| `record_checkpoint` | `POST /callback/tasks/{task_id}/checkpoint`              | `CheckpointWrite` | `CheckpointRead`        |
-| `return_boundary`   | `POST /callback/tasks/{task_id}/boundary`                | `BoundaryWrite`  | `BoundaryRead`          |
-| `assign_child`      | `POST /callback/tasks/{task_id}/tools/assign_child`      | `ParentToolCall` | `AssignChildSuccess`    |
-| `add_child`         | `POST /callback/tasks/{task_id}/tools/add_child`         | `ParentToolCall` | `AddChildSuccess`       |
-| `update_child`      | `POST /callback/tasks/{task_id}/tools/update_child`      | `ParentToolCall` | `UpdateChildSuccess`    |
-| `remove_child`      | `POST /callback/tasks/{task_id}/tools/remove_child`      | `ParentToolCall` | `RemoveChildSuccess`    |
-| `release_green`     | `POST /callback/tasks/{task_id}/tools/release_green`     | `ParentToolCall` | `ReleaseGreenSuccess`   |
-| `release_blocked`   | `POST /callback/tasks/{task_id}/tools/release_blocked`   | `ParentToolCall` | `ReleaseBlockedSuccess` |
+| Semantic operation  | Internal callback route example                        | Request contract  | Success response        |
+| ------------------- | ------------------------------------------------------ | ----------------- | ----------------------- |
+| `record_checkpoint` | `POST /callback/tasks/{task_id}/checkpoint`            | `CheckpointWrite` | `CheckpointRead`        |
+| `return_boundary`   | `POST /callback/tasks/{task_id}/boundary`              | `BoundaryWrite`   | `BoundaryRead`          |
+| `assign_child`      | `POST /callback/tasks/{task_id}/tools/assign_child`    | `ParentToolCall`  | `AssignChildSuccess`    |
+| `add_child`         | `POST /callback/tasks/{task_id}/tools/add_child`       | `ParentToolCall`  | `AddChildSuccess`       |
+| `update_child`      | `POST /callback/tasks/{task_id}/tools/update_child`    | `ParentToolCall`  | `UpdateChildSuccess`    |
+| `remove_child`      | `POST /callback/tasks/{task_id}/tools/remove_child`    | `ParentToolCall`  | `RemoveChildSuccess`    |
+| `release_green`     | `POST /callback/tasks/{task_id}/tools/release_green`   | `ParentToolCall`  | `ReleaseGreenSuccess`   |
+| `release_blocked`   | `POST /callback/tasks/{task_id}/tools/release_blocked` | `ParentToolCall`  | `ReleaseBlockedSuccess` |
 
 Callback-lane rules:
 
@@ -175,10 +175,10 @@ Callback-lane rules:
 - callback payloads may carry semantic runtime content only
 - `record_checkpoint` writes summary/next-step handoff plus optional explicit `transient_surfaces`; controller-managed checkpoint refs and surfaced durable rereads come back through read projections
 - callback payloads do not expose:
-  - `manifest_id`
-  - `manifest_hash`
-  - `node_session_key`
-  - `ack_checkpoint_id`
+    - `manifest_id`
+    - `manifest_hash`
+    - `node_session_key`
+    - `ack_checkpoint_id`
 - callback routes are not a worker-event bus, callback binding envelope, or generic transport tunnel
 - HTTP callback transport may keep its own internal binding details, but the canonical v1 node/callback caller contract is explicit `session_key` + `task_id`
 - canonical node-facing semantics do not require caller-visible `dispatch_id`
@@ -186,12 +186,12 @@ Callback-lane rules:
 - callback routes do not act as context-discovery helpers; workers read surfaced filesystem projections instead
 - callback routes do not expose generic definition search/detail/history reads; parent/root structural edits rely on surfaced current names plus internal current-only lookup at commit time
 - `tool_name` is limited to:
-  - `assign_child`
-  - `add_child`
-  - `update_child`
-  - `remove_child`
-  - `release_green`
-  - `release_blocked`
+    - `assign_child`
+    - `add_child`
+    - `update_child`
+    - `remove_child`
+    - `release_green`
+    - `release_blocked`
 
 Concurrent callback resolution example:
 

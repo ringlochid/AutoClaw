@@ -65,19 +65,19 @@ During one open dispatch, parent/root should reason in this exact order:
 1. reread the current manifest, current assignment, latest relevant child checkpoints, and the exact current refs surfaced on that assignment
 2. decide whether the current owned-subtree structure is wrong
 3. if the structure is wrong:
-   - use `add_child`, `update_child`, or `remove_child`
-   - reread the regenerated manifest
-   - loop back to step 1 while no continuation outcome is staged
+    - use `add_child`, `update_child`, or `remove_child`
+    - reread the regenerated manifest
+    - loop back to step 1 while no continuation outcome is staged
 4. if the structure is right but more bounded child work is needed:
-   - call `assign_child`
-   - let the controller commit the child assignment, first child attempt, and one staged `child_assignment`
-   - reread the returned child assignment/attempt facts
-   - publish an optional checkpoint only if it does not replace the staged continuation
-   - close with `yield`
+    - call `assign_child`
+    - let the controller commit the child assignment, first child attempt, and one staged `child_assignment`
+    - reread the returned child assignment/attempt facts
+    - publish an optional checkpoint only if it does not replace the staged continuation
+    - close with `yield`
 5. if the current assignment is terminal and evidence is current:
-   - use `release_green` then `green`, or
-   - use `blocked` for a non-root parent assignment that cannot proceed, or
-   - root-only `release_blocked` then `blocked` for whole-flow blocked closure
+    - use `release_green` then `green`, or
+    - use `blocked` for a non-root parent assignment that cannot proceed, or
+    - root-only `release_blocked` then `blocked` for whole-flow blocked closure
 
 The parent/root must not skip from "structure changed" directly to `yield`. `yield` is legal only after exactly one staged `child_assignment` exists.
 
@@ -138,11 +138,11 @@ Parent `implementation_subtree` sees:
 
 - child checkpoint summary: "verification passed, but review not yet run"
 - surfaced criteria ref:
-  - `slot: implementation_review_criteria`
-  - `path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_review_criteria.v01.md`
+    - `slot: implementation_review_criteria`
+    - `path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_review_criteria.v01.md`
 - surfaced artifact refs:
-  - `kind: artifact`, `slot: change_patch`, `version: 2`, `path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/change_patch/change_patch.v02.diff`
-  - `kind: artifact`, `slot: verification_report`, `version: 3`, `path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/verification_report/verification_report.v03.md`
+    - `kind: artifact`, `slot: change_patch`, `version: 2`, `path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/change_patch/change_patch.v02.diff`
+    - `kind: artifact`, `slot: verification_report`, `version: 3`, `path: C:/tasks/task_2026_0042/outputs/artifacts/implement_change/verification_report/verification_report.v03.md`
 
 The right next action is not structural replan. It is:
 
@@ -157,10 +157,10 @@ Parent `implementation_subtree` sees:
 
 - child checkpoint summary: "review finished, but the current subtree has no QA worker and new criteria now require one"
 - surfaced criteria ref:
-  - `slot: implementation_subtree_requirements`
-  - `path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_subtree_requirements.v02.md`
+    - `slot: implementation_subtree_requirements`
+    - `path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_subtree_requirements.v02.md`
 - surfaced artifact ref:
-  - `kind: artifact`, `slot: review_report`, `version: 1`, `path: C:/tasks/task_2026_0042/outputs/artifacts/review_change/review_report/review_report.v01.md`
+    - `kind: artifact`, `slot: review_report`, `version: 1`, `path: C:/tasks/task_2026_0042/outputs/artifacts/review_change/review_report/review_report.v01.md`
 
 The right next action is structural replan:
 
@@ -215,13 +215,13 @@ If the current parent/root cannot legally apply the needed change inside its aut
 
 ## Decision matrix
 
-| Situation                                                   | Parent/root action                                                   |
-| ----------------------------------------------------------- | -------------------------------------------------------------------- |
-| same structure, more bounded work needed                    | `assign_child`, then `yield`                                         |
-| current owned-subtree structure or contract is wrong        | `add_child`, `update_child`, or `remove_child`, then reread manifest |
-| current assignment is complete and evidence is current      | `release_green`, then `green`                                        |
-| current non-root parent assignment cannot proceed as assigned | terminal blocked checkpoint, then `blocked`                         |
-| root determines the whole flow is terminally blocked          | `release_blocked`, then `blocked`                                   |
+| Situation                                                     | Parent/root action                                                   |
+| ------------------------------------------------------------- | -------------------------------------------------------------------- |
+| same structure, more bounded work needed                      | `assign_child`, then `yield`                                         |
+| current owned-subtree structure or contract is wrong          | `add_child`, `update_child`, or `remove_child`, then reread manifest |
+| current assignment is complete and evidence is current        | `release_green`, then `green`                                        |
+| current non-root parent assignment cannot proceed as assigned | terminal blocked checkpoint, then `blocked`                          |
+| root determines the whole flow is terminally blocked          | `release_blocked`, then `blocked`                                    |
 
 ## Related contracts
 

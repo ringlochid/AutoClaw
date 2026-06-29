@@ -156,23 +156,23 @@ Rules:
 
 ## Effect and support matrix
 
-| Surface | Effect | Allowed writes |
-| --- | --- | --- |
-| `autoclaw openclaw check` | read-only check | none |
-| runtime adapter connect | adapt | none; consumes supported host-owned Gateway auth mode |
-| `autoclaw openclaw setup` | set integration defaults | selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material |
-| `autoclaw openclaw doctor` | fix integration drift | selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material |
-| `autoclaw doctor` | check or fix local AutoClaw state plus AutoClaw-owned OpenClaw integration | local AutoClaw config, dirs, DB, packaged resources, service metadata, selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material |
-| `autoclaw onboard` | guided check, set, adapt, and optional service install | local AutoClaw state, selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, AutoClaw wrapper material, and optional service metadata; support preflight runs before any local config, DB, or service write |
+| Surface                    | Effect                                                                     | Allowed writes                                                                                                                                                                                                                                                                                       |
+| -------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `autoclaw openclaw check`  | read-only check                                                            | none                                                                                                                                                                                                                                                                                                 |
+| runtime adapter connect    | adapt                                                                      | none; consumes supported host-owned Gateway auth mode                                                                                                                                                                                                                                                |
+| `autoclaw openclaw setup`  | set integration defaults                                                   | selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material                                                                                                                        |
+| `autoclaw openclaw doctor` | fix integration drift                                                      | selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material                                                                                                                        |
+| `autoclaw doctor`          | check or fix local AutoClaw state plus AutoClaw-owned OpenClaw integration | local AutoClaw config, dirs, DB, packaged resources, service metadata, selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, and AutoClaw wrapper material                                                 |
+| `autoclaw onboard`         | guided check, set, adapt, and optional service install                     | local AutoClaw state, selected worker/operator agent ids in local AutoClaw config, patched OpenClaw agent profiles, OpenClaw-managed AutoClaw MCP server definitions, AutoClaw wrapper material, and optional service metadata; support preflight runs before any local config, DB, or service write |
 
-| OpenClaw host shape | AutoClaw behavior |
-| --- | --- |
-| loopback token auth | supported; resolve token and connect |
-| loopback password auth | supported; resolve password and connect |
-| explicit loopback no-auth | supported with warning; connect without auth |
-| non-loopback Gateway | blocked until remote identity canon lands |
-| trusted-proxy auth | blocked until wrapper trust canon lands |
-| ambiguous or unresolved auth | blocked with diagnostic and remediation |
+| OpenClaw host shape          | AutoClaw behavior                            |
+| ---------------------------- | -------------------------------------------- |
+| loopback token auth          | supported; resolve token and connect         |
+| loopback password auth       | supported; resolve password and connect      |
+| explicit loopback no-auth    | supported with warning; connect without auth |
+| non-loopback Gateway         | blocked until remote identity canon lands    |
+| trusted-proxy auth           | blocked until wrapper trust canon lands      |
+| ambiguous or unresolved auth | blocked with diagnostic and remediation      |
 
 ## Minimum checks
 

@@ -29,16 +29,16 @@ Concurrency rules:
 
 ```yaml
 task:
-  key: auth-refresh-hardening
-  title: Harden auth refresh flow
-  summary: Investigate and fix the auth refresh regression.
+    key: auth-refresh-hardening
+    title: Harden auth refresh flow
+    summary: Investigate and fix the auth refresh regression.
 workflow:
-  key: normal-parent-first-release
+    key: normal-parent-first-release
 roots:
-  workspace:
-    mode: ensure_task_default
-  context:
-    mode: ensure_task_default
+    workspace:
+        mode: ensure_task_default
+    context:
+        mode: ensure_task_default
 ```
 
 This is the smallest launch input that still names:
@@ -52,20 +52,20 @@ This is the smallest launch input that still names:
 
 ```yaml
 task:
-  key: string
-  title: string
-  summary: string
-  instruction: >-
-    string | optional
+    key: string
+    title: string
+    summary: string
+    instruction: >-
+      string | optional
 workflow:
-  key: string
+    key: string
 roots:
-  workspace:
-    mode: ensure_task_default | ensure_host_path | use_existing_host
-    host_path: string | required_for_host_modes
-  context:
-    mode: ensure_task_default | ensure_host_path | use_existing_host
-    host_path: string | required_for_host_modes
+    workspace:
+        mode: ensure_task_default | ensure_host_path | use_existing_host
+        host_path: string | required_for_host_modes
+    context:
+        mode: ensure_task_default | ensure_host_path | use_existing_host
+        host_path: string | required_for_host_modes
 ```
 
 `roots` may omit either authored root and accept the documented default.
@@ -127,19 +127,20 @@ V1 rules:
 
 ```yaml
 task:
-  key: auth-refresh-hardening
-  title: Harden auth refresh flow
-  summary: Investigate and fix the auth refresh regression.
-  instruction: >-
-    Stay scoped to the auth refresh failure path and publish patch, verification, and closure evidence only through declared produce slots.
+    key: auth-refresh-hardening
+    title: Harden auth refresh flow
+    summary: Investigate and fix the auth refresh regression.
+    instruction: >-
+      Stay scoped to the auth refresh failure path and publish patch, verification, and
+      closure evidence only through declared produce slots.
 workflow:
-  key: normal-parent-first-release
+    key: normal-parent-first-release
 roots:
-  workspace:
-    mode: ensure_host_path
-    host_path: C:/work/autoclaw-auth-refresh
-  context:
-    mode: ensure_task_default
+    workspace:
+        mode: ensure_host_path
+        host_path: C:/work/autoclaw-auth-refresh
+    context:
+        mode: ensure_task_default
 ```
 
 ## Required rules
@@ -150,9 +151,9 @@ roots:
 - `workflow.key` is required
 - task acceptance criteria do not live in task compose
 - user-authored task intent enters only through:
-  - `task.summary`
-  - optional `task.instruction`
-  - files or materialized supporting context under the bound `context` root
+    - `task.summary`
+    - optional `task.instruction`
+    - files or materialized supporting context under the bound `context` root
 - task compose remains a narrow launch spec rather than a rich notes/details document
 - `task.title`, `task.summary`, and optional `task.instruction` project through the manifest into prompt `task_identity` for every node, not into provider `instructions`
 - node-definition purpose and optional node instruction belong in the current-node system/static instruction layer for every node
@@ -334,19 +335,19 @@ After start succeeds, the fastest way to understand the live task is:
 
 ## Graph-affecting versus prompt-only fields
 
-| Field                                           | Contract class               | Compiler impact               |
-| ----------------------------------------------- | ---------------------------- | ----------------------------- |
-| `task.key`                                      | task identity                | no compiled-plan change       |
-| `task.title`                                    | label only                   | no compiled-plan change       |
-| `task.summary`                                  | prompt-only task text        | no compiled-plan change       |
-| `task.instruction`                              | prompt-only task text        | no compiled-plan change       |
+| Field                                           | Contract class             | Compiler impact               |
+| ----------------------------------------------- | -------------------------- | ----------------------------- |
+| `task.key`                                      | task identity              | no compiled-plan change       |
+| `task.title`                                    | label only                 | no compiled-plan change       |
+| `task.summary`                                  | prompt-only task text      | no compiled-plan change       |
+| `task.instruction`                              | prompt-only task text      | no compiled-plan change       |
 | `workflow.key`                                  | current workflow selection | changes compiled-plan content |
-| `roots.workspace.mode`                          | launch-binding semantics     | no compiled-plan change       |
-| `roots.context.mode`                            | launch-binding semantics     | no compiled-plan change       |
-| `roots.workspace.host_path`                     | launch placement only        | no compiled-plan change       |
-| `roots.context.host_path`                       | launch placement only        | no compiled-plan change       |
-| preexisting or newly bound `workspace` contents | runtime content only         | no compiled-plan change       |
-| preexisting or newly bound `context` contents   | runtime content only         | no compiled-plan change       |
+| `roots.workspace.mode`                          | launch-binding semantics   | no compiled-plan change       |
+| `roots.context.mode`                            | launch-binding semantics   | no compiled-plan change       |
+| `roots.workspace.host_path`                     | launch placement only      | no compiled-plan change       |
+| `roots.context.host_path`                       | launch placement only      | no compiled-plan change       |
+| preexisting or newly bound `workspace` contents | runtime content only       | no compiled-plan change       |
+| preexisting or newly bound `context` contents   | runtime content only       | no compiled-plan change       |
 
 ## Related contracts
 

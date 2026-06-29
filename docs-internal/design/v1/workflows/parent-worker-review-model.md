@@ -62,13 +62,13 @@ One common path is:
 2. parent stages `review_change`
 3. `review_change` reads only the surfaced evidence in its assignment
 4. `review_change` publishes:
-   - terminal checkpoint summary
-   - `review_report`
+    - terminal checkpoint summary
+    - `review_report`
 5. the checkpoint may say "review completed; one regression case still needs follow-up"
 6. review still ends `green` because the review assignment completed
 7. parent/root then decides whether to:
-   - stage another engineering child assignment
-   - add a QA child
-   - keep the subtree blocked from release
+    - stage another engineering child assignment
+    - add a QA child
+    - keep the subtree blocked from release
 
 The review worker reports evidence and judgment. Parent/root still owns the next control action.

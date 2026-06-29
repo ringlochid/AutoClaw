@@ -9,104 +9,109 @@ kind: workflow
 id: core-only-build
 description: Design, implement, verify, and review a core foundation layer without full-product scope.
 root:
-  id: root
-  role: root_planning_lead
-  policy: standard-root-planning
-  description: Preserve core-only scope and release only when contracts, implementation, verification, and review evidence agree.
-  instruction: >-
-    Keep the workflow focused on core foundations such as APIs, data models, invariants, or domain contracts. Defer UX, campaign, and full feature scope.
-  criteria:
-    - slot: core_release_criteria
-      description: Hard criteria for core-only release.
-      criteria:
-        - core contract plan names boundary, callers, invariants, compatibility, and deferrals
-        - implementation and verification prove the core contract without requiring full-product polish
-        - unresolved contract, migration, or compatibility risks block release
-  children:
-    - id: design_core_contracts
-      role: core_architect
-      policy: standard-worker
-      description: Design the bounded core contracts and implementation criteria.
-      instruction: >-
-        Publish the smallest durable foundation needed for later work, with explicit non-goals.
-      produces:
-        artifacts:
-          - slot: core_contract_plan
-            file_hint: core_contract_plan.md
-            description: Core boundary, contracts, invariants, risks, deferrals, and implementation criteria.
-    - id: implement_core
-      role: engineer
-      policy: standard-worker
-      description: Implement the bounded core foundation from the contract plan.
-      instruction: >-
-        Implement only the core contract. Avoid full feature behavior, UI polish, or unrelated platform cleanup.
-      consumes:
-        artifacts:
-          - slot: core_contract_plan
-      criteria:
-        - slot: core_implementation_criteria
-          description: Hard implementation criteria for the core foundation.
+    id: root
+    role: root_planning_lead
+    policy: standard-root-planning
+    description: Preserve core-only scope and release only when contracts, implementation, verification, and review evidence agree.
+    instruction: >-
+      Keep the workflow focused on core foundations such as APIs, data models,
+      invariants, or domain contracts. Defer UX, campaign, and full feature scope.
+    criteria:
+        - slot: core_release_criteria
+          description: Hard criteria for core-only release.
           criteria:
-            - patch implements the accepted core contract and preserves named compatibility constraints
-            - checkpoint explains changed files, evidence read, checks run, and residual risk
-      produces:
-        artifacts:
-          - slot: core_patch
-            file_hint: core_patch.diff
-            description: Patch for the core foundation.
-    - id: verify_core_contracts
-      role: test_verifier
-      policy: standard-long-command-worker
-      description: Verify core contracts, invariants, and compatibility expectations.
-      instruction: >-
-        Use long command-run capability only for checks likely to exceed inline dispatch time. Name untested contract areas.
-      consumes:
-        artifacts:
-          - slot: core_contract_plan
-          - slot: core_patch
-        criteria:
-          - slot: core_implementation_criteria
-      produces:
-        artifacts:
-          - slot: core_verification_report
-            file_hint: core_verification_report.md
-            description: Verification evidence for the core contract.
-    - id: review_core_design
-      role: code_reviewer
-      policy: standard-review
-      description: Review the core implementation against contract, verification, and release criteria.
-      instruction: >-
-        Focus on contract correctness, migration risk, compatibility, tests, and full-product scope creep.
-      consumes:
-        artifacts:
-          - slot: core_contract_plan
-          - slot: core_patch
-          - slot: core_verification_report
-        criteria:
-          - slot: core_release_criteria
-      produces:
-        artifacts:
-          - slot: core_review_report
-            file_hint: core_review_report.md
-            description: Review findings for the core-only build.
-    - id: release_closure
-      role: release_operator
-      policy: standard-release
-      description: Perform final bounded core-only release or closure work from current surfaced evidence.
-      instruction: >-
-        Use only core contract, implementation, verification, review evidence, and release criteria.
-      consumes:
-        artifacts:
-          - slot: core_contract_plan
-          - slot: core_patch
-          - slot: core_verification_report
-          - slot: core_review_report
-        criteria:
-          - slot: core_release_criteria
-      produces:
-        artifacts:
-          - slot: closure_report
-            file_hint: closure_report.md
-            description: Final core-only release or closure report.
+              - core contract plan names boundary, callers, invariants, compatibility, and deferrals
+              - implementation and verification prove the core contract without requiring full-product polish
+              - unresolved contract, migration, or compatibility risks block release
+    children:
+        - id: design_core_contracts
+          role: core_architect
+          policy: standard-worker
+          description: Design the bounded core contracts and implementation criteria.
+          instruction: >-
+            Publish the smallest durable foundation needed for later work, with explicit
+            non-goals.
+          produces:
+              artifacts:
+                  - slot: core_contract_plan
+                    file_hint: core_contract_plan.md
+                    description: Core boundary, contracts, invariants, risks, deferrals, and implementation criteria.
+        - id: implement_core
+          role: engineer
+          policy: standard-worker
+          description: Implement the bounded core foundation from the contract plan.
+          instruction: >-
+            Implement only the core contract. Avoid full feature behavior, UI polish, or
+            unrelated platform cleanup.
+          consumes:
+              artifacts:
+                  - slot: core_contract_plan
+          criteria:
+              - slot: core_implementation_criteria
+                description: Hard implementation criteria for the core foundation.
+                criteria:
+                    - patch implements the accepted core contract and preserves named compatibility constraints
+                    - checkpoint explains changed files, evidence read, checks run, and residual risk
+          produces:
+              artifacts:
+                  - slot: core_patch
+                    file_hint: core_patch.diff
+                    description: Patch for the core foundation.
+        - id: verify_core_contracts
+          role: test_verifier
+          policy: standard-long-command-worker
+          description: Verify core contracts, invariants, and compatibility expectations.
+          instruction: >-
+            Use long command-run capability only for checks likely to exceed inline
+            dispatch time. Name untested contract areas.
+          consumes:
+              artifacts:
+                  - slot: core_contract_plan
+                  - slot: core_patch
+              criteria:
+                  - slot: core_implementation_criteria
+          produces:
+              artifacts:
+                  - slot: core_verification_report
+                    file_hint: core_verification_report.md
+                    description: Verification evidence for the core contract.
+        - id: review_core_design
+          role: code_reviewer
+          policy: standard-review
+          description: Review the core implementation against contract, verification, and release criteria.
+          instruction: >-
+            Focus on contract correctness, migration risk, compatibility, tests, and
+            full-product scope creep.
+          consumes:
+              artifacts:
+                  - slot: core_contract_plan
+                  - slot: core_patch
+                  - slot: core_verification_report
+              criteria:
+                  - slot: core_release_criteria
+          produces:
+              artifacts:
+                  - slot: core_review_report
+                    file_hint: core_review_report.md
+                    description: Review findings for the core-only build.
+        - id: release_closure
+          role: release_operator
+          policy: standard-release
+          description: Perform final bounded core-only release or closure work from current surfaced evidence.
+          instruction: >-
+            Use only core contract, implementation, verification, review evidence, and
+            release criteria.
+          consumes:
+              artifacts:
+                  - slot: core_contract_plan
+                  - slot: core_patch
+                  - slot: core_verification_report
+                  - slot: core_review_report
+              criteria:
+                  - slot: core_release_criteria
+          produces:
+              artifacts:
+                  - slot: closure_report
+                    file_hint: closure_report.md
+                    description: Final core-only release or closure report.
 ```
-

@@ -23,9 +23,9 @@ id: string
 title: string
 description: string
 allowed_node_kinds:
-  - root | parent | worker
+    - root | parent | worker
 labels:
-  - string
+    - string
 instruction: >-
   string | optional
 ```
@@ -38,9 +38,9 @@ id: string
 title: string
 description: string
 allowed_node_kinds:
-  - root | parent | worker
+    - root | parent | worker
 labels:
-  - string
+    - string
 instruction: >-
   string | optional
 ```
@@ -68,9 +68,10 @@ id: review-role
 title: Review Role
 description: Parent review role for structured review against current criteria.
 allowed_node_kinds:
-  - parent
+    - parent
 instruction: >-
-  Read current criteria first, then inspect the latest checkpoint and surfaced durable refs.
+  Read current criteria first, then inspect the latest checkpoint and surfaced durable
+  refs.
 ```
 
 Canonical file example:
@@ -81,9 +82,10 @@ id: review-role
 title: Review Role
 description: Parent review role for structured review against current criteria.
 allowed_node_kinds:
-  - parent
+    - parent
 instruction: >-
-  Read current criteria first, then inspect the latest checkpoint and surfaced durable refs.
+  Read current criteria first, then inspect the latest checkpoint and surfaced durable
+  refs.
 ```
 
 ## `PolicyDefinitionInput`
@@ -95,18 +97,18 @@ id: string
 title: string
 description: string
 applies_to:
-  - root | parent | worker
+    - root | parent | worker
 budget_spec:
-  child_assignment_limit: integer | optional
-  retry_limit: integer | optional
+    child_assignment_limit: integer | optional
+    retry_limit: integer | optional
 capabilities:
-  human_request:
-    mode: deny | allow
-    allowed_kinds:
-      - direction | approval | input | review
-  command_run: deny | allow
+    human_request:
+        mode: deny | allow
+        allowed_kinds:
+            - direction | approval | input | review
+    command_run: deny | allow
 labels:
-  - string
+    - string
 instruction: >-
   string | optional
 ```
@@ -119,18 +121,18 @@ id: string
 title: string
 description: string
 applies_to:
-  - root | parent | worker
+    - root | parent | worker
 budget_spec:
-  child_assignment_limit: integer | optional
-  retry_limit: integer | optional
+    child_assignment_limit: integer | optional
+    retry_limit: integer | optional
 capabilities:
-  human_request:
-    mode: deny | allow
-    allowed_kinds:
-      - direction | approval | input | review
-  command_run: deny | allow
+    human_request:
+        mode: deny | allow
+        allowed_kinds:
+            - direction | approval | input | review
+    command_run: deny | allow
 labels:
-  - string
+    - string
 instruction: >-
   string | optional
 ```
@@ -160,11 +162,12 @@ id: review-policy
 title: Review Policy
 description: Restrict review nodes to current v1 review and closure powers.
 applies_to:
-  - parent
+    - parent
 budget_spec:
-  child_assignment_limit: 4
+    child_assignment_limit: 4
 instruction: >-
-  Keep review grounded in current criteria, latest checkpoint, and surfaced durable refs.
+  Keep review grounded in current criteria, latest checkpoint, and surfaced durable
+  refs.
 ```
 
 Canonical file example:
@@ -175,11 +178,12 @@ id: review-policy
 title: Review Policy
 description: Restrict review nodes to current v1 review and closure powers.
 applies_to:
-  - parent
+    - parent
 budget_spec:
-  child_assignment_limit: 4
+    child_assignment_limit: 4
 instruction: >-
-  Keep review grounded in current criteria, latest checkpoint, and surfaced durable refs.
+  Keep review grounded in current criteria, latest checkpoint, and surfaced durable
+  refs.
 ```
 
 Worker retry example:
@@ -189,11 +193,12 @@ id: implement-fix-policy
 title: Implement Fix Policy
 description: Allow bounded worker retry while preserving controller-owned continuity rules.
 applies_to:
-  - worker
+    - worker
 budget_spec:
-  retry_limit: 2
+    retry_limit: 2
 instruction: >-
-  Retry only when the current assignment still applies and the latest checkpoint names the next narrow step.
+  Retry only when the current assignment still applies and the latest checkpoint names
+  the next narrow step.
 ```
 
 ## Validation rules
@@ -207,8 +212,8 @@ Validation must enforce:
 - `applies_to` is non-empty
 - `labels`, when present, must not contain duplicates
 - when `budget_spec` is present, it may contain only:
-  - `child_assignment_limit`
-  - `retry_limit`
+    - `child_assignment_limit`
+    - `retry_limit`
 - when a `budget_spec` limit is present, its value is an integer
 - `child_assignment_limit` is legal only when `applies_to` contains `root` and/or `parent`
 - `retry_limit` is legal only when `applies_to` contains `worker`

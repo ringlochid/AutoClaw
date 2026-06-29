@@ -49,14 +49,14 @@ Example:
 
 ```yaml
 persisted_dispatch_prompt:
-  dispatch_id: dispatch.implement_fix.11
-  node_key: implement_fix
-  attempt_id: attempt.implement_fix.11
-  assignment_key: implement_fix.assign-03
-  prompt_name: worker_dispatch_prompt
-  rendered_markdown_path: C:/tasks/task_2026_0042/_runtime/dispatch/dispatch.implement_fix.11/prompt.md
-  content_hash: sha256:9a3d...
-  rendered_at: 2026-05-01T12:40:11Z
+    dispatch_id: dispatch.implement_fix.11
+    node_key: implement_fix
+    attempt_id: attempt.implement_fix.11
+    assignment_key: implement_fix.assign-03
+    prompt_name: worker_dispatch_prompt
+    rendered_markdown_path: C:/tasks/task_2026_0042/_runtime/dispatch/dispatch.implement_fix.11/prompt.md
+    content_hash: sha256:9a3d...
+    rendered_at: 2026-05-01T12:40:11Z
 ```
 
 ## Full-Prompt Behavior
@@ -66,9 +66,9 @@ Rules:
 - dispatch control emits `full_prompt` for every live dispatch
 - `full_prompt` preserves the semantic split between AutoClaw-owned `instructions_text` and rendered `input_text`
 - persisted `prompt.md` keeps a readable combined readback of that effective AutoClaw prompt:
-  - `# AutoClaw Dispatch Prompt`
-  - `## Instructions`
-  - `## Dispatch Input`
+    - `# AutoClaw Dispatch Prompt`
+    - `## Instructions`
+    - `## Dispatch Input`
 - `instructions_text` starts with `## Instructions` and carries static doctrine, exact prompt assets, and current-node guidance
 - `input_text` starts with `## Dispatch Input` and carries regenerated dispatch input sections such as `### Current Dispatch`, `### Current Assignment`, and `### Allowed Actions Now`
 - reusable prompt asset blocks render as `###` fragments inside `## Instructions`

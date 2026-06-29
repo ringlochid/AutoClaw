@@ -109,11 +109,11 @@ Rules:
 
 ## Boundary matrix
 
-| Caller kind | Legal non-terminal close                                      | Legal terminal close                                                                                                                                                          |
-| ----------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `root`      | `yield` only after exactly one staged child assignment exists | `green` after committed `release_green`; `blocked` after a terminal blocked checkpoint plus committed root `release_blocked` for whole-flow blocked closure                   |
-| `parent`    | `yield` only after exactly one staged child assignment exists | `green` after committed `release_green`; `blocked` after a terminal blocked checkpoint when the current parent assignment cannot complete, returning control to its parent     |
-| `worker`    | none                                                          | `green / retry / blocked` after the matching terminal checkpoint and any required publication basis                                                                            |
+| Caller kind | Legal non-terminal close                                      | Legal terminal close                                                                                                                                                       |
+| ----------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `root`      | `yield` only after exactly one staged child assignment exists | `green` after committed `release_green`; `blocked` after a terminal blocked checkpoint plus committed root `release_blocked` for whole-flow blocked closure                |
+| `parent`    | `yield` only after exactly one staged child assignment exists | `green` after committed `release_green`; `blocked` after a terminal blocked checkpoint when the current parent assignment cannot complete, returning control to its parent |
+| `worker`    | none                                                          | `green / retry / blocked` after the matching terminal checkpoint and any required publication basis                                                                        |
 
 Parent/root later turns on the same assignment happen by ordinary `redispatch_same_attempt`, not by a parent/root `retry` boundary.
 
@@ -185,13 +185,13 @@ Rules:
 The target runtime model keeps four concerns separate:
 
 - **semantic currentness**
-  - what node, assignment, and attempt should run next
+    - what node, assignment, and attempt should run next
 - **live execution slot**
-  - what dispatch still occupies the one live execution slot for the flow
+    - what dispatch still occupies the one live execution slot for the flow
 - **historical evidence**
-  - boundaries, checkpoints, and provider history that explain what happened
+    - boundaries, checkpoints, and provider history that explain what happened
 - **authority**
-  - who may still write against the live slot
+    - who may still write against the live slot
 
 Rules:
 
@@ -215,9 +215,9 @@ Rules:
 - operator `continue`, when present on external surfaces, is legal only for a paused flow
 - operator `continue` resumes from paused controller truth by reopening the appropriate dispatch; it is not the ordinary path for yielded child handoff, worker-to-parent wake, or retry advancement
 - paused resume target precedence is:
-  - after paused `yield`, reopen the child dispatch
-  - after paused `retry`, reopen the retry-attempt dispatch
-  - after paused ordinary live work with no accepted boundary, reopen the same-attempt dispatch
+    - after paused `yield`, reopen the child dispatch
+    - after paused `retry`, reopen the retry-attempt dispatch
+    - after paused ordinary live work with no accepted boundary, reopen the same-attempt dispatch
 
 ## Worked parent -> child sequence
 

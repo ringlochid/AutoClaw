@@ -18,16 +18,16 @@ For the legacy filename that used to track OpenClaw bridge strings, see `current
 
 Current prompt-related ownership is:
 
-| Concern                    | Current owner |
-| -------------------------- | ------------- |
-| exact static block bytes   | `apps/api/src/autoclaw/runtime/prompt/assets/**` via `app.runtime.prompt.assets`, loaded byte-for-byte |
-| block catalog              | `apps/api/src/autoclaw/runtime/prompt/assets/catalog.json` and `prompt/asset_catalog.py` |
-| instruction assembly       | `apps/api/src/autoclaw/runtime/prompt/instructions.py::render_prompt_instructions()` |
-| markdown section assembly  | `apps/api/src/autoclaw/runtime/prompt/sections/rendering.py::render_prompt_sections()` |
-| prompt rendering and hash  | `apps/api/src/autoclaw/runtime/prompt/bundle.py::render_prompt_bundle()` |
-| persisted prompt artifact  | `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py::render_dispatch_prompt()` plus `apps/api/src/autoclaw/runtime/projection/dispatch/materialization.py::materialize_dispatch_files()` as the synchronous dispatch projection writer |
-| prompt artifact path       | `apps/api/src/autoclaw/runtime/task_root/paths.py::prompt_markdown_path()` |
-| persisted transport request path | `apps/api/src/autoclaw/runtime/task_root/paths.py::prompt_request_json_path()` |
+| Concern                          | Current owner                                                                                                                                                                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| exact static block bytes         | `apps/api/src/autoclaw/runtime/prompt/assets/**` via `app.runtime.prompt.assets`, loaded byte-for-byte                                                                                                                                          |
+| block catalog                    | `apps/api/src/autoclaw/runtime/prompt/assets/catalog.json` and `prompt/asset_catalog.py`                                                                                                                                                        |
+| instruction assembly             | `apps/api/src/autoclaw/runtime/prompt/instructions.py::render_prompt_instructions()`                                                                                                                                                            |
+| markdown section assembly        | `apps/api/src/autoclaw/runtime/prompt/sections/rendering.py::render_prompt_sections()`                                                                                                                                                          |
+| prompt rendering and hash        | `apps/api/src/autoclaw/runtime/prompt/bundle.py::render_prompt_bundle()`                                                                                                                                                                        |
+| persisted prompt artifact        | `apps/api/src/autoclaw/runtime/projection/dispatch/prompt.py::render_dispatch_prompt()` plus `apps/api/src/autoclaw/runtime/projection/dispatch/materialization.py::materialize_dispatch_files()` as the synchronous dispatch projection writer |
+| prompt artifact path             | `apps/api/src/autoclaw/runtime/task_root/paths.py::prompt_markdown_path()`                                                                                                                                                                      |
+| persisted transport request path | `apps/api/src/autoclaw/runtime/task_root/paths.py::prompt_request_json_path()`                                                                                                                                                                  |
 
 This page owns the current shipped prompt source map only. It does not define the design target prompt canon.
 

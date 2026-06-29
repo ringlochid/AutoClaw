@@ -92,19 +92,19 @@ Canonical config readback should use:
 
 ```yaml
 provider_runtime_config:
-  runtime:
-    enabled_providers:
-      - openclaw | codex | claude
-    default_provider: openclaw | codex | claude
-  openclaw:
-    enabled: boolean
-    support_profile: string | null
-  codex:
-    enabled: boolean
-    transport: stdio | unix_socket | http | null
-  claude:
-    enabled: boolean
-    transport: stdio | http | null
+    runtime:
+        enabled_providers:
+            - openclaw | codex | claude
+        default_provider: openclaw | codex | claude
+    openclaw:
+        enabled: boolean
+        support_profile: string | null
+    codex:
+        enabled: boolean
+        transport: stdio | unix_socket | http | null
+    claude:
+        enabled: boolean
+        transport: stdio | http | null
 ```
 
 Rules:
@@ -138,22 +138,22 @@ Canonical JSON output should use:
 
 ```yaml
 provider_doctor_report:
-  status: ok | warning | error
-  default_provider: openclaw | codex | claude | null
-  providers:
-    - provider: openclaw | codex | claude
-      enabled: boolean
-      support_status: implemented | targeted | deferred | unsupported
-      readiness: ready | needs_setup | blocked | deferred
-      can_use_node_surface: boolean
-      can_use_operator_surface: boolean
-      fallback_to_default_available: boolean
-      checks:
-        - name: string
-          status: ok | warning | error | skipped
-          code: string
-          message: string
-          fix_available: boolean
+    status: ok | warning | error
+    default_provider: openclaw | codex | claude | null
+    providers:
+        - provider: openclaw | codex | claude
+          enabled: boolean
+          support_status: implemented | targeted | deferred | unsupported
+          readiness: ready | needs_setup | blocked | deferred
+          can_use_node_surface: boolean
+          can_use_operator_surface: boolean
+          fallback_to_default_available: boolean
+          checks:
+              - name: string
+                status: ok | warning | error | skipped
+                code: string
+                message: string
+                fix_available: boolean
 ```
 
 Rules:

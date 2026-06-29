@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import textwrap
 from collections.abc import Sequence
 
 import yaml
@@ -12,13 +13,12 @@ REFERENCE_DEF_RE = re.compile(r"^\[[^\]]+\]:\s+\S+")
 SETEXT_RE = re.compile(r"^\s*(?:=+|-{2,})\s*$")
 TABLE_SEPARATOR_RE = re.compile(r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*(?:\s*:?-{3,}:?\s*)?$")
 YAML_FENCE_INFO_RE = re.compile(r"^(?:yaml|yml)(?:\s+.*)?$", re.IGNORECASE)
-YAML_PROSE_SCALAR_RE = re.compile(
-    r"^(\s*)([A-Za-z_][A-Za-z0-9_-]*):\s*[|>]([+-]?)(\s*(?:#.*)?)$"
-)
+YAML_PROSE_SCALAR_RE = re.compile(r"^(\s*)([A-Za-z_][A-Za-z0-9_-]*):\s*[|>]([+-]?)(\s*(?:#.*)?)$")
 YAML_PROSE_SCALAR_KEYS = frozenset({"instruction"})
 YAML_UNWRAPPED_SCALAR_KEYS = frozenset({"description"})
 YAML_KEY_VALUE_RE = re.compile(r"^(\s*)([A-Za-z_][A-Za-z0-9_-]*):\s+(.+)$")
 INDENTED_YAML_INSTRUCTION_RE = re.compile(r"^\s{4,}instruction:\s*[|>]")
+YAML_BLOCK_SCALAR_BODY_TARGET_WIDTH = 88
 EXECUTION_RECORD_PREFIXES = (
     "selected phase:",
     "current phase page:",
@@ -313,9 +313,9 @@ def _format_yaml_lines(lines: Sequence[str]) -> list[str]:
             block, index = scalar
             formatted.extend(block)
             continue
-        scalar = _consume_yaml_unwrapped_scalar(lines, index)
-        if scalar is not None:
-            line, index = scalar
+        unwrapped_scalar = _consume_yaml_unwrapped_scalar(lines, index)
+        if unwrapped_scalar is not None:
+            line, index = unwrapped_scalar
             formatted.append(line)
             continue
         formatted.append(_format_yaml_line(lines[index]))
@@ -354,7 +354,7 @@ def _consume_yaml_prose_block_scalar(
     value = " ".join(" ".join(body).split())
     if not value:
         return [header], cursor
-    return [header, f"{indent}  {value}"], cursor
+    return [header, *_wrapped_yaml_scalar_body_lines(indent, value)], cursor
 
 
 def _consume_yaml_unwrapped_scalar(
@@ -430,7 +430,27 @@ def _consume_yaml_instruction_scalar(
     if not normalized:
         return None
 
-    return [f"{indent}instruction: >-", f"{indent}  {normalized}"], cursor
+    return [
+        f"{indent}instruction: >-",
+        *_wrapped_yaml_scalar_body_lines(indent, normalized),
+    ], cursor
+
+
+def _wrapped_yaml_scalar_body_lines(indent: str, value: str) -> list[str]:
+    body_indent = f"{indent}  "
+    available_width = max(
+        40,
+        YAML_BLOCK_SCALAR_BODY_TARGET_WIDTH - len(body_indent),
+    )
+    wrapped = textwrap.wrap(
+        value,
+        width=available_width,
+        break_long_words=False,
+        break_on_hyphens=False,
+    )
+    if not wrapped:
+        return [body_indent.rstrip()]
+    return [f"{body_indent}{line}" for line in wrapped]
 
 
 def _parse_instruction_scalar(indent_len: int, scalar_lines: Sequence[str]) -> str | None:

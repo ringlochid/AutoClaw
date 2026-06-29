@@ -45,31 +45,31 @@ Current `ManifestProjection` includes:
 - `active_flow_revision_id`
 - `generated_at`
 - `task`
-  - `task_id`
-  - `task_key`
-  - `title`
-  - `summary`
-  - `instruction`
+    - `task_id`
+    - `task_key`
+    - `title`
+    - `summary`
+    - `instruction`
 - `workflow`
-  - `workflow_key`
-  - `description`
+    - `workflow_key`
+    - `description`
 - `filesystem_roots`
-  - `workspace_path`
-  - `context_path`
-  - `outputs_path`
-  - `tmp_path`
-  - `runtime_path`
+    - `workspace_path`
+    - `context_path`
+    - `outputs_path`
+    - `tmp_path`
+    - `runtime_path`
 - `structural_edit_palette`
-  - `roles`
-  - `policies`
+    - `roles`
+    - `policies`
 - `current_context`
-  - `current_node_key`
-  - `owner_node_key`
-  - `active_attempt_id`
-  - `active_assignment_path`
-  - `latest_checkpoint_path`
-  - `latest_relevant_checkpoint_path`
-  - `current_relevant_paths`
+    - `current_node_key`
+    - `owner_node_key`
+    - `active_attempt_id`
+    - `active_assignment_path`
+    - `latest_checkpoint_path`
+    - `latest_relevant_checkpoint_path`
+    - `current_relevant_paths`
 - `node_tree`
 - `dependency_index`
 

@@ -30,9 +30,9 @@ Shared ref family for those files:
 
 ```yaml
 support_runtime_file_ref:
-  kind: delivery_state | continuity_state | watchdog_state | provider_events
-  path: string
-  description: string
+    kind: delivery_state | continuity_state | watchdog_state | provider_events
+    path: string
+    description: string
 ```
 
 Rules:

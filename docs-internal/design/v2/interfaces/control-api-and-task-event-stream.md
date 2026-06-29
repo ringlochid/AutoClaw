@@ -70,16 +70,16 @@ Envelope style should stay consistent with shipped AutoClaw API patterns:
 
 ```yaml
 RuntimeFlowRead:
-  task_id: string
-  task_title: string
-  task_summary: string
-  workflow_key: string | null
-  status: pending | running | blocked | paused | succeeded | cancelled
-  active_flow_revision_id: string
-  workflow_manifest_ref: ref
-  current_node_key: string | null
-  active_attempt_id: string | null
-  updated_at: timestamp
+    task_id: string
+    task_title: string
+    task_summary: string
+    workflow_key: string | null
+    status: pending | running | blocked | paused | succeeded | cancelled
+    active_flow_revision_id: string
+    workflow_manifest_ref: ref
+    current_node_key: string | null
+    active_attempt_id: string | null
+    updated_at: timestamp
 ```
 
 Rules:
@@ -94,19 +94,19 @@ Rules:
 
 ```yaml
 TopActionableItem:
-  summary: string
-  node_key: string | null
-  current_paths:
-    - ref
-  suggested_action: string | null
+    summary: string
+    node_key: string | null
+    current_paths:
+        - ref
+    suggested_action: string | null
 
 OperatorFlowSnapshotResponse:
-  flow: RuntimeFlowRead
-  top_actionable_items:
-    - TopActionableItem
-  current_paths:
-    - ref
-  stream_head_event_id: string | null
+    flow: RuntimeFlowRead
+    top_actionable_items:
+        - TopActionableItem
+    current_paths:
+        - ref
+    stream_head_event_id: string | null
 ```
 
 Rules:
@@ -121,37 +121,37 @@ Rules:
 
 ```yaml
 DispatchHistoryEntry:
-  attempt_id: string
-  assignment_key: string | null
-  node_key: string
-  delivery_status: prepared | accepted | provider_signal_seen | provider_completed | provider_failed | transport_failed | transport_ambiguous | superseded
-  rendered_at: timestamp
+    attempt_id: string
+    assignment_key: string | null
+    node_key: string
+    delivery_status: prepared | accepted | provider_signal_seen | provider_completed | provider_failed | transport_failed | transport_ambiguous | superseded
+    rendered_at: timestamp
 
 CheckpointHistoryEntry:
-  checkpoint_id: string
-  attempt_id: string
-  checkpoint_kind: progress | terminal
-  outcome: green | retry | blocked | null
-  summary: string
-  recorded_at: timestamp
+    checkpoint_id: string
+    attempt_id: string
+    checkpoint_kind: progress | terminal
+    outcome: green | retry | blocked | null
+    summary: string
+    recorded_at: timestamp
 
 BoundaryHistoryEntry:
-  node_key: string
-  boundary: yield | green | retry | blocked
-  occurred_at: timestamp
+    node_key: string
+    boundary: yield | green | retry | blocked
+    occurred_at: timestamp
 
 OperatorFlowTraceResponse:
-  task_id: string
-  scope: current | whole
-  dispatch_history:
-    - DispatchHistoryEntry
-  checkpoint_history:
-    - CheckpointHistoryEntry
-  boundary_history:
-    - BoundaryHistoryEntry
-  current_paths:
-    - ref
-  next_cursor: string | null
+    task_id: string
+    scope: current | whole
+    dispatch_history:
+        - DispatchHistoryEntry
+    checkpoint_history:
+        - CheckpointHistoryEntry
+    boundary_history:
+        - BoundaryHistoryEntry
+    current_paths:
+        - ref
+    next_cursor: string | null
 ```
 
 Query expectations should reuse the current shipped `OperatorFlowTraceQuery` shape:
@@ -174,10 +174,10 @@ The task-control writes should reuse the current shipped guarded control-query s
 
 ```yaml
 RuntimeFlowControlQuery:
-  expected_active_flow_revision_id: string
+    expected_active_flow_revision_id: string
 
 RuntimeFlowPauseResponse:
-  flow: RuntimeFlowRead
+    flow: RuntimeFlowRead
 ```
 
 `POST /control/tasks/{task_id}/continue` and `POST /control/tasks/{task_id}/cancel` should return `RuntimeFlowRead` directly.
@@ -196,20 +196,20 @@ The canonical persisted task event shape is:
 
 ```yaml
 task_event:
-  event_id: string
-  event_seq: integer
-  task_id: string
-  event_type: string
-  event_source: controller | control_api | node | provider | adapter
-  occurred_at: timestamp
-  flow_revision_id: string | null
-  dispatch_id: string | null
-  attempt_id: string | null
-  node_key: string | null
-  actor_ref: string | null
-  payload: object
-  prev_event_hash: string | null
-  event_hash: string
+    event_id: string
+    event_seq: integer
+    task_id: string
+    event_type: string
+    event_source: controller | control_api | node | provider | adapter
+    occurred_at: timestamp
+    flow_revision_id: string | null
+    dispatch_id: string | null
+    attempt_id: string | null
+    node_key: string | null
+    actor_ref: string | null
+    payload: object
+    prev_event_hash: string | null
+    event_hash: string
 ```
 
 Rules:
@@ -230,11 +230,11 @@ Rules:
 
 ```yaml
 task_event_list_response:
-  task_id: string
-  items:
-    - task_event
-  next_cursor: string | null
-  through_event_id: string | null
+    task_id: string
+    items:
+        - task_event
+    next_cursor: string | null
+    through_event_id: string | null
 ```
 
 Query expectations are:
@@ -358,17 +358,17 @@ The event vocabulary is the target stream contract. A UI may treat a family as l
 
 Minimum target coverage is:
 
-| Runtime write | Target event family | Current implementation status |
-| --- | --- | --- |
-| task launch | `task_started` | implemented persisted task event family |
-| dispatch open | `dispatch_opened` | implemented persisted task event family |
-| provider resolution | `provider_resolution_recorded` | implemented persisted task event family |
-| provider-event record append | `provider_event_normalized` | implemented persisted task event family through the shared provider-event append path |
-| checkpoint write | `checkpoint_recorded` | implemented persisted task event family |
-| boundary accept | `boundary_accepted` | implemented persisted task event family |
-| parent/root assign child | `child_assignment_staged` | implemented persisted task event family |
-| accepted yield consuming staged child work | `child_assignment_committed` | implemented persisted task event family |
-| parent/root structural edit adoption | `structural_revision_adopted` | implemented persisted task event family |
+| Runtime write                                   | Target event family                                                | Current implementation status                                                                  |
+| ----------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| task launch                                     | `task_started`                                                     | implemented persisted task event family                                                        |
+| dispatch open                                   | `dispatch_opened`                                                  | implemented persisted task event family                                                        |
+| provider resolution                             | `provider_resolution_recorded`                                     | implemented persisted task event family                                                        |
+| provider-event record append                    | `provider_event_normalized`                                        | implemented persisted task event family through the shared provider-event append path          |
+| checkpoint write                                | `checkpoint_recorded`                                              | implemented persisted task event family                                                        |
+| boundary accept                                 | `boundary_accepted`                                                | implemented persisted task event family                                                        |
+| parent/root assign child                        | `child_assignment_staged`                                          | implemented persisted task event family                                                        |
+| accepted yield consuming staged child work      | `child_assignment_committed`                                       | implemented persisted task event family                                                        |
+| parent/root structural edit adoption            | `structural_revision_adopted`                                      | implemented persisted task event family                                                        |
 | human requests, command runs, and task controls | matching `human_request_*`, `command_run_*`, and `task_*` families | implemented persisted task event families where the controller source rows commit those states |
 
 Rules:
@@ -566,13 +566,13 @@ Rules:
 
 ```yaml
 human_request_read:
-  request: pending_human_request
-  resolution: human_request_resolution | null
+    request: pending_human_request
+    resolution: human_request_resolution | null
 
 human_request_list_response:
-  task_id: string
-  items:
-    - human_request_read
+    task_id: string
+    items:
+        - human_request_read
 ```
 
 Rules:
@@ -586,17 +586,16 @@ Rules:
 
 ```yaml
 human_request_resolve_request:
-  item_responses:
-    - item_id: string
-      selected_option: string | null
-      freeform_answer: string | null
-      extra_notes: string | null
-      response_payload: object | null
+    item_responses:
+        - item_id: string
+          selected_option: string | null
+          freeform_answer: string | null
+          extra_notes: string | null
+          response_payload: object | null
 
 human_request_resolve_response:
-  task_id: string
-  resolution:
-    human_request_resolution
+    task_id: string
+    resolution: human_request_resolution
 ```
 
 Rules:
@@ -699,70 +698,70 @@ Minimum list, detail, log, and cancel envelopes are:
 
 ```yaml
 command_run_list_response:
-  task_id: string
-  items:
-    - run_id: string
-      state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
-      command: string
-      description: string | null
-      workdir: string | null
-      created_at: timestamp
-      started_at: timestamp | null
-      ended_at: timestamp | null
-      timeout_seconds: integer | null
-      summary: string | null
-      exit_code: integer | null
-      signal: string | null
-      log_ref: string | null
-  next_cursor: string | null
+    task_id: string
+    items:
+        - run_id: string
+          state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
+          command: string
+          description: string | null
+          workdir: string | null
+          created_at: timestamp
+          started_at: timestamp | null
+          ended_at: timestamp | null
+          timeout_seconds: integer | null
+          summary: string | null
+          exit_code: integer | null
+          signal: string | null
+          log_ref: string | null
+    next_cursor: string | null
 
 command_run_record:
-  run_id: string
-  task_id: string
-  dispatch_id: string
-  attempt_id: string | null
-  command: string
-  description: string
-  workdir: string | null
-  state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
-  created_at: timestamp
-  started_at: timestamp | null
-  ended_at: timestamp | null
-  timeout_seconds: integer | null
-  latest_update: string | null
-  latest_log_ref: string | null
-  cancellation_requested_at: timestamp | null
-  cancellation_requested_by_actor_ref: string | null
-  terminal_result:
-    summary: string
-    exit_code: integer | null
-    signal: string | null
-    log_ref: string | null
-  terminal_event_source: controller | control_api | node | provider | adapter | null
-  terminal_actor_ref: string | null
-
-command_run_log_read_response:
-  task_id: string
-  run_id: string
-  log_ref: string
-  content: string
-
-command_run_cancel_response:
-  task_id: string
-  run:
     run_id: string
-    state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
+    task_id: string
+    dispatch_id: string
+    attempt_id: string | null
     command: string
-    description: string | null
+    description: string
     workdir: string | null
+    state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
     created_at: timestamp
     started_at: timestamp | null
     ended_at: timestamp | null
     timeout_seconds: integer | null
-    summary: string | null
-    exit_code: integer | null
-    signal: string | null
-    log_ref: string | null
+    latest_update: string | null
+    latest_log_ref: string | null
+    cancellation_requested_at: timestamp | null
+    cancellation_requested_by_actor_ref: string | null
+    terminal_result:
+        summary: string
+        exit_code: integer | null
+        signal: string | null
+        log_ref: string | null
+    terminal_event_source: controller | control_api | node | provider | adapter | null
+    terminal_actor_ref: string | null
+
+command_run_log_read_response:
+    task_id: string
+    run_id: string
+    log_ref: string
+    content: string
+
+command_run_cancel_response:
+    task_id: string
+    run:
+        run_id: string
+        state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
+        command: string
+        description: string | null
+        workdir: string | null
+        created_at: timestamp
+        started_at: timestamp | null
+        ended_at: timestamp | null
+        timeout_seconds: integer | null
+        summary: string | null
+        exit_code: integer | null
+        signal: string | null
+        log_ref: string | null
 ```
 
 Rules:

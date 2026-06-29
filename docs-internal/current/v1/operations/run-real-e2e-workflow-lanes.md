@@ -25,11 +25,11 @@ For the current bridge-facing callback and node-MCP surfaces, see [Use the curre
 
 ## Current lane keys
 
-| Lane      | Workflow key                   | Current proving goal |
-| --------- | ------------------------------ | -------------------- |
-| minimal   | `minimal-implement-change`     | one bounded implementation child plus parent or root release |
-| normal    | `normal-parent-first-release`  | parent-owned implementation subtree, parent-first verification, and bounded root closure |
-| maximal   | `maximal-parent-first-release` | multiple subtrees, bounded review or QA aggregation, and final root release |
+| Lane    | Workflow key                   | Current proving goal                                                                     |
+| ------- | ------------------------------ | ---------------------------------------------------------------------------------------- |
+| minimal | `minimal-implement-change`     | one bounded implementation child plus parent or root release                             |
+| normal  | `normal-parent-first-release`  | parent-owned implementation subtree, parent-first verification, and bounded root closure |
+| maximal | `maximal-parent-first-release` | multiple subtrees, bounded review or QA aggregation, and final root release              |
 
 These workflow keys are shipped seed fixtures.
 
@@ -220,25 +220,25 @@ Treat the observability `get_*_ref` lane as support-only reread. It returns file
 Expected node progression for the stock lanes:
 
 - minimal:
-  - `root`
-  - `implement_change`
+    - `root`
+    - `implement_change`
 - normal:
-  - `root`
-  - `implementation_subtree`
-  - `investigate_issue`
-  - `implement_change`
-  - `review_change`
-  - `release_closure`
+    - `root`
+    - `implementation_subtree`
+    - `investigate_issue`
+    - `implement_change`
+    - `review_change`
+    - `release_closure`
 - maximal:
-  - `root`
-  - `discovery`
-  - `gather_evidence`
-  - `implementation_loop`
-  - `plan_iteration`
-  - `implement_change`
-  - `review_change`
-  - `qa_sweep`
-  - `release_closure`
+    - `root`
+    - `discovery`
+    - `gather_evidence`
+    - `implementation_loop`
+    - `plan_iteration`
+    - `implement_change`
+    - `review_change`
+    - `qa_sweep`
+    - `release_closure`
 
 ## Follow failure logs and observability refs
 
@@ -344,7 +344,7 @@ That page owns the current callback and mounted node-MCP write surfaces.
 - inspected current read-model docs in `../architecture/runtime-read-models-and-operator-surfaces.md`
 - inspected e2e fixtures in `apps/api/tests/helpers/seeded_runtime_support.py`
 - inspected e2e flows in:
-  - `apps/api/tests/e2e/workflows/minimal/minimal_runtime_lane_support.py`
-  - `apps/api/tests/e2e/workflows/normal/flow.py`
-  - `apps/api/tests/e2e/workflows/maximal/flow.py`
+    - `apps/api/tests/e2e/workflows/minimal/minimal_runtime_lane_support.py`
+    - `apps/api/tests/e2e/workflows/normal/flow.py`
+    - `apps/api/tests/e2e/workflows/maximal/flow.py`
 - did not execute the commands documented on this page

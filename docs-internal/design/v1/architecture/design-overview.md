@@ -14,15 +14,15 @@ The design makes controller/DB state the only runtime truth owner and turns node
 
 - The controller dispatches exactly one current node at a time with `dispatch`.
 - Nodes return control with one of:
-  - `yield` for non-terminal parent/root closure
-  - `green`, `retry`, or `blocked` for terminal attempt closure
+    - `yield` for non-terminal parent/root closure
+    - `green`, `retry`, or `blocked` for terminal attempt closure
 - Parent/root coordination uses explicit tools:
-  - `assign_child`
-  - `add_child`
-  - `update_child`
-  - `remove_child`
-  - `release_green`
-  - `release_blocked`
+    - `assign_child`
+    - `add_child`
+    - `update_child`
+    - `remove_child`
+    - `release_green`
+    - `release_blocked`
 - Each assignment surfaces `criteria`, `consumes`, and `produces` as the live contract family.
 - There is no live `parent_gate` runtime surface in the target model.
 

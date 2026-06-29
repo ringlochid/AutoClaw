@@ -128,163 +128,163 @@ Shared summary and detail shapes are:
 
 ```yaml
 definition_draft_file_summary:
-  kind: role | policy | workflow
-  key: string
-  draft_path: string
-  normalized_path: string
-  body_format: yaml
-  content_hash: string
-  based_on:
-    revision_no: integer | null
-    content_hash: string | null
-    source_path: string | null
-  status: clean | modified | added | stale | invalid
+    kind: role | policy | workflow
+    key: string
+    draft_path: string
+    normalized_path: string
+    body_format: yaml
+    content_hash: string
+    based_on:
+        revision_no: integer | null
+        content_hash: string | null
+        source_path: string | null
+    status: clean | modified | added | stale | invalid
 
 definition_draft_file_detail:
-  kind: role | policy | workflow
-  key: string
-  draft_path: string
-  normalized_path: string
-  body_format: yaml
-  content_hash: string
-  based_on:
-    revision_no: integer | null
-    content_hash: string | null
-    source_path: string | null
-  status: clean | modified | added | stale | invalid
-  body: string
-  normalized_content: object | null
-  baseline_body: string | null
-  baseline_normalized_content: object | null
+    kind: role | policy | workflow
+    key: string
+    draft_path: string
+    normalized_path: string
+    body_format: yaml
+    content_hash: string
+    based_on:
+        revision_no: integer | null
+        content_hash: string | null
+        source_path: string | null
+    status: clean | modified | added | stale | invalid
+    body: string
+    normalized_content: object | null
+    baseline_body: string | null
+    baseline_normalized_content: object | null
 
 definition_draft_set_summary:
-  draft_set_id: string
-  title: string | null
-  created_at: timestamp
-  updated_at: timestamp
-  state: open | applied | stale
-  files:
-    - definition_draft_file_summary
-  preview_task_compose_path: string | null
+    draft_set_id: string
+    title: string | null
+    created_at: timestamp
+    updated_at: timestamp
+    state: open | applied | stale
+    files:
+        - definition_draft_file_summary
+    preview_task_compose_path: string | null
 
 definition_draft_set_detail:
-  draft_set_id: string
-  title: string | null
-  created_at: timestamp
-  updated_at: timestamp
-  state: open | applied | stale
-  files:
-    - definition_draft_file_detail
-  preview_task_compose_path: string | null
-  preview_task_compose_body: string | null
+    draft_set_id: string
+    title: string | null
+    created_at: timestamp
+    updated_at: timestamp
+    state: open | applied | stale
+    files:
+        - definition_draft_file_detail
+    preview_task_compose_path: string | null
+    preview_task_compose_body: string | null
 ```
 
 List and create routes use:
 
 ```yaml
 definition_draft_set_list_query:
-  cursor: string | null
-  limit: integer
+    cursor: string | null
+    limit: integer
 
 definition_draft_set_list_response:
-  items:
-    - definition_draft_set_summary
-  next_cursor: string | null
+    items:
+        - definition_draft_set_summary
+    next_cursor: string | null
 
 definition_draft_set_create_request:
-  title: string | null
-  materialize:
-    - kind: role | policy | workflow
-      key: string
-  preview_task_compose: string | null
+    title: string | null
+    materialize:
+        - kind: role | policy | workflow
+          key: string
+    preview_task_compose: string | null
 
 definition_draft_set_create_response:
-  draft_set: definition_draft_set_detail
+    draft_set: definition_draft_set_detail
 ```
 
 Materialize, file-save, reset, and re-materialize routes use:
 
 ```yaml
 definition_draft_materialize_request:
-  definitions:
-    - kind: role | policy | workflow
-      key: string
+    definitions:
+        - kind: role | policy | workflow
+          key: string
 
 definition_draft_file_write_request:
-  body: string
-  body_format: yaml
+    body: string
+    body_format: yaml
 
 definition_draft_file_reset_request:
-  discard_local_changes: true
+    discard_local_changes: true
 
 definition_draft_file_rematerialize_current_request:
-  discard_local_changes: true
+    discard_local_changes: true
 
 definition_draft_set_response:
-  draft_set: definition_draft_set_detail
+    draft_set: definition_draft_set_detail
 ```
 
 Validation, apply, and task-compose preview use:
 
 ```yaml
 definition_draft_validation_response:
-  draft_set_id: string
-  status: valid | invalid | stale
-  errors:
-    - code: string
-      message: string
-      path: string | null
-      kind: schema | cross_reference | stale | preview
-  warnings:
-    - code: string
-      message: string
-      path: string | null
+    draft_set_id: string
+    status: valid | invalid | stale
+    errors:
+        - code: string
+          message: string
+          path: string | null
+          kind: schema | cross_reference | stale | preview
+    warnings:
+        - code: string
+          message: string
+          path: string | null
 
 definition_draft_apply_request:
-  should_start_task_after_apply: boolean
+    should_start_task_after_apply: boolean
 
 definition_draft_task_start_failure:
-  code: invalid_request_shape
-    | illegal_caller
-    | illegal_target_relation
-    | illegal_state
-    | stale_dispatch
-    | stale_flow_revision
-    | stale_assignment
-    | stale_checkpoint
-    | missing_resource
-    | missing_required_publication
-    | conflicting_continuation
-    | cursor_reset_required
-    | boundary_precondition_failed
-    | capability_rejected
-    | removed_surface
-    | budget_exhausted
-    | internal_error
-  summary: string
-  is_retryable: boolean
-  suggested_next_step: string | null
+    code: invalid_request_shape
+        | illegal_caller
+        | illegal_target_relation
+        | illegal_state
+        | stale_dispatch
+        | stale_flow_revision
+        | stale_assignment
+        | stale_checkpoint
+        | missing_resource
+        | missing_required_publication
+        | conflicting_continuation
+        | cursor_reset_required
+        | boundary_precondition_failed
+        | capability_rejected
+        | removed_surface
+        | budget_exhausted
+        | internal_error
+    summary: string
+    is_retryable: boolean
+    suggested_next_step: string | null
 
 definition_draft_apply_response:
-  draft_set_id: string
-  status: applied | stale | invalid
-  published_revisions:
-    - kind: role | policy | workflow
-      key: string
-      revision_no: integer
-      content_hash: string
-  started_task_id: string | null
-  task_start_status: not_requested | started | failed
-  task_start_failure: definition_draft_task_start_failure | null
-  validation: definition_draft_validation_response
+    draft_set_id: string
+    status: applied | stale | invalid
+    published_revisions:
+        - kind: role | policy | workflow
+          key: string
+          revision_no: integer
+          content_hash: string
+    started_task_id: string | null
+    task_start_status: not_requested | started | failed
+    task_start_failure: definition_draft_task_start_failure | null
+    validation: definition_draft_validation_response
 
 definition_draft_task_compose_preview_request:
-  body: string
-  body_format: yaml
+    body: string
+    body_format: yaml
 
 definition_draft_task_compose_preview_response:
-  status: valid | invalid
-  validation: definition_draft_validation_response
+    status: valid | invalid
+    validation: definition_draft_validation_response
 ```
 
 Rules:

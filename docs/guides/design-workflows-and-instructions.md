@@ -2,155 +2,256 @@
 
 Status: Reference
 
-Use this guide before writing role, policy, or workflow YAML. A good AutoClaw workflow starts from the purpose, evidence path, and completion criteria, then chooses the smallest role and node structure that can prove the work is done.
+Use this guide before writing role, policy, workflow, or task-compose YAML.
+
+An AutoClaw workflow is not a role list. It is a purpose-specific evidence path: what the run is trying to prove, how evidence should move, and what makes green, retry, blocked, or release honest.
 
 The shipped definitions are examples, not a menu. Use them to learn valid shapes, then write definitions for the automation you actually want AutoClaw to run.
 
-## Core rule
+## Start with the job
 
-Design the workflow around the question it must answer:
+Write one sentence that defines the job:
 
-- what purpose does this run serve?
+- "Investigate a reported defect, fix it, and prove the regression is covered."
+- "Research campaign positioning and produce an approval-ready brief."
+- "Reconcile invoices against source records and flag mismatches for review."
+- "Build a thin MVP slice that proves the target user's core job."
+
+Then answer:
+
+- what user or operator purpose does this serve?
 - what evidence must exist before closure?
-- what criteria would make release, retry, or blocked state honest?
+- what should be explicitly out of scope?
+- what risk would make green dishonest?
+- what decisions need human judgment?
+- what work should happen only if evidence requires it?
 
-Do not start by listing agents. Roles are reusable capabilities. Workflows are purpose-specific evidence paths.
+If the purpose changes, write a different workflow. Similar-looking work can need different evidence.
 
-## Choose the simplest shape
-
-Use the lowest-complexity shape that reliably fits the work.
-
-| Shape | Use when | Avoid when |
-| --- | --- | --- |
-| Single worker | One bounded output and one proof loop are enough. | The work needs review, dependencies, or separate evidence. |
-| Sequential chain | Each step depends on the previous step. | Steps can run independently or require backtracking. |
-| Purpose routing | Similar requests need different paths. | The distinction is only cosmetic. |
-| Parent orchestration | The parent must inspect evidence and choose the next child dynamically. | The sequence is already fixed and small. |
-| Parallel specialists | Independent perspectives or independent sections improve confidence. | Outputs must be tightly synchronized at every step. |
-| Review loop | Clear criteria allow useful critique and correction. | There is no hard standard to review against. |
-| Human checkpoint | A decision, approval, missing input, or risk tradeoff needs human judgment. | The node can proceed from current evidence. |
-
-Complexity adds coordination cost. Add parents, reviewers, or human requests only when they improve evidence quality or safety.
-
-## Separate role, policy, workflow, and task detail
+## Use layered contracts
 
 Use each authored object for one kind of truth.
 
-| Object | Owns | Should not own |
-| --- | --- | --- |
-| Role | reusable capability and mode posture | one task's scope, paths, secrets, or launch detail |
-| Policy | budget, retry posture, human request capability, command-run capability | role identity or workflow structure |
-| Workflow | node tree, durable consumes, produces, criteria, and node-local guidance | runtime checkpoints, hidden handoffs, or live registry truth |
-| Task-compose | concrete launch task, selected workflow, and local roots | reusable behavior rules |
+| Object       | Owns                                                                 | Should not own                                     |
+| ------------ | -------------------------------------------------------------------- | -------------------------------------------------- |
+| Role         | reusable specialist lens and mode posture                            | one task's scope, paths, secrets, or launch detail |
+| Policy       | authority, budgets, capabilities, retry and closure guardrails       | role identity or node tree                         |
+| Workflow     | node tree, evidence path, criteria, node missions, stable artifacts  | hidden runtime state or live registry truth        |
+| Task-compose | one concrete task launch, selected workflow, roots, task instruction | reusable doctrine                                  |
 
-When the same wording could live in several places, prefer the narrowest stable owner. Put reusable behavior in roles or policies. Put purpose-specific evidence flow in the workflow. Put one-off user detail in task-compose.
+The simple memory model is:
+
+```text
+Role = lens
+Policy = rules
+Node = mission
+Criteria = done gate
+Produces = leaves behind
+Consumes = must read
+Workflow = evidence path
+Task-compose = this launch
+```
+
+For detailed wording rules, use [write layered instructions](write-layered-instructions.md).
+
+## Choose the smallest useful shape
+
+Use the lowest-complexity shape that can still prove the work is done.
+
+| Shape                | Use when                                                 | Avoid when                                                |
+| -------------------- | -------------------------------------------------------- | --------------------------------------------------------- |
+| Single worker        | one bounded output and one proof loop are enough         | the work needs review, dependencies, or separate evidence |
+| Fixed sequence       | each step depends on the previous artifact               | the route may change after evidence appears               |
+| Purpose routing      | similar inputs need different paths                      | the distinction is only cosmetic                          |
+| Parent orchestration | a parent must inspect evidence and choose the next child | the sequence is known and small                           |
+| Parallel specialists | independent perspectives improve confidence              | outputs must be synchronized at every step                |
+| Review loop          | clear criteria allow useful critique and correction      | there is no hard standard to review against               |
+| Human checkpoint     | judgment, approval, input, or review needs a human       | the node can proceed from current evidence                |
+
+Complexity is useful only when it improves evidence quality, recovery, or safety. A giant workflow that tries to handle every purpose is usually worse than several smaller workflows with clear contracts.
+
+## Fixed and dynamic workflows
+
+Use a fixed workflow when the path is known.
+
+Good fixed-workflow fits:
+
+- one bounded implementation
+- bug fix with reproduce, fix, verify, review
+- release checklist
+- document generation with clear review
+- support classification
+- predictable command sequence
+
+Fixed workflows should use `consumes`, `produces`, and `criteria` heavily, because the evidence chain is known.
+
+```text
+triage_report -> fix_plan -> patch -> verification_report -> review_report
+```
+
+Use a dynamic workflow when the route is not knowable up front.
+
+Good dynamic-workflow fits:
+
+- large feature touching unknown areas
+- incident response
+- ambiguous user intent
+- MVP build where value or scope may change
+- product or marketing strategy
+- research where sources may redirect the work
+- multi-stage delivery with optional failure analysis or replan
+
+Dynamic workflows should use `consumes`, `produces`, and `criteria` sparsely. Use them as stable anchors and phase gates, not as a pretend full future chain.
+
+Good dynamic anchors:
+
+- root criteria that define final success
+- parent criteria that define phase readiness
+- broad artifacts such as `research_brief`, `risk_log`, `current_plan`, `evidence_bundle`, or `closure_report`
+- consumes that point to known upstream anchors only
+
+Bad dynamic design:
+
+```text
+predeclare every possible future child artifact
+```
+
+Better dynamic design:
+
+```text
+root preserves purpose
+setup parent proves readiness
+implementation parent assigns children dynamically
+review and fixer nodes consume surfaced current evidence
+root closes from current evidence bundle and root criteria
+```
+
+Dynamic does not mean unbounded. It means the parent/root owns routing while the workflow still defines purpose, authority, evidence gates, and closure.
+
+## Design the evidence path
+
+Before writing YAML, identify the durable evidence that later nodes or humans must inspect.
+
+Use `criteria` when:
+
+- pass/fail matters
+- release could be disputed
+- a reviewer needs hard grounds to reject
+- a parent/root must know when to retry, replan, block, or release
+
+Use `produces` when:
+
+- another node needs a named artifact
+- a human will review an output
+- closure depends on a durable report, patch, plan, or bundle
+- hidden transcript memory would be too fragile
+
+Use `consumes` when:
+
+- a node must depend on a specific prior artifact or criterion
+- review must inspect the exact patch or report
+- release must use only surfaced evidence
+
+For fixed workflows, make the evidence pipeline explicit. For dynamic workflows, keep the required artifacts broad and stable.
 
 ## Design roles
 
-Write roles as stable specialists:
+Write roles as durable specialists.
 
-- name one capability profile, such as `product_planner` or `scope_reviewer`
-- keep allowed node kinds narrow
-- teach the role what to inspect first
-- state what it must publish
-- state what it must not do
-- avoid task-specific file paths, host setup, or launch details
+Good roles:
 
-Good role instructions usually answer:
+- name one capability profile, such as `scope_reviewer` or `invoice_reconciliation_reviewer`
+- keep `allowed_node_kinds` narrow
+- say what evidence the role reads first
+- say what output the parent/root can expect
+- say what the role must not do
+- surface uncertainty instead of hiding it
 
-- what evidence should this worker read first?
-- what mode is it in: research, planning, implementation, review, verification, marketing, delivery coordination, or release?
-- what output should the parent/root expect?
-- what should the worker refuse to widen?
+Avoid generic roles such as `assistant`, `helper`, or `worker`. Generic names hide responsibility and make workflow review harder.
 
 ## Design policies
 
-Policies should be behavioral guardrails, not alternate roles.
+Policies are behavioral guardrails, not alternate roles.
 
 Use policy instruction for:
 
-- retry or child-assignment budget posture
-- when human input is allowed
-- when long command runs are allowed
+- retry or child-assignment limits
+- human request capability
+- command-run capability
 - evidence and checkpoint expectations
-- boundaries such as "do not publish externally" or "do not implement"
+- release, blocked, or replan guardrails
+- concrete prohibitions such as "do not publish externally"
 
-Keep human request and command-run capabilities separate. A node can have one, both, or neither.
+Human requests and command runs are separate capabilities. A node can have one, both, or neither.
 
-Use human request capability for:
+Use human requests for human judgment: direction, approval, missing input, or review. Use command runs only for controller-managed long-running command work. Ordinary commands should stay inline and comfortably under about two minutes.
 
-- `direction` when the next path depends on human judgment
-- `approval` when work should not continue without explicit permission
-- `input` when required facts are missing
-- `review` when a human review gate is part of the workflow
+## Design parent and root nodes
 
-Use command-run capability only for controller-managed long-running command work. Ordinary shell commands should stay inline and comfortably under two minutes. If a command is likely to exceed that, use a command-run-enabled policy or redesign the assignment so the worker does not stall the dispatch.
+Use a parent node when local orchestration has a reason to exist:
 
-## Design workflows
+- the next child depends on current evidence
+- child outputs need inspection before release
+- the subtree may need retry, failure analysis, or replan
+- the parent must coordinate several bounded specialists
 
-Author workflows as evidence paths.
+Use a root node to preserve the whole task purpose and final closure standard. Root should not become a one-shot solo worker. It should route, inspect, challenge weak evidence, ask for human judgment when allowed, replan when the shape is wrong, and close only from current evidence.
 
-Each node should have:
+## Design for gaps
 
-- a purpose in `description`
-- optional node-local execution guidance in `instruction`
-- required inputs in `consumes`
-- required outputs in `produces`
-- hard acceptance or guardrail rules in `criteria`
+Every non-trivial workflow needs a gap posture.
 
-Use `criteria` only for requirements that can block closure. Put softer preferences, review rubrics, and behavior guidance in role, policy, or node instruction.
+Workers should:
 
-Use parent nodes when the workflow needs local orchestration:
+- read current task truth first
+- resolve low-risk ambiguity from current evidence when safe
+- record assumptions and residual risk
+- report material ambiguity instead of widening scope
 
-- the parent must decide which child to assign next
-- the parent must inspect child evidence before release
-- the subtree may need replan, retry, or failure analysis
-- child outputs need coordination before root closure
+Parents and roots should:
 
-Use workers when the assignment has one bounded mode and one expected output surface.
+- classify the gap
+- route to research, planning, review, verification, failure analysis, human request, replan, or blocked closure
+- treat child green as evidence, not automatic closure
+- treat child blocked as routing input, not automatic whole-flow failure
 
-## Automation patterns
+For detailed rules, use [handle ambiguity and incidents](handle-ambiguity-and-incidents.md).
 
-Start with small and medium patterns. Compose larger workflows from them after the evidence path is proven.
+## Common workflow families
 
-| Pattern | Purpose | Primary artifacts |
-| --- | --- | --- |
-| Idea discovery | compare directions before committing | discovery context, option brief, scope critique, recommendation |
-| Planning only | create an execution plan without building | scope brief, work breakdown, plan review, final plan |
-| MVP build | prove core user value with a thin usable slice | MVP scope, patch, demo verification, code review, product-fit review |
-| Core-only build | build a foundation layer without full-product scope | core contract plan, patch, verification, review |
-| Feature implementation | add a feature to an existing product | context report, integration plan, patch, verification, review |
-| Bug fix | reproduce, fix, verify, review, and release one defect | triage report, fix plan, patch, verification, review |
-| Marketing campaign | plan campaign work without external publishing | audience research, campaign brief, risk review, campaign package |
-| Project management | coordinate delivery without implementation | objectives, work breakdown, risk review, delivery plan |
+| Family                 | Purpose                                                | Typical evidence                                              |
+| ---------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| Idea discovery         | compare directions before committing                   | option brief, evidence notes, tradeoffs, recommendation       |
+| Planning only          | create an execution plan without building              | scope brief, work breakdown, risk log, plan review            |
+| MVP build              | prove core user value with a thin slice                | MVP scope, patch, demo verification, product review           |
+| Core-only build        | build a foundation layer without launch polish         | contract plan, patch, verification, architecture review       |
+| Feature implementation | add one feature to an existing product                 | context report, integration plan, patch, verification, review |
+| Bug fix                | reproduce, fix, verify, review, and release one defect | triage, fix plan, patch, regression proof, review             |
+| Marketing campaign     | plan campaign work without external publishing         | audience research, campaign brief, approval risks             |
+| Project management     | coordinate delivery without implementation             | objectives, packages, owners, dependency map, status          |
+| Incident response      | contain, triage, recover, and learn                    | timeline, impact, mitigation, fix evidence, lesson            |
 
-Similar-looking workflows should still differ when their purpose differs. An MVP build optimizes for proof of value. A core-only build optimizes for durable contracts. A bug fix optimizes for reproduction and regression proof. A marketing campaign optimizes for audience, proof, approvals, and channel fit.
+The same roles can appear in several families, but the workflow should differ when the purpose and evidence differ.
 
-## Instruction checklist
+## Before saving
 
-Before saving a definition set, check that the instruction layers answer these questions:
+Check the definition set:
 
-- does the root know what final closure means?
-- does each parent know how to route child work and evaluate child evidence?
-- does each worker know its bounded mode?
-- does each review node have criteria to judge?
-- does each implementation node know what not to touch?
-- does each planning node explicitly avoid implementation?
-- do human request policies state when and why to ask?
-- do command-run policies state that normal commands should stay under about two minutes?
-- do produced artifacts give later nodes enough evidence without relying on hidden transcript memory?
+- the root knows what final closure means
+- every parent has a real routing job
+- every worker has one bounded mode
+- review and verification nodes have criteria to judge
+- implementation nodes know what not to touch
+- planning nodes explicitly avoid implementation
+- human request policies state when and why to ask
+- command-run policies isolate long command work
+- dynamic workflows use broad phase gates instead of speculative artifacts
+- produced artifacts let later nodes work without hidden transcript memory
 
-## Common mistakes
+## Related pages
 
-Avoid these patterns:
-
-- one giant workflow that tries to handle every purpose
-- a generic assistant role that hides specialist responsibility
-- review nodes with no hard criteria
-- policies that grant both human requests and command runs by default
-- implementation workers that also plan, review, and release
-- product or marketing workflows that silently perform external actions
-- task-specific paths or secrets inside reusable role and policy definitions
-- criteria that read like suggestions instead of closure gates
-
-When in doubt, split the workflow by purpose first, then reduce it until every node has a reason to exist.
+- [Write layered instructions](write-layered-instructions.md)
+- [Write a role](write-a-role.md)
+- [Write a policy](write-a-policy.md)
+- [Write a workflow](write-a-workflow.md)
+- [Handle ambiguity and incidents](handle-ambiguity-and-incidents.md)

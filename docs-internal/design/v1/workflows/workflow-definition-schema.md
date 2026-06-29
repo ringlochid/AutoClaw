@@ -134,88 +134,88 @@ kind: workflow
 id: auth-refresh-bugfix
 description: Fix the auth refresh regression and close only after current review evidence is sufficient.
 root:
-  id: root
-  role: root_planning_lead
-  policy: standard-root-planning
-  description: Coordinate the whole flow and decide final closure.
-  instruction: >-
-    Keep final closure tied to current surfaced evidence.
-  criteria:
-    - slot: root_closure_criteria
-      description: Final root acceptance criteria.
-      criteria:
-        - all required review evidence is current
-        - root closes only after current closure evidence is sufficient
-  children:
-    - id: implementation_subtree
-      role: planning_lead
-      policy: standard-parent-planning
-      description: Coordinate investigation, implementation, and review.
-      instruction: >-
-        Assign only the next bounded child step needed for this subtree.
-      criteria:
-        - slot: subtree_delivery_rules
-          description: Shared delivery rules for direct children.
+    id: root
+    role: root_planning_lead
+    policy: standard-root-planning
+    description: Coordinate the whole flow and decide final closure.
+    instruction: >-
+      Keep final closure tied to current surfaced evidence.
+    criteria:
+        - slot: root_closure_criteria
+          description: Final root acceptance criteria.
           criteria:
-            - implementation stays inside the approved subtree
-            - downstream review addresses the current patch
-        - slot: implementation_review_criteria
-          description: Review criteria for downstream verification.
+              - all required review evidence is current
+              - root closes only after current closure evidence is sufficient
+    children:
+        - id: implementation_subtree
+          role: planning_lead
+          policy: standard-parent-planning
+          description: Coordinate investigation, implementation, and review.
+          instruction: >-
+            Assign only the next bounded child step needed for this subtree.
           criteria:
-            - review addresses the current patch and verification evidence
-            - open risks are either closed or explicitly documented
-      child_defaults:
-        criteria:
-          - subtree_delivery_rules
-      children:
-        - id: investigate_issue
-          role: researcher
-          description: Gather findings for downstream implementation.
-          instruction: >-
-            Publish only findings needed by downstream implementation.
-          produces:
-            artifacts:
-              - slot: findings_report
-                description: Findings for downstream implementation.
-                file_hint: findings_report.md
-        - id: implement_change
-          role: engineer
-          description: Implement the scoped fix.
-          instruction: >-
-            Read current criteria before editing and keep the patch scoped.
-          consumes:
-            artifacts:
-              - slot: findings_report
-          criteria:
-            - slot: implementation_delivery_criteria
-              description: Delivery criteria for the implementation leaf.
-              criteria:
-                - the patch addresses the current findings report
-                - the verification report covers the changed behavior
-          produces:
-            artifacts:
-              - slot: change_patch
-                description: Patch for the scoped fix.
-                file_hint: change_patch.diff
-              - slot: verification_report
-                description: Verification evidence for the scoped fix.
-                file_hint: verification_report.md
-        - id: review_change
-          role: reviewer
-          description: Review the patch against current criteria and evidence.
-          instruction: >-
-            Review the current patch and verification evidence only.
-          consumes:
-            artifacts:
-              - slot: change_patch
-              - slot: verification_report
-            criteria:
+              - slot: subtree_delivery_rules
+                description: Shared delivery rules for direct children.
+                criteria:
+                    - implementation stays inside the approved subtree
+                    - downstream review addresses the current patch
               - slot: implementation_review_criteria
-          produces:
-            artifacts:
-              - slot: review_report
-                description: Current review result for parent and root verification.
-                file_hint: review_report.md
+                description: Review criteria for downstream verification.
+                criteria:
+                    - review addresses the current patch and verification evidence
+                    - open risks are either closed or explicitly documented
+          child_defaults:
+              criteria:
+                  - subtree_delivery_rules
+          children:
+              - id: investigate_issue
+                role: researcher
+                description: Gather findings for downstream implementation.
+                instruction: >-
+                  Publish only findings needed by downstream implementation.
+                produces:
+                    artifacts:
+                        - slot: findings_report
+                          description: Findings for downstream implementation.
+                          file_hint: findings_report.md
+              - id: implement_change
+                role: engineer
+                description: Implement the scoped fix.
+                instruction: >-
+                  Read current criteria before editing and keep the patch scoped.
+                consumes:
+                    artifacts:
+                        - slot: findings_report
+                criteria:
+                    - slot: implementation_delivery_criteria
+                      description: Delivery criteria for the implementation leaf.
+                      criteria:
+                          - the patch addresses the current findings report
+                          - the verification report covers the changed behavior
+                produces:
+                    artifacts:
+                        - slot: change_patch
+                          description: Patch for the scoped fix.
+                          file_hint: change_patch.diff
+                        - slot: verification_report
+                          description: Verification evidence for the scoped fix.
+                          file_hint: verification_report.md
+              - id: review_change
+                role: reviewer
+                description: Review the patch against current criteria and evidence.
+                instruction: >-
+                  Review the current patch and verification evidence only.
+                consumes:
+                    artifacts:
+                        - slot: change_patch
+                        - slot: verification_report
+                    criteria:
+                        - slot: implementation_review_criteria
+                produces:
+                    artifacts:
+                        - slot: review_report
+                          description: Current review result for parent and root verification.
+                          file_hint: review_report.md
 ```
 
 This one authored tree implies all of the following:
@@ -266,19 +266,19 @@ The owned schema atoms live in [Typed dependency selectors and produce slots](ty
 
 ```yaml
 consume_selector:
-  slot: slot_id
-  required: true | false # optional; defaults to true
+    slot: slot_id
+    required: true | false # optional; defaults to true
 
 produce_slot:
-  slot: slot_id
-  description: string
-  file_hint: string | optional
+    slot: slot_id
+    description: string
+    file_hint: string | optional
 
 criteria_declaration:
-  slot: slot_id
-  description: string
-  criteria:
-    - string
+    slot: slot_id
+    description: string
+    criteria:
+        - string
 ```
 
 ## `ChildDefaultsRule`
@@ -323,9 +323,9 @@ Runtime assignment may later surface supplemental durable sharing as additional 
 - `root.consumes` is illegal in frozen v1
 - consume selectors are legal only when the selected slot exists in the matching bucket
 - the candidate dependency graph built from resolved selectors must pass the deterministic Kahn legality rule:
-  - missing selector targets reject immediately
-  - the zero-in-degree queue is ordered by canonical node order, then authored `id`
-  - emitted node count must equal candidate node count or the graph is cyclic and illegal
+    - missing selector targets reject immediately
+    - the zero-in-degree queue is ordered by canonical node order, then authored `id`
+    - emitted node count must equal candidate node count or the graph is cyclic and illegal
 - authored workflow YAML does not carry retry budgets, runtime replan state, active dispatch state, or watchdog/provider state
 
 ## Workflow versus role versus policy

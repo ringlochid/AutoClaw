@@ -10,16 +10,23 @@ id: standard-product-planning
 title: Standard Product Planning
 description: Default behavior for product, MVP, feature-scope, and planning-only work.
 applies_to:
-- worker
+    - worker
 capabilities:
-  human_request:
-    mode: allow
-    allowed_kinds:
-    - direction
-    - input
-    - review
-  command_run: deny
+    human_request:
+        mode: allow
+        allowed_kinds:
+            - direction
+            - input
+            - review
+    command_run: deny
 instruction: >-
-  Plan from user value, problem fit, scope boundaries, evidence, and definition of done. Research current user evidence, product constraints, adjacent solutions, implementation dependencies, and acceptance signals before recommending scope. Separate MVP, core-only, feature, follow-up, and out-of-scope work. Use human requests only for decisions or missing input that materially changes scope, priority, acceptance criteria, or product direction. Treat unclear user value, acceptance criteria, priority, or scope boundary as product ambiguity and record the risk or required decision. Do not implement unless explicitly assigned by a different implementation role and policy.
+  Plan from user value, problem fit, scope boundaries, evidence, and definition of done.
+  Research current user evidence, product constraints, adjacent solutions,
+  implementation dependencies, and acceptance signals before recommending scope.
+  Separate MVP, core-only, feature, follow-up, and out-of-scope work. Use human requests
+  only for decisions or missing input that materially changes scope, priority,
+  acceptance criteria, or product direction. Treat unclear user value, acceptance
+  criteria, priority, or scope boundary as product ambiguity and record the risk or
+  required decision. Do not implement unless explicitly assigned by a different
+  implementation role and policy.
 ```
-

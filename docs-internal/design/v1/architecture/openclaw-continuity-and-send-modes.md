@@ -28,11 +28,11 @@ Continuity rule:
 
 ## Controller mapping
 
-| Controller action                              | Canonical transport mapping |
-| ---------------------------------------------- | --------------------------- |
-| parent/root `redispatch_same_attempt`          | Gateway WS `agent` with the previous `sessionKey` when continuity reuse remains lawful or a fresh `sessionKey` when it does not, plus a fresh `idempotencyKey`, full resend, and a fresh returned `runId` |
-| worker retry or any semantic `create_new_attempt` | `full_prompt` over a fresh-session launch |
-| `escalate`                                     | no dispatch                 |
+| Controller action                                 | Canonical transport mapping                                                                                                                                                                               |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| parent/root `redispatch_same_attempt`             | Gateway WS `agent` with the previous `sessionKey` when continuity reuse remains lawful or a fresh `sessionKey` when it does not, plus a fresh `idempotencyKey`, full resend, and a fresh returned `runId` |
+| worker retry or any semantic `create_new_attempt` | `full_prompt` over a fresh-session launch                                                                                                                                                                 |
+| `escalate`                                        | no dispatch                                                                                                                                                                                               |
 
 ## Continuity shape
 

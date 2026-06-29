@@ -35,10 +35,10 @@ Figure: The current model uses dispatch, explicit parent/root tools, child check
 ### Stage 2: root stages discovery
 
 1. Root reads:
-   - the current manifest
-   - its current assignment
-   - any already-surfaced checkpoints or artifacts
-   - current root criteria
+    - the current manifest
+    - its current assignment
+    - any already-surfaced checkpoints or artifacts
+    - current root criteria
 2. Root stages `discovery` with `assign_child`.
 3. Root emits `yield` after exactly one continuation outcome is staged.
 
@@ -46,19 +46,19 @@ Figure: The current model uses dispatch, explicit parent/root tools, child check
 
 1. `gather_evidence` runs inside `discovery`.
 2. It publishes:
-   - terminal checkpoint
-   - `findings_report`
-   - optional `discovery_notes`
+    - terminal checkpoint
+    - `findings_report`
+    - optional `discovery_notes`
 3. `discovery` then decides whether its subtree is complete enough to end `green`.
 
 ### Stage 4: implementation loop consumes findings
 
 1. Root is redispatched and stages `implementation_loop`.
 2. `implementation_loop` stages:
-   - `plan_iteration`
-   - `implement_change`
-   - `review_change`
-   - optionally `qa_sweep`
+    - `plan_iteration`
+    - `implement_change`
+    - `review_change`
+    - optionally `qa_sweep`
 3. Each child publishes ordinary checkpoints and durable artifacts.
 
 ### Stage 5: root verifies current whole-flow evidence

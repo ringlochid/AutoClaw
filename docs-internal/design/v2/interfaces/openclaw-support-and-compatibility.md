@@ -16,15 +16,15 @@ The managed OpenClaw worker and operator profiles should use a host shape such a
 workspace: ~/.openclaw/workspaces/<agent_id>
 agentDir: ~/.openclaw/agents/<agent_id>/agent
 tools:
-  profile: full
-  exec:
-    host: gateway
-    security: full
-    ask: off
-    backgroundMs: 30000
-    timeoutSec: 3600
+    profile: full
+    exec:
+        host: gateway
+        security: full
+        ask: off
+        backgroundMs: 30000
+        timeoutSec: 3600
 sandbox:
-  mode: off
+    mode: off
 ```
 
 Rules:

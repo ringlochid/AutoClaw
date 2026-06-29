@@ -224,18 +224,18 @@ Figure: different tasks may execute concurrently, but each task keeps its own in
 Rules:
 
 - foreground control owns transitions into:
-  - `launching`
-  - `live`
-  - `abort_requested`
-  - `ambiguous`
-  - `fenced`
+    - `launching`
+    - `live`
+    - `abort_requested`
+    - `ambiguous`
+    - `fenced`
 - start/open flow:
-  - create dispatch in `launching`
-  - move to `live` only after run creation is confirmed
+    - create dispatch in `launching`
+    - move to `live` only after run creation is confirmed
 - abort flow:
-  - move to `abort_requested` when abort is sent
-  - move to `fenced` only after the old run is proven terminal or otherwise incapable of producing live work
-  - if the abort/stop deadline expires without proof, force-fence with `delivery_status = transport_ambiguous`
+    - move to `abort_requested` when abort is sent
+    - move to `fenced` only after the old run is proven terminal or otherwise incapable of producing live work
+    - if the abort/stop deadline expires without proof, force-fence with `delivery_status = transport_ambiguous`
 - local foreground control may short-circuit directly to `fenced` only when the same action already proves no live work can continue
 - launch/start uncertainty may still move to `ambiguous`; close lifecycle timeout does not
 - replacement dispatch is forbidden while the previous dispatch remains `launching`, `live`, `abort_requested`, or `ambiguous`
@@ -439,9 +439,9 @@ Observability file refs use the shared `support_runtime_file_ref` family:
 
 ```yaml
 support_runtime_file_ref:
-  kind: delivery_state | continuity_state | watchdog_state | provider_events
-  path: string
-  description: string
+    kind: delivery_state | continuity_state | watchdog_state | provider_events
+    path: string
+    description: string
 ```
 
 Rules:

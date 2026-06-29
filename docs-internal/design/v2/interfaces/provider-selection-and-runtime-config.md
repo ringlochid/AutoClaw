@@ -39,13 +39,13 @@ The canonical local runtime config shape is:
 
 ```yaml
 runtime:
-  default_provider: openclaw | codex | claude
+    default_provider: openclaw | codex | claude
 openclaw:
-  # local OpenClaw gateway and wrapper settings
+    # local OpenClaw gateway and wrapper settings
 codex:
-  # local Codex app-server or SDK settings
+    # local Codex app-server or SDK settings
 claude:
-  # local Claude Agent SDK settings
+    # local Claude Agent SDK settings
 ```
 
 Field meaning:
@@ -95,8 +95,8 @@ Provider resolution should persist controller-owned provenance such as:
 
 ```yaml
 provider_resolution:
-  requested_provider: openclaw | codex | claude
-  resolved_provider: openclaw | codex | claude
+    requested_provider: openclaw | codex | claude
+    resolved_provider: openclaw | codex | claude
 ```
 
 Rules:
@@ -113,11 +113,11 @@ If the requested provider and the allowed default-provider fallback both fail be
 
 ```yaml
 provider_launch_failure:
-  code: provider_launch_failed
-  requested_provider: openclaw | codex | claude
-  attempted_provider: openclaw | codex | claude
-  stage: preflight | auth | bootstrap | connect
-  message: string
+    code: provider_launch_failed
+    requested_provider: openclaw | codex | claude
+    attempted_provider: openclaw | codex | claude
+    stage: preflight | auth | bootstrap | connect
+    message: string
 ```
 
 Rules:

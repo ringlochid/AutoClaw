@@ -28,28 +28,28 @@ These are the live reusable wording owners for:
 
 Use these exact block ids when you need copy-ready shared wording. Load the shipped bytes from `apps/api/src/autoclaw/runtime/prompt/assets/`; use these docs as the human-readable mirror and routing surface:
 
-| Need                                          | Exact owner block                                                                                           |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| shared system/runtime block                   | [System And Provider Block](system-and-provider-block.md) -> `autoclaw_system_block_v1`                  |
-| provider continuity / transport block         | [System And Provider Block](system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1`     |
-| worker dispatch opening block                | [System And Provider Block](system-and-provider-block.md) -> `worker_dispatch_opening_v1`                |
-| parent/root dispatch opening block           | [System And Provider Block](system-and-provider-block.md) -> `parent_root_dispatch_opening_v1`           |
-| runtime concept glossary                     | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_concept_glossary_v1`                           |
-| worker assignment doctrine                   | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `worker_assignment_doctrine_v1`                         |
-| parent/root orchestration doctrine           | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `parent_root_orchestration_doctrine_v1`                 |
-| parent/root current assignment doctrine      | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `parent_root_current_assignment_doctrine_v1`             |
-| parent/root child assignment writing guide   | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `parent_root_child_assignment_writing_guide_v1`          |
-| conditional human-request use guide          | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `human_request_use_guide_v1`                            |
-| conditional command-run use guide            | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `command_run_use_guide_v1`                              |
-| checkpoint authoring guide                   | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `checkpoint_authoring_guide_v1`                         |
-| reusable boundary stanza                      | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`                        |
-| worker legality block                         | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1`                      |
-| parent/root legality block                    | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_legality_block_parent_v1`                      |
-| current-task-state framing block              | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `current_task_state_frame_v1`                           |
-| artifact compact-render reminder              | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `artifact_render_rule_v1`                               |
-| task-memory guidance block                    | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `task_memory_rule_v1`                                   |
-| monitoring-is-not-task-truth reminder         | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `monitoring_not_task_truth_v1`                          |
-| exact reject wording and stale-guard examples | [Validation And Reject Blocks](validation-and-reject-blocks.md)                                          |
+| Need                                          | Exact owner block                                                                                    |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| shared system/runtime block                   | [System And Provider Block](system-and-provider-block.md) -> `autoclaw_system_block_v1`              |
+| provider continuity / transport block         | [System And Provider Block](system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` |
+| worker dispatch opening block                 | [System And Provider Block](system-and-provider-block.md) -> `worker_dispatch_opening_v1`            |
+| parent/root dispatch opening block            | [System And Provider Block](system-and-provider-block.md) -> `parent_root_dispatch_opening_v1`       |
+| runtime concept glossary                      | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_concept_glossary_v1`                       |
+| worker assignment doctrine                    | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `worker_assignment_doctrine_v1`                     |
+| parent/root orchestration doctrine            | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `parent_root_orchestration_doctrine_v1`             |
+| parent/root current assignment doctrine       | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `parent_root_current_assignment_doctrine_v1`        |
+| parent/root child assignment writing guide    | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `parent_root_child_assignment_writing_guide_v1`     |
+| conditional human-request use guide           | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `human_request_use_guide_v1`                        |
+| conditional command-run use guide             | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `command_run_use_guide_v1`                          |
+| checkpoint authoring guide                    | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `checkpoint_authoring_guide_v1`                     |
+| reusable boundary stanza                      | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_boundary_rule_block_v1`                    |
+| worker legality block                         | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_legality_block_worker_v1`                  |
+| parent/root legality block                    | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_legality_block_parent_v1`                  |
+| current-task-state framing block              | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `current_task_state_frame_v1`                       |
+| artifact compact-render reminder              | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `artifact_render_rule_v1`                           |
+| task-memory guidance block                    | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `task_memory_rule_v1`                               |
+| monitoring-is-not-task-truth reminder         | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `monitoring_not_task_truth_v1`                      |
+| exact reject wording and stale-guard examples | [Validation And Reject Blocks](validation-and-reject-blocks.md)                                      |
 
 Pair these exact blocks with:
 

@@ -34,6 +34,14 @@ Retry is another attempt at the same shape.
 
 Replan changes shape. It is not a substitute for ordinary retry.
 
+Good replan triggers:
+
+- fixed workflow evidence shows a required step is missing
+- dynamic parent keeps assigning the same failing child shape
+- review or verification proves the current criteria are judging the wrong thing
+- intent mismatch appears between the user purpose and current node tree
+- a failure analyst identifies workflow-shape mismatch rather than weak execution
+
 ## Block when
 
 - required facts, permissions, tools, or external state are unavailable
@@ -42,8 +50,22 @@ Replan changes shape. It is not a substitute for ordinary retry.
 
 Blocked closure should have a terminal checkpoint explaining the evidence and blocker.
 
+## Do not use recovery as design
+
+Recovery and replan are runtime controls. Good definitions should still include the expected ambiguity route:
+
+- workers surface material gaps
+- parents route weak evidence to focused children
+- roots compare whole-flow evidence with the original purpose
+- human requests handle human judgment
+- command runs handle long command work
+
+If the same recovery pattern happens often, update the workflow or policy so future runs reach the right route directly.
+
 ## Related pages
 
 - [Runtime model](../concepts/runtime-model.md)
 - [Capability model](../concepts/capability-model.md)
+- [Design workflows and instructions](design-workflows-and-instructions.md)
+- [Handle ambiguity and incidents](handle-ambiguity-and-incidents.md)
 - [Inspect and control a task](inspect-and-control-a-task.md)

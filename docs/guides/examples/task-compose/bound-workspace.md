@@ -12,17 +12,17 @@ This example teaches:
 
 ```yaml
 task:
-  key: host-bound-review
-  title: Run a host-bound normal workflow
-  summary: Bind the task workspace to an explicit host path.
-  instruction: >-
-    Run the normal workflow against a real host workspace and keep the task scoped to that path.
+    key: host-bound-review
+    title: Run a host-bound normal workflow
+    summary: Bind the task workspace to an explicit host path.
+    instruction: >-
+        Run the normal workflow against a real host workspace and keep the task scoped to that path.
 workflow:
-  key: normal-parent-first-release
+    key: normal-parent-first-release
 roots:
-  workspace:
-    mode: ensure_host_path
-    host_path: /home/ubuntu/workspaces/autoclaw-host-bound
-  context:
-    mode: ensure_task_default
+    workspace:
+        mode: ensure_host_path
+        host_path: /home/ubuntu/workspaces/autoclaw-host-bound
+    context:
+        mode: ensure_task_default
 ```

@@ -30,33 +30,33 @@ kind: workflow
 id: auth-refresh-bugfix
 description: Fix the auth refresh regression and release only after review.
 root:
-  id: root
-  role: root_planning_lead
-  policy: standard-root-planning
-  description: Coordinate the flow and decide final closure.
-  children:
-    - id: implementation_subtree
-      role: planning_lead
-      policy: standard-parent-planning
-      description: Coordinate investigation, implementation, and review.
-      children:
-        - id: investigate_issue
-          role: researcher
-          description: Gather findings.
-          produces:
-            artifacts:
-              - slot: findings_report
-                description: Findings for downstream implementation.
-        - id: implement_change
-          role: engineer
-          description: Implement the scoped fix.
-          consumes:
-            artifacts:
-              - slot: findings_report
-          produces:
-            artifacts:
-              - slot: change_patch
-                description: Patch for the scoped fix.
+    id: root
+    role: root_planning_lead
+    policy: standard-root-planning
+    description: Coordinate the flow and decide final closure.
+    children:
+        - id: implementation_subtree
+          role: planning_lead
+          policy: standard-parent-planning
+          description: Coordinate investigation, implementation, and review.
+          children:
+              - id: investigate_issue
+                role: researcher
+                description: Gather findings.
+                produces:
+                    artifacts:
+                        - slot: findings_report
+                          description: Findings for downstream implementation.
+              - id: implement_change
+                role: engineer
+                description: Implement the scoped fix.
+                consumes:
+                    artifacts:
+                        - slot: findings_report
+                produces:
+                    artifacts:
+                        - slot: change_patch
+                          description: Patch for the scoped fix.
 ```
 
 Upload each local definition file explicitly through the guarded definition surface. Use `POST /definitions`, the operator MCP parity tool `upload_definition(...)`, or the local root CLI wrapper `autoclaw definitions import ...`. Upload the workflow file and every referenced role or policy definition before task start.
@@ -73,16 +73,16 @@ The important check is not just YAML shape. Guarded upload also validates typed 
 
 ```yaml
 task:
-  key: auth-refresh-hardening
-  title: Harden auth refresh flow
-  summary: Investigate and fix the auth refresh regression.
+    key: auth-refresh-hardening
+    title: Harden auth refresh flow
+    summary: Investigate and fix the auth refresh regression.
 workflow:
-  key: auth-refresh-bugfix
+    key: auth-refresh-bugfix
 roots:
-  workspace:
-    mode: ensure_task_default
-  context:
-    mode: ensure_task_default
+    workspace:
+        mode: ensure_task_default
+    context:
+        mode: ensure_task_default
 ```
 
 ### 4. Start the task

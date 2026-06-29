@@ -29,13 +29,13 @@ Foreground-control separation:
 
 Ownership table:
 
-| Lifecycle slice | Primary owner |
-| --- | --- |
+| Lifecycle slice                                                         | Primary owner         |
+| ----------------------------------------------------------------------- | --------------------- |
 | launch handshake, pre-send launch retry, and post-send launch ambiguity | foreground controller |
-| live execution | foreground controller |
-| bounded drain window while `control_state = live` | foreground controller |
-| abort handshake while `control_state = abort_requested` | foreground controller |
-| stale or ambiguous post-deadline cases | watchdog |
+| live execution                                                          | foreground controller |
+| bounded drain window while `control_state = live`                       | foreground controller |
+| abort handshake while `control_state = abort_requested`                 | foreground controller |
+| stale or ambiguous post-deadline cases                                  | watchdog              |
 
 ## Controller read basis
 
@@ -93,10 +93,10 @@ Canonical watchdog recovery actions are:
 
 Exact meanings:
 
-| Recovery action           | Exact meaning                                                                                                                     |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Recovery action           | Exact meaning                                                                                                                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `redispatch_same_attempt` | The controller keeps the same assignment and same attempt, then opens one replacement dispatch. Parent/root must keep the same `sessionKey` when this path is legal; worker stability recovery does not rely on session reuse. |
-| `escalate`                | The controller does not auto-redispatch and instead returns control to the higher owner or operator path.                         |
+| `escalate`                | The controller does not auto-redispatch and instead returns control to the higher owner or operator path.                                                                                                                      |
 
 Rules:
 
@@ -110,11 +110,11 @@ Rules:
 
 ## Recovery decision table
 
-| Situation                                                                                                                        | Legal automatic action    | Illegal shorthand                                                  |
-| -------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------ |
-| The same attempt is still current and bounded work should continue                                                               | `redispatch_same_attempt` | Calling it `retry` or inventing a transport-shaped recovery family |
-| The current attempt lineage is no longer trustworthy or safe same-attempt redispatch cannot be proven                            | `escalate`                | Auto-minting a new attempt or describing the result as a same-attempt resend |
-| Budget exhausted, ambiguity persists, multiple candidates exist, or no eligible candidate exists                                 | `escalate`                | Hidden provider retry loop                                         |
+| Situation                                                                                             | Legal automatic action    | Illegal shorthand                                                            |
+| ----------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------- |
+| The same attempt is still current and bounded work should continue                                    | `redispatch_same_attempt` | Calling it `retry` or inventing a transport-shaped recovery family           |
+| The current attempt lineage is no longer trustworthy or safe same-attempt redispatch cannot be proven | `escalate`                | Auto-minting a new attempt or describing the result as a same-attempt resend |
+| Budget exhausted, ambiguity persists, multiple candidates exist, or no eligible candidate exists      | `escalate`                | Hidden provider retry loop                                                   |
 
 ## Abort-confirm-before-replace
 
@@ -247,20 +247,20 @@ Rules:
 
 ```json
 {
-  "dispatch_id": "dispatch.parent.01",
-  "attempt_id": "attempt.parent.01",
-  "assignment_key": "parent.assign-01",
-  "node_key": "implementation_subtree",
-  "watchdog_state": "clear",
-  "current_watchdog_kind": null,
-  "current_watchdog_reason": null,
-  "recovery_action": null,
-  "recovery_reason": null,
-  "recovery_dispatch_id": null,
-  "previous_dispatch_id": null,
-  "superseded_by_dispatch_id": null,
-  "classified_at": "2026-05-03T10:00:15Z",
-  "updated_at": "2026-05-03T10:00:15Z"
+    "dispatch_id": "dispatch.parent.01",
+    "attempt_id": "attempt.parent.01",
+    "assignment_key": "parent.assign-01",
+    "node_key": "implementation_subtree",
+    "watchdog_state": "clear",
+    "current_watchdog_kind": null,
+    "current_watchdog_reason": null,
+    "recovery_action": null,
+    "recovery_reason": null,
+    "recovery_dispatch_id": null,
+    "previous_dispatch_id": null,
+    "superseded_by_dispatch_id": null,
+    "classified_at": "2026-05-03T10:00:15Z",
+    "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
 

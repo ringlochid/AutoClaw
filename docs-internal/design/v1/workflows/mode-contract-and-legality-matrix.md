@@ -22,14 +22,14 @@ Roles are registry-defined and validate against `allowed_node_kinds`. This page 
 
 Illustrative examples:
 
-| Example role id      | Allowed kind |
-| -------------------- | ------------ |
-| `root_planning_lead` | `root`       |
+| Example role id      | Allowed kind     |
+| -------------------- | ---------------- |
+| `root_planning_lead` | `root`           |
 | `planning_lead`      | `root`, `parent` |
-| `engineer`           | `worker`     |
-| `researcher`         | `worker`     |
-| `reviewer`           | `worker`     |
-| `release_operator`   | `worker`     |
+| `engineer`           | `worker`         |
+| `researcher`         | `worker`         |
+| `reviewer`           | `worker`         |
+| `release_operator`   | `worker`         |
 
 Illustrative role rows do not freeze one role to one structural kind. The canonical `planning_lead` example role is legal on both `root` and `parent` when the stored definition includes both kinds.
 
@@ -63,8 +63,8 @@ Compiler/runtime validate in this order:
 1. infer ordinary node kind from structure
 2. resolve the authored role id and validate the inferred node kind through role `allowed_node_kinds`
 3. resolve effective policy exactly:
-   - explicit authored `policy`, if present
-   - otherwise `null`
+    - explicit authored `policy`, if present
+    - otherwise `null`
 4. if explicit policy is present, validate policy applicability through policy `applies_to`
 5. validate typed dependency legality
 
@@ -86,16 +86,16 @@ id: implement_change
 role: engineer
 description: Implement the scoped fix.
 consumes:
-  artifacts:
-    - slot: findings_report
-  criteria:
-    - slot: implementation_delivery_criteria
+    artifacts:
+        - slot: findings_report
+    criteria:
+        - slot: implementation_delivery_criteria
 produces:
-  artifacts:
-    - slot: change_patch
-      description: Patch for the scoped fix.
-    - slot: verification_report
-      description: Verification evidence for the scoped fix.
+    artifacts:
+        - slot: change_patch
+          description: Patch for the scoped fix.
+        - slot: verification_report
+          description: Verification evidence for the scoped fix.
 ```
 
 Why it is valid:
@@ -113,11 +113,11 @@ role: planning_lead
 policy: standard-parent-planning
 description: Coordinate implementation and review.
 child_defaults:
-  criteria:
-    - subtree_delivery_rules
+    criteria:
+        - subtree_delivery_rules
 children:
-  - id: implement_change
-    role: engineer
+    - id: implement_change
+      role: engineer
 ```
 
 Why it is valid:
@@ -133,8 +133,8 @@ Why it is valid:
 id: review_parent
 role: reviewer
 children:
-  - id: child
-    role: engineer
+    - id: child
+      role: engineer
 ```
 
 Why it fails:

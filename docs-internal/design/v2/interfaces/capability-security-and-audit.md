@@ -34,13 +34,13 @@ The controller may serialize that effective set in a shape such as:
 
 ```yaml
 effective_capability_set:
-  execution_scope: dispatch | human_request_open | command_run_start
-  human_request:
-    direction: allow | deny
-    approval: allow | deny
-    input: allow | deny
-    review: allow | deny
-  command_run: allow | deny
+    execution_scope: dispatch | human_request_open | command_run_start
+    human_request:
+        direction: allow | deny
+        approval: allow | deny
+        input: allow | deny
+        review: allow | deny
+    command_run: allow | deny
 ```
 
 Rules:
@@ -82,10 +82,10 @@ Minimum fields may look like:
 
 ```yaml
 error:
-  code: capability_rejected
-  capability: human_request.review
-  message: current worker policy does not allow review requests from this node
-  next_legal_action: record_checkpoint_or_choose_another_allowed_boundary | optional
+    code: capability_rejected
+    capability: human_request.review
+    message: current worker policy does not allow review requests from this node
+    next_legal_action: record_checkpoint_or_choose_another_allowed_boundary | optional
 ```
 
 Rules:
@@ -103,8 +103,8 @@ Minimum fields are:
 
 ```yaml
 provider_resolution:
-  requested_provider: openclaw | codex | claude
-  resolved_provider: openclaw | codex | claude
+    requested_provider: openclaw | codex | claude
+    resolved_provider: openclaw | codex | claude
 ```
 
 Rules:
@@ -133,14 +133,14 @@ Minimum provenance fields are:
 
 ```yaml
 human_request_provenance:
-  request_id: string
-  task_id: string
-  resolved_by_actor_ref: string
-  resolved_by_surface: control_api | control_ui | operator_mcp
-  resolution_kind: answered | timed_out | cancelled
-  resolved_at: timestamp
-  policy_basis: string
-  note: string | optional
+    request_id: string
+    task_id: string
+    resolved_by_actor_ref: string
+    resolved_by_surface: control_api | control_ui | operator_mcp
+    resolution_kind: answered | timed_out | cancelled
+    resolved_at: timestamp
+    policy_basis: string
+    note: string | optional
 ```
 
 Rules:

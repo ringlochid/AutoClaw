@@ -47,87 +47,87 @@ The persisted request keys below are exact. The long prompt strings are excerpte
 
 ```yaml
 prompt_request_json:
-  dispatch_id: dispatch.implement_fix.01
-  node_key: implement_fix
-  attempt_id: attempt.implement_fix.01
-  assignment_key: implement_fix.assign-01
-  prompt_name: worker_dispatch_prompt
-  send_mode: full_prompt
-  instructions_text: |
-    ## Instructions
+    dispatch_id: dispatch.implement_fix.01
+    node_key: implement_fix
+    attempt_id: attempt.implement_fix.01
+    assignment_key: implement_fix.assign-01
+    prompt_name: worker_dispatch_prompt
+    send_mode: full_prompt
+    instructions_text: |
+        ## Instructions
 
-    ### AutoClaw Runtime Identity
+        ### AutoClaw Runtime Identity
 
-    You are AutoClaw, a delegated node inside a controller-first runtime.
-    ...
+        You are AutoClaw, a delegated node inside a controller-first runtime.
+        ...
 
-    ### Current Node Guidance
+        ### Current Node Guidance
 
-    - node kind: worker
-    - node key: implement_fix
-    - node description: Repair the bounded auth-refresh defect.
-    - node instruction: Change only the scoped auth-refresh code path.
-    - role: engineer
-    - role description: Worker for one bounded engineering assignment.
-    - role instruction: Complete only the current assignment.
-    - policy: standard-worker
-    - policy description: Default worker behavior for bounded work.
-  input_text: |
-    ## Dispatch Input
+        - node kind: worker
+        - node key: implement_fix
+        - node description: Repair the bounded auth-refresh defect.
+        - node instruction: Change only the scoped auth-refresh code path.
+        - role: engineer
+        - role description: Worker for one bounded engineering assignment.
+        - role instruction: Complete only the current assignment.
+        - policy: standard-worker
+        - policy description: Default worker behavior for bounded work.
+    input_text: |
+        ## Dispatch Input
 
-    ### Workflow Manifest
-    - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
-    - description: whole-workflow visible contract for the current task
-    - current node anchor: implement_fix
-    - surfaced path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
+        ### Workflow Manifest
+        - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
+        - description: whole-workflow visible contract for the current task
+        - current node anchor: implement_fix
+        - surfaced path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
 
-    ### Current Assignment
-    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/assignment.md
-    - summary: Repair the auth-refresh defect and publish the required evidence.
-    - instruction: Change only the bounded auth-refresh logic and rerun scoped verification.
-    - criteria:
-      - kind: criteria
-        slot: fix_acceptance
-        description: Bounded fix acceptance criteria.
-    - consumes:
-      - kind: artifact
-        slot: findings_report
-        description: Current findings for the scoped fix.
-    - produces:
-      - slot: change_patch
-        description: Bounded code change artifact.
-    - transient_refs:
-      - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
-        description: Optional repro commands from the prior attempt.
-    - task_memory_search_hints:
-      - auth refresh
-      - cookie rotation note
+        ### Current Assignment
+        - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/assignment.md
+        - summary: Repair the auth-refresh defect and publish the required evidence.
+        - instruction: Change only the bounded auth-refresh logic and rerun scoped verification.
+        - criteria:
+          - kind: criteria
+            slot: fix_acceptance
+            description: Bounded fix acceptance criteria.
+        - consumes:
+          - kind: artifact
+            slot: findings_report
+            description: Current findings for the scoped fix.
+        - produces:
+          - slot: change_patch
+            description: Bounded code change artifact.
+        - transient_refs:
+          - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
+            description: Optional repro commands from the prior attempt.
+        - task_memory_search_hints:
+          - auth refresh
+          - cookie rotation note
 
-    ### Latest Checkpoint Context
-    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/latest-checkpoint.md
-    - checkpoint_kind: terminal
-    - outcome: retry
-    - summary: Prior attempt fixed the primary path but missed one recovery branch.
-    - next_step: Keep the same assignment and repair the missed branch.
-    - task_memory_search_hints:
-      - recovery branch note
+        ### Latest Checkpoint Context
+        - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/latest-checkpoint.md
+        - checkpoint_kind: terminal
+        - outcome: retry
+        - summary: Prior attempt fixed the primary path but missed one recovery branch.
+        - next_step: Keep the same assignment and repair the missed branch.
+        - task_memory_search_hints:
+          - recovery branch note
 
-    ### Consumed Durable Refs
-    - kind: criteria
-      slot: fix_acceptance
-      path: C:/tasks/task_2026_0042/_runtime/criteria/fix_acceptance.v01.md
-      description: Bounded fix acceptance criteria.
-    - kind: artifact
-      slot: findings_report
-      version: 2
-      path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
-      description: Current findings for the scoped fix.
-    - kind: wiki
-      path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
-      description: Curated task-memory page for earlier auth-refresh attempts.
-  content_hash: sha256:...
-  transport_request_hash: sha256:...
-  rendered_at: 2026-05-05T12:40:11+00:00
+        ### Consumed Durable Refs
+        - kind: criteria
+          slot: fix_acceptance
+          path: C:/tasks/task_2026_0042/_runtime/criteria/fix_acceptance.v01.md
+          description: Bounded fix acceptance criteria.
+        - kind: artifact
+          slot: findings_report
+          version: 2
+          path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
+          description: Current findings for the scoped fix.
+        - kind: wiki
+          path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
+          description: Curated task-memory page for earlier auth-refresh attempts.
+    content_hash: sha256:...
+    transport_request_hash: sha256:...
+    rendered_at: 2026-05-05T12:40:11+00:00
 ```
 
 ## Exact `full_prompt` request shape: `parent_root_dispatch_prompt`
@@ -136,90 +136,90 @@ The surfaced checkpoint path appears once in `Latest Checkpoint Context`. `Consu
 
 ```yaml
 prompt_request_json:
-  dispatch_id: dispatch.root.07
-  node_key: root
-  attempt_id: attempt.root.07
-  assignment_key: root.assign-07
-  prompt_name: parent_root_dispatch_prompt
-  send_mode: full_prompt
-  instructions_text: |
-    ## Instructions
+    dispatch_id: dispatch.root.07
+    node_key: root
+    attempt_id: attempt.root.07
+    assignment_key: root.assign-07
+    prompt_name: parent_root_dispatch_prompt
+    send_mode: full_prompt
+    instructions_text: |
+        ## Instructions
 
-    ### AutoClaw Runtime Identity
+        ### AutoClaw Runtime Identity
 
-    You are AutoClaw, a delegated node inside a controller-first runtime.
-    ...
+        You are AutoClaw, a delegated node inside a controller-first runtime.
+        ...
 
-    ### Current Node Guidance
+        ### Current Node Guidance
 
-    - node kind: root
-    - node key: root
-    - node description: Coordinate the whole flow and decide the next bounded child step.
-    - node instruction: Keep the root decision tied to surfaced evidence.
-    - role: root_planning_lead
-    - role description: Root coordinator for the whole task.
-    - role instruction: Choose the next bounded child step and close only when release is legal.
-    - policy: standard-root-planning
-    - policy description: Default root planning and closure behavior.
-  input_text: |
-    ## Dispatch Input
+        - node kind: root
+        - node key: root
+        - node description: Coordinate the whole flow and decide the next bounded child step.
+        - node instruction: Keep the root decision tied to surfaced evidence.
+        - role: root_planning_lead
+        - role description: Root coordinator for the whole task.
+        - role instruction: Choose the next bounded child step and close only when release is legal.
+        - policy: standard-root-planning
+        - policy description: Default root planning and closure behavior.
+    input_text: |
+        ## Dispatch Input
 
-    ### Workflow Manifest
-    - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
-    - description: whole-workflow visible contract for the current task
-    - current node anchor: root
-    - surfaced runtime file: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
-    - surfaced path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
+        ### Workflow Manifest
+        - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
+        - description: whole-workflow visible contract for the current task
+        - current node anchor: root
+        - surfaced runtime file: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
+        - surfaced path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
 
-    ### Current Assignment
-    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
-    - summary: Decide the next bounded child step after the current investigation result.
-    - instruction: Stay inside the current owned subtree and preserve reasoning durably when needed.
-    - criteria:
-      - kind: criteria
-        slot: root_release_rule
-        description: Root completion and release criteria.
-    - consumes:
-      - kind: checkpoint
-        description: Latest investigation handoff for this root decision.
-      - kind: artifact
-        slot: findings_report
-        description: Current investigation findings for the auth-refresh regression.
-    - produces:
-      - slot: root_decision_note
-        description: Durable decision note required when root reasoning must survive redispatch.
-    - transient_refs:
-      - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
-        description: Optional transient comparison grid for the current root decision.
-    - task_memory_search_hints:
-      - refresh token expiry branch
-      - cookie rotation note
+        ### Current Assignment
+        - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.root.07/assignment.md
+        - summary: Decide the next bounded child step after the current investigation result.
+        - instruction: Stay inside the current owned subtree and preserve reasoning durably when needed.
+        - criteria:
+          - kind: criteria
+            slot: root_release_rule
+            description: Root completion and release criteria.
+        - consumes:
+          - kind: checkpoint
+            description: Latest investigation handoff for this root decision.
+          - kind: artifact
+            slot: findings_report
+            description: Current investigation findings for the auth-refresh regression.
+        - produces:
+          - slot: root_decision_note
+            description: Durable decision note required when root reasoning must survive redispatch.
+        - transient_refs:
+          - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
+            description: Optional transient comparison grid for the current root decision.
+        - task_memory_search_hints:
+          - refresh token expiry branch
+          - cookie rotation note
 
-    ### Latest Checkpoint Context
-    - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
-    - checkpoint_kind: progress
-    - outcome: null
-    - summary: One implementation child assignment is already staged and the current checkpoint explains why this child is next.
-    - next_step: If the handoff is sufficient, emit yield.
-    - task_memory_search_hints:
-      - refresh token expiry branch
+        ### Latest Checkpoint Context
+        - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
+        - checkpoint_kind: progress
+        - outcome: null
+        - summary: One implementation child assignment is already staged and the current checkpoint explains why this child is next.
+        - next_step: If the handoff is sufficient, emit yield.
+        - task_memory_search_hints:
+          - refresh token expiry branch
 
-    ### Consumed Durable Refs
-    - kind: criteria
-      slot: root_release_rule
-      path: C:/tasks/task_2026_0042/_runtime/criteria/root_release_rule.md
-      description: Root completion and release criteria.
-    - kind: artifact
-      slot: findings_report
-      version: 2
-      path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
-      description: Current investigation findings for the auth-refresh regression.
-    - kind: wiki
-      path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
-      description: Curated task-memory note about cookie rotation.
-  content_hash: sha256:...
-  transport_request_hash: sha256:...
-  rendered_at: 2026-05-05T12:41:03+00:00
+        ### Consumed Durable Refs
+        - kind: criteria
+          slot: root_release_rule
+          path: C:/tasks/task_2026_0042/_runtime/criteria/root_release_rule.md
+          description: Root completion and release criteria.
+        - kind: artifact
+          slot: findings_report
+          version: 2
+          path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
+          description: Current investigation findings for the auth-refresh regression.
+        - kind: wiki
+          path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
+          description: Curated task-memory note about cookie rotation.
+    content_hash: sha256:...
+    transport_request_hash: sha256:...
+    rendered_at: 2026-05-05T12:41:03+00:00
 ```
 
 ## Checkpoint publication excerpt

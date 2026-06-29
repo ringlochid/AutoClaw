@@ -267,30 +267,30 @@ Those ideas either belong in controller/DB truth, prompt wording, parent/root co
 
 ```yaml
 worker_read_surface:
-  current_node_key: implement_change
-  current_node_kind: worker
-  workflow_manifest_path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
-  assignment_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_change.03/assignment.md
-  latest_checkpoint_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_change.03/latest-checkpoint.md
-  latest_relevant_checkpoint_path: null
-  consumed_refs:
-    - kind: criteria
-      slot: implement_change_delivery_criteria
-      path: C:/tasks/task_2026_0042/_runtime/criteria/implement_change_delivery_criteria.v01.md
-      description: Delivery criteria for the implement-change node.
-    - kind: artifact
-      slot: findings_report
-      version: 1
-      path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v01.md
-      description: Findings for downstream implementation.
-  transient_refs:
-    - kind: transient
-      slot: null
-      path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
-      description: Optional transient repro notes surfaced for this assignment.
-  task_memory_search_hints:
-    - auth refresh screenshot
-    - rollback fixture
+    current_node_key: implement_change
+    current_node_kind: worker
+    workflow_manifest_path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
+    assignment_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_change.03/assignment.md
+    latest_checkpoint_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_change.03/latest-checkpoint.md
+    latest_relevant_checkpoint_path: null
+    consumed_refs:
+        - kind: criteria
+          slot: implement_change_delivery_criteria
+          path: C:/tasks/task_2026_0042/_runtime/criteria/implement_change_delivery_criteria.v01.md
+          description: Delivery criteria for the implement-change node.
+        - kind: artifact
+          slot: findings_report
+          version: 1
+          path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v01.md
+          description: Findings for downstream implementation.
+    transient_refs:
+        - kind: transient
+          slot: null
+          path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
+          description: Optional transient repro notes surfaced for this assignment.
+    task_memory_search_hints:
+        - auth refresh screenshot
+        - rollback fixture
 ```
 
 ## Related contracts

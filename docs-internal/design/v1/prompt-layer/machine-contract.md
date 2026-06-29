@@ -43,9 +43,9 @@ Rules:
 - `version` is fixed to `1`
 - `section_order` is exactly the canonical section order from [Contract](contract.md)
 - `static_sections` is exactly:
-  - `operating_model`
-  - `task_identity`
-  - `node_purpose`
+    - `operating_model`
+    - `task_identity`
+    - `node_purpose`
 - live canonical `send_modes` owner docs freeze only `full_prompt`
 - `prompt_families` freezes exactly two canonical dispatch prompt families
 - `exact_blocks` registers reusable exact wording blocks, not extra prompt families

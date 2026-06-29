@@ -37,13 +37,13 @@ Rules:
 The runtime therefore keeps these roles separate:
 
 - launch-time compiler
-  - reads current workflow, role, and policy definitions plus task-start input
-  - writes the normalized compiled plan and initial runtime graph only at task start
+    - reads current workflow, role, and policy definitions plus task-start input
+    - writes the normalized compiled plan and initial runtime graph only at task start
 - runtime validator
-  - rereads current authoritative rows
-  - validates authority, currentness, compatibility, dependency legality, and budget/recovery rules
+    - rereads current authoritative rows
+    - validates authority, currentness, compatibility, dependency legality, and budget/recovery rules
 - runtime materializer/projector
-  - regenerates manifest, assignment, checkpoint, artifact, and observability projections from committed controller truth only
+    - regenerates manifest, assignment, checkpoint, artifact, and observability projections from committed controller truth only
 
 Runtime CRUD does not re-open the launch compiler.
 
@@ -63,12 +63,12 @@ The v1 table constitution is closed to the following families. If a table family
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | registry definitions           | current and historical authored definitions                                                                                 | `workflow_definitions`, `workflow_revisions`, `role_definitions`, `role_revisions`, `policy_definitions`, `policy_revisions`                     |
 | task/launch support            | task identity and root binding                                                                                              | `tasks`, `workspace_roots`, `context_spaces`, `manifest_roots`, `task_resource_bindings`, `task_composes`                                        |
-| compiled plan                  | launch-time normalized plan                                                                                                 | `compiled_plans`, `compiled_plan_nodes`, `compiled_plan_edges`                                                                                    |
+| compiled plan                  | launch-time normalized plan                                                                                                 | `compiled_plans`, `compiled_plan_nodes`, `compiled_plan_edges`                                                                                   |
 | runtime graph                  | active runtime execution object and adopted graph history                                                                   | `flows`, `flow_revisions`, `flow_nodes`, `flow_edges`, `node_plan_revisions`                                                                     |
 | execution                      | current mission contracts, execution tries, checkpoint history, consumed/produced refs, and controller ingress/egress turns | `assignments`, `assignment_criteria_refs`, `attempts`, `attempt_checkpoints`, `attempt_consumed_refs`, `attempt_produced_refs`, `dispatch_turns` |
 | artifacts                      | durable publication lineage and explicit slot currentness                                                                   | `artifact_publications`, `artifact_current_pointers`                                                                                             |
 | dispatch observability/control | normalized provider chronology plus delivery, continuity, and watchdog truth                                                | `provider_event_records`, `dispatch_delivery_states`, `dispatch_continuity_states`, `dispatch_watchdog_states`                                   |
-| support/control                | context, node-session authority, workspace-root lease, and budget-counter rows                                             | `context_items`, `node_sessions`, `workspace_root_leases`, `budget_counters`                                                                   |
+| support/control                | context, node-session authority, workspace-root lease, and budget-counter rows                                              | `context_items`, `node_sessions`, `workspace_root_leases`, `budget_counters`                                                                     |
 
 Compiled-plan normalization note:
 
@@ -111,10 +111,10 @@ Canonical closure:
 - `workflow_revisions`, `role_revisions`, and `policy_revisions` store append-only revision history rows
 - identity rows own the stable logical key plus the current revision pointer
 - revision rows own:
-  - `revision_no`
-  - immutable authored content snapshot
-  - actor/audit fields when recorded
-  - recorded and updated timestamps
+    - `revision_no`
+    - immutable authored content snapshot
+    - actor/audit fields when recorded
+    - recorded and updated timestamps
 - a changed guarded upload appends a new revision row and atomically advances the current revision pointer
 - concurrent uploads are serialized in DB and may both succeed as distinct revisions
 - the current revision pointer advances in DB commit order
@@ -178,9 +178,9 @@ The workflow tree and the dependency graph are relational DB structures. Generat
 Use explicit relational parent pointers:
 
 - launch-time tree:
-  - `compiled_plan_nodes.parent_node_key`
+    - `compiled_plan_nodes.parent_node_key`
 - adopted runtime tree:
-  - `flow_nodes.parent_flow_node_id`
+    - `flow_nodes.parent_flow_node_id`
 
 Rules:
 
@@ -195,9 +195,9 @@ Rules:
 Use explicit relational edge rows:
 
 - launch-time dependency/control edges:
-  - `compiled_plan_edges`
+    - `compiled_plan_edges`
 - adopted runtime dependency/control edges:
-  - `flow_edges`
+    - `flow_edges`
 
 Rules:
 
@@ -213,21 +213,21 @@ The runtime uses the shared ref taxonomy frozen by the runtime closure and ref t
 
 ```yaml
 node_runtime_file_ref:
-  kind: manifest | assignment | checkpoint | artifact_index | transient_index
-  path: string
-  description: string
+    kind: manifest | assignment | checkpoint | artifact_index | transient_index
+    path: string
+    description: string
 
 support_runtime_file_ref:
-  kind: delivery_state | continuity_state | watchdog_state | provider_events
-  path: string
-  description: string
+    kind: delivery_state | continuity_state | watchdog_state | provider_events
+    path: string
+    description: string
 
 evidence_ref:
-  kind: artifact | criteria | doc | wiki | transient
-  slot: string | null
-  version: integer | null
-  path: string
-  description: string
+    kind: artifact | criteria | doc | wiki | transient
+    slot: string | null
+    version: integer | null
+    path: string
+    description: string
 ```
 
 Rules:
@@ -849,23 +849,23 @@ Exact readback shape:
 
 ```json
 {
-  "dispatch_id": "dispatch.parent.01",
-  "attempt_id": "attempt.parent.01",
-  "assignment_key": "parent.assign-01",
-  "node_key": "implementation_subtree",
-  "transport_family": "openclaw_gateway_ws_rpc",
-  "transport_state": "provider_signal_seen",
-  "last_provider_event_kind": "output_delta",
-  "provider_final_status": null,
-  "provider_error": null,
-  "previous_dispatch_id": null,
-  "superseded_by_dispatch_id": null,
-  "prepared_at": "2026-05-03T10:00:00Z",
-  "accepted_at": "2026-05-03T10:00:01Z",
-  "last_provider_signal_at": "2026-05-03T10:00:12Z",
-  "last_controller_progress_at": "2026-05-03T10:00:15Z",
-  "last_controller_terminal_at": null,
-  "updated_at": "2026-05-03T10:00:15Z"
+    "dispatch_id": "dispatch.parent.01",
+    "attempt_id": "attempt.parent.01",
+    "assignment_key": "parent.assign-01",
+    "node_key": "implementation_subtree",
+    "transport_family": "openclaw_gateway_ws_rpc",
+    "transport_state": "provider_signal_seen",
+    "last_provider_event_kind": "output_delta",
+    "provider_final_status": null,
+    "provider_error": null,
+    "previous_dispatch_id": null,
+    "superseded_by_dispatch_id": null,
+    "prepared_at": "2026-05-03T10:00:00Z",
+    "accepted_at": "2026-05-03T10:00:01Z",
+    "last_provider_signal_at": "2026-05-03T10:00:12Z",
+    "last_controller_progress_at": "2026-05-03T10:00:15Z",
+    "last_controller_terminal_at": null,
+    "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
 
@@ -897,13 +897,13 @@ Exact readback shape:
 
 ```json
 {
-  "dispatch_id": "dispatch.parent.01",
-  "attempt_id": "attempt.parent.01",
-  "assignment_key": "parent.assign-01",
-  "node_key": "implementation_subtree",
-  "session_key_present": true,
-  "invalidation_reason": null,
-  "updated_at": "2026-05-03T10:00:15Z"
+    "dispatch_id": "dispatch.parent.01",
+    "attempt_id": "attempt.parent.01",
+    "assignment_key": "parent.assign-01",
+    "node_key": "implementation_subtree",
+    "session_key_present": true,
+    "invalidation_reason": null,
+    "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
 
@@ -949,20 +949,20 @@ Exact readback shape:
 
 ```json
 {
-  "dispatch_id": "dispatch.parent.01",
-  "attempt_id": "attempt.parent.01",
-  "assignment_key": "parent.assign-01",
-  "node_key": "implementation_subtree",
-  "watchdog_state": "clear",
-  "current_watchdog_kind": null,
-  "current_watchdog_reason": null,
-  "recovery_action": null,
-  "recovery_reason": null,
-  "recovery_dispatch_id": null,
-  "previous_dispatch_id": null,
-  "superseded_by_dispatch_id": null,
-  "classified_at": "2026-05-03T10:00:15Z",
-  "updated_at": "2026-05-03T10:00:15Z"
+    "dispatch_id": "dispatch.parent.01",
+    "attempt_id": "attempt.parent.01",
+    "assignment_key": "parent.assign-01",
+    "node_key": "implementation_subtree",
+    "watchdog_state": "clear",
+    "current_watchdog_kind": null,
+    "current_watchdog_reason": null,
+    "recovery_action": null,
+    "recovery_reason": null,
+    "recovery_dispatch_id": null,
+    "previous_dispatch_id": null,
+    "superseded_by_dispatch_id": null,
+    "classified_at": "2026-05-03T10:00:15Z",
+    "updated_at": "2026-05-03T10:00:15Z"
 }
 ```
 

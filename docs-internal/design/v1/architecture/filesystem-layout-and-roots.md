@@ -78,15 +78,15 @@ Nodes may search `context/wiki/` and other curated files under `context/` direct
 
 ## Common placement examples
 
-| If you have...                                                    | Put it here                                  | Why                                                       |
-| ----------------------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------- |
-| a draft code change or scratch script for the current assignment  | `workspace/`                                 | mutable work in progress                                  |
+| If you have...                                                    | Put it here                                  | Why                                                                    |
+| ----------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------- |
+| a draft code change or scratch script for the current assignment  | `workspace/`                                 | mutable work in progress                                               |
 | explicit acceptance rules for a node                              | `_runtime/criteria/`                         | controller-generated criteria the assignment or parent review may cite |
-| a reusable task-memory page summarizing earlier discoveries       | `context/wiki/`                              | curated synthesized memory, searchable later              |
-| a user PDF, screenshot, or note the task may need later           | `context/`                                   | durable source/reference material                         |
-| a durable final report or produced evidence file                  | `outputs/artifacts/<owner_node_key>/<slot>/` | immutable published output with current pointer           |
-| an optional carryover note that should not become durable truth   | `tmp/transfers/`                             | bounded transient handoff                                 |
-| workflow manifest, assignment, checkpoint, or watchdog projection | `_runtime/`                                  | controller-generated projection, not ordinary task work   |
+| a reusable task-memory page summarizing earlier discoveries       | `context/wiki/`                              | curated synthesized memory, searchable later                           |
+| a user PDF, screenshot, or note the task may need later           | `context/`                                   | durable source/reference material                                      |
+| a durable final report or produced evidence file                  | `outputs/artifacts/<owner_node_key>/<slot>/` | immutable published output with current pointer                        |
+| an optional carryover note that should not become durable truth   | `tmp/transfers/`                             | bounded transient handoff                                              |
+| workflow manifest, assignment, checkpoint, or watchdog projection | `_runtime/`                                  | controller-generated projection, not ordinary task work                |
 
 ## Path-only surfaced refs
 

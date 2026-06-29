@@ -61,9 +61,7 @@ def test_markdown_formatter_normalizes_yaml_instruction_scalars() -> None:
     assert formatting.format_markdown_text(source) == expected
 
     inline_source = (
-        "```yaml\n"
-        "instruction: 'First line about the assignment. Second line about risk.'\n"
-        "```\n"
+        "```yaml\ninstruction: 'First line about the assignment. Second line about risk.'\n```\n"
     )
     inline_expected = (
         "```yaml\n"
@@ -111,8 +109,9 @@ def test_markdown_formatter_normalizes_yaml_instruction_scalars() -> None:
         "Example:\n\n"
         "    assignment_intent:\n"
         "      instruction: >-\n"
-        "        Read the latest review checkpoint, surfaced page artifacts, and "
-        "transient browser note first. Return exact artifact paths.\n"
+        "        Read the latest review checkpoint, surfaced page artifacts, and transient "
+        "browser\n"
+        "        note first. Return exact artifact paths.\n"
     )
 
     assert formatting.format_markdown_text(indented_yaml) == indented_expected
@@ -135,12 +134,33 @@ def test_markdown_formatter_normalizes_yaml_instruction_scalars() -> None:
         "    assign_child:\n"
         "      assignment_intent:\n"
         "        instruction: >-\n"
-        "          Read the latest review checkpoint, surfaced page artifacts, and "
-        "transient browser note first. Return exact artifact paths.\n"
+        "          Read the latest review checkpoint, surfaced page artifacts, and transient "
+        "browser\n"
+        "          note first. Return exact artifact paths.\n"
         "```\n"
     )
 
     assert formatting.format_markdown_text(text_fenced_yaml) == text_fenced_expected
+
+
+def test_iter_maintained_markdown_files_excludes_exact_prompt_outputs() -> None:
+    repo_root = _ensure_repo_root_on_path()
+    docs_freeze = _docs_freeze_namespace()
+
+    maintained_paths = {
+        path.relative_to(repo_root).as_posix()
+        for path in docs_freeze.markdown_files.iter_maintained_markdown_files(repo_root)
+    }
+
+    assert "docs-internal/design/v1/prompt-layer/contract.md" in maintained_paths
+    assert (
+        "docs-internal/design/v1/prompt-layer/generated/rendered-examples.md"
+        not in maintained_paths
+    )
+    assert (
+        "docs-internal/design/v1/prompt-layer/prompt-pack/runtime-rule-blocks.md"
+        not in maintained_paths
+    )
 
 
 def test_repo_path_reference_issues_scan_root_readme() -> None:

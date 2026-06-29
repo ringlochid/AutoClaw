@@ -20,15 +20,15 @@ Approval remains legacy vocabulary in some current-contrast pages, but the live 
 
 ### Current operator inspection surfaces
 
-| Route                                          | Current effect                                               |
-| ---------------------------------------------- | ------------------------------------------------------------ |
-| `GET /runtime/tasks/{task_id}`                 | inspect current runtime summary, including active task state |
-| `GET /operator/tasks/{task_id}/snapshot`       | inspect current operator summary                             |
-| `GET /operator/tasks/{task_id}/trace`          | inspect dispatch, checkpoint, and boundary history           |
-| `GET /observability/tasks/{task_id}/watchdog-state` | fetch the latest watchdog projection ref                |
-| `POST /runtime/tasks/{task_id}/continue`       | continue after operator-side inspection when legal           |
-| `POST /runtime/tasks/{task_id}/pause`          | pause the live runtime and revoke callback access            |
-| `POST /runtime/tasks/{task_id}/cancel`         | cancel the live runtime                                      |
+| Route                                               | Current effect                                               |
+| --------------------------------------------------- | ------------------------------------------------------------ |
+| `GET /runtime/tasks/{task_id}`                      | inspect current runtime summary, including active task state |
+| `GET /operator/tasks/{task_id}/snapshot`            | inspect current operator summary                             |
+| `GET /operator/tasks/{task_id}/trace`               | inspect dispatch, checkpoint, and boundary history           |
+| `GET /observability/tasks/{task_id}/watchdog-state` | fetch the latest watchdog projection ref                     |
+| `POST /runtime/tasks/{task_id}/continue`            | continue after operator-side inspection when legal           |
+| `POST /runtime/tasks/{task_id}/pause`               | pause the live runtime and revoke callback access            |
+| `POST /runtime/tasks/{task_id}/cancel`              | cancel the live runtime                                      |
 
 Approval-specific state is therefore inspected indirectly through the task runtime and operator views, not through standalone approval endpoints.
 
@@ -45,11 +45,11 @@ Current operator-facing facts:
 
 ### Watchdog route-to-effect map
 
-| Route                                     | Current effect                                                      |
-| ----------------------------------------- | ------------------------------------------------------------------- |
-| `GET /observability/tasks/{task_id}/watchdog-state` | return the latest task-scoped watchdog projection ref |
-| `GET /operator/tasks/{task_id}/trace`     | expose the checkpoints and boundaries that explain the watchdog path |
-| `POST /runtime/tasks/{task_id}/continue`  | resume a paused task after operator review when the runtime allows it |
+| Route                                               | Current effect                                                        |
+| --------------------------------------------------- | --------------------------------------------------------------------- |
+| `GET /observability/tasks/{task_id}/watchdog-state` | return the latest task-scoped watchdog projection ref                 |
+| `GET /operator/tasks/{task_id}/trace`               | expose the checkpoints and boundaries that explain the watchdog path  |
+| `POST /runtime/tasks/{task_id}/continue`            | resume a paused task after operator review when the runtime allows it |
 
 ### Important current exclusions
 

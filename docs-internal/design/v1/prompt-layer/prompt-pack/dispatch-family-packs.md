@@ -18,10 +18,10 @@ Use these live owners instead:
 The current prompt model freezes:
 
 - two canonical prompt families:
-  - `worker_dispatch_prompt`
-  - `parent_root_dispatch_prompt`
+    - `worker_dispatch_prompt`
+    - `parent_root_dispatch_prompt`
 - one live send mode:
-  - `full_prompt`
+    - `full_prompt`
 - current runtime wording through reusable rule blocks rather than legacy dispatch-family packs
 
 ## Historical search terms preserved here

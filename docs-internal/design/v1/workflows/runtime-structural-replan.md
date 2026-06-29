@@ -81,9 +81,9 @@ The controller validates structural replan in this exact order:
 2. validate caller authority and owned-subtree scope
 3. reject if a continuation outcome is already staged on that open dispatch
 4. validate operation-specific rules:
-   - `add_child` requires a new semantic `node_key`
-   - `update_child` must preserve child identity
-   - `remove_child` must not silently destroy open current child work
+    - `add_child` requires a new semantic `node_key`
+    - `update_child` must preserve child identity
+    - `remove_child` must not silently destroy open current child work
 5. resolve any changed role/policy references against controller-owned definition registry truth during validation; do not assume a separate callback-side registry-read lane
 6. pin the exact resolved role/policy revision numbers onto the candidate adopted nodes
 7. build the candidate adopted dependency graph
@@ -110,15 +110,15 @@ node_key: qa_sweep
 role: architect
 description: Run a bounded QA sweep over current implementation evidence.
 consumes:
-  artifacts:
-    - slot: change_patch
-    - slot: verification_report
-    - slot: review_report
+    artifacts:
+        - slot: change_patch
+        - slot: verification_report
+        - slot: review_report
 produces:
-  artifacts:
-    - slot: qa_report
-      description: QA findings for the subtree.
-      file_hint: qa_report.md
+    artifacts:
+        - slot: qa_report
+          description: QA findings for the subtree.
+          file_hint: qa_report.md
 ```
 
 The controller validates the new child against current authority, current registry definitions, and the candidate adopted dependency graph. If legal, it adopts one new structural revision, rereads committed truth, and regenerates the stable manifest before the parent chooses the next action.

@@ -181,20 +181,20 @@ Required fields:
 
 ```yaml
 current_relevant_ref:
-  one_of:
-    - node_runtime_file_ref
-    - evidence_ref
+    one_of:
+        - node_runtime_file_ref
+        - evidence_ref
 
 node_runtime_file_ref:
-  kind: checkpoint | artifact_index | transient_index
-  path: string
-  description: string
+    kind: checkpoint | artifact_index | transient_index
+    path: string
+    description: string
 
 evidence_ref:
-  kind: criteria | artifact | wiki | doc | transient
-  slot: string | null
-  path: string
-  description: string
+    kind: criteria | artifact | wiki | doc | transient
+    slot: string | null
+    path: string
+    description: string
 ```
 
 Rules:
@@ -224,25 +224,25 @@ Worked example:
 
 ```yaml
 current_context:
-  current_node_key: review_findings
-  owner_node_key: review_findings
-  active_attempt_id: attempt.review_findings.02
-  active_assignment_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/assignment.md
-  latest_checkpoint_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/latest-checkpoint.md
-  latest_relevant_checkpoint_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
-  current_relevant_paths:
-    - kind: checkpoint
-      path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
-      description: Upstream investigation checkpoint surfaced for the current review decision.
-    - kind: criteria
-      slot: review_findings_delivery_criteria
-      path: C:/tasks/task_2026_0042/_runtime/criteria/review_findings_delivery_criteria.v01.md
-      description: Delivery criteria the review node must validate now.
-    - kind: artifact
-      slot: findings_report
-      version: 2
-      path: C:/tasks/task_2026_0042/outputs/artifacts/review_findings/findings_report/findings_report.v02.md
-      description: Current findings report surfaced for parent/root review.
+    current_node_key: review_findings
+    owner_node_key: review_findings
+    active_attempt_id: attempt.review_findings.02
+    active_assignment_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/assignment.md
+    latest_checkpoint_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.review_findings.02/latest-checkpoint.md
+    latest_relevant_checkpoint_path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
+    current_relevant_paths:
+        - kind: checkpoint
+          path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
+          description: Upstream investigation checkpoint surfaced for the current review decision.
+        - kind: criteria
+          slot: review_findings_delivery_criteria
+          path: C:/tasks/task_2026_0042/_runtime/criteria/review_findings_delivery_criteria.v01.md
+          description: Delivery criteria the review node must validate now.
+        - kind: artifact
+          slot: findings_report
+          version: 2
+          path: C:/tasks/task_2026_0042/outputs/artifacts/review_findings/findings_report/findings_report.v02.md
+          description: Current findings report surfaced for parent/root review.
 ```
 
 This example is intentionally compact:

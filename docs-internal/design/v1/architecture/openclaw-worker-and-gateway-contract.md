@@ -102,9 +102,9 @@ When controller truth is surfaced as files, the shared ref family is:
 
 ```yaml
 support_runtime_file_ref:
-  kind: delivery_state | continuity_state | watchdog_state | provider_events
-  path: string
-  description: string
+    kind: delivery_state | continuity_state | watchdog_state | provider_events
+    path: string
+    description: string
 ```
 
 Rules:
@@ -194,14 +194,14 @@ Concrete implication:
 
 ```yaml
 provider_event_record:
-  dispatch_id: dispatch.review_findings.02
-  attempt_id: attempt.review_findings.02
-  event_no: 7
-  event_source: provider
-  event_kind: response_completed
-  provider_event_name: run.completed
-  summary: Provider transport ended normally for the current dispatch path.
-  observed_at: 2026-05-01T10:15:22Z
+    dispatch_id: dispatch.review_findings.02
+    attempt_id: attempt.review_findings.02
+    event_no: 7
+    event_source: provider
+    event_kind: response_completed
+    provider_event_name: run.completed
+    summary: Provider transport ended normally for the current dispatch path.
+    observed_at: 2026-05-01T10:15:22Z
 ```
 
 ## Tool Versus Plugin Naming

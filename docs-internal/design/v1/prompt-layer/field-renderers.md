@@ -140,8 +140,8 @@ Render:
 - current bound turn
 - send mode
 - closure expectation:
-  - parent/root: tools now, later `yield` or terminal boundary
-  - worker/leaf: later `green | retry | blocked`
+    - parent/root: tools now, later `yield` or terminal boundary
+    - worker/leaf: later `green | retry | blocked`
 
 The closure line should name the exact legal boundary words, not synonyms such as "continue," "complete," or "resume."
 
