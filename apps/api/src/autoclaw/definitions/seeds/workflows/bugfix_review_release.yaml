@@ -6,7 +6,8 @@ root:
     role: root_planning_lead
     policy: standard-root-planning
     description: Preserve the defect-fix purpose, coordinate specialist work, and release only when current criteria and evidence are satisfied.
-    instruction: Treat child green as evidence, not proof. Use review, verification, failure analysis, or replan when evidence is weak.
+    instruction: >-
+        Treat child green as evidence, not proof. Use review, verification, failure analysis, or replan when evidence is weak.
     criteria:
         - slot: root_bugfix_release_criteria
           description: Hard criteria for defect-fix release.
@@ -19,7 +20,8 @@ root:
           role: bug_triage
           policy: standard-worker
           description: Reproduce, narrow, and explain the defect before implementation.
-          instruction: Publish reproducible findings, rejected leads, likely failing path, and next recommended assignment.
+          instruction: >-
+              Publish reproducible findings, rejected leads, likely failing path, and next recommended assignment.
           produces:
               artifacts:
                   - slot: triage_report
@@ -29,7 +31,8 @@ root:
           role: delivery_planner
           policy: standard-delivery-planning
           description: Convert triage evidence into a bounded fix package.
-          instruction: Plan the narrow fix, dependencies, criteria, risks, and verification gates. Do not implement.
+          instruction: >-
+              Plan the narrow fix, dependencies, criteria, risks, and verification gates. Do not implement.
           consumes:
               artifacts:
                   - slot: triage_report
@@ -42,7 +45,8 @@ root:
           role: bug_fix_engineer
           policy: standard-worker
           description: Implement the bounded defect fix from triage and plan evidence.
-          instruction: Read triage and plan first. Keep the patch scoped and publish residual risk.
+          instruction: >-
+              Read triage and plan first. Keep the patch scoped and publish residual risk.
           consumes:
               artifacts:
                   - slot: triage_report
@@ -62,7 +66,8 @@ root:
           role: test_verifier
           policy: standard-verification
           description: Verify the defect fix against current criteria.
-          instruction: Verify intended behavior with reproducible commands or artifacts and name untested areas.
+          instruction: >-
+              Verify intended behavior with reproducible commands or artifacts and name untested areas.
           consumes:
               artifacts:
                   - slot: triage_report
@@ -78,7 +83,8 @@ root:
           role: code_reviewer
           policy: standard-review
           description: Review the fix patch and verification evidence.
-          instruction: Publish findings with severity, reasoning, approval or rejection, and evidence gaps.
+          instruction: >-
+              Publish findings with severity, reasoning, approval or rejection, and evidence gaps.
           consumes:
               artifacts:
                   - slot: change_patch
@@ -94,7 +100,8 @@ root:
           role: failure_analyst
           policy: standard-failure-analysis
           description: Analyze repeated failure or blocked evidence when fix, verification, or review stalls.
-          instruction: Recommend retry, specialist reassignment, structural replan, or blocked closure from current evidence.
+          instruction: >-
+              Recommend retry, specialist reassignment, structural replan, or blocked closure from current evidence.
           consumes:
               artifacts:
                   - slot: triage_report
@@ -109,7 +116,8 @@ root:
           role: release_operator
           policy: standard-release
           description: Perform final bounded defect-fix release work from current surfaced evidence.
-          instruction: Use only triage, patch, verification, review, and release criteria. Report gaps instead of reopening scope.
+          instruction: >-
+              Use only triage, patch, verification, review, and release criteria. Report gaps instead of reopening scope.
           consumes:
               artifacts:
                   - slot: triage_report

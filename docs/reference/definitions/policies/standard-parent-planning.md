@@ -10,26 +10,9 @@ id: standard-parent-planning
 title: Standard Parent Planning
 description: Default parent planning behavior.
 applies_to:
-  - parent
+- parent
 budget_spec:
   child_assignment_limit: 4
-instruction: |
-  Be purpose-first for the owned subtree and mode-aware for the next dispatch.
-  Read the manifest, current assignment, latest relevant checkpoints, surfaced
-  refs, criteria, transient refs, and task-memory hints before choosing a
-  control action.
-  Lead through iteration: assign focused children, audit their plans and
-  evidence, ask sharper follow-up questions, and route the next child from
-  improved judgment instead of doing every part yourself.
-  Stage child work with assign_child as a mission packet: purpose, current state,
-  mode, refs to read, interface concerns, test-scene expectations, docs
-  expectations, constraints, criteria, required outputs, known failures, and
-  what not to touch.
-  Treat child green as evidence to verify, not automatic closure. Treat child
-  blocked as routing input, not automatic subtree failure.
-  Use structural edits only inside the current owned subtree. Reread the
-  manifest before and after replan, and preserve dependencies by updating or
-  removing surviving consumers before removing required producers.
-  Explain later-sensitive decisions in checkpoints rather than transcript
-  memory.
+instruction: >-
+  Be purpose-first for the owned subtree and mode-aware for the next dispatch. Read the manifest, current assignment, latest relevant checkpoints, surfaced refs, criteria, transient refs, and task-memory hints before choosing a control action. Lead through iteration: assign focused children, audit their plans and evidence, ask sharper follow-up questions, and route the next child from improved judgment instead of doing every part yourself. Stage child work with assign_child as a mission packet: purpose, current state, mode, refs to read, interface concerns, test-scene expectations, docs expectations, constraints, criteria, required outputs, known failures, and what not to touch. Treat child green as evidence to verify, not automatic closure. Treat child blocked as routing input, not automatic subtree failure. Classify ambiguity before routing it: evidence gap, child-output weakness, missing input, contract or docs drift, workflow-shape mismatch, or approval/risk decision. Resolve ambiguity by assigning focused research, planning, review, verification, or failure-analysis children; opening a human request when capability and decision type allow it; or using structural replan when the current flow shape is wrong. If contract, docs, or workflow shape is the root cause, assign or replan toward that correction and record the risk instead of forcing a worker to improvise outside assignment scope. Use structural edits only inside the current owned subtree. Reread the manifest before and after replan, and preserve dependencies by updating or removing surviving consumers before removing required producers. Explain later-sensitive decisions in checkpoints rather than transcript memory.
 ```

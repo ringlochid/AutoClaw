@@ -6,7 +6,8 @@ root:
     role: root_planning_lead
     policy: standard-root-planning
     description: Preserve feature intent and release only when integration, verification, and review evidence agree.
-    instruction: Keep feature work integrated with existing product contracts and patterns. Route scope contradictions to review before implementation.
+    instruction: >-
+        Keep feature work integrated with existing product contracts and patterns. Route scope contradictions to review before implementation.
     criteria:
         - slot: feature_release_criteria
           description: Hard criteria for feature release.
@@ -19,7 +20,8 @@ root:
           role: researcher
           policy: standard-worker
           description: Inspect the existing product context, patterns, constraints, and relevant evidence.
-          instruction: Publish only context needed to plan and implement the feature safely.
+          instruction: >-
+              Publish only context needed to plan and implement the feature safely.
           produces:
               artifacts:
                   - slot: existing_context_report
@@ -29,7 +31,8 @@ root:
           role: product_planner
           policy: standard-product-planning
           description: Plan the feature scope, integration strategy, acceptance criteria, and non-goals.
-          instruction: Tie feature value to existing product behavior and avoid widening into unrelated product work.
+          instruction: >-
+              Tie feature value to existing product behavior and avoid widening into unrelated product work.
           consumes:
               artifacts:
                   - slot: existing_context_report
@@ -42,7 +45,8 @@ root:
           role: scope_reviewer
           policy: standard-scope-review
           description: Review the feature plan for contradictions, missing prerequisites, and acceptance-risk gaps.
-          instruction: Check whether the planned feature can be built cleanly inside existing product constraints.
+          instruction: >-
+              Check whether the planned feature can be built cleanly inside existing product constraints.
           consumes:
               artifacts:
                   - slot: existing_context_report
@@ -58,7 +62,8 @@ root:
           role: engineer
           policy: standard-worker
           description: Implement the accepted feature scope.
-          instruction: Read context, plan, and scope review first. Keep the patch integrated and bounded.
+          instruction: >-
+              Read context, plan, and scope review first. Keep the patch integrated and bounded.
           consumes:
               artifacts:
                   - slot: existing_context_report
@@ -79,7 +84,8 @@ root:
           role: test_verifier
           policy: standard-long-command-worker
           description: Verify the feature behavior and integration expectations.
-          instruction: Verify acceptance criteria and regression-sensitive existing behavior. Name untested areas.
+          instruction: >-
+              Verify acceptance criteria and regression-sensitive existing behavior. Name untested areas.
           consumes:
               artifacts:
                   - slot: feature_integration_plan
@@ -95,7 +101,8 @@ root:
           role: code_reviewer
           policy: standard-review
           description: Review the feature implementation and verification evidence.
-          instruction: Focus on correctness, existing-pattern fit, regression risk, security implications, and missing tests.
+          instruction: >-
+              Focus on correctness, existing-pattern fit, regression risk, security implications, and missing tests.
           consumes:
               artifacts:
                   - slot: feature_integration_plan
@@ -112,7 +119,8 @@ root:
           role: release_operator
           policy: standard-release
           description: Perform final bounded feature release or closure work from current surfaced evidence.
-          instruction: Use only feature plan, patch, verification, review evidence, and release criteria.
+          instruction: >-
+              Use only feature plan, patch, verification, review evidence, and release criteria.
           consumes:
               artifacts:
                   - slot: feature_integration_plan
@@ -126,4 +134,3 @@ root:
                   - slot: closure_report
                     file_hint: closure_report.md
                     description: Final feature release or closure report.
-

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from itertools import zip_longest
 from pathlib import Path
 
-from .formatting import format_markdown_text, normalize_text
+from .formatting import format_markdown_text, format_yaml_text, normalize_text
 
 ROOT = Path(__file__).resolve().parents[3]
 DOCS_PUBLIC_ROOT = ROOT / "docs"
@@ -41,6 +41,9 @@ class FormatterViolation:
     path: Path
     line: int
     reason: str = "hard-wrapped prose or list item"
+
+
+FORMAT_SUFFIXES = frozenset({".md", ".yaml", ".yml"})
 
 
 def iter_maintained_markdown_files(root: Path = ROOT) -> list[Path]:
@@ -113,7 +116,7 @@ def collect_violations(paths: Iterable[Path]) -> list[FormatterViolation]:
     violations: list[FormatterViolation] = []
     for path in paths:
         original = path.read_text(encoding="utf-8")
-        formatted = format_markdown_text(original)
+        formatted = format_path_text(path, original)
         if original != formatted:
             violations.append(
                 FormatterViolation(
@@ -128,7 +131,7 @@ def write_formatted_files(paths: Iterable[Path]) -> list[Path]:
     changed: list[Path] = []
     for path in paths:
         original = path.read_text(encoding="utf-8")
-        formatted = format_markdown_text(original)
+        formatted = format_path_text(path, original)
         if original == formatted:
             continue
         with path.open("w", encoding="utf-8", newline="\n") as handle:
@@ -148,7 +151,9 @@ def resolve_paths(cli_paths: Sequence[str] | None) -> list[Path]:
             resolved.extend(iter_maintained_markdown_files())
             continue
         if path.is_dir():
-            for child in sorted(path.rglob("*.md")):
+            for child in sorted(path.rglob("*")):
+                if child.suffix not in FORMAT_SUFFIXES:
+                    continue
                 try:
                     child.relative_to(EXCLUDED_SOURCE_PACKS)
                     continue
@@ -158,3 +163,9 @@ def resolve_paths(cli_paths: Sequence[str] | None) -> list[Path]:
             continue
         resolved.append(path)
     return resolved
+
+
+def format_path_text(path: Path, text: str) -> str:
+    if path.suffix in {".yaml", ".yml"}:
+        return format_yaml_text(text)
+    return format_markdown_text(text)

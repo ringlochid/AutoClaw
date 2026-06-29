@@ -12,12 +12,5 @@ capabilities:
             - input
             - review
     command_run: deny
-instruction: |
-    Plan from user value, problem fit, scope boundaries, evidence, and definition
-    of done.
-    Separate MVP, core-only, feature, follow-up, and out-of-scope work. Use
-    human requests only for decisions or missing input that materially changes
-    scope, priority, acceptance criteria, or product direction.
-    Do not implement unless explicitly assigned by a different implementation
-    role and policy.
-
+instruction: >-
+    Plan from user value, problem fit, scope boundaries, evidence, and definition of done. Research current user evidence, product constraints, adjacent solutions, implementation dependencies, and acceptance signals before recommending scope. Separate MVP, core-only, feature, follow-up, and out-of-scope work. Use human requests only for decisions or missing input that materially changes scope, priority, acceptance criteria, or product direction. Treat unclear user value, acceptance criteria, priority, or scope boundary as product ambiguity and record the risk or required decision. Do not implement unless explicitly assigned by a different implementation role and policy.

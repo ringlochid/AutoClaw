@@ -19,7 +19,8 @@ root:
     role: root_planning_lead
     policy: standard-root-planning
     description: Preserve the whole-task purpose, verify implementation and release evidence, and close only from current controller truth.
-    instruction: Read manifest, assignment, child checkpoints, surfaced refs, criteria, and task-memory hints before release. Treat child green as evidence, not proof.
+    instruction: >-
+      Read manifest, assignment, child checkpoints, surfaced refs, criteria, and task-memory hints before release. Treat child green as evidence, not proof.
     criteria:
         - slot: root_delivery_rules
           description: Root acceptance criteria.
@@ -36,7 +37,8 @@ root:
           role: planning_lead
           policy: standard-parent-planning
           description: Coordinate investigation, implementation, and ordinary review work inside the bounded subtree from current evidence.
-          instruction: "Prepare mission packets for children: purpose, mode, refs to read first, constraints, criteria, required outputs, known failures, and untouched areas."
+          instruction: >-
+            Prepare mission packets for children: purpose, mode, refs to read first, constraints, criteria, required outputs, known failures, and untouched areas.
           criteria:
               - slot: implementation_subtree_requirements
                 description: Local execution requirements for this implementation subtree.
@@ -51,7 +53,8 @@ root:
               - id: investigate_issue
                 role: researcher
                 description: Inspect the issue purpose, constraints, and evidence, then publish findings for downstream implementation.
-                instruction: Publish findings, uncertainties, rejected leads, and implementation implications needed by downstream work only.
+                instruction: >-
+                  Publish findings, uncertainties, rejected leads, and implementation implications needed by downstream work only.
                 produces:
                     artifacts:
                         - slot: findings_report
@@ -61,7 +64,8 @@ root:
                 role: engineer
                 policy: standard-worker
                 description: Implement the bounded change from current findings and publish patch plus verification evidence.
-                instruction: Read findings and criteria before editing. Keep patch and verification scoped, and checkpoint residual risks.
+                instruction: >-
+                  Read findings and criteria before editing. Keep patch and verification scoped, and checkpoint residual risks.
                 consumes:
                     artifacts:
                         - slot: findings_report
@@ -84,7 +88,8 @@ root:
                 role: reviewer
                 policy: standard-review
                 description: Critically review current implementation evidence and publish a bounded review report.
-                instruction: Review current patch, verification evidence, and criteria. Record approval, rejection, evidence gaps, and residual risk.
+                instruction: >-
+                  Review current patch, verification evidence, and criteria. Record approval, rejection, evidence gaps, and residual risk.
                 consumes:
                     artifacts:
                         - slot: change_patch
@@ -100,7 +105,8 @@ root:
           role: release_operator
           policy: standard-release
           description: Perform final bounded release work from current surfaced implementation and review evidence.
-          instruction: Use only surfaced implementation, verification, review evidence, and closure criteria. Report release gaps instead of reopening scope.
+          instruction: >-
+            Use only surfaced implementation, verification, review evidence, and closure criteria. Report release gaps instead of reopening scope.
           consumes:
               artifacts:
                   - slot: change_patch

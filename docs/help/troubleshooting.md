@@ -20,14 +20,14 @@ Use `--json` when you need machine-readable output.
 
 ## Symptom map
 
-| If you see | Start with |
-| --- | --- |
-| `autoclaw` is not found, `onboard` fails, or `doctor` is unhealthy after install | [Install and onboard problems](install-and-onboard.md) |
-| `openclaw check` blocks setup, wrapper repair, or service startup | [OpenClaw integration problems](openclaw-integration.md) |
-| `service start` fails, `/healthz` fails, or `/readyz` fails | [Service and health problems](service-and-health.md) |
-| `task-compose start` fails before a useful task exists | [Task start failures](task-start-failures.md) |
-| a task is waiting, paused, stale, or unclear after launch | [Task stuck or waiting](task-stuck-or-waiting.md) |
-| Postgres, migration, reset, or DB-backed verification fails | [Postgres and database problems](postgres-and-database.md) |
+| If you see                                                                       | Start with                                                 |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `autoclaw` is not found, `onboard` fails, or `doctor` is unhealthy after install | [Install and onboard problems](install-and-onboard.md)     |
+| `openclaw check` blocks setup, wrapper repair, or service startup                | [OpenClaw integration problems](openclaw-integration.md)   |
+| `service start` fails, `/healthz` fails, or `/readyz` fails                      | [Service and health problems](service-and-health.md)       |
+| `task-compose start` fails before a useful task exists                           | [Task start failures](task-start-failures.md)              |
+| a task is waiting, paused, stale, or unclear after launch                        | [Task stuck or waiting](task-stuck-or-waiting.md)          |
+| Postgres, migration, reset, or DB-backed verification fails                      | [Postgres and database problems](postgres-and-database.md) |
 
 ## Collect evidence
 

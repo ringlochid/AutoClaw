@@ -79,4 +79,4 @@ autoclaw openclaw doctor --fix
 
 - [Operator model](../concepts/operator-model.md)
 - [CLI support checks and self-contained setup](../reference/cli/cli-fast-fail-and-self-contained-report.md)
-- [OpenClaw and bridge integration baseline](../reference/operator/openclaw-and-bridge-plugin.md)
+- [OpenClaw integration boundary](../reference/operator/openclaw-integration-boundary.md)

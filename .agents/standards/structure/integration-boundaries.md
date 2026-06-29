@@ -2,7 +2,7 @@
 
 Status: Reference
 
-Use this guide when a change touches seams between backend layers, OpenClaw integration, CLI surfaces, operator/plugin lanes, or support-state readbacks.
+Use this guide when a change touches seams between backend layers, OpenClaw integration, CLI surfaces, operator lanes, node-tool lanes, or support-state readbacks.
 
 ## Core boundary rules
 
@@ -30,7 +30,7 @@ Use this guide when a change touches seams between backend layers, OpenClaw inte
 ## OpenClaw and support-state boundaries
 
 - gateway/session continuity questions route to the gateway/session owner docs
-- watchdog, operator/plugin lanes, and support-state readbacks route to the watchdog/operator owner docs
+- watchdog, operator lanes, node-tool lanes, and support-state readbacks route to the watchdog/operator owner docs
 - session-authority simplification and same-session redispatch cleanup route to the session-authority owner docs
 - public CLI/API ingest and definition-registry surfaces route to the ingest and registry owner docs
 - install, onboarding, reset, package, and docs cutover route to the install and release owner docs
@@ -43,7 +43,7 @@ Use this guide when a change touches seams between backend layers, OpenClaw inte
 
 ## Adapter and boundary discipline
 
-- keep adapters thin and named for the external system they bridge
+- keep adapters thin and named for the external system they connect to
 - do not hide controller decisions inside transport or adapter helpers
 - do not bury route-local support models, presenters, or translators inside route-only packages; keep them under `interfaces/http/contracts/**` or another clearly named transport-contract owner
 - when persisted metadata or default identifiers need to survive for operational reasons, prefer neutral product-language identifiers over internal execution-roadmap labels

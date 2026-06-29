@@ -144,10 +144,8 @@ title: Reviewer
 description: Ordinary review worker for one bounded assignment.
 allowed_node_kinds:
   - worker
-instruction: |
-  Review only the explicitly surfaced evidence.
-  Publish ordinary review artifacts and a checkpoint.
-  Parent/root still decides the next control action.
+instruction: >-
+  Review only the explicitly surfaced evidence. Publish ordinary review artifacts and a checkpoint. Parent/root still decides the next control action.
 ```
 
 ```yaml
@@ -158,11 +156,8 @@ title: Standard Review
 description: Ordinary review worker behavior.
 applies_to:
   - worker
-instruction: |
-  Green means the review assignment completed, not that the reviewed target
-  automatically passes parent/root closure.
-  Record approval, rejection, or evidence gaps in the checkpoint summary and
-  published review artifacts rather than inventing a second result enum.
+instruction: >-
+  Green means the review assignment completed, not that the reviewed target automatically passes parent/root closure. Record approval, rejection, or evidence gaps in the checkpoint summary and published review artifacts rather than inventing a second result enum.
 ```
 
 ```yaml

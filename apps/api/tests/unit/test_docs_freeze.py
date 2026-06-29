@@ -46,6 +46,103 @@ def test_iter_maintained_markdown_files_includes_product_and_root_docs() -> None
     assert Path("docs-internal/archive/03-old-version-docs-disposition.md") in maintained_paths
 
 
+def test_markdown_formatter_normalizes_yaml_instruction_scalars() -> None:
+    _ensure_repo_root_on_path()
+    formatting = importlib.import_module("scripts.docs.markdown_format.formatting")
+
+    assert (
+        formatting.format_yaml_text("instruction: |\n    First line\n    second line\n")
+        == "instruction: >-\n  First line second line\n"
+    )
+
+    source = "```yaml\ninstruction: |\n  First line\n  second line\n```\n"
+    expected = "```yaml\ninstruction: >-\n  First line second line\n```\n"
+
+    assert formatting.format_markdown_text(source) == expected
+
+    inline_source = (
+        "```yaml\n"
+        "instruction: 'First line about the assignment. Second line about risk.'\n"
+        "```\n"
+    )
+    inline_expected = (
+        "```yaml\n"
+        "instruction: >-\n"
+        "  First line about the assignment. Second line about risk.\n"
+        "```\n"
+    )
+
+    assert formatting.format_markdown_text(inline_source) == inline_expected
+
+    wrapped_description = (
+        "description: Worker behavior for bounded assignments that may need\n"
+        "  controller-managed long command runs.\n"
+    )
+
+    assert (
+        formatting.format_yaml_text(wrapped_description)
+        == "description: Worker behavior for bounded assignments that may need "
+        "controller-managed long command runs.\n"
+    )
+
+    fenced_description = (
+        "```yaml\n"
+        "description: Worker behavior for bounded assignments that may need\n"
+        "  controller-managed long command runs.\n"
+        "```\n"
+    )
+    fenced_expected = (
+        "```yaml\n"
+        "description: Worker behavior for bounded assignments that may need "
+        "controller-managed long command runs.\n"
+        "```\n"
+    )
+
+    assert formatting.format_markdown_text(fenced_description) == fenced_expected
+
+    indented_yaml = (
+        "Example:\n\n"
+        "    assignment_intent:\n"
+        "      instruction: >\n"
+        "        Read the latest review checkpoint, surfaced page artifacts, and transient\n"
+        "        browser note first. Return exact artifact paths.\n"
+    )
+    indented_expected = (
+        "Example:\n\n"
+        "    assignment_intent:\n"
+        "      instruction: >-\n"
+        "        Read the latest review checkpoint, surfaced page artifacts, and "
+        "transient browser note first. Return exact artifact paths.\n"
+    )
+
+    assert formatting.format_markdown_text(indented_yaml) == indented_expected
+
+    text_fenced_yaml = (
+        "```text\n"
+        "Better child assignment:\n"
+        "\n"
+        "    assign_child:\n"
+        "      assignment_intent:\n"
+        "        instruction: >\n"
+        "          Read the latest review checkpoint, surfaced page artifacts, and transient\n"
+        "          browser note first. Return exact artifact paths.\n"
+        "```\n"
+    )
+    text_fenced_expected = (
+        "```text\n"
+        "Better child assignment:\n"
+        "\n"
+        "    assign_child:\n"
+        "      assignment_intent:\n"
+        "        instruction: >-\n"
+        "          Read the latest review checkpoint, surfaced page artifacts, and "
+        "transient browser note first. Return exact artifact paths.\n"
+        "```\n"
+    )
+
+    assert formatting.format_markdown_text(text_fenced_yaml) == text_fenced_expected
+
+
 def test_repo_path_reference_issues_scan_root_readme() -> None:
     docs_freeze = _docs_freeze_namespace()
 

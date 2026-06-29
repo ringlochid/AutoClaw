@@ -18,7 +18,7 @@ Release-ready means:
 ### Unit and integration
 
 - unit coverage for changed core logic
-- integration coverage for changed runtime, DB, route, provider, CLI, package, or plugin behavior
+- integration coverage for changed runtime, DB, route, provider, CLI, package, or OpenClaw integration behavior
 - explicit note when a test category was not viable and why
 
 ### E2E lanes

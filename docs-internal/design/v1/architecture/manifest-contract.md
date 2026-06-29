@@ -302,7 +302,8 @@ workflow_manifest:
     task_key: string
     title: string
     summary: string
-    instruction: string | null
+    instruction: >-
+      string | null
   workflow:
     workflow_key: string
     description: string

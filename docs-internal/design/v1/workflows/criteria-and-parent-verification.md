@@ -71,7 +71,8 @@ Workers may add clarification in checkpoints or produced artifacts, but they do 
 
 ```yaml
 summary: Review the current patch and verification evidence.
-instruction: Decide whether the current implementation evidence satisfies the surfaced review criteria.
+instruction: >-
+  Decide whether the current implementation evidence satisfies the surfaced review criteria.
 criteria:
   - slot: implementation_review_criteria
     path: C:/tasks/task_2026_0042/_runtime/criteria/implementation_review_criteria.v01.md

@@ -147,4 +147,4 @@ Current code also does not expose a dedicated manifest-ack query surface or the 
 ## Related pages
 
 - [API route families and lane map](../api/api-surface-and-route-map.md)
-- [OpenClaw and bridge integration baseline](openclaw-and-bridge-plugin.md)
+- [OpenClaw integration boundary](openclaw-integration-boundary.md)

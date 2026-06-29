@@ -37,7 +37,7 @@ This page defines the fast local verification lane that is still supported by th
 
 - full DB-backed integration coverage
 - Docker/Postgres verification
-- external provider or bridge reachability beyond the local API surface
+- external provider or OpenClaw integration reachability beyond the local API surface
 - session-effective worker-session MCP inventories through the live OpenClaw bundle-MCP path
 
 ## Relationship to the stronger lane

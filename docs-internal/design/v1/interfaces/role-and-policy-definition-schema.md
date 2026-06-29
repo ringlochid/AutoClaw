@@ -26,7 +26,8 @@ allowed_node_kinds:
   - root | parent | worker
 labels:
   - string
-instruction: string | optional
+instruction: >-
+  string | optional
 ```
 
 Canonical file form for CLI scan/import:
@@ -40,7 +41,8 @@ allowed_node_kinds:
   - root | parent | worker
 labels:
   - string
-instruction: string | optional
+instruction: >-
+  string | optional
 ```
 
 Field meaning:
@@ -67,7 +69,8 @@ title: Review Role
 description: Parent review role for structured review against current criteria.
 allowed_node_kinds:
   - parent
-instruction: Read current criteria first, then inspect the latest checkpoint and surfaced durable refs.
+instruction: >-
+  Read current criteria first, then inspect the latest checkpoint and surfaced durable refs.
 ```
 
 Canonical file example:
@@ -79,7 +82,8 @@ title: Review Role
 description: Parent review role for structured review against current criteria.
 allowed_node_kinds:
   - parent
-instruction: Read current criteria first, then inspect the latest checkpoint and surfaced durable refs.
+instruction: >-
+  Read current criteria first, then inspect the latest checkpoint and surfaced durable refs.
 ```
 
 ## `PolicyDefinitionInput`
@@ -103,7 +107,8 @@ capabilities:
   command_run: deny | allow
 labels:
   - string
-instruction: string | optional
+instruction: >-
+  string | optional
 ```
 
 Canonical file form for CLI scan/import:
@@ -126,7 +131,8 @@ capabilities:
   command_run: deny | allow
 labels:
   - string
-instruction: string | optional
+instruction: >-
+  string | optional
 ```
 
 Field meaning:
@@ -157,7 +163,8 @@ applies_to:
   - parent
 budget_spec:
   child_assignment_limit: 4
-instruction: Keep review grounded in current criteria, latest checkpoint, and surfaced durable refs.
+instruction: >-
+  Keep review grounded in current criteria, latest checkpoint, and surfaced durable refs.
 ```
 
 Canonical file example:
@@ -171,7 +178,8 @@ applies_to:
   - parent
 budget_spec:
   child_assignment_limit: 4
-instruction: Keep review grounded in current criteria, latest checkpoint, and surfaced durable refs.
+instruction: >-
+  Keep review grounded in current criteria, latest checkpoint, and surfaced durable refs.
 ```
 
 Worker retry example:
@@ -184,7 +192,8 @@ applies_to:
   - worker
 budget_spec:
   retry_limit: 2
-instruction: Retry only when the current assignment still applies and the latest checkpoint names the next narrow step.
+instruction: >-
+  Retry only when the current assignment still applies and the latest checkpoint names the next narrow step.
 ```
 
 ## Validation rules

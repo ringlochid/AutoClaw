@@ -19,7 +19,7 @@ For broader runtime visibility, continue into the operator reference:
 
 - [Runtime read models and operator surfaces](../reference/operator/runtime-read-models-and-operator-surfaces.md)
 - [Inspect approvals and watchdog state](../reference/operator/inspect-approvals-and-watchdog.md)
-- [OpenClaw and bridge plugin baseline](../reference/operator/openclaw-and-bridge-plugin.md)
+- [OpenClaw integration boundary](../reference/operator/openclaw-integration-boundary.md)
 
 ## What to decide during inspection
 

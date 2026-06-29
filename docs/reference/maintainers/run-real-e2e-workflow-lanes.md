@@ -18,10 +18,10 @@ Use this page when you want a real current-service e2e check instead of an in-pr
 
 ## What this page does not cover
 
-- separate bridge-plugin packaging or manifest wiring outside this checkout
+- external OpenClaw client packaging or UI wiring outside this checkout
 - every possible callback or mounted node-MCP step needed to drive a live worker by hand
 
-For the current bridge-facing callback and node-MCP surfaces, see [Use the current OpenClaw bridge plugin](../operator/use-the-openclaw-bridge-plugin.md).
+For the current callback and node-MCP surfaces, see [Use the OpenClaw integration](../operator/use-openclaw-integration.md).
 
 ## Current lane keys
 
@@ -312,7 +312,7 @@ Current decision rule:
 - wrong node or wrong subtree advanced: inspect `trace?scope=whole` and compare node order with the lane expectations above
 - release looked wrong: inspect `context/criteria/`, surfaced artifact refs, and the final root or parent dispatch in operator trace
 
-## Relationship to the bridge-facing path
+## Relationship to OpenClaw integration writes
 
 This page gives the operator-side current e2e runbook:
 
@@ -325,6 +325,6 @@ This page gives the operator-side current e2e runbook:
 
 If your real lane also needs live node-tool or callback writes, continue with:
 
-- [Use the OpenClaw bridge integration](../operator/use-the-openclaw-bridge-plugin.md)
+- [Use the OpenClaw integration](../operator/use-openclaw-integration.md)
 
 That page owns the current callback and mounted node-MCP write surfaces.

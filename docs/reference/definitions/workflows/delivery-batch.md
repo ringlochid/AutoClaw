@@ -13,7 +13,8 @@ root:
   role: root_planning_lead
   policy: standard-root-planning
   description: Preserve the higher-level purpose, delegate package planning, and release only after implementation, verification, and review evidence agree.
-  instruction: Start purpose-first. Use the package plan to guide assignment, but challenge weak evidence before release.
+  instruction: >-
+    Start purpose-first. Use the package plan to guide assignment, but challenge weak evidence before release.
   criteria:
     - slot: package_release_criteria
       description: Hard criteria for releasing a completed delivery unit.
@@ -26,7 +27,8 @@ root:
       role: delivery_planner
       policy: standard-delivery-planning
       description: Convert the larger purpose into bounded delivery units and gates.
-      instruction: Produce scoped packages with sequencing, dependencies, consumes, produces, criteria, review, verification, and risks.
+      instruction: >-
+        Produce scoped packages with sequencing, dependencies, consumes, produces, criteria, review, verification, and risks.
       produces:
         artifacts:
           - slot: package_plan
@@ -36,7 +38,8 @@ root:
       role: planning_lead
       policy: standard-parent-planning
       description: Coordinate implementation, verification, and review for one package inside the owned subtree.
-      instruction: Use child mission packets and current evidence. Replan only when package shape or dependencies are wrong.
+      instruction: >-
+        Use child mission packets and current evidence. Replan only when package shape or dependencies are wrong.
       consumes:
         artifacts:
           - slot: package_plan
@@ -55,7 +58,8 @@ root:
           role: engineer
           policy: standard-worker
           description: Implement the selected package and publish the required patch.
-          instruction: Read the package plan and criteria first. Keep implementation scoped and publish residual risk.
+          instruction: >-
+            Read the package plan and criteria first. Keep implementation scoped and publish residual risk.
           consumes:
             artifacts:
               - slot: package_plan
@@ -68,7 +72,8 @@ root:
           role: test_verifier
           policy: standard-verification
           description: Verify the selected package against current criteria.
-          instruction: Publish reproducible evidence, untested areas, and blockers.
+          instruction: >-
+            Publish reproducible evidence, untested areas, and blockers.
           consumes:
             artifacts:
               - slot: package_plan
@@ -82,7 +87,8 @@ root:
           role: code_reviewer
           policy: standard-review
           description: Critically review package implementation and verification evidence.
-          instruction: Publish findings with severity, evidence, reasoning, approval or rejection, and residual risk.
+          instruction: >-
+            Publish findings with severity, evidence, reasoning, approval or rejection, and residual risk.
           consumes:
             artifacts:
               - slot: package_patch
@@ -98,7 +104,8 @@ root:
       role: release_operator
       policy: standard-release
       description: Perform final bounded release work for the selected package.
-      instruction: Use only package plan, implementation, verification, review evidence, and release criteria. Report gaps instead of reopening scope.
+      instruction: >-
+        Use only package plan, implementation, verification, review evidence, and release criteria. Report gaps instead of reopening scope.
       consumes:
         artifacts:
           - slot: package_plan

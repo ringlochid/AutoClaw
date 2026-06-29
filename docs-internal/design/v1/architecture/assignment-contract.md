@@ -141,7 +141,8 @@ assignment:
   assignment_key: string
   node_key: string
   summary: string
-  instruction: string | null
+  instruction: >-
+    string | null
   criteria:
     - kind: criteria
       slot: string
@@ -200,7 +201,8 @@ assign_child:
   child_node_key: implement_fix
   assignment_intent:
     summary: Implement the approved fix for the auth refresh failure.
-    instruction: Keep the patch small and preserve retry-safe behavior.
+    instruction: >-
+      Keep the patch small and preserve retry-safe behavior.
   supplemental_durable_context:
     artifact_slots:
       - slot: findings_report
@@ -222,7 +224,8 @@ assign_child:
   child_node_key: string
   assignment_intent:
     summary: string
-    instruction: string | null
+    instruction: >-
+      string | null
   supplemental_durable_context:
     artifact_slots:
       - slot: string
@@ -251,7 +254,8 @@ assignment:
   assignment_key: implement_fix.assign-01
   node_key: implement_fix
   summary: Implement the approved fix for the auth refresh failure.
-  instruction: Keep the patch small and preserve retry-safe behavior.
+  instruction: >-
+    Keep the patch small and preserve retry-safe behavior.
   criteria:
     - kind: criteria
       slot: implement_fix_delivery_criteria

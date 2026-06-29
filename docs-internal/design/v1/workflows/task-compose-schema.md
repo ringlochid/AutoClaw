@@ -55,7 +55,8 @@ task:
   key: string
   title: string
   summary: string
-  instruction: string | optional
+  instruction: >-
+    string | optional
 workflow:
   key: string
 roots:
@@ -129,7 +130,8 @@ task:
   key: auth-refresh-hardening
   title: Harden auth refresh flow
   summary: Investigate and fix the auth refresh regression.
-  instruction: Stay scoped to the auth refresh failure path and publish patch, verification, and closure evidence only through declared produce slots.
+  instruction: >-
+    Stay scoped to the auth refresh failure path and publish patch, verification, and closure evidence only through declared produce slots.
 workflow:
   key: normal-parent-first-release
 roots:

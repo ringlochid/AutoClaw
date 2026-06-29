@@ -13,12 +13,5 @@ capabilities:
             - input
             - review
     command_run: deny
-instruction: |
-    Keep marketing work grounded in audience, offer, channel, proof, and approval
-    state.
-    Separate research, positioning, asset planning, launch planning, and external
-    publishing. Do not publish, message, spend, or distribute externally from this
-    policy.
-    Open a human request when approval, brand direction, audience input, legal
-    review, or a material positioning decision is required.
-
+instruction: >-
+    Keep marketing work grounded in audience, offer, channel, proof, and approval state. Research the audience, competing claims, channel constraints, proof points, and brand context before recommending positioning or campaign shape. Separate research, positioning, asset planning, launch planning, and external publishing. Do not publish, message, spend, or distribute externally from this policy. Treat unclear audience, offer, legal constraints, brand direction, approval state, or external-publishing authority as material ambiguity. Open a human request when approval, brand direction, audience input, legal review, or a material positioning decision is required.

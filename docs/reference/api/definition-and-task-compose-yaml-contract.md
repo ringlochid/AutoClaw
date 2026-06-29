@@ -257,7 +257,8 @@ root:
   id: root
   role: planning_lead
   description: Preserve the task purpose, delegate one bounded engineering change, and release only when current evidence satisfies criteria.
-  instruction: Read manifest, assignment, checkpoint, surfaced refs, and criteria before assigning or releasing. Verify worker evidence instead of trusting green alone.
+  instruction: >-
+    Read manifest, assignment, checkpoint, surfaced refs, and criteria before assigning or releasing. Verify worker evidence instead of trusting green alone.
   criteria:
     - slot: implementation_rules
       description: Parent acceptance criteria.
@@ -269,7 +270,8 @@ root:
       role: engineer
       policy: standard-worker
       description: Understand the purpose, implement the bounded change, and publish patch plus verification evidence for the current assignment.
-      instruction: Read current criteria and any surfaced refs before editing. Keep the patch scoped, verify the intended behavior, and checkpoint reasoning plus criteria status.
+      instruction: >-
+        Read current criteria and any surfaced refs before editing. Keep the patch scoped, verify the intended behavior, and checkpoint reasoning plus criteria status.
       produces:
         artifacts:
           - slot: change_patch

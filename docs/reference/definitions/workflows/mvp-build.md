@@ -13,7 +13,8 @@ root:
   role: root_planning_lead
   policy: standard-root-planning
   description: Preserve MVP scope and release only when the thin slice proves the intended value with current review and verification evidence.
-  instruction: Keep MVP work thin. Route non-core polish, broad platform work, and speculative expansion to follow-up scope.
+  instruction: >-
+    Keep MVP work thin. Route non-core polish, broad platform work, and speculative expansion to follow-up scope.
   criteria:
     - slot: mvp_release_criteria
       description: Hard criteria for MVP release.
@@ -26,7 +27,8 @@ root:
       role: product_planner
       policy: standard-product-planning
       description: Define the MVP user value, thin slice, deferrals, and acceptance criteria.
-      instruction: Keep the scope focused on the smallest usable proof of value.
+      instruction: >-
+        Keep the scope focused on the smallest usable proof of value.
       produces:
         artifacts:
           - slot: mvp_scope
@@ -36,7 +38,8 @@ root:
       role: engineer
       policy: standard-worker
       description: Implement the thin MVP slice from accepted scope.
-      instruction: Build only the accepted MVP slice. Defer polish and broad infrastructure unless criteria require it.
+      instruction: >-
+        Build only the accepted MVP slice. Defer polish and broad infrastructure unless criteria require it.
       consumes:
         artifacts:
           - slot: mvp_scope
@@ -55,7 +58,8 @@ root:
       role: test_verifier
       policy: standard-long-command-worker
       description: Verify the MVP demo path and core acceptance behavior.
-      instruction: Verify the smallest user path that proves MVP value and name untested follow-up areas.
+      instruction: >-
+        Verify the smallest user path that proves MVP value and name untested follow-up areas.
       consumes:
         artifacts:
           - slot: mvp_scope
@@ -71,7 +75,8 @@ root:
       role: code_reviewer
       policy: standard-review
       description: Review the MVP patch and demo verification evidence.
-      instruction: Focus on correctness, regression risk, missing tests, and whether the patch stayed inside MVP scope.
+      instruction: >-
+        Focus on correctness, regression risk, missing tests, and whether the patch stayed inside MVP scope.
       consumes:
         artifacts:
           - slot: mvp_scope
@@ -88,7 +93,8 @@ root:
       role: product_reviewer
       policy: standard-scope-review
       description: Review whether the MVP slice proves the intended product value.
-      instruction: Judge user value, deferrals, acceptance gaps, and whether the next workflow should build, revise, or stop.
+      instruction: >-
+        Judge user value, deferrals, acceptance gaps, and whether the next workflow should build, revise, or stop.
       consumes:
         artifacts:
           - slot: mvp_scope
@@ -105,7 +111,8 @@ root:
       role: release_operator
       policy: standard-release
       description: Perform final bounded MVP release or closure work from current surfaced evidence.
-      instruction: Use only MVP scope, patch, verification, code review, product review, and release criteria.
+      instruction: >-
+        Use only MVP scope, patch, verification, code review, product review, and release criteria.
       consumes:
         artifacts:
           - slot: mvp_scope

@@ -13,7 +13,8 @@ root:
   role: root_planning_lead
   policy: standard-root-planning
   description: Preserve the planning-only purpose and close only when the final plan is actionable, reviewed, and clearly non-implementation.
-  instruction: Keep the workflow in planning mode. Route implementation requests to a later workflow instead of silently doing them here.
+  instruction: >-
+    Keep the workflow in planning mode. Route implementation requests to a later workflow instead of silently doing them here.
   criteria:
     - slot: planning_only_criteria
       description: Hard criteria for closing planning-only work.
@@ -26,7 +27,8 @@ root:
       role: product_planner
       policy: standard-product-planning
       description: Define the problem, desired outcome, constraints, and scope boundary.
-      instruction: Separate must-have scope, follow-up scope, out-of-scope work, and open product decisions.
+      instruction: >-
+        Separate must-have scope, follow-up scope, out-of-scope work, and open product decisions.
       produces:
         artifacts:
           - slot: scope_brief
@@ -36,7 +38,8 @@ root:
       role: project_manager
       policy: standard-project-management
       description: Convert the scope brief into work packages, sequencing, dependencies, and risks.
-      instruction: Keep work packages bounded and ready for later assignment. Do not implement them.
+      instruction: >-
+        Keep work packages bounded and ready for later assignment. Do not implement them.
       consumes:
         artifacts:
           - slot: scope_brief
@@ -49,7 +52,8 @@ root:
       role: scope_reviewer
       policy: standard-scope-review
       description: Review the plan for contradictions, missing prerequisites, and weak acceptance criteria.
-      instruction: Request concrete corrections and identify decisions needed before execution.
+      instruction: >-
+        Request concrete corrections and identify decisions needed before execution.
       consumes:
         artifacts:
           - slot: scope_brief
@@ -65,7 +69,8 @@ root:
       role: project_manager
       policy: standard-project-management
       description: Publish the final planning artifact from scope, work breakdown, and review evidence.
-      instruction: Resolve review feedback where possible and clearly name remaining decisions or blockers.
+      instruction: >-
+        Resolve review feedback where possible and clearly name remaining decisions or blockers.
       consumes:
         artifacts:
           - slot: scope_brief

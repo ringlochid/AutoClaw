@@ -13,7 +13,8 @@ root:
   role: root_planning_lead
   policy: standard-root-planning
   description: Preserve the idea-discovery purpose and close only when the recommendation is evidence-backed and non-implementation scope is clear.
-  instruction: Route research, option shaping, critique, and recommendation work as separate evidence steps. Do not let discovery drift into build work.
+  instruction: >-
+    Route research, option shaping, critique, and recommendation work as separate evidence steps. Do not let discovery drift into build work.
   criteria:
     - slot: idea_discovery_criteria
       description: Hard criteria for closing idea discovery.
@@ -26,7 +27,8 @@ root:
       role: researcher
       policy: standard-worker
       description: Gather focused evidence for the idea, audience, constraints, and decision.
-      instruction: Publish only evidence that changes option selection, feasibility, or next-step direction.
+      instruction: >-
+        Publish only evidence that changes option selection, feasibility, or next-step direction.
       produces:
         artifacts:
           - slot: discovery_context
@@ -36,7 +38,8 @@ root:
       role: product_planner
       policy: standard-product-planning
       description: Shape candidate directions from discovery evidence.
-      instruction: Compare options by user value, feasibility, risk, scope, and confidence. Do not choose by taste alone.
+      instruction: >-
+        Compare options by user value, feasibility, risk, scope, and confidence. Do not choose by taste alone.
       consumes:
         artifacts:
           - slot: discovery_context
@@ -49,7 +52,8 @@ root:
       role: scope_reviewer
       policy: standard-scope-review
       description: Critique candidate directions for weak evidence, contradictions, and scope risk.
-      instruction: Identify overreach, missing proof, hidden dependencies, and contradictions before recommendation.
+      instruction: >-
+        Identify overreach, missing proof, hidden dependencies, and contradictions before recommendation.
       consumes:
         artifacts:
           - slot: option_brief
@@ -64,7 +68,8 @@ root:
       role: product_reviewer
       policy: standard-scope-review
       description: Recommend the next direction from evidence, options, and critique.
-      instruction: Publish the recommendation, rationale, rejected alternatives, and safest next workflow shape.
+      instruction: >-
+        Publish the recommendation, rationale, rejected alternatives, and safest next workflow shape.
       consumes:
         artifacts:
           - slot: discovery_context

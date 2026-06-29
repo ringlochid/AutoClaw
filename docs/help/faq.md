@@ -48,7 +48,7 @@ Use a human request when the node needs typed human judgment: direction, approva
 
 ## When should a node use a command run?
 
-Use a command run for controller-managed long-running command work that needs progress, logs, terminal state, or cancellation. Ordinary commands should run inline and finish comfortably under about two minutes.
+Use a command run for controller-managed long-running command work that needs progress, logs, terminal state, or cancellation. for example tests or model training. Ordinary commands should run inline and finish comfortably under about two minutes.
 
 ## Is an operator always a human?
 
@@ -56,4 +56,4 @@ No. AutoClaw's intended operator shape is a trusted OpenClaw operator agent prof
 
 ## When should I use Postgres?
 
-Use SQLite for the default local-first lane. Use Postgres when you need the DB-backed lane, stronger concurrency proof, or release verification for DB behavior. Install `autoclaw[postgres]` and set `AUTOCLAW_DATABASE_URL` before onboarding.
+Use SQLite for the default local-first lane. Use Postgres when you need to run multiple tasks concurrently. Install `autoclaw[postgres]` and set `AUTOCLAW_DATABASE_URL` before onboarding.

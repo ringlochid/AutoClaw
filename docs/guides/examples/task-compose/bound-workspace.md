@@ -15,9 +15,8 @@ task:
   key: host-bound-review
   title: Run a host-bound normal workflow
   summary: Bind the task workspace to an explicit host path.
-  instruction: >
-    Run the normal workflow against a real host workspace and keep the task
-    scoped to that path.
+  instruction: >-
+    Run the normal workflow against a real host workspace and keep the task scoped to that path.
 workflow:
   key: normal-parent-first-release
 roots:

@@ -62,7 +62,7 @@ Rules:
 - beneath those lanes, prefer product or feature ownership over redesign-phase history
 - use provider or integration subfolders only when the external boundary is a real owner surface
 - phase history is not the long-term primary source of test ownership
-- when migrating an old phase-owned test family, keep the new feature-owned location authoritative and reduce the old phase bucket to a temporary bridge
+- when migrating an old phase-owned test family, keep the new feature-owned location authoritative and reduce the old phase bucket to a temporary compatibility path
 
 ## Proof rules
 

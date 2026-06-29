@@ -7,7 +7,7 @@ from .files import (
     iter_maintained_markdown_files,
     write_formatted_files,
 )
-from .formatting import format_markdown_text
+from .formatting import format_markdown_text, format_yaml_text
 
 __all__ = [
     "EXCLUDED_SOURCE_PACKS",
@@ -15,6 +15,7 @@ __all__ = [
     "FormatterViolation",
     "collect_violations",
     "format_markdown_text",
+    "format_yaml_text",
     "iter_maintained_markdown_files",
     "main",
     "write_formatted_files",

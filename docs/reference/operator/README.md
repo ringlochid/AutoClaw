@@ -2,11 +2,11 @@
 
 Status: Reference
 
-This surface owns shipped operator-facing inspect, bridge, and runtime-readback reference.
+This surface owns shipped operator-facing inspect, OpenClaw integration, and runtime-readback reference.
 
 ## Start here
 
-- [Use the OpenClaw bridge plugin](use-the-openclaw-bridge-plugin.md)
+- [Use the OpenClaw integration](use-openclaw-integration.md)
 - [Inspect approvals and watchdog state](inspect-approvals-and-watchdog.md)
 - [Runtime read models and operator surfaces](runtime-read-models-and-operator-surfaces.md)
-- [OpenClaw and bridge plugin baseline](openclaw-and-bridge-plugin.md)
+- [OpenClaw integration boundary](openclaw-integration-boundary.md)

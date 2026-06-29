@@ -1,20 +1,21 @@
-# OpenClaw and bridge integration baseline
+# OpenClaw integration boundary
 
 Status: Reference
 
-Last verified: 2026-05-23
+Last verified: 2026-06-29
 
-This page captures the shipped OpenClaw boundary that bridge tooling and worker clients are expected to honor.
+This page captures the shipped OpenClaw integration boundary that worker clients and operator tooling must honor.
 
-The current repo does not ship the older standalone bridge-plugin source tree or the old dedicated bridge transport modules. This page focuses on the controller-side dispatch, prompt, callback, and mounted MCP contract that AutoClaw exposes today.
+The current repo-owned contract is controller-side dispatch, prompt rendering, callback HTTP, mounted node MCP, mounted operator MCP, and runtime readbacks.
 
 ## Keywords
 
-- current OpenClaw boundary
+- OpenClaw integration boundary
 - dispatch session binding
 - callback lane
 - node MCP mount
-- explicit-arg node-tool boundary
+- operator MCP mount
+- explicit-argument node-tool boundary
 
 ## Transport boundary
 
@@ -27,9 +28,7 @@ Current shipped facts:
 - prompt bundles and persisted transport-request artifacts are materialized under `_runtime/dispatch/<dispatch_id>/`
 - dispatch, node-session, delivery-state, continuity-state, watchdog-state, and provider-event rows remain controller truth; prompt files are derived projections
 
-## Current callback and plugin lane baseline
-
-The shipped repo proves the callback lane and the mounted MCP wrapper surfaces, not a separate bridge-plugin source tree.
+## Callback and node MCP baseline
 
 Repo-visible callback HTTP surfaces are:
 
@@ -45,6 +44,8 @@ Repo-visible static `node MCP` surfaces are mounted under `/node/mcp` when the m
 - `get_definition(session_key, task_id, ...)`
 - `record_checkpoint(session_key, task_id, checkpoint)`
 - `return_boundary(session_key, task_id, boundary)`
+- `open_human_request(session_key, task_id, request)`
+- `start_command_run(session_key, task_id, request)`
 - `assign_child(session_key, task_id, payload, expected_structural_revision_id?)`
 - `add_child(session_key, task_id, payload, expected_structural_revision_id?)`
 - `update_child(session_key, task_id, payload, expected_structural_revision_id?)`
@@ -60,9 +61,10 @@ Current shipped helper note:
 
 Current shipped wrapper facts:
 
-- the mounted node-MCP wrapper surface now preserves the strict typed request and result shapes the runtime expects
+- the mounted node-MCP wrapper surface preserves the strict typed request and result shapes the runtime expects
 - `assign_child`, `add_child`, `update_child`, and `remove_child` each keep their own typed `payload` contract, while `release_green` and `release_blocked` stay payload-free
-- node-operation success is surfaced through typed `CheckpointRead`, `BoundaryRead`, `AssignChildSuccess`, `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`, `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` wrapper contracts
+- `open_human_request` and `start_command_run` each take a typed `request` body and create their external wait directly when the current dispatch authority and node capability allow it
+- node-operation success is surfaced through typed `CheckpointRead`, `BoundaryRead`, `HumanRequestOpenResponse`, `CommandRunStartResponse`, `AssignChildSuccess`, `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`, `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` wrapper contracts
 
 That means the current tree locally proves:
 
@@ -70,12 +72,11 @@ That means the current tree locally proves:
 - callback HTTP and static `node MCP` share one server-side authority path
 - prompt and session continuity are dispatch-bound
 - manifest and checkpoint lineage remain controller-owned prompt and runtime truth, not caller-authored write-envelope fields
-
-The current repo does not contain the old bridge-plugin implementation, so exact plugin capability flags and raw plugin tool inventories are not revalidated here.
+- human-request waits and command-run waits are separate capability-driven node operations
 
 ## Current prompt-source rule
 
-The current runtime no longer ships one monolithic bridge-only prompt string.
+The current runtime no longer ships one monolithic integration prompt string.
 
 Repo-owned prompt truth is split across:
 
@@ -84,18 +85,17 @@ Repo-owned prompt truth is split across:
 - dynamic prompt assembly in `apps/api/src/autoclaw/runtime/prompt/instructions.py` and `apps/api/src/autoclaw/runtime/prompt/sections/rendering.py`
 - persisted dispatch artifacts under `_runtime/dispatch/<dispatch_id>/`
 
-The current prompt-source details are summarized in this page rather than split into a second public reference page.
-
 ## Documentation guardrails
 
 This page must not imply that:
 
-- the old bridge-plugin repository is present in this tree
 - prompt files or dispatch observability files outrank controller-owned dispatch, node-session, or manifest rows
-- a separate callback-binding table still owns callback authority in the shipped tree
+- a separate callback-binding table owns callback authority in the shipped tree
 - local wrapper bootstrap owns controller transport authority
+- human-request capability and command-run capability are one bundled capability
 
 ## Related pages
 
+- [Use the OpenClaw integration](use-openclaw-integration.md)
 - [Runtime read models and operator surfaces](runtime-read-models-and-operator-surfaces.md)
 - [API trust lanes](../api/api-trust-lanes.md)

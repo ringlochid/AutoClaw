@@ -13,7 +13,8 @@ root:
   role: root_planning_lead
   policy: standard-root-planning
   description: Preserve campaign purpose and close only when campaign plan evidence, positioning, approvals, and non-publishing scope are clear.
-  instruction: Keep this workflow in campaign planning mode. Do not externally publish, message, spend, or distribute from this workflow.
+  instruction: >-
+    Keep this workflow in campaign planning mode. Do not externally publish, message, spend, or distribute from this workflow.
   criteria:
     - slot: campaign_planning_criteria
       description: Hard criteria for campaign planning closure.
@@ -26,7 +27,8 @@ root:
       role: market_researcher
       policy: standard-marketing-planning
       description: Research audience, competitor, channel, and positioning evidence for the campaign.
-      instruction: Keep findings source-grounded and tied to campaign decisions.
+      instruction: >-
+        Keep findings source-grounded and tied to campaign decisions.
       produces:
         artifacts:
           - slot: audience_research
@@ -36,7 +38,8 @@ root:
       role: marketing_strategist
       policy: standard-marketing-planning
       description: Shape positioning, message hierarchy, channel strategy, and asset plan.
-      instruction: Separate evidence-backed claims from assumptions and name approval needs.
+      instruction: >-
+        Separate evidence-backed claims from assumptions and name approval needs.
       consumes:
         artifacts:
           - slot: audience_research
@@ -49,7 +52,8 @@ root:
       role: scope_reviewer
       policy: standard-scope-review
       description: Review campaign scope, proof, approval gaps, and risk before launch planning.
-      instruction: Identify unsupported claims, missing approvals, channel mismatch, and execution risks.
+      instruction: >-
+        Identify unsupported claims, missing approvals, channel mismatch, and execution risks.
       consumes:
         artifacts:
           - slot: audience_research
@@ -65,7 +69,8 @@ root:
       role: marketing_strategist
       policy: standard-marketing-planning
       description: Prepare the final campaign package for later approval or execution.
-      instruction: Publish a plan that can be reviewed or executed later without performing external distribution now.
+      instruction: >-
+        Publish a plan that can be reviewed or executed later without performing external distribution now.
       consumes:
         artifacts:
           - slot: audience_research

@@ -10,19 +10,19 @@ Use this guide to decide which checks prove a change. Start from the surface cha
 
 ## Quick selection
 
-| Changed surface | Minimum verification |
-| --- | --- |
-| public docs only | markdown unwrap check, docs freeze validate, stale-link scan, `git diff --check` |
-| internal docs only | markdown unwrap check, docs freeze validate, `git diff --check` |
-| docs scripts | docs script focused tests when present, `ruff check scripts/docs`, `mypy scripts/docs` |
-| prompt assets or prompt catalog | prompt catalog generate when inputs changed, prompt catalog validate, focused prompt rendering tests |
-| role, policy, workflow, or task-compose examples | definition schema/catalog focused tests, docs freeze validate, reference link scan |
-| Python backend logic | focused pytest while iterating, `make check-api`, applicable unit/integration lanes |
-| CLI setup, config, OpenClaw, service, or package behavior | CLI focused tests, install/start reference checks, `make check-api`, package or service smoke when practical |
-| runtime, registry, DB, or task launch behavior | focused tests, `make check-api`, `make test-api-unit`, `make test-api-integration` |
-| Postgres, schema, reset, upgrade, or cross-DB behavior | all SQLite-relevant checks plus `make test-api-db` |
-| parent-first runtime, support-state, command-run, human-request, or end-to-end behavior | focused runtime tests plus the relevant e2e lane |
-| release | release checklist, package build, install smoke, docs/examples parity, relevant DB and e2e lanes |
+| Changed surface                                                                         | Minimum verification                                                                                         |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| public docs only                                                                        | markdown unwrap check, docs freeze validate, stale-link scan, `git diff --check`                             |
+| internal docs only                                                                      | markdown unwrap check, docs freeze validate, `git diff --check`                                              |
+| docs scripts                                                                            | docs script focused tests when present, `ruff check scripts/docs`, `mypy scripts/docs`                       |
+| prompt assets or prompt catalog                                                         | prompt catalog generate when inputs changed, prompt catalog validate, focused prompt rendering tests         |
+| role, policy, workflow, or task-compose examples                                        | definition schema/catalog focused tests, docs freeze validate, reference link scan                           |
+| Python backend logic                                                                    | focused pytest while iterating, `make check-api`, applicable unit/integration lanes                          |
+| CLI setup, config, OpenClaw, service, or package behavior                               | CLI focused tests, install/start reference checks, `make check-api`, package or service smoke when practical |
+| runtime, registry, DB, or task launch behavior                                          | focused tests, `make check-api`, `make test-api-unit`, `make test-api-integration`                           |
+| Postgres, schema, reset, upgrade, or cross-DB behavior                                  | all SQLite-relevant checks plus `make test-api-db`                                                           |
+| parent-first runtime, support-state, command-run, human-request, or end-to-end behavior | focused runtime tests plus the relevant e2e lane                                                             |
+| release                                                                                 | release checklist, package build, install smoke, docs/examples parity, relevant DB and e2e lanes             |
 
 Use the heavier lane when a change crosses surfaces. Record skipped lanes with the exact scope reason.
 

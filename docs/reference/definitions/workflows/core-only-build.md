@@ -13,7 +13,8 @@ root:
   role: root_planning_lead
   policy: standard-root-planning
   description: Preserve core-only scope and release only when contracts, implementation, verification, and review evidence agree.
-  instruction: Keep the workflow focused on core foundations such as APIs, data models, invariants, or domain contracts. Defer UX, campaign, and full feature scope.
+  instruction: >-
+    Keep the workflow focused on core foundations such as APIs, data models, invariants, or domain contracts. Defer UX, campaign, and full feature scope.
   criteria:
     - slot: core_release_criteria
       description: Hard criteria for core-only release.
@@ -26,7 +27,8 @@ root:
       role: core_architect
       policy: standard-worker
       description: Design the bounded core contracts and implementation criteria.
-      instruction: Publish the smallest durable foundation needed for later work, with explicit non-goals.
+      instruction: >-
+        Publish the smallest durable foundation needed for later work, with explicit non-goals.
       produces:
         artifacts:
           - slot: core_contract_plan
@@ -36,7 +38,8 @@ root:
       role: engineer
       policy: standard-worker
       description: Implement the bounded core foundation from the contract plan.
-      instruction: Implement only the core contract. Avoid full feature behavior, UI polish, or unrelated platform cleanup.
+      instruction: >-
+        Implement only the core contract. Avoid full feature behavior, UI polish, or unrelated platform cleanup.
       consumes:
         artifacts:
           - slot: core_contract_plan
@@ -55,7 +58,8 @@ root:
       role: test_verifier
       policy: standard-long-command-worker
       description: Verify core contracts, invariants, and compatibility expectations.
-      instruction: Use long command-run capability only for checks likely to exceed inline dispatch time. Name untested contract areas.
+      instruction: >-
+        Use long command-run capability only for checks likely to exceed inline dispatch time. Name untested contract areas.
       consumes:
         artifacts:
           - slot: core_contract_plan
@@ -71,7 +75,8 @@ root:
       role: code_reviewer
       policy: standard-review
       description: Review the core implementation against contract, verification, and release criteria.
-      instruction: Focus on contract correctness, migration risk, compatibility, tests, and full-product scope creep.
+      instruction: >-
+        Focus on contract correctness, migration risk, compatibility, tests, and full-product scope creep.
       consumes:
         artifacts:
           - slot: core_contract_plan
@@ -88,7 +93,8 @@ root:
       role: release_operator
       policy: standard-release
       description: Perform final bounded core-only release or closure work from current surfaced evidence.
-      instruction: Use only core contract, implementation, verification, review evidence, and release criteria.
+      instruction: >-
+        Use only core contract, implementation, verification, review evidence, and release criteria.
       consumes:
         artifacts:
           - slot: core_contract_plan

@@ -71,7 +71,8 @@ RootNodeDefinition:
   role: string
   policy: string | optional
   description: string
-  instruction: string | optional
+  instruction: >-
+    string | optional
   produces:
     artifacts: [produce_slot, ...] | optional
   criteria: [criteria_declaration, ...] | optional
@@ -87,7 +88,8 @@ NodeDefinition:
   role: string
   policy: string | optional
   description: string
-  instruction: string | optional
+  instruction: >-
+    string | optional
   consumes:
     artifacts: [consume_selector, ...] | optional
     criteria: [consume_selector, ...] | optional
@@ -136,7 +138,8 @@ root:
   role: root_planning_lead
   policy: standard-root-planning
   description: Coordinate the whole flow and decide final closure.
-  instruction: Keep final closure tied to current surfaced evidence.
+  instruction: >-
+    Keep final closure tied to current surfaced evidence.
   criteria:
     - slot: root_closure_criteria
       description: Final root acceptance criteria.
@@ -148,7 +151,8 @@ root:
       role: planning_lead
       policy: standard-parent-planning
       description: Coordinate investigation, implementation, and review.
-      instruction: Assign only the next bounded child step needed for this subtree.
+      instruction: >-
+        Assign only the next bounded child step needed for this subtree.
       criteria:
         - slot: subtree_delivery_rules
           description: Shared delivery rules for direct children.
@@ -167,7 +171,8 @@ root:
         - id: investigate_issue
           role: researcher
           description: Gather findings for downstream implementation.
-          instruction: Publish only findings needed by downstream implementation.
+          instruction: >-
+            Publish only findings needed by downstream implementation.
           produces:
             artifacts:
               - slot: findings_report
@@ -176,7 +181,8 @@ root:
         - id: implement_change
           role: engineer
           description: Implement the scoped fix.
-          instruction: Read current criteria before editing and keep the patch scoped.
+          instruction: >-
+            Read current criteria before editing and keep the patch scoped.
           consumes:
             artifacts:
               - slot: findings_report
@@ -197,7 +203,8 @@ root:
         - id: review_change
           role: reviewer
           description: Review the patch against current criteria and evidence.
-          instruction: Review the current patch and verification evidence only.
+          instruction: >-
+            Review the current patch and verification evidence only.
           consumes:
             artifacts:
               - slot: change_patch

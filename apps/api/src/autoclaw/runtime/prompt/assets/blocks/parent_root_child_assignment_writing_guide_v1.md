@@ -71,12 +71,8 @@ Better child assignment:
       child_node_key: verify_task_start_cta
       assignment_intent:
         summary: Verify Task Start CTA state and nav behavior on the current page.
-        instruction: >
-          Read the latest review checkpoint, surfaced page artifacts, and transient
-          browser note first. Identify the UI contract and responsive test scenes
-          before changing source. If you patch, keep the change scoped to Task Start
-          only and return exact artifact paths, checks run, docs touched or
-          intentionally skipped, plus the next blocker if the page still fails.
+        instruction: >-
+          Read the latest review checkpoint, surfaced page artifacts, and transient browser note first. Identify the UI contract and responsive test scenes before changing source. If you patch, keep the change scoped to Task Start only and return exact artifact paths, checks run, docs touched or intentionally skipped, plus the next blocker if the page still fails.
       supplemental_durable_context:
         artifact_slots:
           - slot: page_html
@@ -98,13 +94,8 @@ Question-style child assignment:
       child_node_key: plan_task_start_fix
       assignment_intent:
         summary: Map Task Start interface and proof plan before implementation.
-        instruction: >
-          Question to answer: which source modules, rendered UI contracts, and
-          responsive scenes must an implementer respect to fix Task Start safely?
-          Read the surfaced page artifact, latest review checkpoint, acceptance
-          criteria, and transient open-question note first. Return an interface map,
-          recommended implementation slice, proof lanes, docs update recommendation,
-          and any uncertainty. Do not patch source in this assignment.
+        instruction: >-
+          Question to answer: which source modules, rendered UI contracts, and responsive scenes must an implementer respect to fix Task Start safely? Read the surfaced page artifact, latest review checkpoint, acceptance criteria, and transient open-question note first. Return an interface map, recommended implementation slice, proof lanes, docs update recommendation, and any uncertainty. Do not patch source in this assignment.
       supplemental_durable_context:
         artifact_slots:
           - slot: page_html

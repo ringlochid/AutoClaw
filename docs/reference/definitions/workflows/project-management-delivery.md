@@ -13,7 +13,8 @@ root:
   role: root_planning_lead
   policy: standard-root-planning
   description: Preserve delivery-management purpose and close only when objectives, work packages, risks, and status plan are current.
-  instruction: Keep this workflow in coordination mode. Do not implement package work from project-management assignments.
+  instruction: >-
+    Keep this workflow in coordination mode. Do not implement package work from project-management assignments.
   criteria:
     - slot: project_management_criteria
       description: Hard criteria for delivery-management closure.
@@ -26,7 +27,8 @@ root:
       role: project_manager
       policy: standard-project-management
       description: Capture objective, stakeholders, constraints, decision needs, and current state.
-      instruction: Build a management brief that makes the delivery problem inspectable.
+      instruction: >-
+        Build a management brief that makes the delivery problem inspectable.
       produces:
         artifacts:
           - slot: project_objectives
@@ -36,7 +38,8 @@ root:
       role: project_manager
       policy: standard-project-management
       description: Decompose objectives into packages, dependencies, sequencing, and verification gates.
-      instruction: Keep packages assignable and separate implementation work from coordination work.
+      instruction: >-
+        Keep packages assignable and separate implementation work from coordination work.
       consumes:
         artifacts:
           - slot: project_objectives
@@ -49,7 +52,8 @@ root:
       role: scope_reviewer
       policy: standard-scope-review
       description: Review delivery work for risk, missing dependencies, unclear ownership, and acceptance gaps.
-      instruction: Name concrete corrections, blocking decisions, and risk severity.
+      instruction: >-
+        Name concrete corrections, blocking decisions, and risk severity.
       consumes:
         artifacts:
           - slot: project_objectives
@@ -65,7 +69,8 @@ root:
       role: project_manager
       policy: standard-project-management
       description: Publish the final delivery-management plan and status cadence.
-      instruction: Incorporate review findings where possible and clearly list remaining decisions.
+      instruction: >-
+        Incorporate review findings where possible and clearly list remaining decisions.
       consumes:
         artifacts:
           - slot: project_objectives
