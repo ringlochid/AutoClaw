@@ -1,0 +1,24 @@
+task:
+    key: autoclaw-console-definition-editor-page
+    title: AutoClaw Console Definition Editor Page
+    summary: Build the draft-set definition editor workbench with validation, preview, diff, and apply preparation.
+    instruction: >-
+      Implement the Definition Editor page after the runtime and simpler authoring
+      surfaces are stable. Use /authoring/definition-draft-sets contracts for draft-set
+      browse/read/save/materialize/validate/preview/diff/apply preparation according to
+      current API truth. Keep stored truth, draft-set truth, normalized preview truth,
+      diff truth, and task-start launch truth visibly separate. Match
+      references/frontend_design definition-editor anchors including modal/disclosure
+      states without turning the task tree into a workflow editor. Record evidence and
+      ambiguity handling under tmp/autoclaw-frontend/80-definition-editor-page. Include
+      mapper/state tests, MSW integration, browser evidence for editor states,
+      accessibility checks, and console validation.
+workflow:
+    key: frontend-feature-slice
+roots:
+    workspace:
+        mode: use_existing_host
+        host_path: /home/ubuntu/leo/projects/autoclaw
+    context:
+        mode: ensure_host_path
+        host_path: /home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/80-definition-editor-page

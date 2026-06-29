@@ -45,3 +45,7 @@ tmp/
 
 
 docs-internal/execution/
+
+references/*
+!references/frontend/
+!references/frontend/**

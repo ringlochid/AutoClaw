@@ -1,0 +1,24 @@
+task:
+    key: autoclaw-console-frontend-suite-release-review
+    title: AutoClaw Console Frontend Suite Release Review
+    summary: Verify full-suite visual parity, accessibility, browser behavior, tests, docs, and release readiness.
+    instruction: >-
+      Run the final full-suite frontend release review after all page slices have
+      closure evidence. Gather reports from tmp/autoclaw-frontend, implementation docs
+      from docs-internal/design/v2/console, plans from references/frontend, and design
+      anchors from references/frontend_design plus
+      /home/ubuntu/leo/design/autoclaw-v2-ui. Verify all seven pages for design parity,
+      responsive layout, keyboard/focus behavior, accessibility, critical user
+      workflows, loading/empty/error states, MSW/e2e coverage, Playwright/browser
+      evidence, and coding-standard validation. Record final evidence under
+      tmp/autoclaw-frontend/99-suite-release-review. Do not implement broad repairs
+      here; publish bounded fix routes for any release blocker.
+workflow:
+    key: frontend-suite-release-review
+roots:
+    workspace:
+        mode: use_existing_host
+        host_path: /home/ubuntu/leo/projects/autoclaw
+    context:
+        mode: ensure_host_path
+        host_path: /home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/99-suite-release-review

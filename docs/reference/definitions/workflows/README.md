@@ -13,6 +13,7 @@ The examples include optional node `instruction` fields. Node instruction is nod
 - [Core-only build](core-only-build.md)
 - [Delivery batch](delivery-batch.md)
 - [Feature implementation](feature-implementation.md)
+- [Frontend feature slice](frontend-feature-slice.md)
 - [Idea discovery](idea-discovery.md)
 - [Marketing campaign](marketing-campaign.md)
 - [MVP build](mvp-build.md)

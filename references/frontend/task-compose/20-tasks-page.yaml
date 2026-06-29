@@ -1,0 +1,22 @@
+task:
+    key: autoclaw-console-tasks-page
+    title: AutoClaw Console Tasks Page
+    summary: Build the Tasks runtime entry page from GET /runtime/tasks with design parity and tests.
+    instruction: >-
+      Implement the Tasks page in apps/console as the only runtime entrypoint. Use GET
+      /runtime/tasks, typed mappers, query/status/sort/cursor handling, row view models,
+      loading, empty, no-results, dense-list, error, and auth/permission states. Match
+      references/frontend_design/page and charter anchors without inventing unsupported
+      counts, request/run hints, metrics, or alternate runtime homes. Record evidence
+      and ambiguity handling under tmp/autoclaw-frontend/20-tasks-page. Include
+      MSW-backed tests, focused component/integration coverage, and Playwright/browser
+      evidence when page behavior is ready.
+workflow:
+    key: frontend-feature-slice
+roots:
+    workspace:
+        mode: use_existing_host
+        host_path: /home/ubuntu/leo/projects/autoclaw
+    context:
+        mode: ensure_host_path
+        host_path: /home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/20-tasks-page

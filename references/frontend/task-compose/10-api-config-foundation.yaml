@@ -1,0 +1,24 @@
+task:
+    key: autoclaw-console-api-config-foundation
+    title: AutoClaw Console API And Config Foundation
+    summary: Harden console runtime config, typed API helpers, error normalization, fixtures, and view-model boundaries.
+    instruction: >-
+      Implement the frontend foundation slice for apps/console only. Read
+      references/frontend, references/frontend_design, docs-internal/design/v2/console,
+      generated OpenAPI types, and the existing console scaffold first. Add
+      production-safe runtime configuration including the intended /console/config path
+      if supported by current backend contracts, typed endpoint helpers, structured
+      OperationFailure and validation-error normalization, view-model mapper boundaries,
+      SSE helper boundaries needed by later slices, and MSW fixture/test foundations.
+      Keep raw API shapes out of page components. Record evidence and ambiguity handling
+      under tmp/autoclaw-frontend/10-api-config-foundation. Run the smallest relevant
+      checks plus make check-console when the slice is ready.
+workflow:
+    key: frontend-feature-slice
+roots:
+    workspace:
+        mode: use_existing_host
+        host_path: /home/ubuntu/leo/projects/autoclaw
+    context:
+        mode: ensure_host_path
+        host_path: /home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/10-api-config-foundation

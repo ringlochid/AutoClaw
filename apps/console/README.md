@@ -40,6 +40,9 @@ features/
   task-start/
 ```
 
+Internal route fixtures live under `src/app/` instead of `src/features/` so product feature
+folders stay page-owned.
+
 ## Naming and readability
 
 - Use `PascalCase.tsx` for component files that primarily export one component.

@@ -1,0 +1,23 @@
+task:
+    key: autoclaw-console-task-detail-sse
+    title: AutoClaw Console Task Detail And SSE
+    summary: Build Task Detail bootstrap, snapshot/trace/events, SSE resume, dedupe, reset, and selected-context UI.
+    instruction: >-
+      Implement the Task Detail page and runtime event bootstrap for apps/console. Use
+      controller-backed task read, snapshot, trace, event backfill, and /events/stream
+      semantics with cursor resume, dedupe, reset handling, and clear degradation paths.
+      Preserve task-first navigation, read-only task tree semantics, chronological
+      task_event thread, selected context, and dedicated sibling links to Human Requests
+      and Command Runs. Match the design anchors without reviving Overview as a
+      standalone page or workflow-editor behavior. Record evidence and ambiguity
+      handling under tmp/autoclaw-frontend/30-task-detail-sse. Include
+      mapper/state-machine tests, MSW/SSE integration tests, and browser evidence.
+workflow:
+    key: frontend-feature-slice
+roots:
+    workspace:
+        mode: use_existing_host
+        host_path: /home/ubuntu/leo/projects/autoclaw
+    context:
+        mode: ensure_host_path
+        host_path: /home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/30-task-detail-sse

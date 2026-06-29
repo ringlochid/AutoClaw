@@ -1,0 +1,89 @@
+kind: workflow
+id: frontend-suite-release-review
+description: Verify and review the full AutoClaw console frontend suite before final release closure.
+root:
+    id: root
+    role: root_planning_lead
+    policy: standard-root-planning
+    description: Preserve full-suite release intent and close only when visual, accessibility, browser, test, contract, and review evidence agree.
+    instruction: >-
+      Keep this workflow in final release-review mode. Do not implement broad repairs
+      from this workflow. If evidence shows a real defect, publish the fix route or
+      launch a bounded frontend-feature-slice rather than widening release review.
+    criteria:
+        - slot: frontend_suite_release_criteria
+          description: Hard criteria for full frontend suite release closure.
+          criteria:
+              - all seven console pages have implementation, contract, verification, review, and closure evidence for their accepted slice scope
+              - visual parity evidence compares implemented pages against references/frontend_design and /home/ubuntu/leo/design/autoclaw-v2-ui anchors across required desktop and mobile states
+              - browser/manual evidence covers critical workflows, route navigation, task-scoped controls, definition authoring, task start, and meaningful loading/empty/error states
+              - accessibility evidence covers keyboard reachability, focus behavior, semantic controls, axe checks where available, and no incoherent text overlap
+              - validation gates pass, including console checks, relevant OpenAPI drift checks, MSW/integration coverage, Playwright e2e, visual evidence, and git diff hygiene
+              - unresolved frontend debt, contract drift, visual mismatch, or test gap blocks release unless explicitly documented as a non-release deferral
+    children:
+        - id: index_suite_evidence
+          role: researcher
+          policy: standard-worker
+          description: Gather current suite evidence, implemented page status, docs, contracts, reports, screenshots, and known gaps.
+          instruction: >-
+            Build a release evidence index from current repo files and surfaced task
+            reports. Do not infer green status from missing evidence.
+          produces:
+              artifacts:
+                  - slot: frontend_suite_evidence_index
+                    file_hint: frontend_suite_evidence_index.md
+                    description: Inventory of implemented pages, contracts, reports, screenshots, tests, browser evidence, open risks, and missing evidence.
+        - id: verify_suite_browser_visuals
+          role: frontend_visual_verifier
+          policy: standard-long-command-worker
+          description: Verify full-suite browser behavior, visual parity, responsive fit, and accessibility evidence.
+          instruction: >-
+            Use the evidence index and current design anchors. Run only checks
+            appropriate to the current repo state and publish exact commands,
+            screenshots, viewport coverage, and untested areas.
+          consumes:
+              artifacts:
+                  - slot: frontend_suite_evidence_index
+          produces:
+              artifacts:
+                  - slot: frontend_suite_visual_verification
+                    file_hint: frontend_suite_visual_verification.md
+                    description: Browser, visual parity, responsive, accessibility, command, screenshot, and untested-area evidence for the full console suite.
+        - id: review_suite_code_contracts
+          role: frontend_code_reviewer
+          policy: standard-review
+          description: Review full-suite frontend code, contracts, tests, visual evidence, and release risk.
+          instruction: >-
+            Focus on contract fidelity, React/TypeScript boundaries, API/view-model
+            isolation, component consistency, accessibility, visual risk, and missing
+            tests across page slices.
+          consumes:
+              artifacts:
+                  - slot: frontend_suite_evidence_index
+                  - slot: frontend_suite_visual_verification
+              criteria:
+                  - slot: frontend_suite_release_criteria
+          produces:
+              artifacts:
+                  - slot: frontend_suite_review
+                    file_hint: frontend_suite_review.md
+                    description: Full-suite frontend review findings, pass/fail/gap status, severity, evidence, and release recommendation.
+        - id: release_suite_closure
+          role: release_operator
+          policy: standard-release
+          description: Close or block full-suite frontend release from surfaced evidence.
+          instruction: >-
+            Use only evidence index, visual verification, suite review, and release
+            criteria. Publish a clear green, blocked, or bounded-fix route.
+          consumes:
+              artifacts:
+                  - slot: frontend_suite_evidence_index
+                  - slot: frontend_suite_visual_verification
+                  - slot: frontend_suite_review
+              criteria:
+                  - slot: frontend_suite_release_criteria
+          produces:
+              artifacts:
+                  - slot: closure_report
+                    file_hint: closure_report.md
+                    description: Final frontend suite release closure report, blockers, deferrals, and next action.
