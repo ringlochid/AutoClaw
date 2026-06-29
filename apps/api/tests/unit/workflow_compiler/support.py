@@ -26,6 +26,10 @@ ROLE_REVISIONS = {
     "core_architect": 66,
     "engineer": 44,
     "failure_analyst": 60,
+    "frontend_code_reviewer": 78,
+    "frontend_contract_integrator": 79,
+    "frontend_engineer": 80,
+    "frontend_visual_verifier": 81,
     "market_researcher": 67,
     "marketing_strategist": 68,
     "planner": 47,
@@ -44,19 +48,13 @@ ROLE_REVISIONS = {
 }
 
 POLICY_REVISIONS = {
-    "standard-failure-analysis": 64,
-    "standard-long-command-worker": 73,
-    "standard-marketing-planning": 74,
-    "standard-parent-planning": 52,
-    "standard-product-planning": 75,
-    "standard-project-management": 76,
-    "standard-release": 55,
-    "standard-review": 54,
-    "standard-root-planning": 51,
-    "standard-scope-review": 77,
-    "standard-verification": 63,
+    "standard-root": 51,
+    "standard-parent": 52,
     "standard-worker": 53,
-    "standard-delivery-planning": 65,
+    "standard-worker-command-run": 73,
+    "standard-worker-human-request": 74,
+    "standard-root-human-request": 75,
+    "standard-parent-human-request": 76,
 }
 
 WORKFLOW_COMPILER_TEST_VERSION = "workflow-compiler-unit"

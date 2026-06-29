@@ -25,8 +25,7 @@ def test_compile_minimal_workflow_smoke() -> None:
 
     root = node_by_key(plan, "root")
     assert root.role_revision_no == ROLE_REVISIONS["planning_lead"]
-    assert root.policy is None
-    assert root.policy_revision_no is None
+    assert root.policy_revision_no == POLICY_REVISIONS["standard-root"]
     assert [criteria.slot for criteria in root.criteria] == ["implementation_rules"]
 
     implement_change = node_by_key(plan, "implement_change")
@@ -76,8 +75,7 @@ def test_compile_normal_workflow_normalizes_structure_and_edges() -> None:
     assert implement_change.policy_revision_no == POLICY_REVISIONS["standard-worker"]
 
     investigate_issue = node_by_key(plan, "investigate_issue")
-    assert investigate_issue.policy is None
-    assert investigate_issue.policy_revision_no is None
+    assert investigate_issue.policy_revision_no == POLICY_REVISIONS["standard-worker"]
     assert [criteria.slot for criteria in investigate_issue.criteria] == [
         "implementation_subtree_requirements"
     ]
@@ -137,19 +135,17 @@ def test_compile_maximal_workflow_normalizes_structure_edges_and_policy_pins() -
     assert [criteria.slot for criteria in plan_iteration.criteria] == [
         "implementation_loop_requirements"
     ]
-    assert plan_iteration.policy is None
-    assert plan_iteration.policy_revision_no is None
+    assert plan_iteration.policy_revision_no == POLICY_REVISIONS["standard-worker"]
     assert plan_iteration.role_revision_no == ROLE_REVISIONS["planner"]
 
     qa_sweep = node_by_key(plan, "qa_sweep")
     assert [criteria.slot for criteria in qa_sweep.criteria] == ["implementation_loop_requirements"]
-    assert qa_sweep.policy is None
-    assert qa_sweep.policy_revision_no is None
+    assert qa_sweep.policy_revision_no == POLICY_REVISIONS["standard-worker"]
     assert qa_sweep.role_revision_no == ROLE_REVISIONS["architect"]
 
     root = node_by_key(plan, "root")
     assert root.role_revision_no == ROLE_REVISIONS["root_planning_lead"]
-    assert root.policy_revision_no == POLICY_REVISIONS["standard-root-planning"]
+    assert root.policy_revision_no == POLICY_REVISIONS["standard-root"]
 
     assert [
         (
@@ -215,15 +211,15 @@ def test_compile_bugfix_review_release_workflow_normalizes_specialist_edges() ->
 
     plan_fix = node_by_key(plan, "plan_fix")
     assert plan_fix.role_revision_no == ROLE_REVISIONS["delivery_planner"]
-    assert plan_fix.policy_revision_no == POLICY_REVISIONS["standard-delivery-planning"]
+    assert plan_fix.policy_revision_no == POLICY_REVISIONS["standard-worker"]
 
     verify_fix = node_by_key(plan, "verify_fix")
     assert verify_fix.role_revision_no == ROLE_REVISIONS["test_verifier"]
-    assert verify_fix.policy_revision_no == POLICY_REVISIONS["standard-verification"]
+    assert verify_fix.policy_revision_no == POLICY_REVISIONS["standard-worker"]
 
     analyze_failure = node_by_key(plan, "analyze_failure")
     assert analyze_failure.role_revision_no == ROLE_REVISIONS["failure_analyst"]
-    assert analyze_failure.policy_revision_no == POLICY_REVISIONS["standard-failure-analysis"]
+    assert analyze_failure.policy_revision_no == POLICY_REVISIONS["standard-worker"]
 
     assert [
         (
@@ -279,15 +275,15 @@ def test_compile_delivery_batch_workflow_normalizes_parent_and_worker_edges() ->
 
     plan_packages = node_by_key(plan, "plan_packages")
     assert plan_packages.role_revision_no == ROLE_REVISIONS["delivery_planner"]
-    assert plan_packages.policy_revision_no == POLICY_REVISIONS["standard-delivery-planning"]
+    assert plan_packages.policy_revision_no == POLICY_REVISIONS["standard-worker"]
 
     execute_package = node_by_key(plan, "execute_package")
     assert execute_package.role_revision_no == ROLE_REVISIONS["planning_lead"]
-    assert execute_package.policy_revision_no == POLICY_REVISIONS["standard-parent-planning"]
+    assert execute_package.policy_revision_no == POLICY_REVISIONS["standard-parent"]
 
     review_package = node_by_key(plan, "review_package")
     assert review_package.role_revision_no == ROLE_REVISIONS["code_reviewer"]
-    assert review_package.policy_revision_no == POLICY_REVISIONS["standard-review"]
+    assert review_package.policy_revision_no == POLICY_REVISIONS["standard-worker"]
 
     assert [
         (
@@ -426,7 +422,5 @@ def test_compile_new_workflow_archetype_seed_smoke(
     assert plan.workflow_key == workflow_key
     assert [node.node_key for node in plan.nodes] == node_keys
     assert node_by_key(plan, "root").role_revision_no == ROLE_REVISIONS["root_planning_lead"]
-    assert (
-        node_by_key(plan, "root").policy_revision_no == POLICY_REVISIONS["standard-root-planning"]
-    )
+    assert node_by_key(plan, "root").policy_revision_no == POLICY_REVISIONS["standard-root"]
     assert plan.dependency_edges

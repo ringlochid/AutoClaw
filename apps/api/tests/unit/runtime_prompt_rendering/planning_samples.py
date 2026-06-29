@@ -285,9 +285,9 @@ def root_node_context() -> ResolvedNodeContext:
             "Coordinate only the current owned subtree and preserve durable reasoning "
             "when it matters."
         ),
-        policy_key="standard-root-planning",
+        policy_key="standard-root",
         policy_revision_no=8,
-        policy_description="Default root planning and closure behavior.",
+        policy_description="Guardrails for root orchestration and final closure.",
         policy_instruction=(
             "Root owns final closure and may use `release_green` or "
             "`release_blocked` only when current evidence makes that legal."
@@ -310,9 +310,11 @@ def parent_node_context() -> ResolvedNodeContext:
             "Coordinate only the current owned subtree and preserve durable reasoning "
             "when it matters."
         ),
-        policy_key="standard-parent-planning",
+        policy_key="standard-parent",
         policy_revision_no=19,
-        policy_description="Default parent planning and review coordination behavior.",
+        policy_description=(
+            "Guardrails for parent orchestration without human waits or command runs."
+        ),
         policy_instruction=(
             "Parent may release green only when the current subtree evidence makes that legal."
         ),

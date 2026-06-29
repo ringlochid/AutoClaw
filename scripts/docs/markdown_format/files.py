@@ -175,7 +175,8 @@ def resolve_paths(cli_paths: Sequence[str] | None) -> list[Path]:
                     continue
                 resolved.append(child)
             continue
-        resolved.append(path)
+        if path.suffix in FORMAT_SUFFIXES:
+            resolved.append(path)
     return resolved
 
 

@@ -51,6 +51,17 @@ Node kind comes from workflow structure:
 
 Review, verification, research, implementation, planning, failure analysis, and release work are modes of work. They are not separate node kinds.
 
+## Policy compatibility and budgets
+
+Policies attach by node kind through `applies_to`. Use `root`, `parent`, or `worker`; do not write `leaf` in policy YAML. A leaf node is a worker node without children.
+
+Budgets are controller guardrails:
+
+- `retry_limit` is for worker retry of the same assignment
+- `child_assignment_limit` is for root or parent child assignment
+
+Do not mix retry and child-assignment budget in one policy. If a node needs a different capability or budget posture, choose a different policy instead of stretching the current one.
+
 ## Workflow shape
 
 A workflow is a purpose-specific evidence path, not just a list of roles. Good workflow shape answers:
@@ -94,4 +105,5 @@ A minimal implementation workflow may have one root and one worker. The root rea
 - [Write a workflow](../guides/write-a-workflow.md)
 - [Workspace model](workspace-model.md)
 - [Capability model](capability-model.md)
+- [Policy model](policy-model.md)
 - [Inspect and control a task](../guides/inspect-and-control-a-task.md)

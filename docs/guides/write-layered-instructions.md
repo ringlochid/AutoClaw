@@ -53,9 +53,9 @@ Put behavior in `instruction`:
 
 ```yaml
 instruction: >-
-    Read triage evidence and criteria before editing. Fix only the verified defect. If
-    root cause remains ambiguous, publish the unresolved risk instead of widening the
-    patch.
+  Read triage evidence and criteria before editing. Fix only the verified defect. If
+  root cause remains ambiguous, publish the unresolved risk instead of widening the
+  patch.
 ```
 
 ## Write role instructions as lenses
@@ -78,6 +78,7 @@ A policy teaches what the node may do and how tightly it must behave.
 
 Use policies for:
 
+- `applies_to` compatibility with `root`, `parent`, or `worker`
 - human request capability
 - command-run capability
 - retry and child-assignment posture
@@ -86,6 +87,14 @@ Use policies for:
 - "do not publish", "do not implement", or "do not widen scope" boundaries
 
 Do not make a policy sound like a second role. "Reviewer", "engineer", and "researcher" behavior belongs in roles. "May ask for approval" or "must not start long commands" belongs in policies.
+
+Policy `instruction` is optional. If `applies_to`, `budget_spec`, and `capabilities` already express the whole rule, omit `instruction`. The base `standard-worker` policy is a good field-only policy.
+
+Budget wording belongs in policies, but keep it precise:
+
+- `retry_limit` is for worker retries only
+- `child_assignment_limit` is for root or parent child assignment only
+- budget is not a time limit, token limit, or quality bar
 
 ## Write node instructions as missions
 
@@ -122,16 +131,16 @@ Good:
 
 ```yaml
 instruction: >-
-    Research local contracts and nearby tests before editing. If the accepted scope
-    conflicts with the current API contract, publish the conflict and residual risk
-    instead of widening the patch.
+  Research local contracts and nearby tests before editing. If the accepted scope
+  conflicts with the current API contract, publish the conflict and residual risk
+  instead of widening the patch.
 ```
 
 Too vague:
 
 ```yaml
 instruction: >-
-    Do research first and solve any ambiguity.
+  Do research first and solve any ambiguity.
 ```
 
 ## Keep agents purposeful
@@ -160,6 +169,7 @@ Before saving instructions, check:
 - each `description` is short enough to scan
 - each role has one stable specialist lens
 - each policy owns authority rather than identity
+- each policy uses valid `applies_to` and budget fields for its node kind
 - each node has a local mission rather than copied boilerplate
 - human request and command-run rules stay separate
 - criteria can genuinely block closure

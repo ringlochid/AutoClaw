@@ -11,13 +11,10 @@ description: Plan, implement, visually verify, review, and close one bounded fro
 root:
     id: root
     role: root_planning_lead
-    policy: standard-root-planning
+    policy: standard-root
     description: Preserve frontend feature intent and release only when contract, implementation, visual verification, and review evidence agree.
     instruction: >-
-      Keep the frontend slice bounded to the accepted user workflow, route or component
-      ownership, design reference, and API or view-model contract. Route design,
-      contract, accessibility, or visual contradictions to focused review before
-      release.
+      Keep the frontend slice bounded to the accepted user workflow, route or component ownership, design reference, and API or view-model contract. Route design, contract, accessibility, or visual contradictions to focused review before release.
     criteria:
         - slot: frontend_release_criteria
           description: Hard criteria for frontend slice release.
@@ -31,8 +28,7 @@ root:
           policy: standard-worker
           description: Inspect frontend context and publish the slice contract, state, fixture, and verification plan.
           instruction: >-
-            Publish only contract, state, fixture, route, component, and verification
-            evidence needed to implement the frontend slice safely.
+            Publish only contract, state, fixture, route, component, and verification evidence needed to implement the frontend slice safely.
           produces:
               artifacts:
                   - slot: frontend_contract_plan
@@ -43,8 +39,7 @@ root:
           policy: standard-worker
           description: Implement the accepted frontend slice.
           instruction: >-
-            Read the contract plan first. Keep the patch aligned with existing component
-            primitives, routing, styling, state boundaries, and tests.
+            Read the contract plan first. Keep the patch aligned with existing component primitives, routing, styling, state boundaries, and tests.
           consumes:
               artifacts:
                   - slot: frontend_contract_plan
@@ -62,12 +57,10 @@ root:
                     description: Patch for the bounded frontend implementation.
         - id: verify_frontend_slice
           role: frontend_visual_verifier
-          policy: standard-long-command-worker
+          policy: standard-worker-command-run
           description: Verify frontend behavior, visual fit, responsiveness, accessibility, and regression-sensitive paths.
           instruction: >-
-            Verify accepted states and critical interactions with the smallest evidence
-            set that proves the slice. Include mobile and desktop evidence when layout
-            changes.
+            Verify accepted states and critical interactions with the smallest evidence set that proves the slice. Include mobile and desktop evidence when layout changes.
           consumes:
               artifacts:
                   - slot: frontend_contract_plan
@@ -81,12 +74,10 @@ root:
                     description: Verification evidence for frontend behavior, visual fit, responsiveness, accessibility, command results, screenshots, and untested areas.
         - id: review_frontend_slice
           role: frontend_code_reviewer
-          policy: standard-review
+          policy: standard-worker
           description: Review the frontend implementation and verification evidence.
           instruction: >-
-            Focus on user workflow correctness, contract fit, component and state
-            boundaries, accessibility, visual regressions, styling consistency, and
-            missing tests.
+            Focus on user workflow correctness, contract fit, component and state boundaries, accessibility, visual regressions, styling consistency, and missing tests.
           consumes:
               artifacts:
                   - slot: frontend_contract_plan
@@ -101,11 +92,10 @@ root:
                     description: Review findings for the frontend implementation and verification evidence.
         - id: release_closure
           role: release_operator
-          policy: standard-release
+          policy: standard-worker
           description: Perform final bounded frontend release or closure work from current surfaced evidence.
           instruction: >-
-            Use only frontend contract plan, patch, verification, review evidence, and
-            release criteria. Do not widen into unrelated frontend cleanup.
+            Use only frontend contract plan, patch, verification, review evidence, and release criteria. Do not widen into unrelated frontend cleanup.
           consumes:
               artifacts:
                   - slot: frontend_contract_plan

@@ -4,10 +4,10 @@ description: Produce a scoped plan, work breakdown, risks, and acceptance criter
 root:
     id: root
     role: root_planning_lead
-    policy: standard-root-planning
+    policy: standard-root
     description: Preserve the planning-only purpose and close only when the final plan is actionable, reviewed, and clearly non-implementation.
     instruction: >-
-        Keep the workflow in planning mode. Route implementation requests to a later workflow instead of silently doing them here.
+      Keep the workflow in planning mode. Route implementation requests to a later workflow instead of silently doing them here.
     criteria:
         - slot: planning_only_criteria
           description: Hard criteria for closing planning-only work.
@@ -18,10 +18,10 @@ root:
     children:
         - id: define_scope
           role: product_planner
-          policy: standard-product-planning
+          policy: standard-worker-human-request
           description: Define the problem, desired outcome, constraints, and scope boundary.
           instruction: >-
-              Separate must-have scope, follow-up scope, out-of-scope work, and open product decisions.
+            Separate must-have scope, follow-up scope, out-of-scope work, and open product decisions.
           produces:
               artifacts:
                   - slot: scope_brief
@@ -29,10 +29,10 @@ root:
                     description: Problem, desired outcome, constraints, and accepted scope boundary.
         - id: map_work
           role: project_manager
-          policy: standard-project-management
+          policy: standard-worker-human-request
           description: Convert the scope brief into work packages, sequencing, dependencies, and risks.
           instruction: >-
-              Keep work packages bounded and ready for later assignment. Do not implement them.
+            Keep work packages bounded and ready for later assignment. Do not implement them.
           consumes:
               artifacts:
                   - slot: scope_brief
@@ -43,10 +43,10 @@ root:
                     description: Work packages, sequencing, dependencies, risks, and verification gates.
         - id: review_plan_scope
           role: scope_reviewer
-          policy: standard-scope-review
+          policy: standard-worker-human-request
           description: Review the plan for contradictions, missing prerequisites, and weak acceptance criteria.
           instruction: >-
-              Request concrete corrections and identify decisions needed before execution.
+            Request concrete corrections and identify decisions needed before execution.
           consumes:
               artifacts:
                   - slot: scope_brief
@@ -60,10 +60,10 @@ root:
                     description: Scope, feasibility, and acceptance-risk review for the plan.
         - id: publish_final_plan
           role: project_manager
-          policy: standard-project-management
+          policy: standard-worker-human-request
           description: Publish the final planning artifact from scope, work breakdown, and review evidence.
           instruction: >-
-              Resolve review feedback where possible and clearly name remaining decisions or blockers.
+            Resolve review feedback where possible and clearly name remaining decisions or blockers.
           consumes:
               artifacts:
                   - slot: scope_brief

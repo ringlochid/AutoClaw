@@ -131,8 +131,7 @@ task:
     title: Harden auth refresh flow
     summary: Investigate and fix the auth refresh regression.
     instruction: >-
-      Stay scoped to the auth refresh failure path and publish patch, verification, and
-      closure evidence only through declared produce slots.
+      Stay scoped to the auth refresh failure path and publish patch, verification, and closure evidence only through declared produce slots.
 workflow:
     key: normal-parent-first-release
 roots:

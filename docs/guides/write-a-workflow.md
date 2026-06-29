@@ -55,6 +55,8 @@ Before writing YAML, answer:
 
 Do this before choosing node count. A smaller workflow is better only when it can still prove the work is done.
 
+Choose policies by authority, not by domain. Use `standard-worker` for ordinary bounded worker steps, `standard-worker-human-request` when that worker may need a typed human wait, and `standard-worker-command-run` when that worker may need controller-managed long commands. Use root and parent policies for orchestration nodes.
+
 ## Choose the structure
 
 Use the simplest structure that fits the evidence path:
@@ -69,6 +71,13 @@ Use the simplest structure that fits the evidence path:
 | Human in loop        | direction, approval, input, or review needs human judgment |
 
 Every parent should have a real routing job. Every worker should have one bounded mode.
+
+Policy budget should match the shape:
+
+- root and parent nodes use child-assignment budget
+- worker nodes use retry budget
+- command-run policy belongs on the worker that will own the long command
+- human-request policy belongs only where human judgment is a real gate
 
 ## Author nodes around contracts
 
@@ -146,10 +155,10 @@ Good dynamic parent instruction:
 
 ```yaml
 instruction: >-
-    Inspect current evidence before assigning the next child. Route unclear scope to a
-    scope reviewer, weak verification to a verifier, repeated failure to failure analysis,
-    and workflow-shape mismatch to replan. Do not force a worker to widen scope to make
-    progress.
+  Inspect current evidence before assigning the next child. Route unclear scope to a
+  scope reviewer, weak verification to a verifier, repeated failure to failure analysis,
+  and workflow-shape mismatch to replan. Do not force a worker to widen scope to make
+  progress.
 ```
 
 Workers should surface ambiguity. Parents and roots should route it.

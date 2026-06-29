@@ -160,7 +160,7 @@ Node teaching rule:
 Concrete examples:
 
 - `search_definitions(session_key, task_id, role, query=researcher)`
-- `get_definition(session_key, task_id, policy, standard-review)`
+- `get_definition(session_key, task_id, policy, standard-worker)`
 - `record_checkpoint(session_key, task_id, checkpoint)`
 - `return_boundary(session_key, task_id, yield)`
 - `assign_child(session_key, task_id, payload, expected_structural_revision_id?)`

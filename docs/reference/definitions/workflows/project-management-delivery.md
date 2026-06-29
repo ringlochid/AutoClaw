@@ -11,11 +11,10 @@ description: Capture objectives, decompose work, review risks, and publish a del
 root:
     id: root
     role: root_planning_lead
-    policy: standard-root-planning
+    policy: standard-root
     description: Preserve delivery-management purpose and close only when objectives, work packages, risks, and status plan are current.
     instruction: >-
-      Keep this workflow in coordination mode. Do not implement package work from
-      project-management assignments.
+      Keep this workflow in coordination mode. Do not implement package work from project-management assignments.
     criteria:
         - slot: project_management_criteria
           description: Hard criteria for delivery-management closure.
@@ -26,7 +25,7 @@ root:
     children:
         - id: capture_objectives
           role: project_manager
-          policy: standard-project-management
+          policy: standard-worker-human-request
           description: Capture objective, stakeholders, constraints, decision needs, and current state.
           instruction: >-
             Build a management brief that makes the delivery problem inspectable.
@@ -37,11 +36,10 @@ root:
                     description: Objective, stakeholders, constraints, current state, and decision needs.
         - id: decompose_work
           role: project_manager
-          policy: standard-project-management
+          policy: standard-worker-human-request
           description: Decompose objectives into packages, dependencies, sequencing, and verification gates.
           instruction: >-
-            Keep packages assignable and separate implementation work from coordination
-            work.
+            Keep packages assignable and separate implementation work from coordination work.
           consumes:
               artifacts:
                   - slot: project_objectives
@@ -52,7 +50,7 @@ root:
                     description: Work packages, dependencies, sequencing, owners, and verification gates.
         - id: review_delivery_risks
           role: scope_reviewer
-          policy: standard-scope-review
+          policy: standard-worker-human-request
           description: Review delivery work for risk, missing dependencies, unclear ownership, and acceptance gaps.
           instruction: >-
             Name concrete corrections, blocking decisions, and risk severity.
@@ -69,11 +67,10 @@ root:
                     description: Delivery risk, dependency, ownership, and acceptance review.
         - id: publish_delivery_plan
           role: project_manager
-          policy: standard-project-management
+          policy: standard-worker-human-request
           description: Publish the final delivery-management plan and status cadence.
           instruction: >-
-            Incorporate review findings where possible and clearly list remaining
-            decisions.
+            Incorporate review findings where possible and clearly list remaining decisions.
           consumes:
               artifacts:
                   - slot: project_objectives

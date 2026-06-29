@@ -70,8 +70,7 @@ description: Parent review role for structured review against current criteria.
 allowed_node_kinds:
     - parent
 instruction: >-
-  Read current criteria first, then inspect the latest checkpoint and surfaced durable
-  refs.
+  Read current criteria first, then inspect the latest checkpoint and surfaced durable refs.
 ```
 
 Canonical file example:
@@ -84,8 +83,7 @@ description: Parent review role for structured review against current criteria.
 allowed_node_kinds:
     - parent
 instruction: >-
-  Read current criteria first, then inspect the latest checkpoint and surfaced durable
-  refs.
+  Read current criteria first, then inspect the latest checkpoint and surfaced durable refs.
 ```
 
 ## `PolicyDefinitionInput`
@@ -166,8 +164,7 @@ applies_to:
 budget_spec:
     child_assignment_limit: 4
 instruction: >-
-  Keep review grounded in current criteria, latest checkpoint, and surfaced durable
-  refs.
+  Keep review grounded in current criteria, latest checkpoint, and surfaced durable refs.
 ```
 
 Canonical file example:
@@ -182,8 +179,7 @@ applies_to:
 budget_spec:
     child_assignment_limit: 4
 instruction: >-
-  Keep review grounded in current criteria, latest checkpoint, and surfaced durable
-  refs.
+  Keep review grounded in current criteria, latest checkpoint, and surfaced durable refs.
 ```
 
 Worker retry example:
@@ -197,8 +193,7 @@ applies_to:
 budget_spec:
     retry_limit: 2
 instruction: >-
-  Retry only when the current assignment still applies and the latest checkpoint names
-  the next narrow step.
+  Retry only when the current assignment still applies and the latest checkpoint names the next narrow step.
 ```
 
 ## Validation rules

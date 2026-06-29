@@ -42,7 +42,7 @@ def test_manifest_markdown_renders_source_disambiguated_node_instruction(
                     node_key="implementation_subtree",
                     node_kind=NodeKind.PARENT,
                     role="planning_lead",
-                    policy="standard-parent-planning",
+                    policy="standard-parent",
                     description="Coordinate the implementation subtree.",
                     node_instruction="Review child evidence before assigning more work.",
                 ),

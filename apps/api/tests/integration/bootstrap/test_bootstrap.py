@@ -74,7 +74,7 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
     )
     assert "### Allowed Actions Now" in result.prompt_bundle.full_markdown
     assert "architect (allowed node kinds: worker)" in result.prompt_bundle.full_markdown
-    assert "standard-parent-planning (applies_to: parent)" in result.prompt_bundle.full_markdown
+    assert "standard-parent (applies_to: parent)" in result.prompt_bundle.full_markdown
     manifest_markdown = (result.paths.runtime_path / "workflow-manifest.md").read_text(
         encoding="utf-8"
     )
@@ -92,7 +92,7 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
     assert result.manifest.structural_edit_palette is not None
     assert any(role.role == "architect" for role in result.manifest.structural_edit_palette.roles)
     assert any(
-        policy.policy == "standard-parent-planning"
+        policy.policy == "standard-parent"
         for policy in result.manifest.structural_edit_palette.policies
     )
 

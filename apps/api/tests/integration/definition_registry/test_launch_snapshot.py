@@ -44,13 +44,13 @@ def _assert_snapshot_revision_alignment(
     assert snapshot.workflow.revision_no == workflow_revision_no
     assert snapshot.compiled_plan.definition_revision_no == workflow_revision_no
     lookup_role = lookup.get_role("planning_lead")
-    lookup_policy = lookup.get_policy("standard-parent-planning")
+    lookup_policy = lookup.get_policy("standard-parent")
     assert lookup_role is not None
     assert lookup_policy is not None
     assert lookup_role.revision_no == role_revision_no
     assert lookup_policy.revision_no == policy_revision_no
     snapshot_role = snapshot.role_policy_lookup.get_role("planning_lead")
-    snapshot_policy = snapshot.role_policy_lookup.get_policy("standard-parent-planning")
+    snapshot_policy = snapshot.role_policy_lookup.get_policy("standard-parent")
     assert snapshot_role is not None
     assert snapshot_policy is not None
     assert snapshot_role.revision_no == role_revision_no
@@ -131,7 +131,7 @@ async def test_launch_snapshot_ignores_corrupt_unused_current_policy_rows(
     unused_policy_key = "unused-review-proof"
     async with initialized_registry(tmp_path) as session_factory:
         async with session_factory() as session:
-            baseline_policy = await load_current_policy(session, "standard-review")
+            baseline_policy = await load_current_policy(session, "standard-worker")
             cloned_policy = baseline_policy.definition.model_copy(update={"id": unused_policy_key})
             policy_revision = await upsert_policy_definition(
                 session,
@@ -188,14 +188,14 @@ async def test_launch_snapshot_pins_current_registry_workflow_role_and_policy_re
                 source_path="test://planning-lead-v2",
             )
 
-            policy = await load_current_policy(session, "standard-parent-planning")
+            policy = await load_current_policy(session, "standard-parent")
             updated_policy = policy.definition.model_copy(
                 update={"description": f"{policy.definition.description} v2"}
             )
             policy_revision = await upsert_policy_definition(
                 session,
                 updated_policy,
-                source_path="test://standard-parent-planning-v2",
+                source_path="test://standard-parent-v2",
             )
 
             workflow = await load_current_workflow(session, "normal-parent-first-release")
@@ -223,7 +223,7 @@ async def test_launch_snapshot_pins_current_registry_workflow_role_and_policy_re
             policy_definition = await session.scalar(
                 select(PolicyDefinitionModel)
                 .options(joinedload(PolicyDefinitionModel.current_revision))
-                .where(PolicyDefinitionModel.policy_key == "standard-parent-planning")
+                .where(PolicyDefinitionModel.policy_key == "standard-parent")
             )
             snapshot = await compile_current_workflow_launch_snapshot(
                 session,

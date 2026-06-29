@@ -29,7 +29,7 @@ def _docs_freeze_namespace() -> SimpleNamespace:
     )
 
 
-def test_iter_maintained_markdown_files_includes_product_and_root_docs() -> None:
+def test_iter_maintained_markdown_files_includes_reference_and_root_docs() -> None:
     repo_root = _ensure_repo_root_on_path()
     docs_freeze = _docs_freeze_namespace()
 
@@ -40,10 +40,17 @@ def test_iter_maintained_markdown_files_includes_product_and_root_docs() -> None
 
     assert Path("README.md") in maintained_paths
     assert Path("docs/README.md") in maintained_paths
-    assert Path("docs/product/README.md") in maintained_paths
     assert Path("docs/reference/README.md") in maintained_paths
     assert Path("docs-internal/README.md") in maintained_paths
     assert Path("docs-internal/archive/03-old-version-docs-disposition.md") in maintained_paths
+
+
+def test_markdown_formatter_ignores_direct_non_markdown_paths() -> None:
+    docs_freeze = _docs_freeze_namespace()
+
+    assert (
+        docs_freeze.markdown_files.resolve_paths(["apps/api/tests/unit/test_docs_freeze.py"]) == []
+    )
 
 
 def test_markdown_formatter_normalizes_yaml_instruction_scalars() -> None:
@@ -109,9 +116,8 @@ def test_markdown_formatter_normalizes_yaml_instruction_scalars() -> None:
         "Example:\n\n"
         "    assignment_intent:\n"
         "      instruction: >-\n"
-        "        Read the latest review checkpoint, surfaced page artifacts, and transient "
-        "browser\n"
-        "        note first. Return exact artifact paths.\n"
+        "        Read the latest review checkpoint, surfaced page artifacts, and transient browser "
+        "note first. Return exact artifact paths.\n"
     )
 
     assert formatting.format_markdown_text(indented_yaml) == indented_expected
@@ -135,8 +141,7 @@ def test_markdown_formatter_normalizes_yaml_instruction_scalars() -> None:
         "      assignment_intent:\n"
         "        instruction: >-\n"
         "          Read the latest review checkpoint, surfaced page artifacts, and transient "
-        "browser\n"
-        "          note first. Return exact artifact paths.\n"
+        "browser note first. Return exact artifact paths.\n"
         "```\n"
     )
 
@@ -409,90 +414,19 @@ def test_record_rules_include_phase55_phase6_and_phase7_pages() -> None:
     )
 
 
-def test_execution_required_markers_include_phase6_and_phase7_pages() -> None:
+def test_execution_required_marker_maps_are_empty_after_execution_archive_prune() -> None:
     docs_freeze = _docs_freeze_namespace()
 
-    execution_root = Path("/home/ubuntu/leo/projects/autoclaw/docs-internal/execution/v1")
-    phase6_page = (
-        execution_root / "phases" / "phase-6-source-structure-boundaries-and-naming-convergence.md"
-    )
-    phase7_page = execution_root / "phases" / "phase-7-test-structure-and-proof-convergence.md"
-
-    phase6_markers = docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS[phase6_page]
-    phase7_markers = docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS[phase7_page]
-
-    assert "Phase 6 is source-only" in phase6_markers
-    assert (
-        "full touched-family `style_audit --scan-root <path> --fail-on-findings`" in phase6_markers
-    )
-    assert (
-        "controller-truth mutator cleanup, shipped source wait ownership, continuity "
-        "authority, boundary cleanup, and neutral shipped-metadata naming" in phase6_markers
-    )
-    assert "source-plus-test diagnosis packet" in phase7_markers
-    assert (
-        "source-tree relayout and package-authority work that remains Phase 6-owned"
-        in phase7_markers
-    )
+    assert docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS == {}
+    assert docs_freeze.markers_execution.EXECUTION_FORBIDDEN_MARKERS == {}
 
 
-def test_execution_required_markers_include_reopen_phase6_and_phase7_plans() -> None:
+def test_retired_phase6_and_phase7_lock_map_validator_is_noop() -> None:
     docs_freeze = _docs_freeze_namespace()
-
-    execution_root = Path("/home/ubuntu/leo/projects/autoclaw/docs-internal/execution/v1")
-    phase0_plan = execution_root / "plans" / "phase-0-phase6-reopen-canon-reset.md"
-    phase6_plan = (
-        execution_root / "plans" / "phase-6-full-source-owner-convergence-and-package-migration.md"
-    )
-    phase7_plan = execution_root / "plans" / "phase-7-proof-pattern-and-leak-cleanup.md"
-
-    phase0_markers = docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS[phase0_plan]
-    phase6_markers = docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS[phase6_plan]
-    phase7_markers = docs_freeze.markers_execution.EXECUTION_REQUIRED_MARKERS[phase7_plan]
-
-    assert "freeze the authoritative reopen input from the merged findings" in phase0_markers
-    assert "one active worker at a time" in phase6_markers
-    assert "stop before any final full-matrix closeout worker" in phase6_markers
-    assert "one active worker at a time" in phase7_markers
-    assert "source-plus-test diagnosis packet" in phase7_markers
-
-
-def test_validate_lock_map_rules_guard_phase6_and_phase7_markers() -> None:
-    docs_freeze = _docs_freeze_namespace()
-
-    lock_map_path = Path(
-        "/home/ubuntu/leo/projects/autoclaw/docs-internal/execution/v1/maps/file-priority-map.md"
-    )
-    lock_map_text = lock_map_path.read_text(encoding="utf-8")
 
     errors: list[str] = []
     docs_freeze.validation_docs.validate_phase6_and_phase7_lock_map_markers(
-        lock_map_text,
+        "retired lock-map marker text",
         errors,
     )
     assert errors == []
-
-    broken_phase6 = lock_map_text.replace(
-        "grouped-runner relayout, and proof-lane cleanup, which remain Phase 7-owned",
-        "",
-        1,
-    )
-    phase6_errors: list[str] = []
-    docs_freeze.validation_docs.validate_phase6_and_phase7_lock_map_markers(
-        broken_phase6,
-        phase6_errors,
-    )
-    assert any("Phase 6 section is missing required marker" in error for error in phase6_errors)
-
-    broken_phase7 = lock_map_text.replace(
-        "without taking ownership of broader Phase 6 source-owner, compatibility-shell, "
-        "or taxonomy cleanup",
-        "without taking ownership of broader Phase 6 source-owner cleanup",
-        1,
-    )
-    phase7_errors: list[str] = []
-    docs_freeze.validation_docs.validate_phase6_and_phase7_lock_map_markers(
-        broken_phase7,
-        phase7_errors,
-    )
-    assert any("Phase 7 section is missing required marker" in error for error in phase7_errors)

@@ -162,12 +162,12 @@ async def test_manifest_palette_skips_corrupt_unused_current_policy_rows(
             policy_definition = await session.scalar(
                 select(PolicyDefinitionModel)
                 .options(joinedload(PolicyDefinitionModel.current_revision))
-                .where(PolicyDefinitionModel.policy_key == "standard-release")
+                .where(PolicyDefinitionModel.policy_key == "standard-worker-command-run")
             )
             assert policy_definition is not None
             assert policy_definition.current_revision is not None
             policy_definition.current_revision.content_json = {
-                "id": "standard-release",
+                "id": "standard-worker-command-run",
                 "description": "Corrupt current policy row that should stay unused.",
             }
             await session.flush()
@@ -188,10 +188,11 @@ async def test_manifest_palette_skips_corrupt_unused_current_policy_rows(
     assert manifest.structural_edit_palette is not None
     assert any(role.role == "architect" for role in manifest.structural_edit_palette.roles)
     assert not any(
-        policy.policy == "standard-release" for policy in manifest.structural_edit_palette.policies
+        policy.policy == "standard-worker-command-run"
+        for policy in manifest.structural_edit_palette.policies
     )
     assert "architect (allowed node kinds: worker)" in bundle.full_markdown
-    assert "standard-release" not in bundle.full_markdown
+    assert "standard-worker-command-run" not in bundle.full_markdown
 
 
 async def test_parent_dispatch_surfaces_current_child_artifact_refs_from_current_pointers(

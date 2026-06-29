@@ -33,13 +33,13 @@ def test_compile_treats_dotted_node_ids_as_opaque_strings() -> None:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {
                         "id": "implementation",
                         "role": "planning_lead",
-                        "policy": "standard-parent-planning",
+                        "policy": "standard-parent",
                         "description": "Explicit parent branch.",
                         "children": [
                             {
@@ -53,7 +53,7 @@ def test_compile_treats_dotted_node_ids_as_opaque_strings() -> None:
                     {
                         "id": "qa",
                         "role": "reviewer",
-                        "policy": "standard-review",
+                        "policy": "standard-worker",
                         "description": "Sibling whose id matches the dotted prefix.",
                     },
                 ],
@@ -93,7 +93,7 @@ def test_compile_preserves_portable_provider_preference() -> None:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "provider_preference": "codex",
                 "description": "Root coordinator.",
                 "children": [
@@ -135,7 +135,7 @@ def test_compile_preserves_node_instruction_as_source_disambiguated_field() -> N
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "instruction": "Coordinate only the current root decision.",
                 "children": [
@@ -258,13 +258,13 @@ def test_compile_dedupes_repeated_child_default_criteria_slots() -> None:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {
                         "id": "subtree",
                         "role": "planning_lead",
-                        "policy": "standard-parent-planning",
+                        "policy": "standard-parent",
                         "description": "Parent subtree.",
                         "criteria": [
                             {

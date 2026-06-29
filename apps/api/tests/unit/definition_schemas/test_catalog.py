@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from .support import (
     EXPECTED_WORKFLOW_IDS,
     REFERENCE_DEFINITIONS_ROOT,
@@ -22,6 +24,16 @@ def _normalize_definition_payload(payload: object) -> object:
     return payload
 
 
+def _iter_workflow_nodes(node: dict[str, object]) -> Iterator[dict[str, object]]:
+    yield node
+    children = node.get("children")
+    if not isinstance(children, list):
+        return
+    for child in children:
+        if isinstance(child, dict):
+            yield from _iter_workflow_nodes(child)
+
+
 def test_packaged_role_and_policy_seed_definitions_validate() -> None:
     with resolve_committed_seed_definitions_root() as definitions_root:
         roles, policies = load_registry_catalog(definitions_root)
@@ -41,24 +53,37 @@ def test_packaged_workflow_seed_definitions_validate_against_packaged_catalog() 
     assert workflow_ids == EXPECTED_WORKFLOW_IDS
 
 
+def test_packaged_workflow_seed_nodes_attach_seed_policies() -> None:
+    with resolve_committed_seed_definitions_root() as definitions_root:
+        _, policies = load_registry_catalog(definitions_root)
+        packaged_tree = load_definition_tree(definitions_root)
+
+        for relative_path, workflow in packaged_tree.items():
+            if not relative_path.startswith("workflows/"):
+                continue
+            root = workflow["root"]
+            assert isinstance(root, dict)
+            for node in _iter_workflow_nodes(root):
+                node_id = node.get("id")
+                assert isinstance(node_id, str)
+                policy_id = node.get("policy")
+                assert isinstance(policy_id, str) and policy_id in policies, (
+                    f"{relative_path}:{node_id} must attach a packaged seed policy"
+                )
+
+
 def test_packaged_seed_tree_contains_expected_definition_files() -> None:
     with resolve_committed_seed_definitions_root() as definitions_root:
         packaged_tree = load_definition_tree(definitions_root)
 
     assert set(packaged_tree) == {
-        "policies/standard_long_command_worker.yaml",
-        "policies/standard_marketing_planning.yaml",
-        "policies/standard_parent_planning.yaml",
-        "policies/standard_product_planning.yaml",
-        "policies/standard_project_management.yaml",
-        "policies/standard_release.yaml",
-        "policies/standard_review.yaml",
-        "policies/standard_root_planning.yaml",
-        "policies/standard_scope_review.yaml",
-        "policies/standard_failure_analysis.yaml",
-        "policies/standard_verification.yaml",
+        "policies/standard_parent.yaml",
+        "policies/standard_parent_human_request.yaml",
+        "policies/standard_root.yaml",
+        "policies/standard_root_human_request.yaml",
         "policies/standard_worker.yaml",
-        "policies/standard_delivery_planning.yaml",
+        "policies/standard_worker_command_run.yaml",
+        "policies/standard_worker_human_request.yaml",
         "roles/architect.yaml",
         "roles/bug_fix_engineer.yaml",
         "roles/bug_triage.yaml",

@@ -70,9 +70,9 @@ def test_compile_workflow_fails_for_missing_or_incompatible_roles(
             "policy 'missing-policy' does not resolve for node 'implement_change'",
         ),
         (
-            "standard-parent-planning",
+            "standard-parent",
             (
-                "policy 'standard-parent-planning' is incompatible with node kind "
+                "policy 'standard-parent' is incompatible with node kind "
                 "'worker' for node 'implement_change'"
             ),
         ),

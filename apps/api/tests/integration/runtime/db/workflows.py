@@ -12,7 +12,7 @@ def root_blocked_workflow() -> WorkflowDefinitionFile:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {
@@ -37,13 +37,13 @@ def parent_blocked_workflow() -> WorkflowDefinitionFile:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {
                         "id": "investigate_parent",
                         "role": "planning_lead",
-                        "policy": "standard-parent-planning",
+                        "policy": "standard-parent",
                         "description": (
                             "Coordinate the investigation subtree and report blockers."
                         ),
@@ -73,7 +73,7 @@ def root_replan_publication_workflow() -> WorkflowDefinitionFile:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "produces": {
                     "artifacts": [
@@ -104,7 +104,7 @@ def root_budget_rebind_workflow() -> WorkflowDefinitionFile:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {

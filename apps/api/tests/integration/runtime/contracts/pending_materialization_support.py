@@ -14,7 +14,7 @@ def artifact_handoff_workflow() -> WorkflowDefinitionFile:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {

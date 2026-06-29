@@ -4,10 +4,10 @@ description: Diagnose, fix, verify, review, and release one defect with explicit
 root:
     id: root
     role: root_planning_lead
-    policy: standard-root-planning
+    policy: standard-root
     description: Preserve the defect-fix purpose, coordinate specialist work, and release only when current criteria and evidence are satisfied.
     instruction: >-
-        Treat child green as evidence, not proof. Use review, verification, failure analysis, or replan when evidence is weak.
+      Treat child green as evidence, not proof. Use review, verification, failure analysis, or replan when evidence is weak.
     criteria:
         - slot: root_bugfix_release_criteria
           description: Hard criteria for defect-fix release.
@@ -21,7 +21,7 @@ root:
           policy: standard-worker
           description: Reproduce, narrow, and explain the defect before implementation.
           instruction: >-
-              Publish reproducible findings, rejected leads, likely failing path, and next recommended assignment.
+            Publish reproducible findings, rejected leads, likely failing path, and next recommended assignment.
           produces:
               artifacts:
                   - slot: triage_report
@@ -29,10 +29,10 @@ root:
                     description: Defect reproduction, likely cause, scope, and uncertainties.
         - id: plan_fix
           role: delivery_planner
-          policy: standard-delivery-planning
+          policy: standard-worker
           description: Convert triage evidence into a bounded fix package.
           instruction: >-
-              Plan the narrow fix, dependencies, criteria, risks, and verification gates. Do not implement.
+            Plan the narrow fix, dependencies, criteria, risks, and verification gates. Do not implement.
           consumes:
               artifacts:
                   - slot: triage_report
@@ -46,7 +46,7 @@ root:
           policy: standard-worker
           description: Implement the bounded defect fix from triage and plan evidence.
           instruction: >-
-              Read triage and plan first. Keep the patch scoped and publish residual risk.
+            Read triage and plan first. Keep the patch scoped and publish residual risk.
           consumes:
               artifacts:
                   - slot: triage_report
@@ -64,10 +64,10 @@ root:
                     description: Scoped defect-fix patch.
         - id: verify_fix
           role: test_verifier
-          policy: standard-verification
+          policy: standard-worker
           description: Verify the defect fix against current criteria.
           instruction: >-
-              Verify intended behavior with reproducible commands or artifacts and name untested areas.
+            Verify intended behavior with reproducible commands or artifacts and name untested areas.
           consumes:
               artifacts:
                   - slot: triage_report
@@ -81,10 +81,10 @@ root:
                     description: Verification evidence for the defect fix.
         - id: review_fix
           role: code_reviewer
-          policy: standard-review
+          policy: standard-worker
           description: Review the fix patch and verification evidence.
           instruction: >-
-              Publish findings with severity, reasoning, approval or rejection, and evidence gaps.
+            Publish findings with severity, reasoning, approval or rejection, and evidence gaps.
           consumes:
               artifacts:
                   - slot: change_patch
@@ -98,10 +98,10 @@ root:
                     description: Critical review of patch and verification evidence.
         - id: analyze_failure
           role: failure_analyst
-          policy: standard-failure-analysis
+          policy: standard-worker
           description: Analyze repeated failure or blocked evidence when fix, verification, or review stalls.
           instruction: >-
-              Recommend retry, specialist reassignment, structural replan, or blocked closure from current evidence.
+            Recommend retry, specialist reassignment, structural replan, or blocked closure from current evidence.
           consumes:
               artifacts:
                   - slot: triage_report
@@ -114,10 +114,10 @@ root:
                     description: Failure analysis and next-action recommendation.
         - id: release_closure
           role: release_operator
-          policy: standard-release
+          policy: standard-worker
           description: Perform final bounded defect-fix release work from current surfaced evidence.
           instruction: >-
-              Use only triage, patch, verification, review, and release criteria. Report gaps instead of reopening scope.
+            Use only triage, patch, verification, review, and release criteria. Report gaps instead of reopening scope.
           consumes:
               artifacts:
                   - slot: triage_report

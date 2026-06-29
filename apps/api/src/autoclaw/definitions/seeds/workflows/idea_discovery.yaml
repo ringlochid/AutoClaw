@@ -4,10 +4,10 @@ description: Gather evidence, compare directions, critique scope, and recommend 
 root:
     id: root
     role: root_planning_lead
-    policy: standard-root-planning
+    policy: standard-root
     description: Preserve the idea-discovery purpose and close only when the recommendation is evidence-backed and non-implementation scope is clear.
     instruction: >-
-        Route research, option shaping, critique, and recommendation work as separate evidence steps. Do not let discovery drift into build work.
+      Route research, option shaping, critique, and recommendation work as separate evidence steps. Do not let discovery drift into build work.
     criteria:
         - slot: idea_discovery_criteria
           description: Hard criteria for closing idea discovery.
@@ -21,7 +21,7 @@ root:
           policy: standard-worker
           description: Gather focused evidence for the idea, audience, constraints, and decision.
           instruction: >-
-              Publish only evidence that changes option selection, feasibility, or next-step direction.
+            Publish only evidence that changes option selection, feasibility, or next-step direction.
           produces:
               artifacts:
                   - slot: discovery_context
@@ -29,10 +29,10 @@ root:
                     description: Evidence, constraints, uncertainties, and decision implications for the idea.
         - id: shape_options
           role: product_planner
-          policy: standard-product-planning
+          policy: standard-worker-human-request
           description: Shape candidate directions from discovery evidence.
           instruction: >-
-              Compare options by user value, feasibility, risk, scope, and confidence. Do not choose by taste alone.
+            Compare options by user value, feasibility, risk, scope, and confidence. Do not choose by taste alone.
           consumes:
               artifacts:
                   - slot: discovery_context
@@ -43,10 +43,10 @@ root:
                     description: Candidate directions with tradeoffs, scope, and acceptance implications.
         - id: critique_options
           role: scope_reviewer
-          policy: standard-scope-review
+          policy: standard-worker-human-request
           description: Critique candidate directions for weak evidence, contradictions, and scope risk.
           instruction: >-
-              Identify overreach, missing proof, hidden dependencies, and contradictions before recommendation.
+            Identify overreach, missing proof, hidden dependencies, and contradictions before recommendation.
           consumes:
               artifacts:
                   - slot: option_brief
@@ -59,10 +59,10 @@ root:
                     description: Critique of candidate directions and required corrections.
         - id: recommend_direction
           role: product_reviewer
-          policy: standard-scope-review
+          policy: standard-worker-human-request
           description: Recommend the next direction from evidence, options, and critique.
           instruction: >-
-              Publish the recommendation, rationale, rejected alternatives, and safest next workflow shape.
+            Publish the recommendation, rationale, rejected alternatives, and safest next workflow shape.
           consumes:
               artifacts:
                   - slot: discovery_context

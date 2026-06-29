@@ -12,7 +12,7 @@ def child_defaults_workflow() -> WorkflowDefinitionFile:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "produces": {
                     "artifacts": [
@@ -26,7 +26,7 @@ def child_defaults_workflow() -> WorkflowDefinitionFile:
                     {
                         "id": "subtree",
                         "role": "planning_lead",
-                        "policy": "standard-parent-planning",
+                        "policy": "standard-parent",
                         "description": "Parent subtree.",
                         "child_defaults": {
                             "consumes": {"artifacts": [{"slot": "brief"}]},
@@ -54,7 +54,7 @@ def optional_artifact_selector_workflow() -> WorkflowDefinitionFile:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "produces": {
                     "artifacts": [
@@ -93,13 +93,13 @@ def criteria_defaults_refresh_workflow() -> WorkflowDefinitionFile:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {
                         "id": "subtree",
                         "role": "planning_lead",
-                        "policy": "standard-parent-planning",
+                        "policy": "standard-parent",
                         "description": "Parent subtree.",
                         "criteria": [
                             {
@@ -134,7 +134,7 @@ def dependency_dedupe_workflow() -> WorkflowDefinitionFile:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "criteria": [
                     {
@@ -176,19 +176,19 @@ def owned_subtree_replan_workflow() -> WorkflowDefinitionFile:
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {
                         "id": "subtree",
                         "role": "planning_lead",
-                        "policy": "standard-parent-planning",
+                        "policy": "standard-parent",
                         "description": "Parent subtree.",
                         "children": [
                             {
                                 "id": "nested_parent",
                                 "role": "planning_lead",
-                                "policy": "standard-parent-planning",
+                                "policy": "standard-parent",
                                 "description": "Nested subtree.",
                                 "children": [
                                     {
@@ -203,7 +203,7 @@ def owned_subtree_replan_workflow() -> WorkflowDefinitionFile:
                     {
                         "id": "outside_parent",
                         "role": "planning_lead",
-                        "policy": "standard-parent-planning",
+                        "policy": "standard-parent",
                         "description": "Sibling subtree outside the main parent scope.",
                         "children": [
                             {

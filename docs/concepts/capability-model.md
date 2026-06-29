@@ -27,6 +27,17 @@ Use them when command work is expected to exceed a normal dispatch and needs con
 
 Ordinary commands should run inline and finish comfortably under about two minutes. If that is unlikely, use a command-run-enabled policy or redesign the assignment.
 
+Command-run capability is usually a worker policy concern. Parent and root nodes should route long command work to a command-run-enabled worker instead of owning the process themselves.
+
+## Budget is separate from capability
+
+Budget fields limit repeated work. They do not grant tools.
+
+- `retry_limit` belongs on worker policies
+- `child_assignment_limit` belongs on root or parent policies
+
+A policy can have a budget without granting human requests or command runs. A capability-enabled policy still needs the right budget for its node kind.
+
 ## Replan and recovery
 
 Replan changes workflow shape when the current structure cannot honestly complete the task. Retry keeps the same assignment shape and tries again.
@@ -39,3 +50,4 @@ Use replan for structural mismatch. Use retry for a recoverable failed attempt.
 - [Use human requests](../guides/use-human-requests.md)
 - [Use long command runs](../guides/use-long-command-runs.md)
 - [Recover or replan a task](../guides/recover-or-replan-a-task.md)
+- [Policy model](policy-model.md)

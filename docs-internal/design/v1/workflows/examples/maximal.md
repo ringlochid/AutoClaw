@@ -29,11 +29,10 @@ description: Execute staged discovery, planning, implementation, review, QA, and
 root:
     id: root
     role: root_planning_lead
-    policy: standard-root-planning
+    policy: standard-root
     description: Preserve the authentication-overhaul purpose, coordinate staged work, and decide final bounded closure from current evidence.
     instruction: >-
-      Read manifest, root assignment, child checkpoints, surfaced refs, criteria, and
-      task-memory hints. Challenge weak evidence before release.
+      Read manifest, root assignment, child checkpoints, surfaced refs, criteria, and task-memory hints. Challenge weak evidence before release.
     criteria:
         - slot: root_delivery_rules
           description: Shared delivery rules before final closure.
@@ -49,11 +48,10 @@ root:
     children:
         - id: discovery
           role: planning_lead
-          policy: standard-parent-planning
+          policy: standard-parent
           description: Coordinate discovery work and verify that discovery outputs are useful before downstream planning.
           instruction: >-
-            Keep discovery scoped to evidence needed for downstream planning. Preserve
-            rejected leads and uncertainty in checkpoints.
+            Keep discovery scoped to evidence needed for downstream planning. Preserve rejected leads and uncertainty in checkpoints.
           criteria:
               - slot: discovery_requirements
                 description: Shared discovery requirements.
@@ -67,10 +65,10 @@ root:
           children:
               - id: gather_evidence
                 role: researcher
+                policy: standard-worker
                 description: Gather discovery evidence and publish findings plus notes needed by downstream stages.
                 instruction: >-
-                  Publish discovery findings, raw notes, uncertainties, and
-                  next-decision implications only.
+                  Publish discovery findings, raw notes, uncertainties, and next-decision implications only.
                 produces:
                     artifacts:
                         - slot: findings_report
@@ -81,11 +79,10 @@ root:
                           description: Raw discovery notes for the subtree.
         - id: implementation_loop
           role: planning_lead
-          policy: standard-parent-planning
+          policy: standard-parent
           description: Coordinate planning, implementation, review, and QA from current surfaced discovery outputs.
           instruction: >-
-            Prepare child mission packets with purpose, mode, refs, criteria, required
-            outputs, known failures, and untouched scope.
+            Prepare child mission packets with purpose, mode, refs, criteria, required outputs, known failures, and untouched scope.
           criteria:
               - slot: implementation_loop_requirements
                 description: Shared implementation requirements.
@@ -104,10 +101,10 @@ root:
           children:
               - id: plan_iteration
                 role: planner
+                policy: standard-worker
                 description: Publish the current delivery plan from surfaced discovery evidence.
                 instruction: >-
-                  Convert discovery findings into bounded sequencing, dependencies,
-                  criteria, risks, and verification gates. Do not implement the plan.
+                  Convert discovery findings into bounded sequencing, dependencies, criteria, risks, and verification gates. Do not implement the plan.
                 consumes:
                     artifacts:
                         - slot: findings_report
@@ -121,8 +118,7 @@ root:
                 policy: standard-worker
                 description: Implement the scoped change and publish patch plus verification evidence.
                 instruction: >-
-                  Read findings, plan, and criteria before editing. Keep patch scoped,
-                  verify behavior, and checkpoint residual risks.
+                  Read findings, plan, and criteria before editing. Keep patch scoped, verify behavior, and checkpoint residual risks.
                 consumes:
                     artifacts:
                         - slot: findings_report
@@ -144,11 +140,10 @@ root:
                           description: Verification evidence for the scoped change.
               - id: review_change
                 role: reviewer
-                policy: standard-review
+                policy: standard-worker
                 description: Critically review implementation evidence and publish an ordinary review report.
                 instruction: >-
-                  Review current patch, verification evidence, and criteria. Record
-                  approval, rejection, evidence gaps, and residual risk.
+                  Review current patch, verification evidence, and criteria. Record approval, rejection, evidence gaps, and residual risk.
                 consumes:
                     artifacts:
                         - slot: change_patch
@@ -162,10 +157,10 @@ root:
                           description: Review findings and disposition for the subtree.
               - id: qa_sweep
                 role: architect
+                policy: standard-worker
                 description: Run a bounded QA or architecture sweep over current implementation evidence.
                 instruction: >-
-                  Inspect current implementation, verification, review evidence, and
-                  criteria only. Publish risk tradeoffs and pass/fail reasoning.
+                  Inspect current implementation, verification, review evidence, and criteria only. Publish risk tradeoffs and pass/fail reasoning.
                 consumes:
                     artifacts:
                         - slot: change_patch
@@ -178,11 +173,10 @@ root:
                           description: QA and architecture sweep findings for the subtree.
         - id: release_closure
           role: release_operator
-          policy: standard-release
+          policy: standard-worker
           description: Perform final bounded release work from current surfaced evidence.
           instruction: >-
-            Use only surfaced release evidence and closure criteria. Report release gaps
-            instead of reopening planning or implementation scope.
+            Use only surfaced release evidence and closure criteria. Report release gaps instead of reopening planning or implementation scope.
           consumes:
               artifacts:
                   - slot: findings_report

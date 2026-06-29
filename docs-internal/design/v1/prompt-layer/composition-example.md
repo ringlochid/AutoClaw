@@ -71,7 +71,7 @@ prompt_request_json:
         - role description: Worker for one bounded engineering assignment.
         - role instruction: Complete only the current assignment.
         - policy: standard-worker
-        - policy description: Default worker behavior for bounded work.
+        - policy description: Guardrails for bounded worker assignments without human waits or command runs.
     input_text: |
         ## Dispatch Input
 
@@ -159,8 +159,8 @@ prompt_request_json:
         - role: root_planning_lead
         - role description: Root coordinator for the whole task.
         - role instruction: Choose the next bounded child step and close only when release is legal.
-        - policy: standard-root-planning
-        - policy description: Default root planning and closure behavior.
+        - policy: standard-root
+        - policy description: Guardrails for root orchestration and final closure.
     input_text: |
         ## Dispatch Input
 

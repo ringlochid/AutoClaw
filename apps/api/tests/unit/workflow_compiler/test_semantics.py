@@ -19,7 +19,7 @@ def test_compile_preserves_optional_consume_selectors_for_runtime_surfaces() -> 
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "produces": {
                     "artifacts": [
@@ -103,13 +103,13 @@ def test_compile_preserves_criteria_owner_for_inherited_and_local_slots() -> Non
             "root": {
                 "id": "root",
                 "role": "root_planning_lead",
-                "policy": "standard-root-planning",
+                "policy": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {
                         "id": "implementation_subtree",
                         "role": "planning_lead",
-                        "policy": "standard-parent-planning",
+                        "policy": "standard-parent",
                         "description": "Parent subtree.",
                         "criteria": [
                             {

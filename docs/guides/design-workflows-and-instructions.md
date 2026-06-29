@@ -175,6 +175,7 @@ Policies are behavioral guardrails, not alternate roles.
 
 Use policy instruction for:
 
+- node-kind compatibility through `applies_to`
 - retry or child-assignment limits
 - human request capability
 - command-run capability
@@ -185,6 +186,20 @@ Use policy instruction for:
 Human requests and command runs are separate capabilities. A node can have one, both, or neither.
 
 Use human requests for human judgment: direction, approval, missing input, or review. Use command runs only for controller-managed long-running command work. Ordinary commands should stay inline and comfortably under about two minutes.
+
+Budget fields are node-kind-specific. Use `retry_limit` only on worker policies. Use `child_assignment_limit` only on root or parent policies. A policy must not mix both.
+
+Start from the standard policy family:
+
+- `standard-root`
+- `standard-root-human-request`
+- `standard-parent`
+- `standard-parent-human-request`
+- `standard-worker`
+- `standard-worker-human-request`
+- `standard-worker-command-run`
+
+Use roles and workflow-node instructions for domain behavior. Use policies for capability, budget, and authority.
 
 ## Design parent and root nodes
 

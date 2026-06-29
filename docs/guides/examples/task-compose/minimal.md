@@ -16,7 +16,7 @@ task:
     title: First local AutoClaw run
     summary: Prove the seeded minimal workflow on a bounded local task.
     instruction: >-
-        Use the shipped minimal workflow to prove local launch, task-root creation, and runtime materialization.
+      Use the shipped minimal workflow to prove local launch, task-root creation, and runtime materialization.
 workflow:
     key: minimal-implement-change
 roots:

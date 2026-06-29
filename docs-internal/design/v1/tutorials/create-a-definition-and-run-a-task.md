@@ -12,7 +12,7 @@ Place the definition files you want to import in the current working directory.
 
 ```text
 root_planning_lead.yaml
-standard-root-planning.yaml
+standard-root.yaml
 auth-refresh-bugfix.yaml
 ```
 
@@ -32,12 +32,12 @@ description: Fix the auth refresh regression and release only after review.
 root:
     id: root
     role: root_planning_lead
-    policy: standard-root-planning
+    policy: standard-root
     description: Coordinate the flow and decide final closure.
     children:
         - id: implementation_subtree
           role: planning_lead
-          policy: standard-parent-planning
+          policy: standard-parent
           description: Coordinate investigation, implementation, and review.
           children:
               - id: investigate_issue

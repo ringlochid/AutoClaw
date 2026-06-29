@@ -136,7 +136,7 @@ description: Fix the auth refresh regression and close only after current review
 root:
     id: root
     role: root_planning_lead
-    policy: standard-root-planning
+    policy: standard-root
     description: Coordinate the whole flow and decide final closure.
     instruction: >-
       Keep final closure tied to current surfaced evidence.
@@ -149,7 +149,7 @@ root:
     children:
         - id: implementation_subtree
           role: planning_lead
-          policy: standard-parent-planning
+          policy: standard-parent
           description: Coordinate investigation, implementation, and review.
           instruction: >-
             Assign only the next bounded child step needed for this subtree.

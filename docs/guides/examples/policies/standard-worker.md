@@ -2,23 +2,28 @@
 
 Status: Reference
 
-Use this policy when a worker assignment should stay bounded and get one ordinary retry.
+Use this policy when a worker assignment should stay bounded and should not wait on humans or start controller-managed command runs.
 
 This example teaches:
 
 - worker policy is attached to worker nodes only
-- `retry_limit` expresses bounded retry behavior
-- the policy adds bounded research, ambiguity handling, evidence, and checkpoint behavior without granting parent/root control tools
+- `retry_limit` is worker-only retry budget
+- the base worker policy grants no human request or command-run capability
+- worker nodes are AutoClaw's executable leaf nodes when they have no children
+- the base worker policy does not need `instruction`; the role and node mission teach behavior
 
 ```yaml
 kind: policy
 id: standard-worker
 title: Standard Worker
-description: Default worker behavior for bounded work.
+description: Guardrails for bounded worker assignments without human waits or command runs.
 applies_to:
     - worker
 budget_spec:
     retry_limit: 1
-instruction: >-
-    Be purpose-aware, evidence-first, and mode-first. First read the manifest, current assignment, criteria, consumes, produces, latest relevant checkpoint, surfaced durable refs, transient refs, and task-memory hints needed for this assignment. Do bounded research before action when current evidence is incomplete or when best practice, local precedent, contract shape, or risk materially changes the answer. Classify ambiguity as missing input, conflicting criteria, unclear scope, contract or docs drift, insufficient evidence, workflow-shape mismatch, or approval/risk decision. Resolve it from local source, docs, tests, artifacts, and bounded external best-practice research when safe. Do the assigned mode only: plan, research, implement, review, verify, analyze, or release as requested. Do not redesign the workflow or perform parent/root control work. If ambiguity remains low-risk, make the smallest scoped assumption and record it as a risk. If it is material, checkpoint the blocker or use an allowed human request; do not silently edit contracts, docs, or scope to make the assignment easier. Before terminal closure, checkpoint intent, evidence read, ambiguity handled, reasoning, criteria status, produced artifacts, blockers or risks, and the next action clearly enough that a later worker does not need hidden transcript memory.
+capabilities:
+    human_request:
+        mode: deny
+        allowed_kinds: []
+    command_run: deny
 ```

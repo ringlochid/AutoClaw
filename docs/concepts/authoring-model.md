@@ -31,6 +31,10 @@ Use policies for:
 
 Human request and command-run capability are separate. A node can have one, both, or neither.
 
+Policies attach to node kinds with `applies_to`. Current values are `root`, `parent`, and `worker`. Use `retry_limit` only for worker policies, and use `child_assignment_limit` only for root or parent policies.
+
+Policy instructions should read like authority rules, not a second role. Specialist behavior belongs in roles and workflow-node instructions.
+
 ## Workflows
 
 Workflows describe the evidence path for a purpose.
@@ -54,6 +58,7 @@ Task-compose is intentionally separate from reusable definitions. It is the thin
 ## Related pages
 
 - [Task-compose model](task-compose-model.md)
+- [Policy model](policy-model.md)
 - [Write a role](../guides/write-a-role.md)
 - [Write a policy](../guides/write-a-policy.md)
 - [Write a workflow](../guides/write-a-workflow.md)

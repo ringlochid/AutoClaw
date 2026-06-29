@@ -88,7 +88,11 @@ Current validator rules include:
 - `capabilities.human_request.mode: allow` requires non-empty `allowed_kinds`
 - `capabilities.human_request.mode: deny` grants no portable human-request permission
 
-`description` should summarize policy purpose. `instruction` should explain constraints, evidence gates, capabilities, allowed posture, and checkpoint expectations.
+`applies_to` accepts current node kinds only: `root`, `parent`, and `worker`. A leaf node is represented as a `worker` node with no children.
+
+`budget_spec` is a controller guardrail. `retry_limit` is worker-only same-assignment retry budget. `child_assignment_limit` is root/parent-only child assignment budget. It is not a time limit, token limit, or acceptance criterion.
+
+`description` should summarize policy purpose. `instruction` should explain authority, budget interpretation, capabilities, allowed posture, and checkpoint expectations. It should not duplicate specialist role behavior.
 
 ### Workflow YAML
 
@@ -247,6 +251,16 @@ Current shipped workflow fixtures are:
 
 The packaged bootstrap mirror under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` is the committed authored and shipped seed source for those fixtures. No repo-root definitions mirror is required by shipped paths.
 
+Current shipped policy fixtures are:
+
+- `standard-root`
+- `standard-root-human-request`
+- `standard-parent`
+- `standard-parent-human-request`
+- `standard-worker`
+- `standard-worker-human-request`
+- `standard-worker-command-run`
+
 ## Minimal shape example
 
 ```yaml
@@ -258,8 +272,7 @@ root:
     role: planning_lead
     description: Preserve the task purpose, delegate one bounded engineering change, and release only when current evidence satisfies criteria.
     instruction: >-
-      Read manifest, assignment, checkpoint, surfaced refs, and criteria before
-      assigning or releasing. Verify worker evidence instead of trusting green alone.
+      Read manifest, assignment, checkpoint, surfaced refs, and criteria before assigning or releasing. Verify worker evidence instead of trusting green alone.
     criteria:
         - slot: implementation_rules
           description: Parent acceptance criteria.
@@ -272,9 +285,7 @@ root:
           policy: standard-worker
           description: Understand the purpose, implement the bounded change, and publish patch plus verification evidence for the current assignment.
           instruction: >-
-            Read current criteria and any surfaced refs before editing. Keep the patch
-            scoped, verify the intended behavior, and checkpoint reasoning plus criteria
-            status.
+            Read current criteria and any surfaced refs before editing. Keep the patch scoped, verify the intended behavior, and checkpoint reasoning plus criteria status.
           produces:
               artifacts:
                   - slot: change_patch

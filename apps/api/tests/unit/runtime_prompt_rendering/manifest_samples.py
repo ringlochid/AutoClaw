@@ -128,14 +128,18 @@ def structural_edit_palette() -> StructuralEditPaletteProjection:
         ),
         policies=(
             StructuralEditPolicyProjection(
-                policy="standard-parent-planning",
+                policy="standard-parent",
                 applies_to=(NodeKind.PARENT,),
-                description="Default planning policy for bounded parent coordination.",
+                description=(
+                    "Guardrails for parent orchestration without human waits or command runs."
+                ),
             ),
             StructuralEditPolicyProjection(
-                policy="standard-review",
+                policy="standard-worker",
                 applies_to=(NodeKind.WORKER,),
-                description="Default review policy for worker evidence checks.",
+                description=(
+                    "Guardrails for bounded worker assignments without human waits or command runs."
+                ),
             ),
         ),
     )

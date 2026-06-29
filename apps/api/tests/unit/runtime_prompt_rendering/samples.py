@@ -126,7 +126,9 @@ def worker_request(tmp_path: Path, *, send_mode: PromptSendMode) -> PromptRender
             role_instruction="Complete only the current assignment.",
             policy_key="standard-worker",
             policy_revision_no=53,
-            policy_description="Default worker behavior for bounded work.",
+            policy_description=(
+                "Guardrails for bounded worker assignments without human waits or command runs."
+            ),
         ),
         manifest=sample_manifest(tmp_path),
         assignment=sample_assignment(tmp_path),

@@ -76,19 +76,13 @@ EXPECTED_ROLE_IDS = {
     "delivery_planner",
 }
 EXPECTED_POLICY_IDS = {
-    "standard-failure-analysis",
-    "standard-long-command-worker",
-    "standard-marketing-planning",
-    "standard-parent-planning",
-    "standard-product-planning",
-    "standard-project-management",
-    "standard-release",
-    "standard-review",
-    "standard-root-planning",
-    "standard-scope-review",
-    "standard-verification",
+    "standard-root",
+    "standard-root-human-request",
+    "standard-parent",
+    "standard-parent-human-request",
     "standard-worker",
-    "standard-delivery-planning",
+    "standard-worker-human-request",
+    "standard-worker-command-run",
 }
 
 type RoleOrPolicyDefinitionModel = (

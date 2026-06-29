@@ -145,23 +145,24 @@ description: Ordinary review worker for one bounded assignment.
 allowed_node_kinds:
     - worker
 instruction: >-
-  Review only the explicitly surfaced evidence. Publish ordinary review artifacts and a
-  checkpoint. Parent/root still decides the next control action.
+  Review only the explicitly surfaced evidence. Publish ordinary review artifacts and a checkpoint. Parent/root still decides the next control action.
 ```
 
 ```yaml
-# policies/standard-review.yaml
+# policies/standard-worker.yaml
 kind: policy
-id: standard-review
-title: Standard Review
-description: Ordinary review worker behavior.
+id: standard-worker
+title: Standard Worker
+description: Guardrails for bounded worker assignments without human waits or command runs.
 applies_to:
     - worker
-instruction: >-
-  Green means the review assignment completed, not that the reviewed target
-  automatically passes parent/root closure. Record approval, rejection, or evidence gaps
-  in the checkpoint summary and published review artifacts rather than inventing a
-  second result enum.
+budget_spec:
+    retry_limit: 1
+capabilities:
+    human_request:
+        mode: deny
+        allowed_kinds: []
+    command_run: deny
 ```
 
 ```yaml
@@ -172,12 +173,12 @@ description: Fix the auth refresh regression and release only after review.
 root:
     id: root
     role: root_planning_lead
-    policy: standard-root-planning
+    policy: standard-root
     description: Coordinate the flow and decide final closure.
     children:
         - id: implementation_subtree
           role: planning_lead
-          policy: standard-parent-planning
+          policy: standard-parent
           description: Coordinate investigation, implementation, and review.
           children:
               - id: investigate_issue

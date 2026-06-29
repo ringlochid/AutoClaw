@@ -1,53 +1,34 @@
-# AutoClaw frontend launch plan
+# AutoClaw Frontend Launch Plan
 
-## Uploaded definitions
+Status: reference pointer only.
 
-Live registry now has these frontend roles:
+`references/frontend` is an ignored project reference area. Keep reusable
+AutoClaw definition drafts and task-compose launch drafts in Orin's workspace
+curation area instead:
 
-- `frontend_engineer`
-- `frontend_contract_integrator`
-- `frontend_visual_verifier`
-- `frontend_code_reviewer`
-- `frontend_contract_planner`
-
-Live registry now has these frontend workflows:
-
-- `frontend-console-delivery-program`
-- `frontend-feature-slice`
-- `frontend-suite-release-review`
-
-## Launch order
-
-Use the task-compose files under `references/frontend/task-compose/` in this order:
-
-1. `00-plan-contract-lock.yaml`
-2. `10-api-config-foundation.yaml`
-3. `20-tasks-page.yaml`
-4. `30-task-detail-sse.yaml`
-5. `40-human-requests-page.yaml`
-6. `50-command-runs-page.yaml`
-7. `60-definitions-page.yaml`
-8. `70-task-start-page.yaml`
-9. `80-definition-editor-page.yaml`
-10. `99-suite-release-review.yaml`
-
-Do not start implementation slices until `00-plan-contract-lock.yaml` has produced the current plan, locked contracts, and launch-readiness review.
-
-## Root bindings
-
-Every compose binds:
-
-- workspace: `/home/ubuntu/leo/projects/autoclaw`
-- context/evidence: `/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/<slice>`
-
-The planning task must write comprehensive plans under `references/frontend` and locked frontend contracts under `docs-internal/design/v2/console`.
-
-## Start command
-
-Start the planning/contract-lock task first:
-
-```bash
-./.venv/bin/autoclaw task-compose start --file references/frontend/task-compose/00-plan-contract-lock.yaml --json
+```text
+/home/ubuntu/.openclaw/workspaces/orin/autoclaw/drafts/
 ```
 
-Starting a task changes runtime state. Review the compose before launch.
+Current frontend draft pack:
+
+```text
+/home/ubuntu/.openclaw/workspaces/orin/autoclaw/drafts/frontend-console-v2/README.md
+/home/ubuntu/.openclaw/workspaces/orin/autoclaw/drafts/workflows/frontend_console_full_delivery.yaml
+/home/ubuntu/.openclaw/workspaces/orin/autoclaw/drafts/task-compose/autoclaw_console_frontend_full_delivery/full-delivery.task-compose.yaml
+```
+
+Use the full-delivery compose when the goal is one AutoClaw task from audit and
+contract docs through implementation, validation, review, and closure.
+
+Use named standalone fallback composes from the same Orin draft pack only when a
+slice genuinely needs to be split out. Do not use numeric `00..99` launch
+ordering for this frontend program.
+
+The task still binds:
+
+- workspace: `/home/ubuntu/leo/projects/autoclaw`
+- context/evidence: `/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/<purpose>`
+
+The workflow should write comprehensive plans under `references/frontend` and
+locked frontend contracts under `docs-internal/design/v2/console`.

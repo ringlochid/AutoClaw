@@ -515,11 +515,11 @@ def test_parent_prompt_surfaces_structural_edit_palette_in_manifest_and_instruct
     assert "- structural edit palette:" in workflow_manifest_section
     assert "architect (allowed node kinds: worker)" in workflow_manifest_section
     assert "planning_lead (allowed node kinds: parent, worker)" in workflow_manifest_section
-    assert "standard-parent-planning (applies_to: parent)" in workflow_manifest_section
-    assert "standard-review (applies_to: worker)" in workflow_manifest_section
+    assert "standard-parent (applies_to: parent)" in workflow_manifest_section
+    assert "standard-worker (applies_to: worker)" in workflow_manifest_section
     assert "- structural edit palette:" in bundle.instructions_text
     assert "architect (allowed node kinds: worker)" in bundle.instructions_text
-    assert "standard-parent-planning (applies_to: parent)" in bundle.instructions_text
+    assert "standard-parent (applies_to: parent)" in bundle.instructions_text
 
 
 def test_non_root_parent_prompt_excludes_root_only_release_and_allows_blocked_closure(

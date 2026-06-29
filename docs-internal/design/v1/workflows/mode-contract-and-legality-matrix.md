@@ -110,7 +110,7 @@ Why it is valid:
 ```yaml
 id: implementation_subtree
 role: planning_lead
-policy: standard-parent-planning
+policy: standard-parent
 description: Coordinate implementation and review.
 child_defaults:
     criteria:
@@ -125,7 +125,7 @@ Why it is valid:
 - `implementation_subtree` has children, so it is structurally `parent`
 - `planning_lead` is legal on `parent`
 - explicit policy resolution is allowed because `policy` is present
-- validation then checks that `standard-parent-planning` exists and applies to `parent`
+- validation then checks that `standard-parent` exists and applies to `parent`
 
 ### Invalid parent/role pairing
 
