@@ -111,10 +111,10 @@ function TaskDetailLoadedState({ controller }: { readonly controller: TaskDetail
             }
             description={view.task.summary}
             eyebrow="Task Detail"
+            headerContent={<TaskSummaryHeader controller={controller} view={view} />}
             title={view.task.title}
         >
             <div className="space-y-4">
-                <TaskSummaryHeader controller={controller} view={view} />
                 {controller.actionError === null ? null : (
                     <StatePanel
                         summary={controller.actionError.summary}
@@ -133,6 +133,14 @@ function TaskDetailLoadedState({ controller }: { readonly controller: TaskDetail
                         tone="error"
                     />
                 )}
+                {controller.streamStatus === "reset" ||
+                controller.streamResetStaleCursor !== null ? (
+                    <StatePanel
+                        summary={streamResetSummary(controller.streamResetStaleCursor)}
+                        title="Stream cursor reset"
+                        tone="stale"
+                    />
+                ) : null}
                 <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
                     <TaskGraph
                         edges={view.graphEdges}
@@ -205,4 +213,9 @@ function isAuthError(
 
 function isStaleActionError(code: string): boolean {
     return code.startsWith("stale_") || code === "illegal_state";
+}
+
+function streamResetSummary(staleCursor: string | null): string {
+    const cursorText = staleCursor === null ? "the stale cursor" : `stale cursor ${staleCursor}`;
+    return `The event stream rejected ${cursorText}; current task truth was reread and the live stream reconnected without that cursor.`;
 }

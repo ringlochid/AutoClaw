@@ -2,14 +2,7 @@ import type { ReactNode } from "react";
 
 import { Ban, Pause, Play, RefreshCw } from "lucide-react";
 
-import {
-    Button,
-    IconButton,
-    IdRefText,
-    StatusChip,
-    Surface,
-    TimestampText,
-} from "../../components/ui";
+import { Button, IconButton, IdRefText, StatusChip, TimestampText } from "../../components/ui";
 import type { TaskControlAction } from "./task-detail-data";
 import type { TaskDetailController } from "./task-detail-controller";
 import { flowStatusTone, type TaskDetailView } from "./task-detail-model";
@@ -22,36 +15,33 @@ export function TaskSummaryHeader({
     readonly view: TaskDetailView;
 }) {
     return (
-        <Surface
-            actions={
-                <StatusChip tone={streamStatusTone(controller.streamStatus)} withDot>
-                    {streamStatusLabel(controller.streamStatus)}
-                </StatusChip>
-            }
-            label="Current task"
-            title={view.task.taskId}
-        >
-            <div className="grid gap-3 lg:grid-cols-4">
-                <SummaryStat label="Status">
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <HeaderFact label="Status">
                     <StatusChip tone={flowStatusTone(view.task.status)} withDot>
                         {view.task.status}
                     </StatusChip>
-                </SummaryStat>
-                <SummaryStat label="Node">
+                </HeaderFact>
+                <HeaderFact label="Node">
                     {view.task.currentNodeKey === null ? (
                         "not exposed"
                     ) : (
                         <IdRefText value={view.task.currentNodeKey} />
                     )}
-                </SummaryStat>
-                <SummaryStat label="Updated">
+                </HeaderFact>
+                <HeaderFact label="Updated">
                     <TimestampText value={view.task.updatedAt} />
-                </SummaryStat>
-                <SummaryStat label="Stream head">
+                </HeaderFact>
+                <HeaderFact label="Stream head">
                     {view.snapshot.streamHeadEventId ?? "live-only"}
-                </SummaryStat>
+                </HeaderFact>
             </div>
-        </Surface>
+            <div className="flex shrink-0 items-center">
+                <StatusChip tone={streamStatusTone(controller.streamStatus)} withDot>
+                    {streamStatusLabel(controller.streamStatus)}
+                </StatusChip>
+            </div>
+        </div>
     );
 }
 
@@ -107,17 +97,13 @@ export function TaskActionControls({
     );
 }
 
-function SummaryStat({
-    children,
-    label,
-}: {
-    readonly children: ReactNode;
-    readonly label: string;
-}) {
+function HeaderFact({ children, label }: { readonly children: ReactNode; readonly label: string }) {
     return (
-        <div className="min-w-0 rounded-card border border-outline-soft bg-surface-low px-3 py-2">
-            <p className="font-mono text-label font-medium uppercase text-muted">{label}</p>
-            <div className="mt-1 min-w-0 text-compact text-foreground">{children}</div>
+        <div className="inline-flex min-h-8 max-w-full items-center gap-2 rounded-control border border-outline-soft bg-surface-low px-3 py-1.5">
+            <span className="shrink-0 font-mono text-label font-medium uppercase text-muted">
+                {label}
+            </span>
+            <span className="min-w-0 text-utility text-foreground">{children}</span>
         </div>
     );
 }

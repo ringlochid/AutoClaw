@@ -39,6 +39,7 @@ export interface TaskDetailController {
     readonly selectNode: (nodeKey: string) => void;
     readonly setDetailTab: (tab: TaskDetailTab) => void;
     readonly streamError: ConsoleErrorView | null;
+    readonly streamResetStaleCursor: string | null;
     readonly streamStatus: TaskEventStreamStatus;
     readonly tab: TaskDetailTab;
     readonly taskAction: (action: TaskControlAction) => void;
@@ -61,6 +62,7 @@ interface TaskDetailState {
     readonly selectedEventId: string | null;
     readonly selectedNodeKey: string | null;
     readonly streamError: ConsoleErrorView | null;
+    readonly streamResetStaleCursor: string | null;
     readonly streamStatus: TaskEventStreamStatus;
     readonly tab: TaskDetailTab;
     readonly zoomPercent: number;
@@ -89,6 +91,7 @@ type TaskDetailAction =
     | { readonly eventId: string; readonly type: "select-event" }
     | { readonly nodeKey: string; readonly type: "select-node" }
     | { readonly status: TaskEventStreamStatus; readonly type: "stream-status" }
+    | { readonly staleCursor: string | null; readonly type: "stream-reset" }
     | { readonly error: ConsoleErrorView; readonly type: "stream-error" }
     | { readonly tab: TaskDetailTab; readonly type: "tab" }
     | { readonly type: "zoom-in" }
@@ -107,6 +110,7 @@ const initialState: TaskDetailState = {
     selectedEventId: null,
     selectedNodeKey: null,
     streamError: null,
+    streamResetStaleCursor: null,
     streamStatus: "closed",
     tab: "overview",
     zoomPercent: 100,
@@ -163,8 +167,8 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
                     onEvent: (event) => {
                         dispatch({ event, type: "live-event" });
                     },
-                    resetAfterCursorReset: async () => {
-                        dispatch({ status: "reset", type: "stream-status" });
+                    resetAfterCursorReset: async (staleCursor) => {
+                        dispatch({ staleCursor, type: "stream-reset" });
                         const resetBootstrap = await readTaskDetailBootstrap(
                             currentTaskId,
                             abortController.signal,
@@ -184,10 +188,14 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
                 if (streamResult.events.length > 0) {
                     dispatch({ events: streamResult.events, type: "live-events" });
                 }
-                dispatch({
-                    status: streamResult.didResetCursor ? "reset" : "live",
-                    type: "stream-status",
-                });
+                if (streamResult.didResetCursor) {
+                    dispatch({
+                        staleCursor: streamResult.staleCursor,
+                        type: "stream-reset",
+                    });
+                } else {
+                    dispatch({ status: "live", type: "stream-status" });
+                }
             } catch (error) {
                 if (isAbortError(error)) {
                     return;
@@ -287,6 +295,7 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
             dispatch({ tab, type: "tab" });
         },
         streamError: state.streamError,
+        streamResetStaleCursor: state.streamResetStaleCursor,
         streamStatus: state.streamStatus,
         tab: state.tab,
         taskAction,
@@ -323,6 +332,7 @@ function taskDetailReducer(state: TaskDetailState, action: TaskDetailAction): Ta
                 isLoading: false,
                 isRefreshing: false,
                 streamStatus: "closed",
+                streamResetStaleCursor: null,
             };
         case "live-event":
             return {
@@ -342,10 +352,18 @@ function taskDetailReducer(state: TaskDetailState, action: TaskDetailAction): Ta
                 ...state,
                 streamStatus: action.status,
             };
+        case "stream-reset":
+            return {
+                ...state,
+                streamError: null,
+                streamResetStaleCursor: action.staleCursor,
+                streamStatus: "reset",
+            };
         case "stream-error":
             return {
                 ...state,
                 streamError: action.error,
+                streamResetStaleCursor: null,
                 streamStatus: "closed",
             };
         case "select-node":

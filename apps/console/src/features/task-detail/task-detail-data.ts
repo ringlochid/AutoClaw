@@ -29,7 +29,7 @@ export interface TaskDetailBootstrap {
 export interface TaskDetailStreamOptions {
     readonly cursor: string | null;
     readonly onEvent: (event: components["schemas"]["TaskEventRecord"]) => void;
-    readonly resetAfterCursorReset: () => Promise<void>;
+    readonly resetAfterCursorReset: (staleCursor: string | null) => Promise<void>;
     readonly signal: AbortSignal;
     readonly taskId: string;
 }

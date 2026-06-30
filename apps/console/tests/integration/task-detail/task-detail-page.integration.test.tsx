@@ -107,6 +107,10 @@ describe("TaskDetailPage", () => {
         await waitFor(() => {
             expect(within(dialog).getByRole("button", { name: "Close node detail" })).toHaveFocus();
         });
+        await user.tab({ shift: true });
+        expect(within(dialog).getByRole("tab", { name: "Overview" })).toHaveFocus();
+        await user.tab();
+        expect(within(dialog).getByRole("button", { name: "Close node detail" })).toHaveFocus();
         expect(within(dialog).getByText("task_detail_build")).toBeVisible();
         expect(within(dialog).getByRole("tab", { name: "Overview" })).toHaveAttribute(
             "aria-selected",
@@ -159,6 +163,7 @@ describe("TaskDetailPage", () => {
         renderTaskDetailPage();
 
         expect(await screen.findByText("Stream reset")).toBeVisible();
+        expect(await screen.findByText(/current task truth was reread/i)).toBeVisible();
         expect(await screen.findByText("task_cancelled")).toBeVisible();
         expect(snapshotReads).toBeGreaterThanOrEqual(2);
         expect(streamCursors).toEqual([TASK_DETAIL_STREAM_HEAD, null]);
@@ -195,8 +200,11 @@ describe("TaskDetailPage", () => {
         renderTaskDetailPage();
 
         await screen.findByRole("heading", { name: "Refresh runtime route copy" });
+        expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
         await user.click(screen.getByRole("button", { name: "Pause" }));
         expect(await screen.findByText("paused")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
         expect(actionQueries[0]).toBe(
             "expected_active_flow_revision_id=flow-revision-task-detail-1",
         );

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { type KeyboardEvent, useEffect, useRef } from "react";
 
 import { X } from "lucide-react";
 
@@ -33,16 +33,49 @@ export function TaskDetailModal({
     readonly taskId: string;
 }) {
     const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         closeButtonRef.current?.focus({ preventScroll: true });
     }, []);
+
+    const handleDialogKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== "Tab") {
+            return;
+        }
+
+        const dialogElement = dialogRef.current;
+        if (dialogElement === null) {
+            return;
+        }
+
+        const focusableElements = getFocusableElements(dialogElement);
+        if (focusableElements.length === 0) {
+            event.preventDefault();
+            return;
+        }
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (event.shiftKey && document.activeElement === firstElement) {
+            event.preventDefault();
+            lastElement.focus();
+            return;
+        }
+
+        if (!event.shiftKey && document.activeElement === lastElement) {
+            event.preventDefault();
+            firstElement.focus();
+        }
+    };
 
     return (
         <div
             aria-labelledby="task-detail-modal-title"
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 px-4 py-6 backdrop-blur-sm"
+            onKeyDown={handleDialogKeyDown}
+            ref={dialogRef}
             role="dialog"
         >
             <section className="max-h-[calc(100vh-3rem)] w-full max-w-4xl overflow-hidden rounded-shell border border-outline-soft bg-surface shadow-popover">
@@ -91,6 +124,19 @@ export function TaskDetailModal({
                 </div>
             </section>
         </div>
+    );
+}
+
+function getFocusableElements(root: HTMLElement): readonly HTMLElement[] {
+    return Array.from(
+        root.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+    ).filter(
+        (element) =>
+            element.tabIndex >= 0 &&
+            !element.hasAttribute("hidden") &&
+            element.getAttribute("aria-hidden") !== "true",
     );
 }
 

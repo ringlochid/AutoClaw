@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
 
@@ -9,7 +11,7 @@ import {
 } from "../fixtures/task-detail";
 
 const SCREENSHOT_DIR =
-    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/continuation-implementation/07-task-detail/screenshots";
+    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity/02-task-detail/screenshots";
 
 test("renders the API-backed Task Detail control room at desktop width", async ({
     page,
@@ -17,6 +19,7 @@ test("renders the API-backed Task Detail control room at desktop width", async (
     test.skip(testInfo.project.name !== "chromium", "desktop proof is captured once");
 
     await mockTaskDetail(page, createTaskDetailMockScenario());
+    mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
     await page.goto(`/tasks/${TASK_DETAIL_TASK_ID}`);
 
@@ -52,12 +55,16 @@ test("renders the API-backed Task Detail control room at desktop width", async (
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Close node detail" })).toBeFocused();
     await expect(dialog.getByText("task_detail_build")).toBeVisible();
+    await page.screenshot({
+        fullPage: true,
+        path: `${SCREENSHOT_DIR}/task-detail-modal-desktop.png`,
+    });
     await dialog.getByRole("tab", { name: "Trace" }).click();
     await expect(dialog.getByLabel("Trace")).toContainText("checkpoint_recorded");
 
     await page.screenshot({
         fullPage: true,
-        path: `${SCREENSHOT_DIR}/task-detail-modal-desktop.png`,
+        path: `${SCREENSHOT_DIR}/task-detail-modal-trace-desktop.png`,
     });
 
     await page.keyboard.press("Escape");
@@ -76,6 +83,7 @@ test("keeps the Task Detail graph and event lane responsive at mobile width", as
             events: createLongTaskDetailEventRecords(),
         }),
     );
+    mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
     await page.goto(`/tasks/${TASK_DETAIL_TASK_ID}`);
 

@@ -40,7 +40,7 @@ export interface TaskEventStreamReadResult {
 }
 
 export interface TaskEventStreamReconnectOptions extends TaskEventStreamOptions {
-    readonly resetAfterCursorReset: () => Promise<void> | void;
+    readonly resetAfterCursorReset: (staleCursor: string | null) => Promise<void> | void;
 }
 
 export function taskEventStreamUrl(
@@ -158,7 +158,7 @@ export async function reconnectTaskEventStream(
         return firstResult;
     }
 
-    await options.resetAfterCursorReset();
+    await options.resetAfterCursorReset(firstResult.staleCursor);
     const secondResult = await readTaskEventStream({ ...options, cursor: null });
     return {
         ...secondResult,
