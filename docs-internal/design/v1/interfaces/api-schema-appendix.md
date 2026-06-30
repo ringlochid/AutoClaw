@@ -280,6 +280,7 @@ Rules:
 
 - this field is semantic slot-based durable context sharing only
 - callers do not submit final durable `path`, `version`, `description`, or currentness claims here
+- callers must not pass a child its own produced artifact slot through `artifact_slots`; use `transient_surfaces` or task memory for previous same-node context
 
 ### `assignment_produce_requirement`
 
@@ -340,6 +341,7 @@ Rules:
 - `produced_artifacts` are reduced durable claims only; callers do not author surfaced `artifact_ref` path/version tuples here
 - runtime later resolves any durable reread refs and checkpoint projections from committed truth
 - `transient_surfaces` remain explicit node-authored carryover surfaces only
+- terminal `green` checkpoints must satisfy the non-pointer preflight needed by the matching `green` boundary before they are accepted
 
 ## Parent/root tool payloads
 

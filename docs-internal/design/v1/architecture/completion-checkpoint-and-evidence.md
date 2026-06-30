@@ -44,7 +44,8 @@ The controller still needs current truth showing:
 
 - every required `produces` slot for that assignment was published durably
 - the checkpoint points at the exact versioned artifact paths later readers should inspect
-- the evidence basis is still current against the surfaced criteria and current structural subject
+- the evidence basis is valid against the surfaced criteria and current structural subject
+- older pinned artifact refs are not rejected solely because the slot's current pointer later advanced
 
 That is why the v1 model uses checkpoint plus durable artifacts plus criteria, not checkpoint-only closure and not packet-family closure.
 
@@ -55,11 +56,11 @@ Worker/leaf `green` is legal only when all of the following are true:
 1. the current attempt has one terminal checkpoint with `outcome: green`
 2. every required `produces` slot for the current assignment was published as a durable artifact version
 3. the terminal checkpoint references the exact published artifact paths that matter for later review or consumption
-4. the current evidence basis is not stale against:
+4. the current evidence basis is valid against:
     - the current assignment
     - current surfaced `criteria`
-    - current published artifact versions
     - current structural subject
+5. every surfaced artifact path used as evidence still exists, without requiring that it equal the latest current pointer for its slot
 
 ```mermaid
 flowchart LR

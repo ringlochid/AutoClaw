@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
-from autoclaw.persistence.models import ArtifactCurrentPointerModel, FlowNodeModel
+from autoclaw.persistence.models import FlowNodeModel
 from autoclaw.runtime.contracts import EvidenceKind
 from autoclaw.runtime.flow.queries import require_flow_for_task
 from autoclaw.runtime.task_root import (
@@ -146,73 +146,14 @@ async def _artifact_surfaced_ref_detail(
     task_id: str,
     ref: dict[str, Any],
 ) -> SurfacedRefFailure | None:
-    pointer = await session.scalar(
-        select(ArtifactCurrentPointerModel).where(
-            ArtifactCurrentPointerModel.task_id == task_id,
-            ArtifactCurrentPointerModel.slot == ref.get("slot"),
-            ArtifactCurrentPointerModel.current_path == str(ref["path"]),
-            ArtifactCurrentPointerModel.current_version == ref.get("version"),
-        )
-    )
-    if pointer is None:
-        return await _stale_artifact_ref_detail(session, task_id=task_id, ref=ref)
-    if _is_path_current(pointer.current_path):
+    if _is_path_current(str(ref["path"])):
         return None
     return SurfacedRefFailure(
-        summary=(
-            f"current artifact file for slot '{pointer.slot}' is missing at "
-            f"'{pointer.current_path}'"
-        ),
+        summary=f"artifact slot '{ref.get('slot')}' file is missing at '{ref['path']}'",
         reason="artifact_file_missing",
-        slot=pointer.slot,
-        path=pointer.current_path,
-        version=pointer.current_version,
-        current_owner_node_key=pointer.owner_node_key,
-        current_assignment_key=pointer.assignment_key,
-        current_path=pointer.current_path,
-        current_version=pointer.current_version,
-    )
-
-
-async def _stale_artifact_ref_detail(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    ref: dict[str, Any],
-) -> SurfacedRefFailure:
-    current_pointer = await session.scalar(
-        select(ArtifactCurrentPointerModel).where(
-            ArtifactCurrentPointerModel.task_id == task_id,
-            ArtifactCurrentPointerModel.slot == ref.get("slot"),
-        )
-    )
-    if current_pointer is None:
-        return SurfacedRefFailure(
-            summary=(
-                f"artifact slot '{ref.get('slot')}' ref at '{ref.get('path')}' "
-                f"(v{ref.get('version')}) is stale because no current pointer exists "
-                "for that slot"
-            ),
-            reason="artifact_ref_stale",
-            slot=_as_optional_str(ref.get("slot")),
-            path=_as_optional_str(ref.get("path")),
-            version=_as_optional_int(ref.get("version")),
-        )
-    return SurfacedRefFailure(
-        summary=(
-            f"artifact slot '{ref.get('slot')}' ref at '{ref.get('path')}' "
-            f"(v{ref.get('version')}) is stale; current pointer is "
-            f"'{current_pointer.current_path}' (v{current_pointer.current_version}) "
-            f"from node '{current_pointer.owner_node_key}'"
-        ),
-        reason="artifact_ref_stale",
         slot=_as_optional_str(ref.get("slot")),
         path=_as_optional_str(ref.get("path")),
         version=_as_optional_int(ref.get("version")),
-        current_owner_node_key=current_pointer.owner_node_key,
-        current_assignment_key=current_pointer.assignment_key,
-        current_path=current_pointer.current_path,
-        current_version=current_pointer.current_version,
     )
 
 

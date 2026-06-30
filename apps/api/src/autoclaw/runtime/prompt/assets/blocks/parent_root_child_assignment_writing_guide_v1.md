@@ -44,6 +44,10 @@ Use:
 - `transient_surfaces` as a list of `{ path, description }` objects for short-lived notes or local context that help this turn but should not become durable truth.
 - `task_memory_search_hints` for semantic retrieval prompts, not generic tags.
 
+Do not pass a child its own produced artifact slot through `supplemental_durable_context.artifact_slots`.
+If the same child needs prior notes or a rolling ledger, pass that material as `transient_surfaces`
+or task memory instead.
+
 Runtime projects accepted `transient_surfaces` to the child as `transient_refs`; do not author projected `transient_refs` directly in `assign_child`.
 
 JSON shape is an array of objects: `[{ "path": "...", "description": "..." }, { "path": "...", "description": "..." }]`.

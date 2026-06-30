@@ -342,6 +342,11 @@ async def test_checkpoint_transient_surface_under_task_root_is_copied_into_trans
                 "workspace/change_patch.diff",
                 "diff --git a b",
             )
+            verification_file = write_workspace_file(
+                task_root,
+                "workspace/verification_report.md",
+                "verification passed",
+            )
             transient_file = write_workspace_file(
                 task_root,
                 "workspace/workspace-note.md",
@@ -354,7 +359,10 @@ async def test_checkpoint_transient_surface_under_task_root_is_copied_into_trans
                 outcome="green",
                 summary="done",
                 next_step="close",
-                produced_artifacts=[{"slot": "change_patch", "path": str(patch_file)}],
+                produced_artifacts=[
+                    {"slot": "change_patch", "path": str(patch_file)},
+                    {"slot": "verification_report", "path": str(verification_file)},
+                ],
                 transient_surfaces=[
                     {
                         "path": str(transient_file),

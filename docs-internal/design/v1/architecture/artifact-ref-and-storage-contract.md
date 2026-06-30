@@ -286,8 +286,9 @@ Rules:
 - when a parent/root turn depends on child durable publications, the controller may also surface the exact current child artifact refs from those current pointers in manifest `current_relevant_paths` and prompt `consumed_durable_refs`
 - that artifact surfacing does not choose `current_context.latest_relevant_checkpoint_path`; checkpoint handoff stays a separate controller-selected field and must not be inferred from artifact or checkpoint list order
 - once an assignment is minted, it must pin exact concrete versioned refs
-- a later currentness advance must not silently mutate an already minted assignment
+- a later currentness advance must not silently mutate an already minted assignment, and the older pinned artifact ref remains valid if the surfaced file still exists
 - nodes should read the exact surfaced versioned paths from assignment and checkpoint files, not rescan artifact folders guessing what is current
+- this version does not reject an already surfaced artifact ref solely because the slot's current pointer later advanced; broader pointer-freshness enforcement is a later currentness-security design, not a release/boundary precondition in this model
 
 See [Assignment contract](assignment-contract.md) for the semantic selector rules that apply before those exact refs are pinned.
 

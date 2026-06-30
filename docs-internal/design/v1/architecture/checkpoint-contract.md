@@ -68,6 +68,7 @@ Rules:
 - `record_checkpoint` is the only checkpoint write lane
 - `handoff.summary` and `handoff.next_step` are required authored prose
 - `produced_artifacts` is a reduced durable claim keyed by artifact slot plus produced file path only
+- `produced_artifacts.path` is the existing source file to publish, not the controller-owned final artifact path
 - child-authored `produced_artifacts` must not include final `version`, `description`, `owner_node_key`, `assignment_key`, `attempt_id`, or currentness claims
 - `transient_surfaces` is a JSON array/YAML sequence of `{ path, description }` objects for explicit surfaced carryover only
 - `transient_surfaces` does not create any transient current-pointer family
@@ -78,6 +79,8 @@ Outcome rules:
 - progress checkpoints use `outcome: null`
 - terminal checkpoints use `green | retry | blocked`
 - `yield` is boundary-only and never a checkpoint outcome
+- terminal `green` checkpoints must pass the same non-pointer preflight required for the matching `green` boundary before they are accepted
+- before the boundary closes an attempt, a later terminal checkpoint may supersede an earlier terminal checkpoint; the older row remains audit history and the attempt's latest-checkpoint pointer moves to the newer terminal checkpoint
 
 ## `handoff` meaning
 
@@ -185,14 +188,14 @@ record_checkpoint:
     produced_artifacts:
         - kind: artifact
           slot: code_patch
-          path: C:/tasks/task_2026_0042/workspace/out/code_patch.diff
+          path: <task_root>/workspace/out/code_patch.diff
         - kind: artifact
           slot: verification_note
-          path: C:/tasks/task_2026_0042/workspace/out/verification_note.md
+          path: <task_root>/workspace/out/verification_note.md
     transient_surfaces:
-        - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-local-notes.md
+        - path: <task_root>/tmp/transfers/auth-refresh-local-notes.md
           description: Optional transient local notes for follow-up validation.
-        - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-proof-caveat.md
+        - path: <task_root>/tmp/transfers/auth-refresh-proof-caveat.md
           description: Temporary caveat about staging-only token-expiry proof.
 ```
 
@@ -212,23 +215,23 @@ latest_checkpoint:
         - kind: artifact
           slot: code_patch
           version: 3
-          path: C:/tasks/task_2026_0042/outputs/artifacts/implement_fix/code_patch/code_patch.v03.diff
+          path: <task_root>/outputs/artifacts/implement_fix/code_patch/code_patch.v03.diff
           description: Code patch implementing the approved fix.
         - kind: artifact
           slot: verification_note
           version: 1
-          path: C:/tasks/task_2026_0042/outputs/artifacts/implement_fix/verification_note/verification_note.v01.md
+          path: <task_root>/outputs/artifacts/implement_fix/verification_note/verification_note.v01.md
           description: Verification note for the implement-fix node.
     transient_refs:
         - kind: transient
           slot: null
           version: null
-          path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-local-notes.md
+          path: <task_root>/tmp/transfers/auth-refresh-local-notes.md
           description: Optional transient local notes for follow-up validation.
         - kind: transient
           slot: null
           version: null
-          path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-proof-caveat.md
+          path: <task_root>/tmp/transfers/auth-refresh-proof-caveat.md
           description: Temporary caveat about staging-only token-expiry proof.
 ```
 

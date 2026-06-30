@@ -123,6 +123,7 @@ Use `boundary_precondition_failed` for:
 
 - `yield` without exactly one staged child assignment
 - `green` without the required terminal checkpoint or required `release_green` basis
+- terminal `green` checkpoint writes that would immediately fail the matching `green` boundary's non-pointer preconditions
 - `retry` without the required terminal retry checkpoint basis
 - `blocked` without the required terminal blocked checkpoint basis
 - root `blocked` without already committed `release_blocked` when required
@@ -245,6 +246,13 @@ sequenceDiagram
 ```
 
 No external operator `continue` action participates in this ordinary parent-to-child or child-to-parent progression path.
+
+Terminal checkpoint repair rule:
+
+- before a boundary closes the attempt, a later terminal checkpoint may supersede an earlier terminal checkpoint
+- the controller keeps the earlier checkpoint rows as audit history
+- the attempt's latest-checkpoint pointer moves to the newer terminal checkpoint
+- an incompatible committed terminal release precondition is cleared so the node can choose the boundary or release precondition that matches the latest terminal checkpoint
 
 Concrete file effects in that sequence:
 

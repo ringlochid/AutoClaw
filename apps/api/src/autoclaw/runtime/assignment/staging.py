@@ -16,6 +16,7 @@ from autoclaw.runtime.assignment.supersession import load_superseded_child_assig
 from autoclaw.runtime.contracts import EvidenceKind, EvidenceRef, NodeRuntimeFileRef
 from autoclaw.runtime.contracts.parent_tools import AssignChildToolCall
 from autoclaw.runtime.errors import (
+    invalid_request_shape_error,
     missing_required_publication_error,
     semantic_missing_resource_error,
 )
@@ -53,6 +54,7 @@ async def resolve_assign_child_dependency_refs(
     await _supplemental_dependency_refs(
         session,
         task_id=task_id,
+        child_node=child_node,
         supplemental_context=supplemental_context,
         criteria_snapshots=criteria_snapshots,
         artifact_producer_node_keys=artifact_producer_node_keys,
@@ -320,6 +322,7 @@ async def _supplemental_dependency_refs(
     session: AsyncSession,
     *,
     task_id: str,
+    child_node: FlowNodeModel,
     supplemental_context: Any,
     criteria_snapshots: dict[str, dict[str, object]],
     artifact_producer_node_keys: dict[str, str],
@@ -349,6 +352,11 @@ async def _supplemental_dependency_refs(
             raise semantic_missing_resource_error(
                 f"missing supplemental artifact provider for slot '{artifact_slot.slot}'"
             )
+        _ensure_supplemental_artifact_is_not_child_output(
+            child_node=child_node,
+            provider_node_key=provider_node_key,
+            slot=artifact_slot.slot,
+        )
         artifact_ref = await _current_artifact_ref(
             session,
             task_id=task_id,
@@ -364,6 +372,28 @@ async def _supplemental_dependency_refs(
         )
         if artifact_ref is not None:
             consumes.append(artifact_ref)
+
+
+def _ensure_supplemental_artifact_is_not_child_output(
+    *,
+    child_node: FlowNodeModel,
+    provider_node_key: str,
+    slot: str,
+) -> None:
+    if provider_node_key != child_node.node_key:
+        return
+    if slot not in _produced_artifact_slots(child_node):
+        return
+    raise invalid_request_shape_error(
+        f"supplemental durable artifact slot '{slot}' is produced by child node "
+        f"'{child_node.node_key}'; pass previous same-node context through "
+        "transient_surfaces or task memory, not supplemental_durable_context."
+    )
+
+
+def _produced_artifact_slots(child_node: FlowNodeModel) -> set[str]:
+    produces_json = _json_mapping(child_node.produces_json)
+    return {str(artifact["slot"]) for artifact in _json_list(produces_json.get("artifacts", []))}
 
 
 __all__ = [

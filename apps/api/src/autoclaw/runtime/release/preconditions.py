@@ -32,6 +32,7 @@ async def ensure_release_green_preconditions(
     flow_revision_id: str,
     current_node_key: str,
     current_assignment: AssignmentModel,
+    current_assignment_pending_publication_slots: set[str] | frozenset[str] | None = None,
     is_boundary_mode: bool = False,
 ) -> None:
     current_node = await flow_node_by_key(session, flow_revision_id, current_node_key)
@@ -46,6 +47,7 @@ async def ensure_release_green_preconditions(
         session,
         task_id=task_id,
         assignment=current_assignment,
+        pending_publication_slots=current_assignment_pending_publication_slots,
         is_boundary_mode=is_boundary_mode,
     )
     child_assignment_rows = await flow_node_assignment_attempt_rows(

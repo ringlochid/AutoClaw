@@ -13,7 +13,8 @@ from autoclaw.persistence.models import (
     DispatchDeliveryStateModel,
     DispatchTurnModel,
 )
-from autoclaw.runtime.checkpoint.artifacts import collect_checkpoint_artifacts
+from autoclaw.runtime.checkpoint.artifacts import CheckpointArtifacts, collect_checkpoint_artifacts
+from autoclaw.runtime.checkpoint.preflight import ensure_terminal_green_checkpoint_preflight
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
     CheckpointFileRef,
@@ -61,13 +62,12 @@ async def record_checkpoint(
         state.current_attempt.attempt_id,
         await _checkpoint_sequence(session, state.current_attempt.attempt_id),
     )
-    paths = await load_task_root_paths(session, task_id)
-    artifacts = await collect_checkpoint_artifacts(
+    artifacts, checkpoint_ref = await _prepare_checkpoint_outputs(
         session,
         task_id=task_id,
         state=state,
+        dispatch=dispatch,
         checkpoint_write=checkpoint_write,
-        paths=paths,
     )
     checkpoint = _persist_checkpoint_row(
         session,
@@ -91,10 +91,6 @@ async def record_checkpoint(
         checkpoint_kind=checkpoint_write.checkpoint_kind,
     )
     await session.flush()
-    checkpoint_ref = CheckpointFileRef(
-        path=paths.attempts_path / state.current_attempt.attempt_id / "latest-checkpoint.md",
-        description="Latest checkpoint for the current attempt.",
-    )
     await _append_checkpoint_recorded_event(
         session,
         task_id=task_id,
@@ -144,6 +140,41 @@ async def _load_checkpoint_dispatch(
     return dispatch
 
 
+async def _prepare_checkpoint_outputs(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    state: CurrentRuntimeState,
+    dispatch: DispatchTurnModel,
+    checkpoint_write: CheckpointWriteBody,
+) -> tuple[CheckpointArtifacts, CheckpointFileRef]:
+    paths = await load_task_root_paths(session, task_id)
+    artifacts = await collect_checkpoint_artifacts(
+        session,
+        task_id=task_id,
+        state=state,
+        checkpoint_write=checkpoint_write,
+        paths=paths,
+    )
+    await ensure_terminal_green_checkpoint_preflight(
+        session,
+        task_id=task_id,
+        state=state,
+        dispatch=dispatch,
+        checkpoint_write=checkpoint_write,
+        pending_publication_slots=_pending_publication_slots(artifacts.produced_refs),
+    )
+    _sync_release_precondition_for_terminal_checkpoint(
+        dispatch=dispatch,
+        checkpoint_write=checkpoint_write,
+    )
+    checkpoint_ref = CheckpointFileRef(
+        path=paths.attempts_path / state.current_attempt.attempt_id / "latest-checkpoint.md",
+        description="Latest checkpoint for the current attempt.",
+    )
+    return artifacts, checkpoint_ref
+
+
 def _checkpoint_read(
     *,
     attempt_id: str,
@@ -171,8 +202,11 @@ def _ensure_checkpoint_writable(
     if (
         latest_checkpoint is not None
         and latest_checkpoint.checkpoint_kind == CheckpointKind.TERMINAL.value
+        and checkpoint_write.checkpoint_kind != CheckpointKind.TERMINAL
     ):
-        raise illegal_state_error("attempt already has a terminal checkpoint")
+        raise illegal_state_error(
+            "terminal checkpoint can only be superseded by another terminal checkpoint"
+        )
     _ensure_checkpoint_outcome_allowed_for_node(state, checkpoint_write)
 
 
@@ -234,6 +268,39 @@ def _persist_checkpoint_row(
     )
     session.add(checkpoint)
     return checkpoint
+
+
+def _pending_publication_slots(produced_refs: list[EvidenceRef]) -> set[str]:
+    return {ref.slot for ref in produced_refs if ref.slot is not None}
+
+
+def _sync_release_precondition_for_terminal_checkpoint(
+    *,
+    dispatch: DispatchTurnModel,
+    checkpoint_write: CheckpointWriteBody,
+) -> None:
+    if checkpoint_write.checkpoint_kind != CheckpointKind.TERMINAL:
+        return
+    expected_release_precondition = _release_precondition_for_checkpoint_outcome(
+        checkpoint_write.outcome,
+    )
+    if dispatch.release_precondition_kind in (None, expected_release_precondition):
+        return
+    dispatch.release_precondition_kind = None
+    dispatch.release_precondition_flow_revision_id = None
+    dispatch.release_precondition_assignment_id = None
+    dispatch.release_precondition_recorded_at = None
+    dispatch.release_precondition_descendant_refs_json = None
+
+
+def _release_precondition_for_checkpoint_outcome(
+    outcome: CheckpointOutcome | None,
+) -> str | None:
+    if outcome == CheckpointOutcome.GREEN:
+        return "release_green"
+    if outcome == CheckpointOutcome.BLOCKED:
+        return "release_blocked"
+    return None
 
 
 def _persist_attempt_produced_refs(

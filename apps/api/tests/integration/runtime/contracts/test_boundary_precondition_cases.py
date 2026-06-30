@@ -151,7 +151,7 @@ async def test_yield_after_release_green_maps_to_boundary_precondition_failed(
 
 
 @pytest.mark.asyncio
-async def test_worker_green_missing_required_publication_maps_to_boundary_precondition_failed(
+async def test_worker_green_missing_required_publication_is_rejected_before_checkpoint(
     tmp_path: Path,
 ) -> None:
     config_path = await prepare_runtime_db(tmp_path)
@@ -169,26 +169,17 @@ async def test_worker_green_missing_required_publication_maps_to_boundary_precon
 
         async with runtime_api_context(config_path) as api:
             stage = await stage_child_dispatch(api, task_id=task_id)
-            checkpoint, worker_session_key = await _retry_stage_checkpoint(
+            checkpoint, _worker_session_key = await _retry_stage_checkpoint(
                 api=api,
                 task_id=task_id,
                 stage=stage,
                 outcome="green",
                 summary="Implementation completed but outputs were not published.",
-                next_step="Boundary green should still reject until required outputs exist.",
+                next_step="Checkpoint green should reject until required outputs exist.",
             )
-            assert checkpoint.status_code == 200
-
-            worker_green = await _retry_stage_boundary(
-                api=api,
-                task_id=task_id,
-                stage=stage,
-                session_key=worker_session_key,
-                boundary_name="green",
-            )
-            assert worker_green.status_code == 422
-            detail = worker_green.json()["detail"]
-            assert detail["code"] == "boundary_precondition_failed"
+            assert checkpoint.status_code == 422
+            detail = checkpoint.json()["detail"]
+            assert detail["code"] == "missing_required_publication"
             assert detail["summary"].startswith("missing required publication")
     finally:
         await dispose_db_engine()

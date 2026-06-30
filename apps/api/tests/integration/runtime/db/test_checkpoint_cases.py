@@ -266,7 +266,7 @@ async def test_record_checkpoint_defers_artifact_and_projection_files_until_comm
         ).is_file()
 
 
-async def test_record_checkpoint_rejects_second_terminal_checkpoint_on_open_attempt(
+async def test_record_checkpoint_allows_terminal_checkpoint_supersession_on_open_attempt(
     tmp_path: Path,
 ) -> None:
     async with runtime_database_context(
@@ -274,26 +274,52 @@ async def test_record_checkpoint_rejects_second_terminal_checkpoint_on_open_atte
         task_root_name="task-root-single-terminal-checkpoint",
     ) as context:
         task_id = "task_single_terminal_checkpoint"
-        await launch_minimal_worker(context, task_id=task_id)
+        attempt_id = await launch_minimal_worker(context, task_id=task_id)
         async with context.session_factory() as session:
+            patch_source = write_task_file(
+                context.paths.task_root,
+                "workspace/change_patch.diff",
+                "diff --git a b",
+            )
+            verification_source = write_task_file(
+                context.paths.task_root,
+                "workspace/verification_report.md",
+                "verification passed",
+            )
             await record_terminal_checkpoint_for_session(
                 session,
                 task_id=task_id,
                 outcome=CheckpointOutcome.GREEN,
                 summary="Published the final bounded result.",
                 next_step="Return to the parent review node.",
+                artifacts=[
+                    ("change_patch", patch_source),
+                    ("verification_report", verification_source),
+                ],
             )
-            with pytest.raises(
-                ValueError,
-                match="attempt already has a terminal checkpoint",
-            ):
-                await record_terminal_checkpoint_for_session(
-                    session,
-                    task_id=task_id,
-                    outcome=CheckpointOutcome.GREEN,
-                    summary="Tried to overwrite the terminal handoff.",
-                    next_step="This should be rejected.",
+            await record_terminal_checkpoint_for_session(
+                session,
+                task_id=task_id,
+                outcome=CheckpointOutcome.BLOCKED,
+                summary="Superseded the green terminal handoff with a blocker.",
+                next_step="Return to the parent with the blocker instead.",
+            )
+            attempt = await session.get(AttemptModel, attempt_id)
+            assert attempt is not None
+            latest_checkpoint = await session.get(
+                AttemptCheckpointModel,
+                attempt.latest_checkpoint_id,
+            )
+            assert latest_checkpoint is not None
+            assert latest_checkpoint.outcome == CheckpointOutcome.BLOCKED.value
+            checkpoints = list(
+                await session.scalars(
+                    select(AttemptCheckpointModel)
+                    .where(AttemptCheckpointModel.attempt_id == attempt_id)
+                    .order_by(AttemptCheckpointModel.checkpoint_id.asc())
                 )
+            )
+            assert [checkpoint.outcome for checkpoint in checkpoints] == ["green", "blocked"]
 
 
 async def test_record_checkpoint_rejects_parent_retry_terminal_checkpoint(

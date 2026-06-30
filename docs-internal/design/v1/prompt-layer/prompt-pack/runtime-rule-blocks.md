@@ -42,6 +42,8 @@ Rules:
 
 - If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 - Author `transient_surfaces` as a list of `{ path, description }` objects; omit the field when there is no temporary carryover.
+- A terminal `green` checkpoint must include or already have every required durable publication for the current assignment.
+- Before boundary closure, a later terminal checkpoint may supersede an earlier terminal checkpoint; use that only to correct the latest terminal outcome, not as a progress log.
 - Use `task_memory_search_hints` as semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread.
 - Do not use generic search hints like `retry`, `fix`, or `bug`.
 - If prose mentions an older artifact path or prior version for a slot that also appears in surfaced current refs later, that older mention is history only, not current truth.
@@ -308,6 +310,10 @@ Use:
 - `artifact_slots` and `criteria_slots` to tell runtime which current durable refs to surface to the child.
 - `transient_surfaces` as a list of `{ path, description }` objects for short-lived notes or local context that help this turn but should not become durable truth.
 - `task_memory_search_hints` for semantic retrieval prompts, not generic tags.
+
+Do not pass a child its own produced artifact slot through `supplemental_durable_context.artifact_slots`.
+If the same child needs prior notes or a rolling ledger, pass that material as `transient_surfaces`
+or task memory instead.
 
 Runtime projects accepted `transient_surfaces` to the child as `transient_refs`; do not author projected `transient_refs` directly in `assign_child`.
 

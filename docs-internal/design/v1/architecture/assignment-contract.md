@@ -209,9 +209,9 @@ assign_child:
         criteria_slots:
             - slot: implement_fix_delivery_criteria
     transient_surfaces:
-        - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
+        - path: <task_root>/tmp/transfers/auth-refresh-repro-steps.md
           description: Optional transient repro notes surfaced for this assignment.
-        - path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-open-question.md
+        - path: <task_root>/tmp/transfers/auth-refresh-open-question.md
           description: Temporary parent note about the unresolved token-expiry proof lane.
     task_memory_search_hints:
         - auth refresh
@@ -243,6 +243,7 @@ Rules:
 - `assignment_intent` is semantic mission staging only
 - `assignment_intent` is for parent/root -> child staging only; it is not the launch-time root-assignment source
 - `supplemental_durable_context` is slot-based durable context sharing only
+- `supplemental_durable_context.artifact_slots` must not target a slot produced by the same child node; pass previous same-node context through `transient_surfaces` or task memory instead
 - `transient_surfaces` is a JSON array/YAML sequence of `{ path, description }` objects for explicit non-durable carryover only
 - the parent/root does not submit materialized `criteria`, concrete durable `consumes`, or projected `produces`
 - runtime resolves concrete durable refs and then projects the final `assignment.*`
@@ -259,13 +260,13 @@ assignment:
     criteria:
         - kind: criteria
           slot: implement_fix_delivery_criteria
-          path: C:/tasks/task_2026_0042/_runtime/criteria/implement_fix_delivery_criteria.v01.md
+          path: <task_root>/_runtime/criteria/implement_fix_delivery_criteria.v01.md
           description: Delivery criteria for the implement-fix node.
     consumes:
         - kind: artifact
           slot: findings_report
           version: 2
-          path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
+          path: <task_root>/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
           description: Findings for downstream implementation.
     produces:
         - slot: code_patch
@@ -275,12 +276,12 @@ assignment:
         - kind: transient
           slot: null
           version: null
-          path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
+          path: <task_root>/tmp/transfers/auth-refresh-repro-steps.md
           description: Optional transient repro notes surfaced for this assignment.
         - kind: transient
           slot: null
           version: null
-          path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-open-question.md
+          path: <task_root>/tmp/transfers/auth-refresh-open-question.md
           description: Temporary parent note about the unresolved token-expiry proof lane.
 ```
 

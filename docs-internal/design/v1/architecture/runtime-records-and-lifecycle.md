@@ -157,7 +157,8 @@ Rules:
 - one current attempt exists for one current assignment
 - checkpoints, artifact publications, and terminal outcomes belong to the attempt
 - progress checkpoints may be recorded while the attempt remains open
-- one terminal checkpoint plus one terminal boundary closes the attempt
+- the latest terminal checkpoint plus the matching terminal boundary closes the attempt
+- before boundary closure, a newer terminal checkpoint may supersede an earlier terminal checkpoint while keeping the earlier row as audit history
 
 ### Dispatch turn
 
@@ -378,6 +379,7 @@ Rules:
 - `checkpoint_kind: progress | terminal` remains explicit
 - progress checkpoints use `outcome: null`
 - terminal checkpoints use `outcome: green | retry | blocked`
+- terminal `green` checkpoints must satisfy the non-pointer preflight needed by the matching `green` boundary before they are accepted
 - `yield` is boundary-only and never a checkpoint outcome
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.*` is derived from the latest checkpoint row for that attempt only
 

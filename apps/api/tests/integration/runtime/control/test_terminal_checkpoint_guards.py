@@ -49,9 +49,9 @@ async def test_pause_rejects_terminal_checkpointed_attempt(
                 task_id=task_id,
                 session_key=session_key,
                 checkpoint_kind="terminal",
-                outcome="green",
-                summary="Ready to close.",
-                next_step="Emit green boundary.",
+                outcome="blocked",
+                summary="Ready to close as blocked.",
+                next_step="Emit blocked boundary.",
             )
             assert checkpoint.status_code == 200
 
@@ -102,9 +102,9 @@ async def test_cancel_rejects_terminal_checkpointed_attempt(
                 task_id=task_id,
                 session_key=session_key,
                 checkpoint_kind="terminal",
-                outcome="green",
-                summary="Ready to close.",
-                next_step="Emit green boundary.",
+                outcome="blocked",
+                summary="Ready to close as blocked.",
+                next_step="Emit blocked boundary.",
             )
             assert checkpoint.status_code == 200
 
