@@ -168,9 +168,10 @@ def _assert_parent_instruction_guidance(instructions_text: str) -> None:
     )
     assert "doing direct implementation work yourself" not in instructions_text
     assert "Your first duty on a parent/root turn is orchestration" not in instructions_text
-    assert "do not use definition revision history as dispatched planning input" in (
+    assert "do not use definition revision history, upload proof, or registry provenance" in (
         instructions_text
     )
+    assert "Treat current-only lookup as role/policy choice support" in instructions_text
     assert (
         "use only role and policy names from the surfaced structural edit palette"
         not in instructions_text
@@ -196,6 +197,13 @@ def _assert_worker_checkpoint_guidance(instructions_text: str) -> None:
     assert (
         "Start by understanding the task purpose, current assignment, constraints, "
         "criteria, consumes, and required produces before acting." in instructions_text
+    )
+    assert "Definition revision proof, upload proof, task-start proof" in instructions_text
+    assert "Treat the manifest, assignment, surfaced current refs" in instructions_text
+    assert "Do not audit registry revision history, upload proof" in instructions_text
+    assert (
+        "Treat definition revision, upload, and provenance proof as controller/operator-owned"
+        in (instructions_text)
     )
     assert (
         "Treat every checkpoint as a durable handoff, not a diary entry or polished "
@@ -465,7 +473,7 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
         "and current-only lookup" in allowed_actions_section
     )
     assert (
-        "do not use definition revision history as dispatched planning input"
+        "do not use definition revision history, upload proof, or registry provenance"
         in allowed_actions_section
     )
     assert (

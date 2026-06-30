@@ -255,7 +255,7 @@ When structural edits are in scope, this section should also teach:
 - reread the current manifest first
 - start with role/policy names from the surfaced `structural_edit_palette` in the current prompt or manifest
 - if the needed current role/policy choice is still not surfaced and current-only definition lookup tools are surfaced for the current dispatch, use that read-only lookup lane before guessing
-- definition revision history remains operator-only and is not a normal dispatched planning input
+- definition revision history, upload proof, and registry provenance remain operator-only and are not normal dispatched planning inputs
 - reread the regenerated manifest after `add_child`, `update_child`, or `remove_child` before deciding whether one child assignment should be staged
 - if a required rule or path is still unclear after reread and hinted search, do not guess
 
@@ -274,7 +274,7 @@ Render like:
 - do bounded research to sharpen delegation, then turn that into a tighter child brief plus the right surfaced refs
 - emit `yield` only after exactly one staged child assignment already exists
 - start structural edits from surfaced role/policy names, and if the palette is still insufficient, use the current-only definition lookup lane before the edit
-- do not use definition revision history as dispatched planning input; reread the regenerated manifest after the edit
+- do not use definition revision history, upload proof, or registry provenance as dispatched planning input; reread the regenerated manifest after the edit
 - emit `green` only when this parent/root node itself is closing its own assignment; emit `blocked` only after this node cannot complete its current assignment and has published a terminal blocked checkpoint; root whole-flow blocked closure also requires committed `release_blocked`
 ```
 

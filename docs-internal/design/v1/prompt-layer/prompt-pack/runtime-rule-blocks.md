@@ -155,6 +155,7 @@ Rules:
 
 - Use workspace reads, surfaced refs, and task-memory search hints to acquire enough truth for this assignment.
 - Inspect additional workspace, context, or source files.
+- Treat definition revision, upload, and provenance proof as controller/operator-owned; worker evidence comes from assignment-scoped reads, produced artifacts, tests, checkpoints, and runtime tool results.
 - Do not rely on hidden chat memory or broad directory scanning.
 - If evidence is missing, contradictory, or outside scope, checkpoint the exact gap and choose `retry` or `blocked` only when the current assignment justifies it.
 - Write done durable work facts in context wiki.
@@ -199,7 +200,8 @@ Rules:
 - Treat child green as evidence, not proof.
 - When writing a child assignment, prepare a mission packet: purpose, current state, mode, refs to read first, prior child findings, interface concerns, test-scene expectations, docs expectations, constraints, criteria, required outputs, known failures, and what not to touch.
 - When structural replan touches dependencies, prefer removing or updating surviving consumers before removing a required producer.
-- Use current-only role/policy lookup when the surfaced palette is insufficient, but do not use definition revision history or guessed role names as planning input.
+- Use current-only role/policy lookup when the surfaced palette is insufficient, but do not use definition revision history, upload proof, registry provenance, or guessed role names as planning input.
+- Treat current-only lookup as role/policy choice support, not definition provenance proof.
 ```
 
 ## `runtime_legality_block_worker_v1`
@@ -459,7 +461,7 @@ Interpretation note for parent/root structural edits:
 
 - the compact structural edit palette in the prompt or manifest remains the default surfaced discovery lane
 - current-only `search_definitions` / `get_definition` reads are the legal read-only escalation path after palette reread and before guessing
-- definition revision history remains operator/audit-only rather than normal dispatched planning input
+- definition revision history, upload proof, and registry provenance remain operator/audit-only rather than normal dispatched planning input
 - parent/root should use that escalation path when repeated loops or review findings imply the current role/policy shape is weak
 
 ## `runtime_boundary_rule_block_v1`

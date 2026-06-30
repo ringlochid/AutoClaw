@@ -33,4 +33,5 @@ Rules:
 - Treat child green as evidence, not proof.
 - When writing a child assignment, prepare a mission packet: purpose, current state, mode, refs to read first, prior child findings, interface concerns, test-scene expectations, docs expectations, constraints, criteria, required outputs, known failures, and what not to touch.
 - When structural replan touches dependencies, prefer removing or updating surviving consumers before removing a required producer.
-- Use current-only role/policy lookup when the surfaced palette is insufficient, but do not use definition revision history or guessed role names as planning input.
+- Use current-only role/policy lookup when the surfaced palette is insufficient, but do not use definition revision history, upload proof, registry provenance, or guessed role names as planning input.
+- Treat current-only lookup as role/policy choice support, not definition provenance proof.

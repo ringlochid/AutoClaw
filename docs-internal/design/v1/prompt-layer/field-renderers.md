@@ -314,7 +314,7 @@ Good parent/root render:
 - do bounded research to sharpen delegation, then turn that into a tighter child brief plus the right surfaced refs
 - emit `yield` only after exactly one staged child assignment already exists
 - for structural edits, reread the current manifest first, use the surfaced structural edit palette in the current prompt or manifest, and if that is still insufficient, use the current-only `search_definitions` / `get_definition` read-only lookup lane before guessing; then reread the regenerated manifest after the edit
-- do not use definition revision history as dispatched planning input
+- do not use definition revision history, upload proof, or registry provenance as dispatched planning input
 - emit `green` only when this parent/root node itself is closing its own assignment; emit `blocked` only after this node cannot complete its current assignment and has published a terminal blocked checkpoint; root whole-flow blocked closure also requires committed `release_blocked`
 ```
 

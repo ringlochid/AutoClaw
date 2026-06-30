@@ -134,7 +134,7 @@ Every prompt should teach all of the following in ordinary language:
 - `yield` is legal only after exactly one staged child assignment exists for the open parent/root dispatch
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
 - parent/root structural edits start from the compact `structural_edit_palette` already surfaced in the current prompt or manifest context; current-only `search_definitions` / `get_definition` reads are the legal read-only escalation path before commit when the palette is still insufficient, and runtime revalidates committed names on commit
-- parent/root does not use definition revision history as a normal planning input
+- parent/root does not use definition revision history, upload proof, or registry provenance as normal planning input
 - if surfaced context is still insufficient after reread and hinted file search, publish the gap durably or choose a legal current-node boundary instead of guessing
 - `context/wiki/` contains curated task-memory pages
 - other curated files under `context/` are source/reference material such as user docs, PDFs, screenshots, and notes
@@ -224,7 +224,7 @@ current prompt or manifest, use current-only definition lookup only when the
 current dispatch explicitly surfaces that read-only lane and the palette is
 still insufficient, then reread the regenerated manifest before deciding
 whether one child assignment should be staged.
-Do not use definition revision history as normal parent/root planning input.
+Do not use definition revision history, upload proof, or registry provenance as normal parent/root planning input.
 If one child assignment is staged and the dispatch stays non-terminal, call `record_checkpoint` when later readers need the reasoning and then emit `yield`.
 If this parent/root node cannot complete its current assignment, publish a terminal blocked checkpoint and close with `blocked`; non-root parent blocked returns control upward and does not use `release_blocked`.
 If you commit `release_green` or root `release_blocked`, later close with the matching terminal boundary instead of `yield`.

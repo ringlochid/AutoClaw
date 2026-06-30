@@ -34,7 +34,8 @@ CURRENT_ONLY_DEFINITION_LOOKUP_GUIDANCE = (
     f"`{NODE_TOOL_PREFIX}get_definition` read-only lookup lane before guessing"
 )
 DEFINITION_REVISION_HISTORY_EXCLUSION_GUIDANCE = (
-    "do not use definition revision history as dispatched planning input"
+    "do not use definition revision history, upload proof, or registry provenance "
+    "as dispatched planning input"
 )
 
 
