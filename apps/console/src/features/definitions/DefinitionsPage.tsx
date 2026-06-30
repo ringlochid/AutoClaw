@@ -1,17 +1,17 @@
-import { ExternalLink, GitBranch, RefreshCw, Search } from "lucide-react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
+
+import { ExternalLink, Search, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { PageFrame } from "../../components/layout";
 import {
     Button,
-    Disclosure,
     FormField,
     IdRefText,
     PropertyGrid,
     SegmentedControl,
     StatePanel,
     StatusChip,
-    Surface,
     TimestampText,
 } from "../../components/ui";
 import { classNames } from "../../lib/classNames";
@@ -47,56 +47,31 @@ export function DefinitionsPage() {
                     <DefinitionsNavLink to="/definitions/editor">
                         Definition Editor
                     </DefinitionsNavLink>
-                    <Button
-                        disabled={
-                            controller.listState.isLoading || controller.listState.isRefreshing
-                        }
-                        icon={
-                            <RefreshCw
-                                className={controller.listState.isRefreshing ? "animate-spin" : ""}
-                            />
-                        }
-                        onClick={controller.refresh}
-                    >
-                        Refresh
-                    </Button>
+                    <DefinitionsNavLink to="/task-start">Task Start</DefinitionsNavLink>
                 </div>
             }
-            description="Browse current stored roles, policies, and workflows from controller registry reads."
             eyebrow="Authoring"
+            headerContent={
+                <div className="space-y-5">
+                    <DefinitionsKindSwitch controller={controller} />
+                    <DefinitionsControls controller={controller} />
+                </div>
+            }
             title="Definitions"
         >
-            <div className="space-y-4">
-                <Surface
-                    actions={
-                        <StatusChip
-                            tone={controller.listState.error === null ? "active" : "danger"}
-                            withDot
-                        >
-                            {controller.statusSummary}
-                        </StatusChip>
-                    }
-                    label="Stored registry"
-                    title="Browse definitions"
+            <div className="grid min-w-0 gap-3 border-t border-outline-soft pt-3 xl:grid-cols-[minmax(22rem,0.78fr)_minmax(0,1.12fr)]">
+                <section
+                    aria-labelledby="definitions-list-heading"
+                    className="min-w-0 overflow-hidden rounded-card border border-outline-soft bg-surface-low"
                 >
-                    <div className="space-y-4">
-                        <DefinitionsKindSwitch controller={controller} />
-                        <DefinitionsControls controller={controller} />
-                    </div>
-                </Surface>
-
-                <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(20rem,0.92fr)_minmax(0,1.35fr)]">
-                    <Surface
-                        className="min-w-0"
-                        label={kindLabel(controller.singularKind)}
-                        title="Stored list"
-                    >
-                        <DefinitionList controller={controller} />
-                    </Surface>
-                    <Surface className="min-w-0" label="Current detail" title="Selected definition">
-                        <DefinitionDetailPanel controller={controller} />
-                    </Surface>
-                </div>
+                    <DefinitionList controller={controller} />
+                </section>
+                <section
+                    aria-labelledby="definitions-detail-heading"
+                    className="min-w-0 overflow-hidden rounded-card border border-outline-soft bg-surface-low"
+                >
+                    <DefinitionDetailPanel controller={controller} />
+                </section>
             </div>
         </PageFrame>
     );
@@ -120,7 +95,14 @@ function DefinitionsKindSwitch({ controller }: { readonly controller: Definition
 
 function DefinitionsControls({ controller }: { readonly controller: DefinitionsController }) {
     return (
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_13rem_13rem]">
+        <div
+            className={classNames(
+                "grid gap-3",
+                controller.kind === "workflows"
+                    ? "lg:grid-cols-[minmax(0,1fr)_14rem]"
+                    : "lg:grid-cols-[minmax(0,1fr)_13rem_13rem]",
+            )}
+        >
             <div>
                 <label
                     className="block font-mono text-label font-medium uppercase text-muted"
@@ -200,14 +182,7 @@ function KindFilterSelect({ controller }: { readonly controller: DefinitionsCont
         );
     }
 
-    return (
-        <div className="rounded-card border border-outline-soft bg-surface-muted px-4 py-3">
-            <p className="font-mono text-label font-medium uppercase text-muted">Kind filter</p>
-            <p className="mt-1 text-compact text-muted">
-                Workflow routes expose no node-kind filter.
-            </p>
-        </div>
-    );
+    return null;
 }
 
 function DefinitionSelect({
@@ -293,11 +268,11 @@ function DefinitionList({ controller }: { readonly controller: DefinitionsContro
 
     return (
         <div>
-            <div className="hidden border-y border-outline-soft bg-surface-muted px-3 py-2 font-mono text-label font-medium uppercase text-muted lg:grid lg:grid-cols-[minmax(0,1fr)_8rem] lg:items-center lg:gap-4">
-                <span>{kindLabel(controller.singularKind)}s</span>
+            <div className="hidden border-b border-outline-soft bg-surface-muted px-5 py-3 font-mono text-label font-medium uppercase text-muted lg:grid lg:grid-cols-[minmax(0,1fr)_8rem] lg:items-center lg:gap-4">
+                <span id="definitions-list-heading">{kindLabel(controller.singularKind)}s</span>
                 <span>Updated</span>
             </div>
-            <ol aria-label="Definition rows" className="space-y-2 pt-3">
+            <ol aria-label="Definition rows" className="space-y-2 px-3 py-3">
                 {listState.rows.map((row) => (
                     <li key={row.key}>
                         <DefinitionRowButton
@@ -336,12 +311,9 @@ function DefinitionRowButton({
         >
             <span className="min-w-0">
                 <span className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="min-w-0 truncate font-display text-compact font-semibold text-foreground">
-                        {row.title ?? row.key}
+                    <span className="min-w-0 truncate font-mono text-compact font-semibold text-foreground">
+                        {row.key}
                     </span>
-                    <StatusChip tone={row.tone} withDot>
-                        {row.kindLabel}
-                    </StatusChip>
                 </span>
                 <span className="mt-1 block break-words text-compact text-muted">
                     {row.description ?? "No description reported."}
@@ -351,15 +323,17 @@ function DefinitionRowButton({
                         <StatusChip key={label}>{label}</StatusChip>
                     ))}
                 </span>
-                <span className="mt-2 block">
-                    <IdRefText className="block max-w-full truncate" value={row.key} />
-                </span>
             </span>
             <span className="min-w-0 lg:text-right">
                 <span className="block font-mono text-label font-medium uppercase text-muted lg:sr-only">
                     Updated
                 </span>
-                <TimestampText className="text-foreground" value={row.updatedAt} />
+                <time
+                    className="block font-body text-compact text-foreground"
+                    dateTime={row.updatedAt}
+                >
+                    {formatRowUpdatedDate(row.updatedAt)}
+                </time>
             </span>
         </button>
     );
@@ -372,7 +346,7 @@ function DefinitionListFooter({ controller }: { readonly controller: Definitions
     }
 
     return (
-        <footer className="mt-4 flex flex-col gap-3 border-t border-outline-soft pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <footer className="flex flex-col gap-3 border-t border-outline-soft bg-surface px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-compact text-muted">
                 {listState.nextCursor === null
                     ? `End of current ${listLabelForKind(controller.kind)}.`
@@ -394,9 +368,19 @@ function DefinitionListFooter({ controller }: { readonly controller: Definitions
 }
 
 function DefinitionDetailPanel({ controller }: { readonly controller: DefinitionsController }) {
+    const [isVersionsOpen, setIsVersionsOpen] = useState(false);
+    const versionsButtonRef = useRef<HTMLButtonElement | null>(null);
+    const handleCloseVersions = () => {
+        setIsVersionsOpen(false);
+        window.setTimeout(() => {
+            versionsButtonRef.current?.focus();
+        }, 0);
+    };
+
     if (controller.selectedKey === null) {
         return (
             <StatePanel
+                className="m-4"
                 summary="Choose a stored role, policy, or workflow to read current detail."
                 title="Select a definition"
                 tone="empty"
@@ -407,6 +391,7 @@ function DefinitionDetailPanel({ controller }: { readonly controller: Definition
     if (!controller.isSelectedKeyInRows && !controller.listState.isLoading) {
         return (
             <StatePanel
+                className="m-4"
                 action={<Button onClick={controller.clearFilters}>Clear filters</Button>}
                 summary="The selected key is no longer present in the current kind, query, or filter result. Reread or clear filters before trusting current detail."
                 title="Selected definition is stale"
@@ -418,6 +403,7 @@ function DefinitionDetailPanel({ controller }: { readonly controller: Definition
     if (controller.detailState.isLoading) {
         return (
             <StatePanel
+                className="m-4"
                 summary="Reading the selected current stored definition revision."
                 title="Loading definition detail"
                 tone="loading"
@@ -428,6 +414,7 @@ function DefinitionDetailPanel({ controller }: { readonly controller: Definition
     if (controller.detailState.error !== null) {
         return (
             <StatePanel
+                className="m-4"
                 action={<Button onClick={controller.refresh}>Retry</Button>}
                 summary={controller.detailState.error.summary}
                 title={
@@ -443,6 +430,7 @@ function DefinitionDetailPanel({ controller }: { readonly controller: Definition
     if (controller.detailState.detail === null) {
         return (
             <StatePanel
+                className="m-4"
                 summary="The current selected definition has no detail payload yet."
                 title="No detail selected"
                 tone="empty"
@@ -451,11 +439,47 @@ function DefinitionDetailPanel({ controller }: { readonly controller: Definition
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 p-4">
+            <DefinitionDetailHeader
+                detail={controller.detailState.detail}
+                onOpenVersions={() => {
+                    setIsVersionsOpen(true);
+                }}
+                versionsButtonRef={versionsButtonRef}
+            />
             <DefinitionDetailSummary detail={controller.detailState.detail} />
             <DefinitionKindDetail detail={controller.detailState.detail} />
             <DefinitionPivots detail={controller.detailState.detail} />
-            <DefinitionVersions controller={controller} />
+            <DefinitionVersionsModal
+                controller={controller}
+                detail={controller.detailState.detail}
+                isOpen={isVersionsOpen}
+                onClose={handleCloseVersions}
+            />
+        </div>
+    );
+}
+
+function DefinitionDetailHeader({
+    detail,
+    onOpenVersions,
+    versionsButtonRef,
+}: {
+    readonly detail: DefinitionDetailView;
+    readonly onOpenVersions: () => void;
+    readonly versionsButtonRef: RefObject<HTMLButtonElement | null>;
+}) {
+    return (
+        <div className="flex min-h-control flex-wrap items-center justify-end gap-2">
+            <StatusChip>{detail.kind}</StatusChip>
+            <button
+                className="inline-flex h-8 items-center justify-center rounded-control border border-outline bg-surface px-3 font-mono text-label font-medium text-foreground transition-colors hover:border-primary/45 hover:text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                onClick={onOpenVersions}
+                ref={versionsButtonRef}
+                type="button"
+            >
+                Revision {detail.revisionNo}
+            </button>
         </div>
     );
 }
@@ -464,32 +488,18 @@ function DefinitionDetailSummary({ detail }: { readonly detail: DefinitionDetail
     return (
         <div className="rounded-card border border-outline-soft bg-surface-low p-4 shadow-hairline">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <StatusChip
-                    tone={
-                        detail.kind === "workflow"
-                            ? "success"
-                            : detail.kind === "policy"
-                              ? "warning"
-                              : "active"
-                    }
-                    withDot
+                <h2
+                    className="min-w-0 break-words font-display text-compact font-semibold text-foreground"
+                    id="definitions-detail-heading"
                 >
-                    {kindLabel(detail.kind)}
+                    {detail.key}
+                </h2>
+                <StatusChip>
+                    <span>Updated</span>
+                    <TimestampText value={detail.updatedAt} />
                 </StatusChip>
-                <StatusChip>Revision {detail.revisionNo}</StatusChip>
             </div>
-            <h2 className="mt-3 break-words font-display text-compact font-semibold text-foreground">
-                {detail.key}
-            </h2>
             <p className="mt-2 break-words text-compact text-muted">{detail.description}</p>
-            <PropertyGrid
-                className="mt-4"
-                items={[
-                    { label: "Updated", value: <TimestampText value={detail.updatedAt} /> },
-                    { label: "Recorded by", value: detail.recordedBy ?? "Not reported" },
-                    { label: "Kind", value: kindLabel(detail.kind) },
-                ]}
-            />
         </div>
     );
 }
@@ -632,11 +642,82 @@ function DefinitionPivots({ detail }: { readonly detail: DefinitionDetailView })
     );
 }
 
-function DefinitionVersions({ controller }: { readonly controller: DefinitionsController }) {
+function DefinitionVersionsModal({
+    controller,
+    detail,
+    isOpen,
+    onClose,
+}: {
+    readonly controller: DefinitionsController;
+    readonly detail: DefinitionDetailView;
+    readonly isOpen: boolean;
+    readonly onClose: () => void;
+}) {
+    const dialogRef = useRef<HTMLDialogElement | null>(null);
+    const titleId = useId();
+
+    useEffect(() => {
+        const dialog = dialogRef.current;
+        if (dialog === null) {
+            return;
+        }
+
+        if (isOpen) {
+            if (!dialog.open) {
+                if (typeof dialog.showModal === "function") {
+                    dialog.showModal();
+                } else {
+                    dialog.setAttribute("open", "");
+                }
+            }
+            return;
+        }
+
+        if (dialog.open) {
+            if (typeof dialog.close === "function") {
+                dialog.close();
+            } else {
+                dialog.removeAttribute("open");
+            }
+        }
+    }, [isOpen]);
+
     return (
-        <Disclosure label="Revision history" title="Versions">
-            <DefinitionVersionsContent controller={controller} />
-        </Disclosure>
+        <dialog
+            aria-labelledby={titleId}
+            className="m-auto max-h-[86vh] w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-shell border border-outline-soft bg-surface p-0 text-foreground shadow-popover backdrop:bg-black/35"
+            onCancel={(event) => {
+                event.preventDefault();
+                onClose();
+            }}
+            onClose={onClose}
+            ref={dialogRef}
+        >
+            <header className="flex items-start justify-between gap-4 border-b border-outline-soft bg-surface-muted px-5 py-4">
+                <div className="min-w-0">
+                    <p className="font-mono text-label font-medium uppercase text-muted">
+                        Revisions
+                    </p>
+                    <h2 className="mt-1 font-display text-compact font-semibold" id={titleId}>
+                        Versions
+                    </h2>
+                    <p className="mt-1 truncate font-mono text-label text-muted">
+                        {detail.kind}:{detail.key}
+                    </p>
+                </div>
+                <button
+                    aria-label="Close versions"
+                    className="inline-flex size-control shrink-0 items-center justify-center rounded-control border border-outline bg-surface-low text-muted transition-colors hover:border-primary/45 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    onClick={onClose}
+                    type="button"
+                >
+                    <X aria-hidden="true" className="size-4" />
+                </button>
+            </header>
+            <div className="max-h-[calc(86vh-8rem)] overflow-y-auto px-5 py-4">
+                <DefinitionVersionsContent controller={controller} />
+            </div>
+        </dialog>
     );
 }
 
@@ -712,9 +793,9 @@ function DefinitionVersionItem({ row }: { readonly row: DefinitionVersionRow }) 
                 <StatusChip>Revision {row.revisionNo}</StatusChip>
                 <TimestampText value={row.updatedAt} />
             </div>
-            <p className="mt-2 text-compact text-muted">
-                Recorded by: {row.recordedBy ?? "Not reported"}
-            </p>
+            {row.recordedBy === null ? null : (
+                <p className="mt-2 text-compact text-muted">Recorded by: {row.recordedBy}</p>
+            )}
         </li>
     );
 }
@@ -726,13 +807,22 @@ function DefinitionsNavLink({ children, to }: { readonly children: string; reado
             to={to}
         >
             <span className="min-w-0 truncate">{children}</span>
-            {children === "Task Start" ? (
-                <GitBranch aria-hidden="true" className="size-4 shrink-0" />
-            ) : (
-                <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
-            )}
+            <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
         </Link>
     );
+}
+
+function formatRowUpdatedDate(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf())) {
+        return value;
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+    }).format(date);
 }
 
 function controlClassName(extraClassName?: string): string {

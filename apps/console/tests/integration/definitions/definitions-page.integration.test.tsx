@@ -54,7 +54,11 @@ describe("DefinitionsPage", () => {
 
         renderDefinitionsPage();
 
-        expect((await screen.findAllByText("planning_lead")).length).toBeGreaterThan(0);
+        const definitionRows = within(await screen.findByRole("list", { name: "Definition rows" }));
+        const planningLeadRow = await definitionRows.findByRole("button", {
+            name: new RegExp(ROLE_KEY),
+        });
+        expect(planningLeadRow.textContent.trim().startsWith(ROLE_KEY)).toBe(true);
         expect(
             screen.getAllByText("Parent/root coordinator for one owned subtree.").length,
         ).toBeGreaterThan(0);
@@ -89,14 +93,22 @@ describe("DefinitionsPage", () => {
             lastPathRequest(seenRequests, "/definitions/roles")?.searchParams.get("cursor"),
         ).toBe("roles-page-2");
 
-        await user.click(screen.getByText("Versions"));
-        const versionsList = within(screen.getByRole("list", { name: "Definition versions" }));
+        await user.click(screen.getByRole("button", { name: "Revision 4" }));
+        const versionsDialog = within(screen.getByRole("dialog", { name: "Versions" }));
+        const versionsList = within(
+            versionsDialog.getByRole("list", { name: "Definition versions" }),
+        );
         expect(versionsList.getByText("Revision 4")).toBeVisible();
         expect(versionsList.getByText("Revision 3")).toBeVisible();
-        expect(screen.getAllByText("Recorded by: Not reported").length).toBeGreaterThan(0);
+        expect(versionsDialog.queryByText(/Recorded by:/)).not.toBeInTheDocument();
+        await user.click(versionsDialog.getByRole("button", { name: "Close versions" }));
 
         await user.click(screen.getByRole("button", { name: "Policies" }));
-        expect((await screen.findAllByText(POLICY_KEY)).length).toBeGreaterThan(0);
+        const policyRows = within(await screen.findByRole("list", { name: "Definition rows" }));
+        const policyRow = await policyRows.findByRole("button", {
+            name: new RegExp(POLICY_KEY),
+        });
+        expect(policyRow.textContent.trim().startsWith(POLICY_KEY)).toBe(true);
         expect(screen.getByLabelText("Applies to")).toBeVisible();
         expect(screen.queryByLabelText("Allowed node kind")).not.toBeInTheDocument();
         expect(screen.getByText(/child assignment limit not reported; 2 retries/)).toBeVisible();
@@ -118,10 +130,8 @@ describe("DefinitionsPage", () => {
         expect(workflowRequest?.searchParams.get("allowed_node_kind")).toBeNull();
         expect(workflowRequest?.searchParams.get("applies_to")).toBeNull();
         expect(await screen.findByText("implement_frontend_scope")).toBeVisible();
-        expect(screen.getByRole("link", { name: "Task Start" })).toHaveAttribute(
-            "href",
-            "/task-start",
-        );
+        const taskStartLinks = screen.getAllByRole("link", { name: "Task Start" });
+        expect(taskStartLinks[taskStartLinks.length - 1]).toHaveAttribute("href", "/task-start");
     });
 
     it("renders empty, no-results, stale-selection, detail-error, and history-error states", async () => {
@@ -171,7 +181,7 @@ describe("DefinitionsPage", () => {
         renderDefinitionsPage();
         expect((await screen.findAllByText("planning_lead")).length).toBeGreaterThan(0);
         expect(await screen.findByText(/Coordinate only the current owned subtree/)).toBeVisible();
-        await user.click(screen.getByText("Versions"));
+        await user.click(screen.getByRole("button", { name: "Revision 4" }));
         expect(await screen.findByText("Version history could not load")).toBeVisible();
 
         await user.type(screen.getByLabelText("Search"), "missing");
@@ -221,7 +231,7 @@ describe("DefinitionsPage", () => {
         expect(
             await screen.findByText(/Implement only the current meaningful frontend scope/),
         ).toBeVisible();
-        await user.click(screen.getByText("Versions"));
+        await user.click(screen.getByRole("button", { name: "Revision 3" }));
         expect(await screen.findByText("Single current revision recorded.")).toBeVisible();
         const singleRevisionVersions = within(
             screen.getByRole("list", { name: "Definition versions" }),

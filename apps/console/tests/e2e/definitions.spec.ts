@@ -36,6 +36,15 @@ test("renders Definitions browse detail, versions, focus, and accessibility at d
     await expect(page.getByText("Revision 4").first()).toBeVisible();
     await expectNoDocumentOverflow(page);
 
+    mkdirSync(DEFINITIONS_SCREENSHOT_DIR, { recursive: true });
+    await page.evaluate(() => {
+        window.scrollTo(0, 0);
+    });
+    await page.screenshot({
+        fullPage: true,
+        path: `${DEFINITIONS_SCREENSHOT_DIR}/definitions-desktop.png`,
+    });
+
     const accessibilityScanResults = await new AxeBuilder({ page })
         .exclude('a[aria-label="Fixture gallery"]')
         .analyze();
@@ -49,27 +58,20 @@ test("renders Definitions browse detail, versions, focus, and accessibility at d
     await expect(page.getByText("implement_frontend_scope")).toBeVisible();
     await expect(page.getByLabel("Allowed node kind")).toHaveCount(0);
     await expect(page.getByLabel("Applies to")).toHaveCount(0);
-    await expect(
-        page.getByLabel("Definitions").getByRole("link", { name: "Task Start" }),
-    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Task Start" }).first()).toBeVisible();
 
-    await page.getByText("Versions", { exact: true }).click();
-    const versionsList = page.getByRole("list", { name: "Definition versions" });
+    const revisionButton = page.getByRole("button", { name: "Revision 6" });
+    await revisionButton.click();
+    const versionsDialog = page.getByRole("dialog", { name: "Versions" });
+    const versionsList = versionsDialog.getByRole("list", { name: "Definition versions" });
     await expect(versionsList.getByText("Revision 6")).toBeVisible();
     await expect(versionsList.getByText("Revision 5")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(revisionButton).toBeFocused();
 
     const editorLink = page.getByRole("link", { name: "Definition Editor" }).first();
     await editorLink.focus();
     await expect(editorLink).toBeFocused();
-
-    mkdirSync(DEFINITIONS_SCREENSHOT_DIR, { recursive: true });
-    await page.evaluate(() => {
-        window.scrollTo(0, 0);
-    });
-    await page.screenshot({
-        fullPage: true,
-        path: `${DEFINITIONS_SCREENSHOT_DIR}/definitions-desktop.png`,
-    });
 });
 
 test("keeps Definitions kind switch, list, detail, and versions usable at mobile width", async ({
@@ -82,17 +84,6 @@ test("keeps Definitions kind switch, list, detail, and versions usable at mobile
     await page.goto("/definitions");
 
     await expect(definitionRow(page, ROLE_KEY)).toBeVisible();
-    await page.getByRole("button", { name: "Policies" }).click();
-    await expect(definitionRow(page, POLICY_KEY)).toBeVisible();
-    await expect(page.getByText(/child assignment limit not reported; 2 retries/)).toBeVisible();
-    await expectNoDocumentOverflow(page);
-
-    await page.getByText("Versions", { exact: true }).click();
-    await expect(page.getByText("Single current revision recorded.")).toBeVisible();
-    const versionsSummary = page.locator("summary").filter({ hasText: "Versions" });
-    await versionsSummary.focus();
-    await expect(versionsSummary).toBeFocused();
-
     mkdirSync(DEFINITIONS_SCREENSHOT_DIR, { recursive: true });
     await page.evaluate(() => {
         window.scrollTo(0, 0);
@@ -101,6 +92,17 @@ test("keeps Definitions kind switch, list, detail, and versions usable at mobile
         fullPage: true,
         path: `${DEFINITIONS_SCREENSHOT_DIR}/definitions-mobile.png`,
     });
+
+    await page.getByRole("button", { name: "Policies" }).click();
+    await expect(definitionRow(page, POLICY_KEY)).toBeVisible();
+    await expect(page.getByText(/child assignment limit not reported; 2 retries/)).toBeVisible();
+    await expectNoDocumentOverflow(page);
+
+    const revisionButton = page.getByRole("button", { name: "Revision 5" });
+    await revisionButton.click();
+    await expect(page.getByText("Single current revision recorded.")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(revisionButton).toBeFocused();
 });
 
 function definitionRow(page: Page, key: string) {

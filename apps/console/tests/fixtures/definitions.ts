@@ -2,7 +2,7 @@ import type { components } from "../../src/api/generated/openapi";
 import { TEST_UPDATED_AT } from "./console-api";
 
 export const DEFINITIONS_SCREENSHOT_DIR =
-    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/continuation-implementation/12-definitions/screenshots";
+    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity/05-definitions/screenshots";
 
 export const ROLE_KEY = "planning_lead";
 export const SECOND_ROLE_KEY = "frontend_engineer";
@@ -31,7 +31,7 @@ export function createRoleDefinitionRows(): readonly components["schemas"]["Defi
             description: "Parent/root coordinator for one owned subtree.",
             key: ROLE_KEY,
             labels: ["authoring"],
-            title: "planning_lead",
+            title: "Planning Lead",
             updated_at: "2026-06-29T14:10:00Z",
         },
         {
@@ -42,7 +42,7 @@ export function createRoleDefinitionRows(): readonly components["schemas"]["Defi
             description: "Worker for one bounded frontend implementation slice.",
             key: SECOND_ROLE_KEY,
             labels: ["authoring"],
-            title: "frontend_engineer",
+            title: "Frontend Engineer",
             updated_at: "2026-06-29T13:45:00Z",
         },
     ];
@@ -61,7 +61,7 @@ export function createPolicyDefinitionRows(): readonly components["schemas"]["De
             description: "Guardrails for worker assignments that may need command runs.",
             key: POLICY_KEY,
             labels: ["authoring"],
-            title: "standard-worker-command-run",
+            title: "Standard Worker Command Run",
             updated_at: "2026-06-29T14:05:00Z",
         },
     ];

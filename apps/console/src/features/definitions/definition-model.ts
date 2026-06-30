@@ -1,6 +1,5 @@
 import type { components } from "../../api/generated/openapi";
 import { mapDefinitionSummary, type DefinitionSummary } from "../../api/view-models";
-import type { StatusTone } from "../../components/ui";
 
 export type DefinitionKind = components["schemas"]["DefinitionKind"];
 export type DefinitionListKind = "policies" | "roles" | "workflows";
@@ -28,8 +27,6 @@ export interface DefinitionKindOption {
 export interface DefinitionRow extends DefinitionSummary {
     readonly compatibilityLabels: readonly string[];
     readonly kind: DefinitionKind;
-    readonly kindLabel: string;
-    readonly tone: StatusTone;
 }
 
 export interface DefinitionVersionRow {
@@ -155,8 +152,6 @@ export function mapDefinitionRow(
         ...summary,
         compatibilityLabels: compatibilityLabelsForSummary(summary, kind),
         kind,
-        kindLabel: kindLabel(kind),
-        tone: definitionTone(kind),
     };
 }
 
@@ -255,17 +250,6 @@ function compatibilityLabelsForSummary(
         return summary.appliesTo.map(formatNodeKind);
     }
     return [];
-}
-
-function definitionTone(kind: DefinitionKind): StatusTone {
-    switch (kind) {
-        case "policy":
-            return "warning";
-        case "role":
-            return "active";
-        case "workflow":
-            return "success";
-    }
 }
 
 function summarizeWorkflowNodes(root: WorkflowRootDefinition): readonly WorkflowNodeSummary[] {
