@@ -7,7 +7,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import type { components } from "../../../src/api/generated/openapi";
 import { HumanRequestsPage } from "../../../src/features/human-requests/HumanRequestsPage";
-import { createBackendOperationFailureBody } from "../../fixtures/console-api";
+import {
+    createBackendOperationFailureBody,
+    createRuntimeFlowRead,
+} from "../../fixtures/console-api";
 import {
     HUMAN_REQUEST_TASK_ID,
     createHumanRequestPageList,
@@ -23,6 +26,16 @@ beforeAll(() => {
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", "http://127.0.0.1:18125");
     vi.stubEnv("VITE_AUTOCLAW_API_KEY", "autoclaw-console-test-key");
+    server.use(
+        http.get("*/control/tasks/:taskId", () =>
+            HttpResponse.json(
+                createRuntimeFlowRead({
+                    task_id: HUMAN_REQUEST_TASK_ID,
+                    task_title: "Refresh runtime route copy",
+                }),
+            ),
+        ),
+    );
 });
 
 afterEach(() => {
@@ -43,12 +56,19 @@ describe("HumanRequestsPage", () => {
 
         renderHumanRequestsPage();
 
+        expect(
+            await screen.findByRole("heading", { name: "Refresh runtime route copy" }),
+        ).toBeVisible();
         expect((await screen.findAllByText("Choose due handling")).length).toBeGreaterThan(0);
         expect(screen.getByText("Approve generated file writes")).toBeVisible();
         expect(screen.getByText("Provide handoff fields")).toBeVisible();
         expect(screen.getByText("Review validation result")).toBeVisible();
         expect(screen.getByText("Validation evidence accepted")).toBeVisible();
-        expect(screen.getByText("Use the safe fallback after the due time.")).toBeVisible();
+        expect(
+            screen.getByText(
+                "Answer the active item, then resolve the request when the controller can continue without guessing.",
+            ),
+        ).toBeVisible();
 
         await user.click(screen.getByLabelText(/Use fallback/));
         await user.type(screen.getByLabelText("Notes"), "Use fallback unless a reviewer objects.");
@@ -68,7 +88,7 @@ describe("HumanRequestsPage", () => {
             "Use fallback unless a reviewer objects.",
         );
 
-        await user.click(screen.getByRole("button", { name: "Resolve" }));
+        await user.click(getWorkbenchResolveButton());
 
         expect(await screen.findByText("Resolved request")).toBeVisible();
         await waitFor(() => {
@@ -113,7 +133,7 @@ describe("HumanRequestsPage", () => {
                 "Provide handoff fields",
             ),
         );
-        await user.click(screen.getByRole("button", { name: "Resolve" }));
+        await user.click(getWorkbenchResolveButton());
 
         expect(await screen.findByText("Handoff title is required.")).toBeVisible();
         expect(screen.getByText("Priority is required.")).toBeVisible();
@@ -122,7 +142,7 @@ describe("HumanRequestsPage", () => {
         await user.type(screen.getByLabelText("Priority"), "2");
         await user.selectOptions(screen.getByLabelText("Allow follow up"), "true");
         await user.type(screen.getByLabelText("Notes"), "Use the structured handoff as written.");
-        await user.click(screen.getByRole("button", { name: "Resolve" }));
+        await user.click(getWorkbenchResolveButton());
 
         await waitFor(() => {
             expect(requestBodies).toHaveLength(1);
@@ -160,10 +180,12 @@ describe("HumanRequestsPage", () => {
 
         await user.click(screen.getByText("Approve generated file writes"));
         expect(screen.getByLabelText(/Reject file write/)).toBeVisible();
-        expect(screen.getByText("Approval")).toBeVisible();
+        expect(screen.getAllByText("approval").length).toBeGreaterThan(0);
         expect(
-            within(screen.getByLabelText("Human request queue")).getAllByText("cancelled"),
-        ).toHaveLength(1);
+            within(screen.getByLabelText("Human request queue")).getByText(
+                "Write approval withdrawn",
+            ),
+        ).toBeVisible();
     });
 
     it("surfaces stale resolution conflicts while preserving item context", async () => {
@@ -184,7 +206,7 @@ describe("HumanRequestsPage", () => {
 
         await user.click(await screen.findByText("Approve generated file writes"));
         await user.click(screen.getByLabelText(/Reject file write/));
-        await user.click(screen.getByRole("button", { name: "Resolve" }));
+        await user.click(getWorkbenchResolveButton());
 
         expect(await screen.findByText("Request resolved elsewhere")).toBeVisible();
         expect(
@@ -238,6 +260,29 @@ describe("HumanRequestsPage", () => {
         expect(await screen.findByText("Access to Human Requests failed")).toBeVisible();
         expect(screen.getByText("The AutoClaw API key is missing or invalid.")).toBeVisible();
     });
+
+    it("renders non-auth read errors as read failures", async () => {
+        server.use(
+            http.get("*/control/tasks/:taskId/human-requests", () =>
+                HttpResponse.json(
+                    createBackendOperationFailureBody({
+                        code: "internal_error",
+                        retryable: true,
+                        summary: "The human-request read model is temporarily unavailable.",
+                        suggested_next_step: "Retry after the controller read model recovers.",
+                    }),
+                    { status: 500 },
+                ),
+            ),
+        );
+
+        renderHumanRequestsPage();
+
+        expect(await screen.findByText("Human Requests could not load")).toBeVisible();
+        expect(
+            screen.getByText("The human-request read model is temporarily unavailable."),
+        ).toBeVisible();
+    });
 });
 
 function renderHumanRequestsPage() {
@@ -249,6 +294,11 @@ function renderHumanRequestsPage() {
             </Routes>
         </MemoryRouter>,
     );
+}
+
+function getWorkbenchResolveButton(): HTMLElement {
+    const buttons = screen.getAllByRole("button", { name: "Resolve" });
+    return buttons[buttons.length - 1];
 }
 
 function mockHumanRequests({

@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
+import { useEffect, useRef, type ReactNode } from "react";
 
-import { Button, FormField, StatePanel, StatusChip, Surface } from "../../components/ui";
+import { Button, FormField, StatePanel, StatusChip } from "../../components/ui";
 import type { components } from "../../api/generated/openapi";
 import { classNames } from "../../lib/classNames";
 import { isStaleActionError, type HumanRequestsController } from "./human-request-controller";
@@ -24,6 +25,18 @@ export function FocusedRequestWorkbench({
     const item = controller.selectedItem;
     const draft = controller.selectedItemDraft;
     const read = controller.selectedRead;
+    const headingRef = useRef<HTMLHeadingElement>(null);
+    const didMountRef = useRef(false);
+
+    useEffect(() => {
+        if (!didMountRef.current) {
+            didMountRef.current = true;
+            return;
+        }
+
+        headingRef.current?.focus();
+    }, [item?.item_id]);
+
     if (item === null || draft === null || read === null) {
         return null;
     }
@@ -31,26 +44,48 @@ export function FocusedRequestWorkbench({
     const itemErrors = controller.validationErrors.filter((error) => error.itemId === item.item_id);
 
     return (
-        <Surface label="Current item" title={item.item_id}>
-            <div className="space-y-5">
-                <ItemNavigator controller={controller} itemCount={read.request.items.length} />
-                <div className="space-y-2">
-                    <SectionLabel>Question</SectionLabel>
-                    <p className="text-body text-foreground">{item.prompt}</p>
+        <section className="overflow-hidden rounded-card border border-outline-soft bg-surface shadow-hairline">
+            <header className="flex flex-col gap-3 border-b border-outline-soft px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                    <SectionLabel>Current item</SectionLabel>
+                    <h2
+                        className="mt-1 font-mono text-utility text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        ref={headingRef}
+                        tabIndex={-1}
+                    >
+                        {item.item_id}
+                    </h2>
                 </div>
-                <ResponseControls
-                    draft={draft}
-                    item={item}
-                    onUpdate={controller.updateSelectedItemDraft}
-                />
-                <StructuredInputControls
-                    draft={draft}
-                    item={item}
-                    onUpdate={controller.updateSelectedItemDraft}
-                />
-                <FormField id={`notes-${item.item_id}`} label="Notes">
+                <ItemNavigator controller={controller} itemCount={read.request.items.length} />
+            </header>
+            <div className="divide-y divide-outline-soft">
+                <WorkbenchRow label="Instruction">
+                    <p className="text-compact text-foreground">
+                        {read.request.suggested_human_instruction}
+                    </p>
+                </WorkbenchRow>
+                <WorkbenchRow label="Question">
+                    <p className="text-compact text-foreground">{item.prompt}</p>
+                </WorkbenchRow>
+                <WorkbenchRow label="Response">
+                    <div className="space-y-3">
+                        <ResponseControls
+                            draft={draft}
+                            item={item}
+                            onUpdate={controller.updateSelectedItemDraft}
+                        />
+                        <StructuredInputControls
+                            draft={draft}
+                            item={item}
+                            onUpdate={controller.updateSelectedItemDraft}
+                        />
+                    </div>
+                </WorkbenchRow>
+                <WorkbenchRow label="Notes">
                     <textarea
+                        aria-label="Notes"
                         className={fieldClassName}
+                        id={`notes-${item.item_id}`}
                         onChange={(event) => {
                             controller.updateSelectedItemDraft({
                                 extraNotes: event.target.value,
@@ -60,10 +95,12 @@ export function FocusedRequestWorkbench({
                         rows={3}
                         value={draft.extraNotes}
                     />
-                </FormField>
+                </WorkbenchRow>
+            </div>
+            <div className="px-3 py-3">
                 <ValidationAndActionState controller={controller} itemErrors={itemErrors} />
             </div>
-        </Surface>
+        </section>
     );
 }
 
@@ -75,12 +112,35 @@ function ItemNavigator({
     readonly itemCount: number;
 }) {
     return (
-        <div className="flex min-w-0 flex-col gap-3 border-b border-outline-soft pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <SectionLabel>Item position</SectionLabel>
-                <p className="mt-1 font-mono text-utility text-foreground">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="font-display text-compact font-semibold text-foreground">
                     {String(controller.selectedItemIndex + 1)} of {String(itemCount)}
-                </p>
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                    {Array.from({ length: itemCount }, (_item, index) => {
+                        const isSelected = index === controller.selectedItemIndex;
+
+                        return (
+                            <button
+                                aria-label={`Item ${String(index + 1)}`}
+                                className={classNames(
+                                    "inline-flex h-8 min-w-8 items-center justify-center rounded-control border px-2 font-mono text-utility transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                                    isSelected
+                                        ? "border-primary/45 bg-primary-soft text-primary-foreground"
+                                        : "border-outline-soft bg-surface-low text-muted hover:border-primary/35 hover:text-foreground",
+                                )}
+                                key={index}
+                                onClick={() => {
+                                    controller.selectItemIndex(index);
+                                }}
+                                type="button"
+                            >
+                                {String(index + 1)}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
             <div className="flex flex-wrap gap-2">
                 <Button
@@ -119,7 +179,6 @@ function ResponseControls({
 }) {
     return (
         <div className="space-y-3">
-            <SectionLabel>Response</SectionLabel>
             {item.options.length === 0 ? (
                 <p className="text-compact text-muted">
                     This item has no listed options. Use freeform answer or structured input.
@@ -132,7 +191,7 @@ function ResponseControls({
                             className={classNames(
                                 "flex cursor-pointer gap-3 rounded-card border p-3 transition-colors",
                                 draft.selectedOption === option.id
-                                    ? "border-primary/45 bg-primary-soft"
+                                    ? "border-primary/65 bg-primary-soft shadow-panel"
                                     : "border-outline-soft bg-surface-low hover:border-primary/25",
                             )}
                             key={option.id}
@@ -234,6 +293,21 @@ function StructuredInputControls({
                 ))}
             </div>
         </div>
+    );
+}
+
+function WorkbenchRow({
+    children,
+    label,
+}: {
+    readonly children: ReactNode;
+    readonly label: string;
+}) {
+    return (
+        <section className="px-3 py-3">
+            <SectionLabel>{label}</SectionLabel>
+            <div className="mt-2">{children}</div>
+        </section>
     );
 }
 

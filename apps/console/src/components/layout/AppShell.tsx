@@ -1,6 +1,8 @@
+import { useCallback, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { classNames } from "../../lib/classNames";
+import { ShellTaskTitleContext, type ShellTaskTitleContextValue } from "./ShellTaskTitleContext";
 
 interface ShellNavItem {
     readonly end?: boolean;
@@ -26,99 +28,153 @@ type PrimaryNavVariant = "mobile" | "rail";
 export function AppShell() {
     const location = useLocation();
     const context = getShellContext(location.pathname);
-    const navGroups = getPrimaryNavGroups(context.taskPath);
+    const [taskTitles, setTaskTitles] = useState<ReadonlyMap<string, string>>(() => new Map());
+    const registerTaskTitle = useCallback((taskPath: string, title: string) => {
+        setTaskTitles((current) => {
+            if (current.get(taskPath) === title) {
+                return current;
+            }
+
+            const next = new Map(current);
+            next.set(taskPath, title);
+            return next;
+        });
+
+        return () => {
+            setTaskTitles((current) => {
+                if (current.get(taskPath) !== title) {
+                    return current;
+                }
+
+                const next = new Map(current);
+                next.delete(taskPath);
+                return next;
+            });
+        };
+    }, []);
+    const taskTitle = context.taskPath === null ? null : (taskTitles.get(context.taskPath) ?? null);
+    const shellContext = taskTitle === null ? context : withTaskTitle(context, taskTitle);
+    const shellTaskTitleContext = useMemo<ShellTaskTitleContextValue>(
+        () => ({ registerTaskTitle }),
+        [registerTaskTitle],
+    );
+    const navGroups = getPrimaryNavGroups(shellContext.taskPath);
 
     return (
-        <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-            <aside className="hidden border-r border-outline-soft bg-surface lg:flex lg:min-h-screen lg:flex-col">
-                <ShellBrand />
-                <nav aria-label="Primary" className="flex flex-1 flex-col gap-5 px-3 py-4">
-                    <PrimaryNavGroups groups={navGroups} variant="rail" />
-                </nav>
-            </aside>
-            <div className="min-w-0">
-                <nav
-                    aria-label="Primary"
-                    className="grid grid-cols-2 gap-1 border-b border-outline-soft bg-surface px-3 py-3 lg:hidden"
-                >
-                    <div className="col-span-full">
-                        <ShellBrand />
-                    </div>
-                    <PrimaryNavGroups groups={navGroups} variant="mobile" />
-                </nav>
-                <header className="sticky top-0 z-10 border-b border-outline-soft bg-surface">
-                    <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 px-page-inline py-3">
-                        <div className="min-w-0">
-                            <nav
-                                aria-label="Breadcrumb"
-                                className="flex min-w-0 items-center gap-2 font-mono text-utility text-muted"
-                            >
-                                <ol className="flex min-w-0 flex-wrap items-center gap-1">
-                                    {context.breadcrumbs.map((breadcrumb, index) => {
-                                        const isCurrent = index === context.breadcrumbs.length - 1;
+        <ShellTaskTitleContext.Provider value={shellTaskTitleContext}>
+            <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
+                <aside className="hidden border-r border-outline-soft bg-surface lg:flex lg:min-h-screen lg:flex-col">
+                    <ShellBrand />
+                    <nav aria-label="Primary" className="flex flex-1 flex-col gap-5 px-3 py-4">
+                        <PrimaryNavGroups groups={navGroups} variant="rail" />
+                    </nav>
+                </aside>
+                <div className="min-w-0">
+                    <nav
+                        aria-label="Primary"
+                        className="grid grid-cols-2 gap-1 border-b border-outline-soft bg-surface px-3 py-3 lg:hidden"
+                    >
+                        <div className="col-span-full">
+                            <ShellBrand />
+                        </div>
+                        <PrimaryNavGroups groups={navGroups} variant="mobile" />
+                    </nav>
+                    <header className="sticky top-0 z-10 border-b border-outline-soft bg-surface">
+                        <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 px-page-inline py-3">
+                            <div className="min-w-0">
+                                <nav
+                                    aria-label="Breadcrumb"
+                                    className="flex min-w-0 items-center gap-2 font-mono text-utility text-muted"
+                                >
+                                    <ol className="flex min-w-0 flex-wrap items-center gap-1">
+                                        {shellContext.breadcrumbs.map((breadcrumb, index) => {
+                                            const isCurrent =
+                                                index === shellContext.breadcrumbs.length - 1;
 
-                                        return (
-                                            <li
-                                                className="flex min-w-0 items-center gap-2"
-                                                key={`${breadcrumb.label}-${String(index)}`}
-                                            >
-                                                {index === 0 ? null : (
-                                                    <span aria-hidden="true" className="text-muted">
-                                                        {"\u203a"}
-                                                    </span>
-                                                )}
-                                                {!isCurrent && breadcrumb.to !== undefined ? (
-                                                    <Link
-                                                        className="min-w-0 truncate text-muted transition-colors hover:text-primary-foreground"
-                                                        to={breadcrumb.to}
-                                                    >
-                                                        {breadcrumb.label}
-                                                    </Link>
-                                                ) : (
-                                                    <span
-                                                        aria-current={
-                                                            isCurrent ? "page" : undefined
-                                                        }
-                                                        className={classNames(
-                                                            "min-w-0 truncate",
-                                                            isCurrent &&
-                                                                "font-semibold text-primary-foreground",
-                                                        )}
-                                                    >
-                                                        {breadcrumb.label}
-                                                    </span>
-                                                )}
-                                            </li>
-                                        );
-                                    })}
-                                </ol>
-                            </nav>
+                                            return (
+                                                <li
+                                                    className="flex min-w-0 items-center gap-2"
+                                                    key={`${breadcrumb.label}-${String(index)}`}
+                                                >
+                                                    {index === 0 ? null : (
+                                                        <span
+                                                            aria-hidden="true"
+                                                            className="text-muted"
+                                                        >
+                                                            {"\u203a"}
+                                                        </span>
+                                                    )}
+                                                    {!isCurrent && breadcrumb.to !== undefined ? (
+                                                        <Link
+                                                            className="min-w-0 truncate text-muted transition-colors hover:text-primary-foreground"
+                                                            to={breadcrumb.to}
+                                                        >
+                                                            {breadcrumb.label}
+                                                        </Link>
+                                                    ) : (
+                                                        <span
+                                                            aria-current={
+                                                                isCurrent ? "page" : undefined
+                                                            }
+                                                            className={classNames(
+                                                                "min-w-0 truncate",
+                                                                isCurrent &&
+                                                                    "font-semibold text-primary-foreground",
+                                                            )}
+                                                        >
+                                                            {breadcrumb.label}
+                                                        </span>
+                                                    )}
+                                                </li>
+                                            );
+                                        })}
+                                    </ol>
+                                </nav>
+                            </div>
+                            <div
+                                aria-label="Shell state"
+                                className={classNames(
+                                    "inline-flex h-7 min-w-0 items-center gap-2 text-utility text-muted",
+                                    shellContext.statusTone === "active" &&
+                                        "text-primary-foreground",
+                                    shellContext.statusTone === "success" && "text-success",
+                                )}
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    className="size-1.5 shrink-0 rounded-full bg-current"
+                                />
+                                <span className="truncate">{shellContext.status}</span>
+                            </div>
                         </div>
-                        <div
-                            aria-label="Shell state"
-                            className={classNames(
-                                "inline-flex h-7 min-w-0 items-center gap-2 text-utility text-muted",
-                                context.statusTone === "active" && "text-primary-foreground",
-                                context.statusTone === "success" && "text-success",
-                            )}
-                        >
-                            <span
-                                aria-hidden="true"
-                                className="size-1.5 shrink-0 rounded-full bg-current"
-                            />
-                            <span className="truncate">{context.status}</span>
-                        </div>
-                    </div>
-                </header>
-                <main
-                    aria-label="AutoClaw Console"
-                    className="min-h-[calc(100vh-4rem)] px-page-inline py-page-block"
-                >
-                    <Outlet />
-                </main>
+                    </header>
+                    <main
+                        aria-label="AutoClaw Console"
+                        className="min-h-[calc(100vh-4rem)] px-page-inline py-page-block"
+                    >
+                        <Outlet />
+                    </main>
+                </div>
             </div>
-        </div>
+        </ShellTaskTitleContext.Provider>
     );
+}
+
+function withTaskTitle(context: ShellContext, title: string): ShellContext {
+    if (context.taskPath === null) {
+        return context;
+    }
+
+    return {
+        ...context,
+        breadcrumbs: context.breadcrumbs.map((breadcrumb, index) => {
+            const isTaskBreadcrumb =
+                breadcrumb.to === context.taskPath ||
+                (context.breadcrumbs.length === 2 && index === 1);
+
+            return isTaskBreadcrumb ? { ...breadcrumb, label: title } : breadcrumb;
+        }),
+    };
 }
 
 function ShellBrand() {

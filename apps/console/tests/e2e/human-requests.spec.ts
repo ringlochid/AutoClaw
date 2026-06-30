@@ -1,7 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
+import { mkdirSync } from "node:fs";
 
 import type { components } from "../../src/api/generated/openapi";
+import { createRuntimeFlowRead } from "../fixtures/console-api";
 import {
     HUMAN_REQUEST_TASK_ID,
     createHumanRequestPageList,
@@ -9,7 +11,7 @@ import {
 } from "../fixtures/human-requests";
 
 const SCREENSHOT_DIR =
-    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/continuation-implementation/09-human-requests/screenshots";
+    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity/03-human-requests/screenshots";
 
 test("renders and resolves the Human Requests page at desktop width", async ({
     page,
@@ -17,10 +19,17 @@ test("renders and resolves the Human Requests page at desktop width", async ({
     test.skip(testInfo.project.name !== "chromium", "desktop proof is captured once");
 
     const requestBodies = await mockHumanRequests(page);
+    await page.setViewportSize({ height: 1000, width: 1440 });
 
     await page.goto(`/tasks/${HUMAN_REQUEST_TASK_ID}/human-requests`);
 
-    await expect(page.getByRole("heading", { level: 1, name: "Human Requests" })).toBeVisible();
+    await expect(
+        page.getByRole("heading", { level: 1, name: "Refresh runtime route copy" }),
+    ).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText(
+        "Refresh runtime route copy",
+    );
+    await expect(page.getByText("Human Requests").first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Choose due handling" }).last()).toBeVisible();
     await expect(page.getByText("Approve generated file writes")).toBeVisible();
     await expect(page.getByText("Provide handoff fields")).toBeVisible();
@@ -49,7 +58,8 @@ test("renders and resolves the Human Requests page at desktop width", async ({
     });
     await page.screenshot({
         fullPage: true,
-        path: `${SCREENSHOT_DIR}/human-requests-desktop.png`,
+        path: `${SCREENSHOT_DIR}/app-desktop-default.png`,
+        scale: "css",
     });
 
     await page.getByRole("button", { exact: true, name: "Resolve" }).click();
@@ -95,6 +105,7 @@ test("keeps Human Requests responsive at mobile width", async ({ page }, testInf
     test.skip(testInfo.project.name !== "mobile-chrome", "mobile proof is captured once");
 
     await mockHumanRequests(page);
+    await page.setViewportSize({ height: 900, width: 390 });
 
     await page.goto(`/tasks/${HUMAN_REQUEST_TASK_ID}/human-requests`);
 
@@ -103,6 +114,18 @@ test("keeps Human Requests responsive at mobile width", async ({ page }, testInf
     await page.getByLabel(/Use fallback/).check();
     await page.getByRole("button", { name: "Next" }).focus();
     await expect(page.getByRole("button", { name: "Next" })).toBeFocused();
+    await expectTopAfter(
+        page.getByLabel("Notes"),
+        page.getByRole("link", { name: "Open task detail" }),
+    );
+    await expectTopAfter(
+        page.getByLabel("Notes"),
+        page.getByRole("button", { exact: true, name: "Resolve" }),
+    );
+    await expectTopAfter(
+        page.getByRole("button", { exact: true, name: "Resolve" }),
+        page.getByText("Other requests"),
+    );
     await expectNoDocumentOverflow(page);
 
     await page.evaluate(() => {
@@ -110,7 +133,8 @@ test("keeps Human Requests responsive at mobile width", async ({ page }, testInf
     });
     await page.screenshot({
         fullPage: true,
-        path: `${SCREENSHOT_DIR}/human-requests-mobile.png`,
+        path: `${SCREENSHOT_DIR}/app-narrow-default.png`,
+        scale: "css",
     });
 });
 
@@ -119,6 +143,7 @@ type HumanRequestResolveRequest = components["schemas"]["HumanRequestResolveRequ
 async function mockHumanRequests(page: Page): Promise<HumanRequestResolveRequest[]> {
     const list = createHumanRequestPageList();
     const requestBodies: HumanRequestResolveRequest[] = [];
+    mkdirSync(SCREENSHOT_DIR, { recursive: true });
 
     await page.route("**/control/tasks/**", async (route) => {
         const request = route.request();
@@ -130,6 +155,17 @@ async function mockHumanRequests(page: Page): Promise<HumanRequestResolveRequest
             path.endsWith(`/${HUMAN_REQUEST_TASK_ID}/human-requests`)
         ) {
             await fulfillJson(route, list);
+            return;
+        }
+
+        if (request.method() === "GET" && path.endsWith(`/${HUMAN_REQUEST_TASK_ID}`)) {
+            await fulfillJson(
+                route,
+                createRuntimeFlowRead({
+                    task_id: HUMAN_REQUEST_TASK_ID,
+                    task_title: "Refresh runtime route copy",
+                }),
+            );
             return;
         }
 
@@ -169,4 +205,18 @@ async function expectNoDocumentOverflow(page: Page): Promise<void> {
     );
 
     expect(overflow).toBeLessThanOrEqual(1);
+}
+
+async function expectTopAfter(previous: Locator, next: Locator): Promise<void> {
+    const previousBox = await previous.boundingBox();
+    const nextBox = await next.boundingBox();
+
+    expect(previousBox).not.toBeNull();
+    expect(nextBox).not.toBeNull();
+
+    if (previousBox === null || nextBox === null) {
+        return;
+    }
+
+    expect(nextBox.y).toBeGreaterThanOrEqual(previousBox.y + previousBox.height - 1);
 }

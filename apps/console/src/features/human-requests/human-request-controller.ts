@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AutoClawApiError, requestJson, type ConsoleErrorView } from "../../api/client";
 import type { components } from "../../api/generated/openapi";
-import { humanRequestsRoute, resolveHumanRequestRoute } from "../../api/routes";
+import { controlTaskRoute, humanRequestsRoute, resolveHumanRequestRoute } from "../../api/routes";
 import {
     buildResolveRequest,
     createDraftForRequest,
@@ -36,6 +36,7 @@ export interface HumanRequestsController {
     readonly selectRequest: (requestId: string) => void;
     readonly statusSummary: string;
     readonly taskId: string | null;
+    readonly taskTitle: string | null;
     readonly updateSelectedItemDraft: (patch: Partial<HumanRequestItemDraft>) => void;
     readonly validationErrors: readonly HumanRequestValidationError[];
 }
@@ -68,6 +69,7 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
     const [isResolving, setIsResolving] = useState(false);
     const [refreshToken, setRefreshToken] = useState(0);
     const [settledTaskId, setSettledTaskId] = useState<string | null>(null);
+    const [taskTitle, setTaskTitle] = useState<string | null>(null);
     const readGenerationRef = useRef(0);
 
     useEffect(() => {
@@ -79,21 +81,24 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
         const readGeneration = readGenerationRef.current + 1;
         readGenerationRef.current = readGeneration;
 
-        void readHumanRequestList(taskId, abortController.signal)
+        void readHumanRequestsPageData(taskId, abortController.signal)
             .then((response) => {
                 if (readGenerationRef.current !== readGeneration) {
                     return;
                 }
 
-                setRequestReads(response.items);
+                setRequestReads(response.requestList.items);
                 setSelectedRequestId((currentRequestId) =>
-                    selectCurrentRequestId(response.items, currentRequestId),
+                    selectCurrentRequestId(response.requestList.items, currentRequestId),
                 );
-                setDrafts((currentDrafts) => ensureDrafts(response.items, currentDrafts));
+                setDrafts((currentDrafts) =>
+                    ensureDrafts(response.requestList.items, currentDrafts),
+                );
                 setItemIndexByRequest((currentIndexes) =>
-                    ensureItemIndexes(response.items, currentIndexes),
+                    ensureItemIndexes(response.requestList.items, currentIndexes),
                 );
                 setSettledTaskId(taskId);
+                setTaskTitle(response.taskTitle);
                 setError(null);
                 setActionError(null);
                 setValidationErrors([]);
@@ -106,6 +111,7 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
                 }
 
                 setSettledTaskId(taskId);
+                setTaskTitle(null);
                 setError(toErrorView(readError));
                 setIsLoading(false);
                 setIsRefreshing(false);
@@ -282,9 +288,25 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
             requestReads: visibleRequestReads,
         }),
         taskId,
+        taskTitle,
         updateSelectedItemDraft,
         validationErrors,
     };
+}
+
+async function readHumanRequestsPageData(
+    taskId: string,
+    signal: AbortSignal,
+): Promise<{
+    readonly requestList: components["schemas"]["HumanRequestListResponse"];
+    readonly taskTitle: string | null;
+}> {
+    const [requestList, taskTitle] = await Promise.all([
+        readHumanRequestList(taskId, signal),
+        readTaskTitle(taskId, signal),
+    ]);
+
+    return { requestList, taskTitle };
 }
 
 async function readHumanRequestList(
@@ -298,6 +320,23 @@ async function readHumanRequestList(
     });
 }
 
+async function readTaskTitle(taskId: string, signal: AbortSignal): Promise<string | null> {
+    const route = controlTaskRoute(taskId);
+    try {
+        const task = await requestJson<components["schemas"]["RuntimeFlowRead"]>({
+            path: route.path,
+            signal,
+        });
+        return task.task_title;
+    } catch (error) {
+        if (isAbortError(error)) {
+            throw error;
+        }
+
+        return null;
+    }
+}
+
 function selectCurrentRequestId(
     reads: readonly HumanRequestRead[],
     currentRequestId: string | null,
@@ -309,7 +348,16 @@ function selectCurrentRequestId(
         return currentRequestId;
     }
 
-    return reads[0]?.request.request_id ?? null;
+    const openRead = reads.find((requestRead) => requestRead.request.status === "open");
+    if (openRead !== undefined) {
+        return openRead.request.request_id;
+    }
+
+    if (reads.length === 0) {
+        return null;
+    }
+
+    return reads[0].request.request_id;
 }
 
 function ensureDrafts(
