@@ -1,9 +1,24 @@
 # Console Validation And Evidence
 
-Status: Target
+Status: Locked target for implementation planning.
 
-This page locks proof requirements for console implementation slices and final
-release review.
+This page defines proof requirements for console implementation slices and
+final release review.
+
+## Current Evidence Baseline
+
+The current accepted audit recorded a clean tracked repo at `feb796a`, current
+generated OpenAPI, and passing focused console scaffold checks. It also found:
+
+- all seven feature pages are placeholders
+- MSW handlers, fixtures, integration tests, and visual tests are empty
+- the SSE helper only builds a URL and does not implement protected streaming
+- `/console/config` is absent from current API/OpenAPI truth
+- Task Detail lacks trusted final visual proof
+- live registry current revisions and Orin draft-pack currentness remain
+  unverified
+
+Do not treat scaffold pass results as product readiness.
 
 ## Command Matrix
 
@@ -17,8 +32,8 @@ Base commands for frontend implementation slices:
 - `make console-build`
 
 Add `make console-openapi-check` when a slice touches API clients, generated
-types, route usage, view models, fixtures derived from OpenAPI, action handling,
-or API contracts.
+types, route usage, view models, fixtures derived from OpenAPI, action
+handling, or API contracts.
 
 Add `make console-e2e` when a slice changes navigation, page-level flows,
 browser-only behavior, visual parity, accessibility-critical interactions, or
@@ -57,23 +72,30 @@ Required fixture families:
 - draft-set authoring lifecycle
 - task start workflow selection, root bindings, success, and failures
 - OperationFailure, FastAPI validation, auth, stale currentness, missing
-  resource, network, and `cursor_reset_required`
+  resource, network, abort, and `cursor_reset_required`
 
 Page slices may extend fixtures for their route family, but they must not fork
 shared API helpers or create page-local mock transport layers.
 
 ## Per-Slice Evidence
 
-Every implementation slice must write evidence under its
-`tmp/autoclaw-frontend/<slice>` path with:
+Every implementation or review scope must write evidence under:
 
-- exact commands run and outcomes
+```text
+/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery/<scope>/
+```
+
+Each report must name:
+
+- consumed source docs and artifacts
+- files changed
+- commands run and outcomes
 - skipped commands with exact environment or scope reason
 - API routes exercised
 - fixtures/scenarios covered
 - browser/manual checks performed
 - screenshots or screenshot paths when visual parity is in scope
-- accessibility and keyboard checks
+- accessibility, keyboard, and responsive checks
 - known residual risks and routed debt
 
 ## Browser And Manual Evidence
@@ -115,13 +137,13 @@ Task Detail caveat:
 
 - `task-detail.png` is not trusted as final parity proof.
 - `task-detail-last-known-good.jpeg` is absent.
-- Task Detail release readiness requires a fresh promoted capture or an
-  explicit visual-review note that names the replacement anchor used.
+- Task Detail release readiness requires fresh promoted capture or an explicit
+  visual-review note that names the replacement anchor used.
 
 Screenshots must cover desktop and narrow/mobile widths for each released page.
-States with modals, disclosures, logs, validation output, preview, or error
-content need their own evidence when those states are part of the acceptance
-surface.
+States with modals, disclosures, logs, validation output, preview, result, or
+error content need their own evidence when those states are part of the
+acceptance surface.
 
 ## Accessibility Evidence
 
@@ -143,9 +165,11 @@ checks as a substitute for keyboard and focus walkthrough evidence.
 
 Required reviews:
 
+- Planning/contract review before implementation dispatch.
 - Foundation contract/integration review before page slices start.
-- Focused SSE/API review after Task Detail.
+- Focused SSE/API review before Task Detail closure.
 - Authoring contract review before Definition Editor closure.
+- Strict review after every code-editing scope.
 - Final suite release review after all page slices publish implementation,
   verification, review, and closure evidence.
 
@@ -157,12 +181,17 @@ Reviewers must reject slices that:
 - claim visual parity from untrusted Task Detail PNG
 - omit browser evidence for page-level behavior
 - pass raw API payloads deeply through components
-- launch from stale compose drafts
+- launch from stale compose drafts or unknown registry currentness
 
 ## Final Release Evidence Index
 
-The final release review must collect an index under
-`tmp/autoclaw-frontend/99-suite-release-review` that links:
+The final release review must collect an index under:
+
+```text
+/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery/99-suite-release-review/
+```
+
+The index must link:
 
 - implementation reports for each slice
 - review reports
@@ -172,7 +201,8 @@ The final release review must collect an index under
 - accessibility notes
 - visual parity notes
 - known accepted nonblocking debt
+- unresolved blockers, if any
 
 Release may accept only explicitly phase-bounded nonblocking debt that does not
-violate controller truth, action legality, accessibility, security, or data
-integrity.
+violate controller truth, action legality, accessibility, security, data
+integrity, or release proof.

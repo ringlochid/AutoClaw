@@ -1,103 +1,142 @@
 # AutoClaw Console Contracts
 
-Status: Target
+Status: Locked target for implementation planning.
 
-This directory locks the V2 AutoClaw console frontend contracts that later
-implementation slices must consume before touching `apps/console/**`.
+This directory is the frontend contract surface for the AutoClaw V2 console.
+Implementation workers must read it before touching `apps/console/**`.
 
-The console is a React/Vite/TypeScript implementation over controller-owned
-AutoClaw truth. It must not invent runtime state, action legality, metrics,
-route families, or draft authoring semantics that the backend and current
-contracts do not expose.
+The console is a React, TypeScript, Vite, and Tailwind app over
+controller-owned AutoClaw truth. It must not invent runtime state, action
+legality, metrics, route families, task counts, ETAs, registry currentness,
+support-file currentness, or draft authoring semantics that the backend and
+current contracts do not expose.
 
 ## Source Order
 
-Use this order when implementing or reviewing a console slice:
+Use this order for every implementation or review slice:
 
-1. Controller-owned API truth: FastAPI routers, generated OpenAPI types in
+1. Controller/API truth: FastAPI routers, generated OpenAPI types at
    `apps/console/src/api/generated/openapi.ts`, and
    `docs/reference/api/api-surface-and-route-map.md`.
-2. V2 target contracts under `docs-internal/design/v2/interfaces/**` and
-   `docs-internal/design/v2/architecture/**`.
-3. Current shipped contrast under `docs-internal/current/v1/**` only when it
-   does not conflict with fresher route map, router, or OpenAPI truth.
-4. Design references under `references/frontend_design/**` and
-   `/home/ubuntu/leo/design/autoclaw-v2-ui/**` for visual language,
-   navigation, page-state shape, density, and interaction cadence.
-5. Existing `apps/console/**` implementation patterns for React, routing,
-   component extraction, tokens, testing, and local code organization.
+2. Current V2 interface owners:
+   `docs-internal/design/v2/interfaces/control-ui-runtime-and-authoring-surfaces.md`,
+   `docs-internal/design/v2/interfaces/control-api-and-task-event-stream.md`,
+   `docs-internal/design/v2/interfaces/human-request-and-approval-contract.md`,
+   `docs-internal/design/v2/interfaces/definition-authoring-api-and-draft-set-contract.md`,
+   `docs-internal/design/v2/interfaces/definition-authoring-workbench.md`, and
+   `docs-internal/design/v2/architecture/command-run-and-long-running-boundary.md`.
+3. This directory for console-specific behavior, API/view-model boundaries,
+   components, config, validation, and routed ambiguity.
+4. Visual and interaction references under `references/frontend_design/**` and
+   `/home/ubuntu/leo/design/autoclaw-v2-ui/**`.
+5. Existing `apps/console/**` implementation patterns after the contracts above
+   have been consumed.
 
-External design artifacts are visual, state, and interaction anchors only.
-They do not override controller route names, payload fields, currentness
-tokens, action legality, authentication, or persistence truth.
+Design artifacts are visual, state, and interaction anchors only. They do not
+override controller route names, payload fields, event names, state values,
+currentness tokens, action legality, authentication, or persistence truth.
 
 ## Contract Inventory
 
 - [Feature behavior](feature-behavior.md) owns page workflows, visible states,
-  legal actions, forbidden UI states, and page-specific behavior.
+  legal actions, forbidden UI states, labels, and page-specific behavior.
 - [API and view-model contract](api-view-model-contract.md) owns route usage,
-  generated OpenAPI consumption, API client responsibilities, view-model mapper
-  boundaries, error normalization, SSE, pagination, and currentness handling.
-- [Component system](component-system.md) owns shell, primitive, layout,
-  responsive, accessibility, token, and design-reference rules.
+  generated OpenAPI consumption, API/SSE client responsibilities, error
+  normalization, mappers, pagination, and currentness handling.
+- [Component system](component-system.md) owns shell, primitives, responsive
+  layout, accessibility, tokens, extraction, and visual-reference rules.
 - [Environment and runtime config](environment-and-runtime-config.md) owns
-  environment variables, API base URL, API key handling, `/console/config`
+  Vite env configuration, API base URL, API key handling, `/console/config`
   status, same-origin assumptions, and secret handling.
-- [Validation and evidence](validation-and-evidence.md) owns fixture lanes,
-  commands, browser/manual evidence, visual parity, accessibility checks, and
+- [Validation and evidence](validation-and-evidence.md) owns command gates,
+  fixture lanes, browser/manual proof, visual parity, accessibility checks, and
   release evidence indexing.
-- [Ambiguity and debt log](ambiguity-and-debt-log.md) records every routed or
-  resolved planning ambiguity that must not be rediscovered inside
-  implementation work.
+- [Ambiguity and debt log](ambiguity-and-debt-log.md) records every resolved,
+  routed, blocking, or phase-bounded item that implementation must not
+  rediscover or hide.
 
 ## Page And Route Inventory
 
-| Page | App route | Primary backend surfaces |
-| --- | --- | --- |
-| Tasks | `/tasks` | `GET /runtime/tasks` |
-| Task Detail | `/tasks/:taskId` | `GET /control/tasks/{task_id}`, snapshot, trace, events, SSE, pause, continue, cancel |
-| Human Requests | `/tasks/:taskId/human-requests` | `GET /control/tasks/{task_id}/human-requests`, resolve |
-| Command Runs | `/tasks/:taskId/command-runs` | command-run list, detail, log, cancel control routes |
-| Definitions | `/definitions` | `GET /definitions/roles`, policies, workflows, detail, versions |
-| Definition Editor | `/definitions/editor` | `/authoring/definition-draft-sets/*`, plus stored definition reads when needed |
-| Task Start | `/task-start` | workflow stored reads and `POST /tasks/start` |
+All seven pages are required implementation targets. The current app already
+has route placeholders for them, but every page is still a placeholder until it
+is API-backed, fixture-backed, browser-verified, and reviewed.
+
+| Page              | App route                       | Primary backend surfaces                                                          |
+| ----------------- | ------------------------------- | --------------------------------------------------------------------------------- |
+| Tasks             | `/tasks`                        | `GET /runtime/tasks`                                                              |
+| Task Detail       | `/tasks/:taskId`                | `/control/tasks/{task_id}`, snapshot, trace, events, SSE, pause, continue, cancel |
+| Human Requests    | `/tasks/:taskId/human-requests` | human-request list and resolve control routes                                     |
+| Command Runs      | `/tasks/:taskId/command-runs`   | command-run list, detail, log, and cancel control routes                          |
+| Definitions       | `/definitions`                  | role, policy, workflow list/detail/version reads                                  |
+| Definition Editor | `/definitions/editor`           | `/authoring/definition-draft-sets/*` plus stored definition reads when needed     |
+| Task Start        | `/task-start`                   | stored workflow reads and `POST /tasks/start`                                     |
 
 `Tasks` is the only runtime entrypoint. `Task Detail`, `Human Requests`, and
 `Command Runs` are task-scoped siblings beneath `Tasks`. `Definitions`,
 `Definition Editor`, and `Task Start` are authoring surfaces and stay outside
 task-scoped runtime breadcrumbs.
 
+## Current Scaffold Truth
+
+Current safe implementation facts:
+
+- `apps/console` is a Vite/React/TypeScript/Tailwind app.
+- `apps/console/src/app/router.tsx` routes all seven required pages plus the
+  internal fixture gallery.
+- The feature page files render route scaffolds and backing-route labels only.
+- `src/api/client.ts` can issue JSON requests and attach
+  `X-AutoClaw-API-Key`, but structured error normalization is incomplete.
+- `src/api/sse.ts` only builds an event-stream URL and must be replaced by the
+  fetch-based protected SSE transport defined here.
+- `src/mocks`, `tests/fixtures`, `tests/integration`, and `tests/visual` contain
+  only `.gitkeep` files.
+- `make console-test-integration` currently passes with no tests because the
+  integration lane is empty; this is a blocker, not proof.
+
 ## Implementation Boundary
 
-The locked docs do not implement product frontend code. Later slices may edit
-`apps/console/**` only after consuming these docs and refreshed task-compose
-launches.
+The locked docs do not implement product frontend code. Later implementation
+slices may edit `apps/console/**` only after these docs and the accepted
+delivery plan are reviewed.
 
-Implementation slices must preserve these boundaries:
+Implementation slices must preserve these ownership boundaries:
 
-- `apps/console/src/api/**` owns base URL resolution, API key headers, SSE
-  transport, generated OpenAPI consumption, structured error normalization,
-  and query construction.
-- Feature folders own page orchestration, mappers, hooks, reducers, and
-  page-specific components for their route family.
+- `apps/console/src/api/**` owns base URL resolution, API key headers,
+  generated OpenAPI consumption, JSON request handling, fetch-SSE transport,
+  query construction, pagination helpers, structured error normalization, and
+  reset/reconnect behavior.
+- Feature folders own page orchestration, page-specific hooks, reducers,
+  mappers, and components for their route family.
 - Shared components own repeated shell, list, disclosure, dialog, form, chip,
-  tab, status, and state patterns only after a second real use appears or the
-  pattern is clearly cross-page from this contract.
-- View models translate controller snake_case payloads into explicit camelCase
-  render nouns at feature or shared API boundaries. Raw controller payloads
-  must not be passed through component trees as generic objects.
-- Fixture and MSW handlers are implementation proof surfaces, not controller
-  truth. They must stay OpenAPI-shaped and scenario-named.
+  tab, status, and state patterns only when they remove real repetition or
+  enforce accessibility/action legality.
+- View-model mappers translate generated snake_case controller payloads into
+  explicit camelCase render nouns near feature or API boundaries.
+- Fixture and MSW handlers are proof surfaces. They must stay OpenAPI-shaped at
+  the API boundary and scenario-named at the test boundary.
 
 ## Launch Readiness Rules
 
-No implementation task-compose launch is final until `draft_frontend_launches`
-refreshes it against this directory and the delivery plan. The current
-`references/frontend/task-compose/*.yaml` files are draft material only.
+Frontend implementation launch remains blocked until a planning review accepts
+the rewritten delivery plan and this locked docs set.
 
-Before launching implementation slices, verify through the approved registry
-path that the live controller registry has current revisions for the frontend
-slice workflows and roles named by the refreshed compose files.
+Launch and compose truth for this program is:
+
+```text
+/home/ubuntu/.openclaw/workspaces/orin/autoclaw/drafts/frontend-console-v2/README.md
+/home/ubuntu/.openclaw/workspaces/orin/autoclaw/drafts/workflows/frontend_console_full_delivery.yaml
+/home/ubuntu/.openclaw/workspaces/orin/autoclaw/drafts/task-compose/autoclaw_console_frontend_full_delivery/full-delivery.task-compose.yaml
+```
+
+Repo-local `references/frontend/task-compose` content is absent or empty for
+launch purposes in the current repo. Do not claim refreshed repo-local
+task-compose YAML files exist unless a later launch owner deliberately writes,
+reviews, and routes them.
+
+Before launching implementation, a launch/registry owner must verify or refresh
+the Orin draft pack and name current live controller registry revisions for the
+frontend workflows, roles, and policies. Unknown registry currentness blocks
+implementation launch.
 
 ## Non-Goals
 
@@ -108,6 +147,7 @@ The console must not expose:
 - generic chat-style human request resolution
 - cross-task command-run dashboards
 - support-file-derived currentness
-- fake request counts, run counts, progress percentages, ETAs, or metrics
+- fake request counts, run counts, child counts, progress percentages, ETAs, or
+  dashboard metrics
 - draft-only task launch, unsaved definition execution, or browser-owned
   registry truth

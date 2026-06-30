@@ -1,10 +1,10 @@
 # Console Component System
 
-Status: Target
+Status: Locked target for implementation planning.
 
-This page locks the frontend component and design-system boundaries for the V2
-console. It translates the design handoff into implementation rules without
-copying static prototype HTML or page-local CSS.
+This page defines the frontend component and design-system boundaries for the
+V2 console. It translates the design handoff into implementation rules without
+copying static prototype HTML, page-local CSS selectors, or prototype scripts.
 
 ## Source Anchors
 
@@ -14,15 +14,19 @@ Use these design references for visual behavior:
 - `references/frontend_design/design/DESIGN.md`
 - `references/frontend_design/design/product-brief.md`
 - `references/frontend_design/design/work-package-map.md`
+- `references/frontend_design/design/reference-anchors.md`
 - `references/frontend_design/feature-charters/pages/*.md`
+- `references/frontend_design/feature-charters/packages/*.md`
 - `references/frontend_design/pages/*.html`
 - `references/frontend_design/pages/*.png`
 - `/home/ubuntu/leo/design/autoclaw-v2-ui/**` when checking upstream design
   parity
 
 The copied `references/frontend_design/**` paths currently match the external
-design workspace byte-for-byte. Prefer copied refs for implementation tasks and
-use the external workspace only for parity checks or design-owner inspection.
+design workspace except for workspace-only files such as `.git`, `.agents`,
+`AGENTS.md`, `README.md`, and `STYLE.md`. Prefer copied refs for implementation
+tasks and use the external workspace only for parity checks or design-owner
+inspection.
 
 ## Design Language
 
@@ -34,13 +38,11 @@ The console uses the warm light, task-first control-room direction:
 - quiet borders and selection states
 - progressive disclosure over always-open detail
 - one shared shell across runtime and authoring
+- minimal components for full feature coverage
 
-The existing `apps/console/src/styles/tokens.css` already contains the `--ac-*`
-token namespace and should remain the implementation token owner unless a later
-slice deliberately restructures the token system.
-
-Do not carry prototype-only `--oc-*` tokens, static page selectors, or inline
-prototype scripts into `apps/console`.
+The implementation token owner is `apps/console/src/styles/tokens.css` with the
+`--ac-*` namespace. Do not carry prototype-only `--oc-*` tokens, copied static
+page selectors, or inline prototype scripts into `apps/console`.
 
 ## Shared Shell
 
@@ -49,10 +51,10 @@ The shared shell owns:
 - left rail primary navigation
 - top breadcrumb/status row
 - page content inset
-- runtime versus authoring section labels
-- responsive mobile primary nav
+- runtime versus authoring grouping
+- responsive mobile primary navigation
 
-Required nav entries:
+Required primary nav entries:
 
 - `Tasks`
 - `Definitions`
@@ -74,8 +76,8 @@ task title is available.
 
 ## Primitive Ownership
 
-Shared primitives should exist only when they remove real repetition across
-features or enforce a contract:
+Shared primitives should exist only when they remove real repetition or enforce
+a contract:
 
 - buttons and icon buttons
 - chips for status, kind, and selected state
@@ -90,8 +92,8 @@ features or enforce a contract:
 - log viewer
 - timestamp and id/ref renderers
 
-Use `lucide-react` icons in icon buttons when a matching icon exists. Icon-only
-controls must have accessible labels and tooltips when the meaning is not
+Use `lucide-react` icons in icon buttons when a matching icon exists.
+Icon-only controls must have accessible labels and tooltips when meaning is not
 obvious from nearby text.
 
 ## Page Composition Patterns
@@ -102,7 +104,7 @@ Use for `Tasks` and `Definitions`.
 
 Contract:
 
-- visible controls above the list
+- controls above the list
 - rows front-load identity, status or kind, and updated time
 - secondary metadata stays compact
 - load-more follows cursor truth
@@ -114,10 +116,11 @@ Use for `Task Detail`.
 
 Contract:
 
-- graph stays read-only and dominant on wide screens
+- graph is read-only and dominant on wide screens
 - event lane stays chronological and compact
-- selected detail opens through focused modal/drawer or equivalent disclosure
+- selected detail opens through focused modal, drawer, or equivalent disclosure
 - sibling page previews stay compact
+- large logs, manifests, and prompt bodies stay behind refs or sibling pages
 
 ### Queue And Focused Work
 
@@ -144,12 +147,12 @@ Contract:
 
 ### Authoring Workbench
 
-Use for `Definition Editor` and parts of `Task Start`.
+Use for `Definitions`, `Definition Editor`, and `Task Start`.
 
 Contract:
 
-- stored truth, draft truth, preview truth, diff truth, and launch truth are
-  visually labeled and separated
+- stored truth, draft truth, preview truth, diff truth, apply truth, and launch
+  truth are visually labeled and separated
 - draft selector is a compact list, not nested decorative cards
 - editor mode switches own `Edit`, `Validation`, and `Preview`
 - task start is a flat form with preview/result disclosures
@@ -162,7 +165,7 @@ Contract:
 - On narrow widths, stack source/list/summary before focused detail and actions.
 - Avoid horizontal overflow except for intentionally scrollable log/code blocks.
 - Preserve primary action reachability without oversized sticky toolbars.
-- Text must not overlap or overflow its parent controls.
+- Text must not overlap or overflow parent controls.
 
 Page-specific order on narrow screens:
 
@@ -191,12 +194,13 @@ Implementation slices must cover:
 - no keyboard traps in log/code/editor regions
 
 Action failure and stale-currentness states must be announced near the action
-that failed and must preserve the operator's context.
+that failed and must preserve operator context.
 
 ## Visual Reference Caveat
 
-`task-detail.png` is not a trusted final visual parity target. Task Detail
-implementation should use:
+`task-detail.png` is not a trusted final visual parity target.
+
+Task Detail implementation should use:
 
 - `references/frontend_design/pages/task-detail.html`
 - `references/frontend_design/pages/task-detail-modal-open.png`
@@ -204,8 +208,8 @@ implementation should use:
 - a fresh promoted Task Detail capture before release readiness
 
 The referenced `task-detail-last-known-good.jpeg` is absent in both copied and
-external design page folders, so release review must require a fresh capture
-instead of treating that missing file as available evidence.
+external design page folders. Release review must require a fresh capture or an
+explicit replacement visual-review note.
 
 ## Component Extraction Rules
 
@@ -231,3 +235,4 @@ Do not extract:
 - no dynamic Tailwind class construction such as `bg-${status}`
 - no page-local copies of auth/config/error/pagination behavior
 - no static prototype JavaScript in React components
+- no invented count badges unless the controller exposes real count fields

@@ -1,0 +1,162 @@
+import type { StatusTone } from "../../components/ui";
+import type { components } from "../../api/generated/openapi";
+
+export type TaskDetailTab =
+    "artifacts" | "assignment" | "boundary" | "checkpoint" | "overview" | "trace";
+
+export interface TaskDetailTabOption {
+    readonly label: string;
+    readonly value: TaskDetailTab;
+}
+
+export interface TaskDetailView {
+    readonly actionMode: TaskActionMode;
+    readonly artifactRefs: readonly TaskDetailRef[];
+    readonly commandRuns: readonly CommandRunPreview[];
+    readonly eventRows: readonly TaskEventRow[];
+    readonly graphEdges: readonly TaskGraphEdge[];
+    readonly graphNodes: readonly TaskGraphNode[];
+    readonly humanRequests: readonly HumanRequestPreview[];
+    readonly snapshot: TaskSnapshotSummary;
+    readonly task: TaskHeaderView;
+    readonly trace: TaskTraceSummary;
+}
+
+export interface TaskHeaderView {
+    readonly activeAttemptId: string | null;
+    readonly activeFlowRevisionId: string;
+    readonly currentNodeKey: string | null;
+    readonly status: components["schemas"]["FlowStatus"];
+    readonly summary: string;
+    readonly taskId: string;
+    readonly title: string;
+    readonly updatedAt: string;
+    readonly workflowKey: string | null;
+    readonly workflowManifestRef: components["schemas"]["WorkflowManifestRef"];
+}
+
+export interface TaskSnapshotSummary {
+    readonly streamHeadEventId: string | null;
+    readonly topActionableItems: readonly components["schemas"]["TopActionableItem"][];
+}
+
+export interface TaskTraceSummary {
+    readonly boundaries: readonly components["schemas"]["BoundaryHistoryEntry"][];
+    readonly checkpoints: readonly components["schemas"]["CheckpointHistoryEntry"][];
+    readonly dispatches: readonly components["schemas"]["DispatchHistoryEntry"][];
+}
+
+export interface TaskGraphNode {
+    readonly attemptId: string | null;
+    readonly checkpointSummary: string | null;
+    readonly eventCount: number;
+    readonly isActive: boolean;
+    readonly isCurrent: boolean;
+    readonly nodeKey: string;
+    readonly order: number;
+    readonly status: "active" | "done" | "quiet" | "staged";
+    readonly summary: string;
+}
+
+export interface TaskGraphEdge {
+    readonly fromNodeKey: string;
+    readonly kind: "boundary" | "chronology" | "staged";
+    readonly toNodeKey: string;
+}
+
+export interface TaskEventRow {
+    readonly actorRef: string | null;
+    readonly attemptId: string | null;
+    readonly eventId: string;
+    readonly eventSeq: number;
+    readonly eventSource: components["schemas"]["TaskEventSource"];
+    readonly eventType: components["schemas"]["TaskEventType"];
+    readonly flowRevisionId: string | null;
+    readonly nodeKey: string | null;
+    readonly occurredAt: string;
+    readonly payloadSummary: string;
+    readonly record: components["schemas"]["TaskEventRecord"];
+    readonly tone: StatusTone;
+}
+
+export interface TaskDetailRef {
+    readonly description: string | null;
+    readonly kind: string;
+    readonly label: string;
+    readonly path: string | null;
+    readonly slot: string | null;
+}
+
+export interface HumanRequestPreview {
+    readonly kind: components["schemas"]["HumanRequestKind"];
+    readonly requestId: string;
+    readonly status: components["schemas"]["HumanRequestStatus"];
+    readonly summary: string;
+    readonly title: string;
+}
+
+export interface CommandRunPreview {
+    readonly description: string | null;
+    readonly hasLog: boolean;
+    readonly runId: string;
+    readonly state: components["schemas"]["CommandRunState"];
+    readonly summary: string | null;
+}
+
+export interface TaskSelectedContext {
+    readonly assignmentRows: readonly DetailRow[];
+    readonly artifactRefs: readonly TaskDetailRef[];
+    readonly boundaryRows: readonly DetailRow[];
+    readonly checkpointRows: readonly DetailRow[];
+    readonly event: TaskEventRow | null;
+    readonly node: TaskGraphNode | null;
+    readonly overviewRows: readonly DetailRow[];
+    readonly traceJson: string;
+}
+
+export interface DetailRow {
+    readonly label: string;
+    readonly value: string;
+}
+
+export interface TaskActionMode {
+    readonly canCancel: boolean;
+    readonly canContinue: boolean;
+    readonly canPause: boolean;
+    readonly note: string;
+}
+
+export const TASK_DETAIL_TABS: readonly TaskDetailTabOption[] = [
+    { label: "Overview", value: "overview" },
+    { label: "Checkpoint", value: "checkpoint" },
+    { label: "Assignment", value: "assignment" },
+    { label: "Boundary", value: "boundary" },
+    { label: "Artifacts", value: "artifacts" },
+    { label: "Trace", value: "trace" },
+];
+
+export const TASK_EVENT_TYPES: readonly components["schemas"]["TaskEventType"][] = [
+    "task_started",
+    "dispatch_opened",
+    "provider_resolution_recorded",
+    "checkpoint_recorded",
+    "boundary_accepted",
+    "child_assignment_staged",
+    "child_assignment_committed",
+    "structural_revision_adopted",
+    "provider_event_normalized",
+    "human_request_opened",
+    "human_request_resolved",
+    "human_request_timed_out",
+    "human_request_cancelled",
+    "command_run_started",
+    "command_run_progressed",
+    "command_run_cancel_requested",
+    "command_run_succeeded",
+    "command_run_failed",
+    "command_run_timed_out",
+    "command_run_cancelled",
+    "task_paused",
+    "task_resumed",
+    "task_cancelled",
+];

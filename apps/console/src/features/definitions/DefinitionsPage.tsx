@@ -1,17 +1,743 @@
-import { RouteScaffold } from "../../components/layout";
+import { ExternalLink, GitBranch, RefreshCw, Search } from "lucide-react";
+import { Link } from "react-router-dom";
+
+import { PageFrame } from "../../components/layout";
+import {
+    Button,
+    Disclosure,
+    FormField,
+    IdRefText,
+    PropertyGrid,
+    SegmentedControl,
+    StatePanel,
+    StatusChip,
+    Surface,
+    TimestampText,
+} from "../../components/ui";
+import { classNames } from "../../lib/classNames";
+import {
+    isAuthError,
+    useDefinitionsController,
+    type DefinitionsController,
+} from "./definition-controller";
+import {
+    DEFINITION_KIND_OPTIONS,
+    DEFINITION_SORT_OPTIONS,
+    NODE_KIND_FILTERS,
+    formatBudgetSpec,
+    formatNodeKind,
+    formatOptionalInstruction,
+    kindLabel,
+    listLabelForKind,
+    type DefinitionDetailView,
+    type DefinitionListSort,
+    type DefinitionRow,
+    type DefinitionVersionRow,
+    type NodeKind,
+    type WorkflowNodeSummary,
+} from "./definition-model";
 
 export function DefinitionsPage() {
+    const controller = useDefinitionsController();
+
     return (
-        <RouteScaffold
-            backingSurfaces={[
-                "GET /definitions/roles",
-                "GET /definitions/policies",
-                "GET /definitions/workflows",
-                "GET /definitions/{kind}/{key}",
-                "GET /definitions/{kind}/{key}/versions",
-            ]}
+        <PageFrame
+            actions={
+                <div className="flex flex-wrap items-center gap-2">
+                    <DefinitionsNavLink to="/definitions/editor">
+                        Definition Editor
+                    </DefinitionsNavLink>
+                    <Button
+                        disabled={
+                            controller.listState.isLoading || controller.listState.isRefreshing
+                        }
+                        icon={
+                            <RefreshCw
+                                className={controller.listState.isRefreshing ? "animate-spin" : ""}
+                            />
+                        }
+                        onClick={controller.refresh}
+                    >
+                        Refresh
+                    </Button>
+                </div>
+            }
+            description="Browse current stored roles, policies, and workflows from controller registry reads."
             eyebrow="Authoring"
             title="Definitions"
+        >
+            <div className="space-y-4">
+                <Surface
+                    actions={
+                        <StatusChip
+                            tone={controller.listState.error === null ? "active" : "danger"}
+                            withDot
+                        >
+                            {controller.statusSummary}
+                        </StatusChip>
+                    }
+                    label="Stored registry"
+                    title="Browse definitions"
+                >
+                    <div className="space-y-4">
+                        <DefinitionsKindSwitch controller={controller} />
+                        <DefinitionsControls controller={controller} />
+                    </div>
+                </Surface>
+
+                <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(20rem,0.92fr)_minmax(0,1.35fr)]">
+                    <Surface
+                        className="min-w-0"
+                        label={kindLabel(controller.singularKind)}
+                        title="Stored list"
+                    >
+                        <DefinitionList controller={controller} />
+                    </Surface>
+                    <Surface className="min-w-0" label="Current detail" title="Selected definition">
+                        <DefinitionDetailPanel controller={controller} />
+                    </Surface>
+                </div>
+            </div>
+        </PageFrame>
+    );
+}
+
+function DefinitionsKindSwitch({ controller }: { readonly controller: DefinitionsController }) {
+    return (
+        <SegmentedControl
+            label="Definition kind"
+            onChange={(value) => {
+                controller.setKind(value);
+            }}
+            options={DEFINITION_KIND_OPTIONS.map((option) => ({
+                label: option.label,
+                value: option.listKind,
+            }))}
+            value={controller.kind}
         />
+    );
+}
+
+function DefinitionsControls({ controller }: { readonly controller: DefinitionsController }) {
+    return (
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_13rem_13rem]">
+            <div>
+                <label
+                    className="block font-mono text-label font-medium uppercase text-muted"
+                    htmlFor="definitions-query"
+                >
+                    Search
+                </label>
+                <div className="relative mt-2">
+                    <Search
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
+                    />
+                    <input
+                        className={controlClassName("pl-10")}
+                        id="definitions-query"
+                        onChange={(event) => {
+                            controller.setQuery(event.target.value);
+                        }}
+                        placeholder={`Search ${listLabelForKind(controller.kind)}`}
+                        type="search"
+                        value={controller.query}
+                    />
+                </div>
+            </div>
+            <KindFilterSelect controller={controller} />
+            <DefinitionSelect
+                id="definitions-sort"
+                label="Sort"
+                onChange={(value) => {
+                    controller.setSort(value as DefinitionListSort);
+                }}
+                options={DEFINITION_SORT_OPTIONS}
+                value={controller.sort}
+            />
+        </div>
+    );
+}
+
+function KindFilterSelect({ controller }: { readonly controller: DefinitionsController }) {
+    if (controller.kind === "roles") {
+        return (
+            <DefinitionSelect
+                id="definitions-role-filter"
+                label="Allowed node kind"
+                onChange={(value) => {
+                    controller.setRoleNodeKindFilter(value as NodeKind | "any");
+                }}
+                options={[
+                    { label: "Any node kind", value: "any" },
+                    ...NODE_KIND_FILTERS.map((option) => ({
+                        label: option.label,
+                        value: option.value,
+                    })),
+                ]}
+                value={controller.roleNodeKindFilter}
+            />
+        );
+    }
+
+    if (controller.kind === "policies") {
+        return (
+            <DefinitionSelect
+                id="definitions-policy-filter"
+                label="Applies to"
+                onChange={(value) => {
+                    controller.setAppliesToFilter(value as NodeKind | "any");
+                }}
+                options={[
+                    { label: "Any node kind", value: "any" },
+                    ...NODE_KIND_FILTERS.map((option) => ({
+                        label: option.label,
+                        value: option.value,
+                    })),
+                ]}
+                value={controller.appliesToFilter}
+            />
+        );
+    }
+
+    return (
+        <div className="rounded-card border border-outline-soft bg-surface-muted px-4 py-3">
+            <p className="font-mono text-label font-medium uppercase text-muted">Kind filter</p>
+            <p className="mt-1 text-compact text-muted">
+                Workflow routes expose no node-kind filter.
+            </p>
+        </div>
+    );
+}
+
+function DefinitionSelect({
+    id,
+    label,
+    onChange,
+    options,
+    value,
+}: {
+    readonly id: string;
+    readonly label: string;
+    readonly onChange: (value: string) => void;
+    readonly options: readonly { readonly label: string; readonly value: string }[];
+    readonly value: string;
+}) {
+    return (
+        <FormField id={id} label={label}>
+            <select
+                className={controlClassName()}
+                onChange={(event) => {
+                    onChange(event.target.value);
+                }}
+                value={value}
+            >
+                {options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                        {option.label}
+                    </option>
+                ))}
+            </select>
+        </FormField>
+    );
+}
+
+function DefinitionList({ controller }: { readonly controller: DefinitionsController }) {
+    const { listState } = controller;
+
+    if (listState.isLoading) {
+        return (
+            <StatePanel
+                summary="Reading stored registry rows from the selected definition route."
+                title="Loading Definitions"
+                tone="loading"
+            />
+        );
+    }
+
+    if (listState.error !== null) {
+        return (
+            <StatePanel
+                action={<Button onClick={controller.refresh}>Retry</Button>}
+                summary={listState.error.summary}
+                title={
+                    isAuthError(listState.error)
+                        ? "Access to Definitions failed"
+                        : "Definitions could not load"
+                }
+                tone={isAuthError(listState.error) ? "auth" : "error"}
+            />
+        );
+    }
+
+    if (listState.rows.length === 0) {
+        if (controller.hasActiveNarrowing) {
+            return (
+                <StatePanel
+                    action={<Button onClick={controller.clearFilters}>Clear filters</Button>}
+                    summary={`No ${listLabelForKind(controller.kind)} match the current search or ${controller.activeFilterSummary.toLowerCase()}.`}
+                    title={`No matching ${listLabelForKind(controller.kind)}`}
+                    tone="empty"
+                />
+            );
+        }
+
+        return (
+            <StatePanel
+                summary={`The controller did not return stored ${listLabelForKind(controller.kind)}.`}
+                title={`No stored ${listLabelForKind(controller.kind)}`}
+                tone="empty"
+            />
+        );
+    }
+
+    return (
+        <div>
+            <div className="hidden border-y border-outline-soft bg-surface-muted px-3 py-2 font-mono text-label font-medium uppercase text-muted lg:grid lg:grid-cols-[minmax(0,1fr)_8rem] lg:items-center lg:gap-4">
+                <span>{kindLabel(controller.singularKind)}s</span>
+                <span>Updated</span>
+            </div>
+            <ol aria-label="Definition rows" className="space-y-2 pt-3">
+                {listState.rows.map((row) => (
+                    <li key={row.key}>
+                        <DefinitionRowButton
+                            isSelected={controller.selectedKey === row.key}
+                            onSelect={() => {
+                                controller.selectDefinition(row.key);
+                            }}
+                            row={row}
+                        />
+                    </li>
+                ))}
+            </ol>
+            <DefinitionListFooter controller={controller} />
+        </div>
+    );
+}
+
+function DefinitionRowButton({
+    isSelected,
+    onSelect,
+    row,
+}: {
+    readonly isSelected: boolean;
+    readonly onSelect: () => void;
+    readonly row: DefinitionRow;
+}) {
+    return (
+        <button
+            aria-pressed={isSelected}
+            className={classNames(
+                "grid w-full min-w-0 gap-3 rounded-card border bg-surface-low p-4 text-left shadow-hairline transition-colors hover:border-primary/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:grid-cols-[minmax(0,1fr)_8rem] lg:items-start lg:gap-4",
+                isSelected ? "border-primary/60 bg-primary-soft/45" : "border-outline-soft",
+            )}
+            onClick={onSelect}
+            type="button"
+        >
+            <span className="min-w-0">
+                <span className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="min-w-0 truncate font-display text-compact font-semibold text-foreground">
+                        {row.title ?? row.key}
+                    </span>
+                    <StatusChip tone={row.tone} withDot>
+                        {row.kindLabel}
+                    </StatusChip>
+                </span>
+                <span className="mt-1 block break-words text-compact text-muted">
+                    {row.description ?? "No description reported."}
+                </span>
+                <span className="mt-2 flex min-w-0 flex-wrap gap-2">
+                    {row.compatibilityLabels.map((label) => (
+                        <StatusChip key={label}>{label}</StatusChip>
+                    ))}
+                </span>
+                <span className="mt-2 block">
+                    <IdRefText className="block max-w-full truncate" value={row.key} />
+                </span>
+            </span>
+            <span className="min-w-0 lg:text-right">
+                <span className="block font-mono text-label font-medium uppercase text-muted lg:sr-only">
+                    Updated
+                </span>
+                <TimestampText className="text-foreground" value={row.updatedAt} />
+            </span>
+        </button>
+    );
+}
+
+function DefinitionListFooter({ controller }: { readonly controller: DefinitionsController }) {
+    const { listState } = controller;
+    if (listState.rows.length === 0) {
+        return null;
+    }
+
+    return (
+        <footer className="mt-4 flex flex-col gap-3 border-t border-outline-soft pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-compact text-muted">
+                {listState.nextCursor === null
+                    ? `End of current ${listLabelForKind(controller.kind)}.`
+                    : `More ${listLabelForKind(controller.kind)} are available.`}
+            </p>
+            <Button
+                disabled={
+                    listState.nextCursor === null ||
+                    listState.isLoading ||
+                    listState.isLoadingMore ||
+                    listState.isRefreshing
+                }
+                onClick={controller.loadMore}
+            >
+                {listState.isLoadingMore ? "Loading" : "Load more"}
+            </Button>
+        </footer>
+    );
+}
+
+function DefinitionDetailPanel({ controller }: { readonly controller: DefinitionsController }) {
+    if (controller.selectedKey === null) {
+        return (
+            <StatePanel
+                summary="Choose a stored role, policy, or workflow to read current detail."
+                title="Select a definition"
+                tone="empty"
+            />
+        );
+    }
+
+    if (!controller.isSelectedKeyInRows && !controller.listState.isLoading) {
+        return (
+            <StatePanel
+                action={<Button onClick={controller.clearFilters}>Clear filters</Button>}
+                summary="The selected key is no longer present in the current kind, query, or filter result. Reread or clear filters before trusting current detail."
+                title="Selected definition is stale"
+                tone="stale"
+            />
+        );
+    }
+
+    if (controller.detailState.isLoading) {
+        return (
+            <StatePanel
+                summary="Reading the selected current stored definition revision."
+                title="Loading definition detail"
+                tone="loading"
+            />
+        );
+    }
+
+    if (controller.detailState.error !== null) {
+        return (
+            <StatePanel
+                action={<Button onClick={controller.refresh}>Retry</Button>}
+                summary={controller.detailState.error.summary}
+                title={
+                    isAuthError(controller.detailState.error)
+                        ? "Access to definition detail failed"
+                        : "Definition detail could not load"
+                }
+                tone={isAuthError(controller.detailState.error) ? "auth" : "error"}
+            />
+        );
+    }
+
+    if (controller.detailState.detail === null) {
+        return (
+            <StatePanel
+                summary="The current selected definition has no detail payload yet."
+                title="No detail selected"
+                tone="empty"
+            />
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            <DefinitionDetailSummary detail={controller.detailState.detail} />
+            <DefinitionKindDetail detail={controller.detailState.detail} />
+            <DefinitionPivots detail={controller.detailState.detail} />
+            <DefinitionVersions controller={controller} />
+        </div>
+    );
+}
+
+function DefinitionDetailSummary({ detail }: { readonly detail: DefinitionDetailView }) {
+    return (
+        <div className="rounded-card border border-outline-soft bg-surface-low p-4 shadow-hairline">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <StatusChip
+                    tone={
+                        detail.kind === "workflow"
+                            ? "success"
+                            : detail.kind === "policy"
+                              ? "warning"
+                              : "active"
+                    }
+                    withDot
+                >
+                    {kindLabel(detail.kind)}
+                </StatusChip>
+                <StatusChip>Revision {detail.revisionNo}</StatusChip>
+            </div>
+            <h2 className="mt-3 break-words font-display text-compact font-semibold text-foreground">
+                {detail.key}
+            </h2>
+            <p className="mt-2 break-words text-compact text-muted">{detail.description}</p>
+            <PropertyGrid
+                className="mt-4"
+                items={[
+                    { label: "Updated", value: <TimestampText value={detail.updatedAt} /> },
+                    { label: "Recorded by", value: detail.recordedBy ?? "Not reported" },
+                    { label: "Kind", value: kindLabel(detail.kind) },
+                ]}
+            />
+        </div>
+    );
+}
+
+function DefinitionKindDetail({ detail }: { readonly detail: DefinitionDetailView }) {
+    if (detail.kind === "workflow") {
+        return <WorkflowDetail detail={detail} />;
+    }
+
+    if (detail.kind === "policy") {
+        return (
+            <div className="space-y-4">
+                <ChipSection
+                    emptyLabel="No applies-to values reported."
+                    label="Applies to"
+                    values={detail.appliesTo.map(formatNodeKind)}
+                />
+                <PropertyGrid
+                    items={[{ label: "Budget spec", value: formatBudgetSpec(detail.budgetSpec) }]}
+                />
+                <InstructionSection instruction={detail.instruction} />
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            <ChipSection
+                emptyLabel="No allowed node kinds reported."
+                label="Allowed node kinds"
+                values={detail.allowedNodeKinds.map(formatNodeKind)}
+            />
+            <InstructionSection instruction={detail.instruction} />
+        </div>
+    );
+}
+
+function WorkflowDetail({
+    detail,
+}: {
+    readonly detail: Extract<DefinitionDetailView, { kind: "workflow" }>;
+}) {
+    return (
+        <div className="space-y-4">
+            <PropertyGrid
+                items={[
+                    { label: "Stored root role", value: detail.root.role },
+                    { label: "Stored root policy", value: detail.root.policy ?? "Not reported" },
+                    { label: "Stored nodes", value: detail.nodeCount },
+                ]}
+            />
+            <div className="rounded-card border border-outline-soft bg-surface-low p-4">
+                <p className="font-mono text-label font-medium uppercase text-muted">Root tree</p>
+                <ol className="mt-3 space-y-3" aria-label="Workflow root tree summary">
+                    {detail.visibleNodes.map((node) => (
+                        <WorkflowNodeRow key={`${String(node.depth)}:${node.id}`} node={node} />
+                    ))}
+                </ol>
+                {detail.visibleNodes.length < detail.nodeCount ? (
+                    <p className="mt-3 text-compact text-muted">
+                        Showing the first {detail.visibleNodes.length} stored nodes from the current
+                        root tree.
+                    </p>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
+function WorkflowNodeRow({ node }: { readonly node: WorkflowNodeSummary }) {
+    return (
+        <li
+            className="rounded-card border border-outline-soft bg-surface px-3 py-3"
+            style={{ marginLeft: `${String(Math.min(node.depth, 3))}rem` }}
+        >
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <IdRefText className="max-w-64 truncate text-foreground" value={node.id} />
+                <StatusChip>{node.role}</StatusChip>
+                {node.policy === null ? null : <StatusChip>{node.policy}</StatusChip>}
+            </div>
+            <p className="mt-2 break-words text-compact text-muted">{node.description}</p>
+            <p className="mt-2 font-mono text-label font-medium uppercase text-muted">
+                {node.childCount === 1 ? "1 child" : `${String(node.childCount)} children`}
+            </p>
+        </li>
+    );
+}
+
+function ChipSection({
+    emptyLabel,
+    label,
+    values,
+}: {
+    readonly emptyLabel: string;
+    readonly label: string;
+    readonly values: readonly string[];
+}) {
+    return (
+        <div className="rounded-card border border-outline-soft bg-surface-low p-4">
+            <p className="font-mono text-label font-medium uppercase text-muted">{label}</p>
+            {values.length === 0 ? (
+                <p className="mt-2 text-compact text-muted">{emptyLabel}</p>
+            ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {values.map((value) => (
+                        <StatusChip key={value}>{value}</StatusChip>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function InstructionSection({ instruction }: { readonly instruction: string | null }) {
+    return (
+        <div className="rounded-card border border-outline-soft bg-surface-low p-4">
+            <p className="font-mono text-label font-medium uppercase text-muted">Instruction</p>
+            <p className="mt-3 whitespace-pre-wrap break-words text-compact text-foreground">
+                {formatOptionalInstruction(instruction)}
+            </p>
+        </div>
+    );
+}
+
+function DefinitionPivots({ detail }: { readonly detail: DefinitionDetailView }) {
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <DefinitionsNavLink to="/definitions/editor">Definition Editor</DefinitionsNavLink>
+            {detail.kind === "workflow" ? (
+                <DefinitionsNavLink to="/task-start">Task Start</DefinitionsNavLink>
+            ) : (
+                <span
+                    aria-disabled="true"
+                    className="inline-flex h-control items-center justify-center gap-2 rounded-control border border-outline-soft bg-surface-muted px-3 text-utility font-semibold text-muted"
+                >
+                    Task Start needs a workflow
+                </span>
+            )}
+        </div>
+    );
+}
+
+function DefinitionVersions({ controller }: { readonly controller: DefinitionsController }) {
+    return (
+        <Disclosure label="Revision history" title="Versions">
+            <DefinitionVersionsContent controller={controller} />
+        </Disclosure>
+    );
+}
+
+function DefinitionVersionsContent({ controller }: { readonly controller: DefinitionsController }) {
+    const { versionsState } = controller;
+
+    if (versionsState.isLoading) {
+        return (
+            <StatePanel
+                summary="Reading stored revision history for this definition."
+                title="Loading versions"
+                tone="loading"
+            />
+        );
+    }
+
+    if (versionsState.error !== null) {
+        return (
+            <StatePanel
+                action={<Button onClick={controller.refresh}>Retry</Button>}
+                summary={versionsState.error.summary}
+                title={
+                    isAuthError(versionsState.error)
+                        ? "Access to version history failed"
+                        : "Version history could not load"
+                }
+                tone={isAuthError(versionsState.error) ? "auth" : "error"}
+            />
+        );
+    }
+
+    if (versionsState.rows.length === 0) {
+        return (
+            <StatePanel
+                summary="The controller returned no revision history entries for this definition."
+                title="No versions"
+                tone="empty"
+            />
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            {versionsState.rows.length === 1 ? (
+                <p className="text-compact text-muted">Single current revision recorded.</p>
+            ) : null}
+            <ol aria-label="Definition versions" className="space-y-2">
+                {versionsState.rows.map((row) => (
+                    <DefinitionVersionItem key={row.revisionNo} row={row} />
+                ))}
+            </ol>
+            <div className="flex flex-col gap-3 border-t border-outline-soft pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-compact text-muted">
+                    {versionsState.nextCursor === null
+                        ? "End of current revision history."
+                        : "More revisions are available."}
+                </p>
+                <Button
+                    disabled={versionsState.nextCursor === null || versionsState.isLoadingMore}
+                    onClick={controller.loadMoreVersions}
+                >
+                    {versionsState.isLoadingMore ? "Loading" : "Load more versions"}
+                </Button>
+            </div>
+        </div>
+    );
+}
+
+function DefinitionVersionItem({ row }: { readonly row: DefinitionVersionRow }) {
+    return (
+        <li className="rounded-card border border-outline-soft bg-surface px-3 py-3">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+                <StatusChip>Revision {row.revisionNo}</StatusChip>
+                <TimestampText value={row.updatedAt} />
+            </div>
+            <p className="mt-2 text-compact text-muted">
+                Recorded by: {row.recordedBy ?? "Not reported"}
+            </p>
+        </li>
+    );
+}
+
+function DefinitionsNavLink({ children, to }: { readonly children: string; readonly to: string }) {
+    return (
+        <Link
+            className="inline-flex h-control items-center justify-center gap-2 rounded-control border border-outline bg-surface-low px-3 text-utility font-semibold text-foreground transition-colors hover:border-primary/45 hover:text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            to={to}
+        >
+            <span className="min-w-0 truncate">{children}</span>
+            {children === "Task Start" ? (
+                <GitBranch aria-hidden="true" className="size-4 shrink-0" />
+            ) : (
+                <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
+            )}
+        </Link>
+    );
+}
+
+function controlClassName(extraClassName?: string): string {
+    return classNames(
+        "h-control w-full rounded-control border border-outline bg-surface px-3 text-compact text-foreground shadow-hairline transition-colors placeholder:text-muted focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/15",
+        extraClassName,
     );
 }

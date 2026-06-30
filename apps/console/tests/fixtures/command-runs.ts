@@ -1,0 +1,182 @@
+import type { components } from "../../src/api/generated/openapi";
+import { TEST_UPDATED_AT, createCommandRunListItem, createCommandRunRecord } from "./console-api";
+
+export const COMMAND_RUN_TASK_ID = "task-runtime-copy-refresh";
+export const COMMAND_RUN_LOG_CONTENT =
+    "$ pytest apps/api/tests/unit/runtime_prompt_rendering -q\nF.F\nAssertionError: continuation context missing terminal command-run summary";
+
+type CommandRunState = components["schemas"]["CommandRunState"];
+
+const stateRuns: readonly {
+    readonly command: string;
+    readonly description: string;
+    readonly runId: string;
+    readonly state: CommandRunState;
+    readonly summary: string;
+}[] = [
+    {
+        command: "make test-api-unit",
+        description: "Run focused runtime route tests.",
+        runId: "run-queued",
+        state: "pending_start",
+        summary: "Waiting for the controller runner to start.",
+    },
+    {
+        command: "make console-test-integration",
+        description: "Verify command-run runner behavior.",
+        runId: "run-running",
+        state: "running",
+        summary: "Command produced output.",
+    },
+    {
+        command: "make console-build",
+        description: "Cancel the superseded route-test run.",
+        runId: "run-cancel-requested",
+        state: "cancellation_requested",
+        summary: "Cancel request accepted.",
+    },
+    {
+        command: "make console-lint",
+        description: "Check runtime lint gates.",
+        runId: "run-succeeded",
+        state: "succeeded",
+        summary: "Runtime command-run files passed lint.",
+    },
+    {
+        command: "pytest apps/api/tests/unit/runtime_prompt_rendering -q",
+        description: "Check prompt continuation rendering.",
+        runId: "run-failed",
+        state: "failed",
+        summary: "Two continuation-context assertions failed.",
+    },
+    {
+        command: "make console-e2e",
+        description: "Capture browser evidence.",
+        runId: "run-timed-out",
+        state: "timed_out",
+        summary: "Browser evidence timed out before completion.",
+    },
+    {
+        command: "make obsolete-check",
+        description: "Retire old proof lane.",
+        runId: "run-cancelled",
+        state: "cancelled",
+        summary: "The controller cancelled this run.",
+    },
+];
+
+export function createCommandRunPageList(
+    overrides: Partial<components["schemas"]["CommandRunListResponse"]> = {},
+): components["schemas"]["CommandRunListResponse"] {
+    return {
+        items: stateRuns.map((run) =>
+            createCommandRunListItem({
+                command: run.command,
+                description: run.description,
+                ended_at:
+                    run.state === "pending_start" ||
+                    run.state === "running" ||
+                    run.state === "cancellation_requested"
+                        ? null
+                        : "2026-06-29T14:26:00Z",
+                exit_code: run.state === "failed" ? 1 : run.state === "succeeded" ? 0 : null,
+                log_ref:
+                    run.state === "pending_start" || run.runId === "run-cancelled"
+                        ? null
+                        : `outputs/command-runs/${run.runId}.log`,
+                run_id: run.runId,
+                state: run.state,
+                summary: run.summary,
+            }),
+        ),
+        next_cursor: "cursor-command-runs-page-2",
+        task_id: COMMAND_RUN_TASK_ID,
+        ...overrides,
+    };
+}
+
+export function createCommandRunDetail(
+    runId: string,
+    overrides: Partial<components["schemas"]["CommandRunRecord"]> = {},
+): components["schemas"]["CommandRunRecord"] {
+    const base =
+        stateRuns.find((run) => run.runId === runId) ??
+        stateRuns.find((run) => run.runId === "run-failed") ??
+        stateRuns[0];
+    const isTerminal =
+        base.state === "succeeded" ||
+        base.state === "failed" ||
+        base.state === "timed_out" ||
+        base.state === "cancelled";
+    const logRef =
+        base.state === "pending_start" || base.runId === "run-cancelled"
+            ? null
+            : `outputs/command-runs/${base.runId}.log`;
+
+    return createCommandRunRecord({
+        attempt_id: base.runId === "run-queued" ? null : `attempt-${base.runId}`,
+        cancellation_requested_at:
+            base.state === "cancellation_requested" ? "2026-06-29T14:18:00Z" : null,
+        cancellation_requested_by_actor_ref:
+            base.state === "cancellation_requested" ? "operator:console" : null,
+        command: base.command,
+        description: base.description,
+        dispatch_id: `dispatch-${base.runId}`,
+        ended_at: isTerminal ? "2026-06-29T14:26:00Z" : null,
+        latest_log_ref: logRef,
+        latest_update: base.summary,
+        run_id: base.runId,
+        started_at: base.state === "pending_start" ? null : TEST_UPDATED_AT,
+        state: base.state,
+        task_id: COMMAND_RUN_TASK_ID,
+        terminal_actor_ref: isTerminal ? "controller:command-run-runner" : null,
+        terminal_event_source: isTerminal ? "controller" : null,
+        terminal_result: isTerminal
+            ? {
+                  exit_code: base.state === "failed" ? 1 : base.state === "succeeded" ? 0 : null,
+                  log_ref: logRef,
+                  signal: base.state === "timed_out" ? "SIGTERM" : null,
+                  summary: base.summary,
+              }
+            : null,
+        workdir: "/home/ubuntu/leo/projects/autoclaw",
+        ...overrides,
+    });
+}
+
+export function createCommandRunDetailMap(): Readonly<
+    Record<string, components["schemas"]["CommandRunRecord"]>
+> {
+    return Object.fromEntries(
+        stateRuns.map((run) => [run.runId, createCommandRunDetail(run.runId)]),
+    );
+}
+
+export function createCommandRunLogRead(
+    runId = "run-failed",
+    content = COMMAND_RUN_LOG_CONTENT,
+): components["schemas"]["CommandRunLogReadResponse"] {
+    return {
+        content,
+        log_ref: `outputs/command-runs/${runId}.log`,
+        run_id: runId,
+        task_id: COMMAND_RUN_TASK_ID,
+    };
+}
+
+export function createCommandRunSecondPage(): components["schemas"]["CommandRunListResponse"] {
+    return {
+        items: [
+            createCommandRunListItem({
+                command: "make console-openapi-check",
+                description: "Check generated OpenAPI drift.",
+                log_ref: "outputs/command-runs/run-openapi.log",
+                run_id: "run-openapi",
+                state: "succeeded",
+                summary: "OpenAPI generated types are current.",
+            }),
+        ],
+        next_cursor: null,
+        task_id: COMMAND_RUN_TASK_ID,
+    };
+}

@@ -1,19 +1,21 @@
 # Console API And View-Model Contract
 
-Status: Target
+Status: Locked target for implementation planning.
 
-This page locks how the console talks to AutoClaw APIs and how controller
+This page defines how the console talks to AutoClaw APIs and how controller
 payloads become renderable frontend view models.
 
 ## API Truth
 
 Implementation must use generated OpenAPI types from
-`apps/console/src/api/generated/openapi.ts` for controller-backed payloads and
-operation parameters. Do not hand-maintain duplicate TypeScript API contracts.
+`apps/console/src/api/generated/openapi.ts` for controller-backed payloads,
+operation parameters, and enums. Do not hand-maintain duplicate TypeScript API
+contracts.
 
-The current route families for the console are:
+Current console route families:
 
 - `GET /runtime/tasks`
+- `GET /runtime/tasks/{task_id}` when a list-adjacent current read is needed
 - `GET /control/tasks/{task_id}`
 - `GET /control/tasks/{task_id}/snapshot`
 - `GET /control/tasks/{task_id}/trace`
@@ -33,55 +35,81 @@ The current route families for the console are:
 - `GET /definitions/workflows`
 - `GET /definitions/{kind}/{key}`
 - `GET /definitions/{kind}/{key}/versions`
-- `POST /definitions`
+- `POST /definitions` only for direct upload flows that explicitly choose that
+  lane
 - `/authoring/definition-draft-sets/*`
 - `POST /tasks/start`
 
-The console must not call or expose callback, node MCP, or observability routes
-as ordinary user-facing product surfaces. Observability refs may appear only as
-controller-backed refs when surfaced by read models.
+The console must not call or expose callback, node MCP, operator MCP,
+observability, or support-file routes as ordinary user-facing product
+destinations. Observability refs may appear only when surfaced by
+controller-backed read models.
+
+## Generated Type Anchors
+
+Current generated OpenAPI includes these contract anchors:
+
+- `CommandRunState`: `pending_start`, `running`,
+  `cancellation_requested`, `succeeded`, `failed`, `timed_out`, `cancelled`
+- `HumanRequestKind`: `direction`, `approval`, `input`, `review`
+- `DefinitionDraftFileStatus`: `clean`, `modified`, `added`, `stale`,
+  `invalid`
+- `TaskEventType`: task, dispatch, provider, checkpoint, boundary, child
+  assignment, structural revision, human-request, command-run, pause, resume,
+  and cancel event families
+- `OperationFailureCode`: includes `cursor_reset_required`, stale/currentness,
+  missing resource, capability, removed surface, budget, and internal error
+  families
+- task control writes require `expected_active_flow_revision_id`
+- `TaskStartRequest` and `TaskStartResponse` own start request/readback shape
 
 ## Shared API Client
 
-The foundation slice must replace the placeholder client with one shared client
-layer that owns:
+The API/config foundation slice must replace the placeholder client with one
+shared client layer that owns:
 
 - base URL resolution
 - `X-AutoClaw-API-Key`
-- optional `X-AutoClaw-Actor-Ref` only where the shipped operation supports it
-- JSON request/response handling
+- optional `X-AutoClaw-Actor-Ref` only when a product contract names the
+  current actor source
+- JSON request and response handling
 - query construction with typed parameter helpers
 - generated OpenAPI response typing
 - abort signals
 - structured error normalization
-- retry or reconnect policy only where the contract names it
+- pagination helpers
+- retry or reconnect policy only where this contract names it
 
 Feature pages may define route-specific hooks, but they must not duplicate base
 URL, auth header, JSON, error, pagination, currentness, or SSE parsing logic.
 
 ## Authentication
 
-Current console HTTP routes are protected by `X-AutoClaw-API-Key` except health.
-The browser console uses the configured API key in the shared API client.
+Current console HTTP route families, except health routes, are protected by
+`X-AutoClaw-API-Key`.
 
-Do not put API keys in route query params, localStorage, screenshots, evidence
-logs, fixture names, or rendered UI copy. Test fixtures must use placeholder
-values only.
+Rules:
+
+- Send the configured API key only through `X-AutoClaw-API-Key`.
+- Do not place the key in query params, route state, localStorage, screenshots,
+  evidence logs, fixture names, or rendered UI copy.
+- Fixture values for auth assertions must be obvious placeholders.
+- Missing API keys should surface backend access/auth errors, not empty data.
 
 ## SSE Transport Decision
 
 Decision: initial Task Detail implementation must use a fetch-based SSE
 transport in the shared API layer, not native `EventSource`.
 
-Reason: the current stream route is protected by `X-AutoClaw-API-Key`, and
-native browser `EventSource` cannot send arbitrary request headers. The current
-`src/api/sse.ts` helper only builds a URL and is not sufficient for a protected
-browser stream.
+Reason: `GET /control/tasks/{task_id}/events/stream` is protected by
+`X-AutoClaw-API-Key`, and native browser `EventSource` cannot send arbitrary
+request headers. The current `src/api/sse.ts` helper only builds a URL and is
+not sufficient for a protected browser stream.
 
 Required behavior:
 
-- Open `GET /control/tasks/{task_id}/events/stream` through `fetch` with
-  `Accept: text/event-stream` and `X-AutoClaw-API-Key`.
+- Open the stream through `fetch` with `Accept: text/event-stream` and
+  `X-AutoClaw-API-Key`.
 - Send `cursor=<event_id>` when resuming from a processed event id.
 - Parse SSE frames incrementally from the response body.
 - Treat `id:` as the controller `event_id`.
@@ -89,46 +117,48 @@ Required behavior:
 - Preserve controller `event_seq` ordering when backfill and live events merge.
 - Reconnect only from the last processed durable cursor.
 - On `410 Gone` with `cursor_reset_required`, run the reset path: task read,
-  snapshot, trace, then reconnect without the stale cursor.
+  snapshot, trace, event backfill as needed, then reconnect without the stale
+  cursor.
 - Abort the stream on route change, task id change, explicit refresh reset, or
   page unmount.
-- Integration tests must prove that the API key header is sent and that stream
-  chunks parse correctly.
+- Integration tests must prove API key header forwarding, frame parsing,
+  dedupe, abort, reconnect, and cursor reset behavior.
 
 Native `EventSource` remains blocked unless a later backend/API contract adds a
 safe browser stream auth shape such as same-origin session auth. Query-string
-API key auth is not allowed by this contract.
+API key auth is not allowed.
 
 ## Task Detail Startup
 
-The Task Detail page must rebuild from REST before claiming live chronology:
+Task Detail must rebuild from REST before claiming live chronology:
 
 1. `GET /control/tasks/{task_id}`
 2. `GET /control/tasks/{task_id}/snapshot`
 3. `GET /control/tasks/{task_id}/trace`
 4. If `stream_head_event_id` exists, read
    `GET /control/tasks/{task_id}/events?through_event_id=<stream_head_event_id>`
-   for backfill.
+   for history through that anchor.
 5. Connect to SSE with `cursor=<stream_head_event_id>` after history through
-   that anchor is processed.
+   the anchor is processed.
 
 If no bootstrap anchor exists, the page may connect without a cursor and label
-the stream as live-only from that point forward.
+the stream as live-only from that point forward. Snapshot and trace are current
+read models, not substitutes for event backfill.
 
 ## Error Normalization
 
 The shared client must normalize these failure families into one renderable
 frontend error shape:
 
-- AutoClaw `OperationFailure` style bodies when a response contains
-  `code`, `summary`, `is_retryable`, or `suggested_next_step`.
-- FastAPI `HTTPValidationError` bodies with `detail[]`.
-- authentication and permission failures.
+- AutoClaw `OperationFailure` style bodies when a response contains `code`,
+  `summary`, `is_retryable`, or `suggested_next_step`
+- FastAPI `HTTPValidationError` bodies with `detail[]`
+- authentication and permission failures
 - stale or illegal-state failures, including stale flow revision and stale
-  human-request resolution.
-- `cursor_reset_required`.
-- missing resources.
-- network errors, aborts, and non-JSON or empty error bodies.
+  human-request resolution
+- `cursor_reset_required`
+- missing resources
+- network errors, aborts, and non-JSON or empty error bodies
 
 Minimum renderable shape:
 
@@ -141,24 +171,26 @@ interface ConsoleErrorView {
     readonly isRetryable: boolean;
     readonly suggestedNextStep: string | null;
     readonly fieldErrors: readonly ConsoleFieldError[];
-    readonly source: "operation_failure" | "validation" | "http" | "network" | "abort";
+    readonly source:
+        "operation_failure" | "validation" | "http" | "network" | "abort";
 }
 ```
 
 Action pages must render stale/currentness conflicts as action failures that
-preserve user context and request a reread; they must not silently replay the
-action or clear the user's state.
+preserve user context and request a reread. They must not silently replay the
+action or clear local work.
 
 ## View-Model Boundary
 
-Mappers must translate generated snake_case payloads into explicit render
-models near the owning feature or shared API boundary. Do not pass raw generated
-objects through arbitrary component trees.
+Mappers must translate generated snake_case payloads into explicit camelCase
+render models near the owning feature or shared API boundary. Do not pass raw
+generated objects through arbitrary component trees.
 
 Required mapper families:
 
 - task list rows
-- task detail header, graph nodes, event rows, selected detail, and action state
+- task detail header, graph nodes, event rows, selected detail, and action
+  state
 - human request queue items, focused item, draft item responses, and terminal
   readback
 - command-run rows, detail, log state, and cancel action state
@@ -171,8 +203,7 @@ Mapper rules:
 
 - Keep controller enum values exact in API-facing state.
 - Use camelCase fields in render models.
-- Store source ids, refs, and currentness tokens even if the default UI hides
-  them.
+- Store source ids, refs, and currentness tokens even if default UI hides them.
 - Do not derive unsupported counts, waiting causes, progress, launch readiness,
   author identity, or draft status.
 - Keep UI labels and grouping out of API contracts.
@@ -184,31 +215,29 @@ Cursor routes must be modeled as cursor routes:
 - Use `next_cursor` as the only load-more continuation.
 - Do not show total pages, fake counts, or page numbers unless the route later
   exposes total-count truth.
-- Preserve active query, filter, sort, and selected item context across load
-  more, refresh, and stale detail rereads.
+- Preserve active query, filter, sort, selected item, and current route context
+  across load more, refresh, and stale detail rereads.
 
 ## Currentness And Actions
 
-Task pause, continue, and cancel require the latest
-`expected_active_flow_revision_id` from the current task read. The UI must
-reread current task truth before retrying a stale action.
+- Task pause, continue, and cancel require the latest
+  `expected_active_flow_revision_id` from the current task read.
+- Human-request resolution is legal only for the current open request id.
+- Command-run cancel must target the current run id and respect controller-run
+  state.
+- Draft-set apply, reset, rematerialize-current, and task start must preserve
+  their owning currentness and stale semantics.
+- Draft-set truth does not become stored registry truth until apply succeeds.
 
-Human-request resolution is legal only for the current open request id. A stale
-or terminal request must render terminal readback or conflict state rather than
-submitting again.
-
-Command-run cancel must target the current run id and respect controller-backed
-run state. The UI must not infer cancellability from local time or log output.
-
-Definition apply, reset, rematerialize-current, and task start must preserve
-their owning currentness and stale semantics. Draft-set truth does not become
-stored registry truth until apply succeeds.
+The UI must reread current truth before retrying stale actions. It must not
+infer currentness from local route params, timestamps, logs, or support files.
 
 ## Fixture Contract
 
 Fixtures must be OpenAPI-shaped at the API boundary and scenario-shaped at the
-test boundary. Required scenario families are defined in
-[Validation and evidence](validation-and-evidence.md).
+test boundary.
 
-Fixtures may contain raw controller-like fields, but component tests should
-consume view models when testing pure presentation components.
+Required scenario families are defined in
+[Validation and evidence](validation-and-evidence.md). Fixtures may contain raw
+controller-like fields, but component tests should consume view models when
+testing pure presentation components.

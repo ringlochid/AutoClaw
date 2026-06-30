@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import { classNames } from "../../lib/classNames";
 
@@ -19,10 +19,13 @@ export function PageFrame({
     eyebrow,
     title,
 }: PageFrameProps) {
+    const headingId = useId();
+
     return (
         <section
+            aria-labelledby={headingId}
             className={classNames(
-                "min-h-[calc(100vh-7rem)] rounded-shell border border-outline-soft bg-surface p-4 shadow-shell sm:p-5",
+                "mx-auto min-h-[calc(100vh-7rem)] max-w-[82.5rem] overflow-hidden rounded-shell border border-outline-soft bg-surface p-4 shadow-shell sm:p-5",
                 className,
             )}
         >
@@ -33,7 +36,10 @@ export function PageFrame({
                             {eyebrow}
                         </p>
                     )}
-                    <h1 className="mt-1 font-display text-display font-semibold text-foreground">
+                    <h1
+                        className="mt-1 font-display text-display font-semibold text-foreground"
+                        id={headingId}
+                    >
                         {title}
                     </h1>
                     {description === undefined ? null : (

@@ -1,0 +1,296 @@
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { TasksPage } from "../../../src/features/tasks/TasksPage";
+import { createConsoleApiHandlers } from "../../../src/mocks/handlers";
+import {
+    TEST_API_BASE_URL,
+    TEST_API_KEY,
+    createBackendOperationFailureBody,
+    createConsoleMockScenario,
+    createLongRuntimeTaskRow,
+    createMixedRuntimeTaskRows,
+    createRuntimeFlowSummary,
+    createRuntimeFlowSummaryList,
+} from "../../fixtures/console-api";
+
+const server = setupServer();
+
+beforeAll(() => {
+    server.listen({ onUnhandledRequest: "error" });
+});
+
+beforeEach(() => {
+    vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
+    vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
+});
+
+afterEach(() => {
+    cleanup();
+    server.resetHandlers();
+    vi.unstubAllEnvs();
+});
+
+afterAll(() => {
+    server.close();
+});
+
+describe("TasksPage", () => {
+    it("renders mixed rows, sends query controls, refreshes, and loads cursor pages", async () => {
+        const user = userEvent.setup();
+        const seenRequests: URL[] = [];
+        const firstPage = createRuntimeFlowSummaryList(
+            [...createMixedRuntimeTaskRows(), createLongRuntimeTaskRow()],
+            "cursor-page-2",
+        );
+        const secondPage = createRuntimeFlowSummaryList([
+            createRuntimeFlowSummary({
+                status: "succeeded",
+                task_id: "task-second-page",
+                task_summary: "Second cursor page.",
+                task_title: "Review accepted page",
+                updated_at: "2026-06-29T07:00:00Z",
+            }),
+        ]);
+        server.use(
+            http.get("*/runtime/tasks", ({ request }) => {
+                seenRequests.push(new URL(request.url));
+                if (request.headers.get("X-AutoClaw-API-Key") !== TEST_API_KEY) {
+                    return HttpResponse.json(
+                        createBackendOperationFailureBody({
+                            code: "illegal_caller",
+                            retryable: false,
+                            summary: "The AutoClaw API key is missing or invalid.",
+                            suggested_next_step: "Provide a valid operator API key.",
+                        }),
+                        { status: 401 },
+                    );
+                }
+
+                const cursor = new URL(request.url).searchParams.get("cursor");
+                return HttpResponse.json(cursor === "cursor-page-2" ? secondPage : firstPage);
+            }),
+        );
+
+        renderTasksPage();
+
+        expect(screen.getByText("Loading tasks")).toBeVisible();
+        expect(await screen.findByText("Refresh runtime route copy")).toBeVisible();
+        expect(
+            screen.getByText(
+                "Validate long task title wrapping inside the scan-first Tasks route implementation",
+            ),
+        ).toBeVisible();
+        expect(screen.getAllByText("blocked").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("paused").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("cancelled").length).toBeGreaterThan(0);
+        expect(seenRequests[0]?.searchParams.get("limit")).toBe("25");
+        expect(seenRequests[0]?.searchParams.get("status")).toBe("any");
+        expect(seenRequests[0]?.searchParams.get("sort")).toBe("updated_at_desc");
+
+        await user.selectOptions(screen.getByLabelText("Status"), "blocked");
+        await waitFor(() => {
+            expect(seenRequests.at(-1)?.searchParams.get("status")).toBe("blocked");
+        });
+
+        await user.clear(screen.getByLabelText("Search"));
+        await user.type(screen.getByLabelText("Search"), "route copy");
+        await waitFor(() => {
+            expect(seenRequests.at(-1)?.searchParams.get("q")).toBe("route copy");
+        });
+
+        await user.selectOptions(screen.getByLabelText("Sort"), "task_title_asc");
+        await waitFor(() => {
+            expect(seenRequests.at(-1)?.searchParams.get("sort")).toBe("task_title_asc");
+        });
+
+        const requestsBeforeRefresh = seenRequests.length;
+        await user.click(screen.getByRole("button", { name: "Refresh" }));
+        await waitFor(() => {
+            expect(seenRequests.length).toBeGreaterThan(requestsBeforeRefresh);
+        });
+
+        await user.click(screen.getByRole("button", { name: "Load more" }));
+        expect(await screen.findByText("Review accepted page")).toBeVisible();
+        expect(seenRequests.at(-1)?.searchParams.get("cursor")).toBe("cursor-page-2");
+    });
+
+    it("renders empty and no-results states without fake totals", async () => {
+        const user = userEvent.setup();
+        server.use(
+            http.get("*/runtime/tasks", () =>
+                HttpResponse.json(createRuntimeFlowSummaryList([], null)),
+            ),
+        );
+
+        renderTasksPage();
+
+        expect(await screen.findByText("No tasks available")).toBeVisible();
+
+        await user.type(screen.getByLabelText("Search"), "missing task");
+
+        expect(await screen.findByText("No matching tasks")).toBeVisible();
+        expect(screen.getByRole("button", { name: "Clear filters" })).toBeVisible();
+        expect(screen.queryByText(/total/i)).not.toBeInTheDocument();
+    });
+
+    it("does not reuse a stale load-more cursor while changed criteria are pending", async () => {
+        const user = userEvent.setup();
+        const seenRequests: URL[] = [];
+        const changedCriteriaPageRead = createDeferred();
+        const firstPage = createRuntimeFlowSummaryList(
+            createMixedRuntimeTaskRows(),
+            "cursor-page-2",
+        );
+        const changedCriteriaPage = createRuntimeFlowSummaryList([
+            createRuntimeFlowSummary({
+                status: "running",
+                task_id: "task-filtered-route-copy",
+                task_summary: "Filtered first page for the new search criteria.",
+                task_title: "Filtered route copy task",
+                updated_at: "2026-06-29T15:00:00Z",
+            }),
+        ]);
+        const staleCursorPage = createRuntimeFlowSummaryList([
+            createRuntimeFlowSummary({
+                status: "blocked",
+                task_id: "task-stale-cursor-row",
+                task_summary: "This row belongs to the previous cursor scope.",
+                task_title: "Stale cursor row",
+                updated_at: "2026-06-29T06:00:00Z",
+            }),
+        ]);
+
+        server.use(
+            http.get("*/runtime/tasks", async ({ request }) => {
+                const requestUrl = new URL(request.url);
+                seenRequests.push(requestUrl);
+
+                if (requestUrl.searchParams.get("cursor") === "cursor-page-2") {
+                    return HttpResponse.json(staleCursorPage);
+                }
+
+                if (requestUrl.searchParams.get("q") === "route copy") {
+                    await changedCriteriaPageRead.promise;
+                    return HttpResponse.json(changedCriteriaPage);
+                }
+
+                return HttpResponse.json(firstPage);
+            }),
+        );
+
+        renderTasksPage();
+
+        expect(await screen.findByText("Refresh runtime route copy")).toBeVisible();
+
+        await user.type(screen.getByLabelText("Search"), "route copy");
+        await waitFor(() => {
+            expect(
+                seenRequests.some(
+                    (requestUrl) =>
+                        requestUrl.searchParams.get("q") === "route copy" &&
+                        requestUrl.searchParams.get("cursor") === null,
+                ),
+            ).toBe(true);
+        });
+
+        const loadMoreButton = screen.getByRole("button", { name: "Load more" });
+        expect(loadMoreButton).toBeDisabled();
+        await user.click(loadMoreButton);
+
+        expect(hasStaleCursorRequest(seenRequests)).toBe(false);
+
+        changedCriteriaPageRead.resolve();
+
+        expect(await screen.findByText("Filtered route copy task")).toBeVisible();
+        expect(screen.queryByText("Stale cursor row")).not.toBeInTheDocument();
+        expect(hasStaleCursorRequest(seenRequests)).toBe(false);
+    });
+
+    it("renders auth and read errors as task-list states", async () => {
+        server.use(
+            ...createConsoleApiHandlers(
+                createConsoleMockScenario({
+                    apiKey: "different-test-key",
+                }),
+            ),
+        );
+
+        const { unmount } = renderTasksPage();
+        expect(await screen.findByText("Access to tasks failed")).toBeVisible();
+        expect(screen.getByText("The AutoClaw API key is missing or invalid.")).toBeVisible();
+
+        unmount();
+        cleanup();
+        server.resetHandlers();
+        server.use(
+            http.get("*/runtime/tasks", () =>
+                HttpResponse.text("Runtime task read failed.", { status: 500 }),
+            ),
+        );
+
+        renderTasksPage();
+        expect(await screen.findByText("Tasks could not load")).toBeVisible();
+        expect(screen.getByText("Runtime task read failed.")).toBeVisible();
+    });
+
+    it("opens a task row through the task-detail route", async () => {
+        const rows = createMixedRuntimeTaskRows();
+        server.use(
+            ...createConsoleApiHandlers(
+                createConsoleMockScenario({
+                    taskList: createRuntimeFlowSummaryList(rows, null),
+                }),
+            ),
+        );
+
+        renderTasksPage();
+
+        const taskRows = within(await screen.findByRole("list", { name: "Task rows" }));
+        await userEvent.click(
+            taskRows.getByRole("link", { name: "Open Refresh runtime route copy" }),
+        );
+
+        expect(await screen.findByTestId("task-detail-target")).toHaveTextContent(
+            "task-runtime-copy-refresh",
+        );
+    });
+});
+
+function renderTasksPage() {
+    return render(
+        <MemoryRouter initialEntries={["/tasks"]}>
+            <Routes>
+                <Route element={<TasksPage />} path="/tasks" />
+                <Route element={<TaskDetailTarget />} path="/tasks/:taskId" />
+            </Routes>
+        </MemoryRouter>,
+    );
+}
+
+function TaskDetailTarget() {
+    const { taskId } = useParams();
+
+    return <div data-testid="task-detail-target">{taskId}</div>;
+}
+
+function hasStaleCursorRequest(requests: readonly URL[]): boolean {
+    return requests.some(
+        (requestUrl) =>
+            requestUrl.searchParams.get("cursor") === "cursor-page-2" &&
+            requestUrl.searchParams.get("q") === "route copy",
+    );
+}
+
+function createDeferred(): { readonly promise: Promise<void>; readonly resolve: () => void } {
+    let resolvePromise!: () => void;
+    const promise = new Promise<void>((resolve) => {
+        resolvePromise = resolve;
+    });
+
+    return { promise, resolve: resolvePromise };
+}

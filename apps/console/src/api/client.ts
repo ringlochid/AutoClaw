@@ -1,36 +1,109 @@
 import { buildConsoleConfig, type ConsoleConfig } from "../app/config";
 
+import type { components } from "./generated/openapi";
+
+export type QueryPrimitive = string | number | boolean;
+export type QueryValue = QueryPrimitive | null | undefined | readonly QueryPrimitive[];
+export type QueryParams = Readonly<Record<string, QueryValue>>;
+
+export interface ConsoleFieldError {
+    readonly code: string;
+    readonly message: string;
+    readonly path: string;
+}
+
+export interface ConsoleErrorView {
+    readonly code: string;
+    readonly title: string;
+    readonly summary: string;
+    readonly status: number | null;
+    readonly isRetryable: boolean;
+    readonly suggestedNextStep: string | null;
+    readonly fieldErrors: readonly ConsoleFieldError[];
+    readonly source: "operation_failure" | "validation" | "http" | "network" | "abort";
+}
+
 export interface ApiRequestOptions {
     readonly body?: unknown;
     readonly config?: ConsoleConfig;
+    readonly fetchImpl?: typeof fetch;
     readonly method?: "DELETE" | "GET" | "POST" | "PUT";
     readonly path: string;
-    readonly query?: URLSearchParams;
+    readonly query?: QueryParams | URLSearchParams;
     readonly signal?: AbortSignal;
 }
 
 export class AutoClawApiError extends Error {
-    readonly response: Response;
+    readonly errorView: ConsoleErrorView;
+    readonly response: Response | null;
 
-    constructor(response: Response, message: string) {
-        super(message);
+    constructor(errorView: ConsoleErrorView, response: Response | null = null) {
+        super(errorView.summary);
         this.name = "AutoClawApiError";
+        this.errorView = errorView;
         this.response = response;
     }
+}
+
+export function buildQueryParams(
+    query: QueryParams | URLSearchParams | undefined,
+): URLSearchParams {
+    if (query === undefined) {
+        return new URLSearchParams();
+    }
+
+    if (query instanceof URLSearchParams) {
+        return new URLSearchParams(query);
+    }
+
+    const searchParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+        appendQueryValue(searchParams, key, value);
+    }
+    return searchParams;
+}
+
+export function expectedFlowRevisionQuery(activeFlowRevisionId: string): URLSearchParams {
+    return buildQueryParams({ expected_active_flow_revision_id: activeFlowRevisionId });
+}
+
+export function getNextCursor(page: { readonly next_cursor?: string | null }): string | null {
+    return page.next_cursor ?? null;
+}
+
+export function resolveApiUrl(
+    path: string,
+    config: ConsoleConfig,
+    query?: QueryParams | URLSearchParams,
+): URL {
+    const url = new URL(path.replace(/^\/+/, ""), `${config.apiBaseUrl}/`);
+    const searchParams = buildQueryParams(query);
+    if (searchParams.size > 0) {
+        url.search = searchParams.toString();
+    }
+    return url;
+}
+
+export function isCursorResetError(errorView: ConsoleErrorView): boolean {
+    return errorView.code === "cursor_reset_required";
+}
+
+export async function createApiErrorFromResponse(response: Response): Promise<AutoClawApiError> {
+    const bodyText = await response.text();
+    const parsedBody = parseJsonBody(bodyText);
+    return new AutoClawApiError(normalizeResponseError(response, bodyText, parsedBody), response);
 }
 
 export async function requestJson<TResponse>({
     body,
     config = buildConsoleConfig(),
+    fetchImpl = fetch,
     method = "GET",
     path,
     query,
     signal,
 }: ApiRequestOptions): Promise<TResponse> {
-    const url = new URL(path, `${config.apiBaseUrl}/`);
-    if (query !== undefined) {
-        url.search = query.toString();
-    }
+    const url = resolveApiUrl(path, config, query);
 
     const headers = new Headers({ Accept: "application/json" });
     if (config.apiKey !== null) {
@@ -40,19 +113,263 @@ export async function requestJson<TResponse>({
         headers.set("Content-Type", "application/json");
     }
 
-    const response = await fetch(url, {
-        body: body === undefined ? undefined : JSON.stringify(body),
-        headers,
-        method,
-        signal,
-    });
-
-    if (!response.ok) {
-        throw new AutoClawApiError(
-            response,
-            `AutoClaw API request failed with ${String(response.status)}`,
-        );
+    let response: Response;
+    try {
+        response = await fetchImpl(url, {
+            body: body === undefined ? undefined : JSON.stringify(body),
+            headers,
+            method,
+            signal,
+        });
+    } catch (error) {
+        throw createApiTransportError(error);
     }
 
-    return (await response.json()) as TResponse;
+    if (!response.ok) {
+        throw await createApiErrorFromResponse(response);
+    }
+
+    const responseText = await response.text();
+    if (responseText.trim() === "") {
+        return undefined as TResponse;
+    }
+
+    return JSON.parse(responseText) as TResponse;
 }
+
+function appendQueryValue(searchParams: URLSearchParams, key: string, value: QueryValue): void {
+    if (value === null || value === undefined) {
+        return;
+    }
+
+    if (Array.isArray(value)) {
+        for (const item of value) {
+            searchParams.append(key, String(item));
+        }
+        return;
+    }
+
+    searchParams.set(key, String(value));
+}
+
+export function createApiTransportError(error: unknown): AutoClawApiError {
+    const isAbort = isAbortError(error);
+    return new AutoClawApiError({
+        code: isAbort ? "request_aborted" : "network_error",
+        title: isAbort ? "Request Aborted" : "Network Error",
+        summary: isAbort
+            ? "The request was aborted before it completed."
+            : error instanceof Error
+              ? error.message
+              : "The console could not reach the AutoClaw API.",
+        status: null,
+        isRetryable: !isAbort,
+        suggestedNextStep: isAbort ? null : "Check the API service and retry the request.",
+        fieldErrors: [],
+        source: isAbort ? "abort" : "network",
+    });
+}
+
+function normalizeResponseError(
+    response: Response,
+    bodyText: string,
+    parsedBody: unknown,
+): ConsoleErrorView {
+    const operationFailure = readOperationFailure(parsedBody);
+    if (operationFailure !== null) {
+        return {
+            code: operationFailure.code,
+            title: titleFromCode(operationFailure.code),
+            summary: operationFailure.summary,
+            status: response.status,
+            isRetryable: operationFailure.isRetryable,
+            suggestedNextStep: operationFailure.suggestedNextStep,
+            fieldErrors:
+                operationFailure.fieldPath === null
+                    ? []
+                    : [
+                          {
+                              code: operationFailure.code,
+                              message: operationFailure.summary,
+                              path: operationFailure.fieldPath,
+                          },
+                      ],
+            source: "operation_failure",
+        };
+    }
+
+    const validationErrors = readValidationErrors(parsedBody);
+    if (validationErrors.length > 0) {
+        return {
+            code: "validation_error",
+            title: "Validation Error",
+            summary: validationErrors.map((fieldError) => fieldError.message).join("; "),
+            status: response.status,
+            isRetryable: false,
+            suggestedNextStep: "Review the highlighted fields and retry the request.",
+            fieldErrors: validationErrors,
+            source: "validation",
+        };
+    }
+
+    return {
+        code: codeFromHttpStatus(response.status),
+        title: titleFromHttpStatus(response.status),
+        summary: fallbackHttpSummary(response, bodyText),
+        status: response.status,
+        isRetryable: response.status >= 500,
+        suggestedNextStep: response.status >= 500 ? "Retry after the API service recovers." : null,
+        fieldErrors: [],
+        source: "http",
+    };
+}
+
+function parseJsonBody(bodyText: string): unknown {
+    if (bodyText.trim() === "") {
+        return null;
+    }
+
+    try {
+        return JSON.parse(bodyText) as unknown;
+    } catch {
+        return null;
+    }
+}
+
+function readOperationFailure(parsedBody: unknown): {
+    readonly code: string;
+    readonly fieldPath: string | null;
+    readonly isRetryable: boolean;
+    readonly suggestedNextStep: string | null;
+    readonly summary: string;
+} | null {
+    const directFailure = readOperationFailureCandidate(parsedBody);
+    if (directFailure !== null) {
+        return directFailure;
+    }
+
+    if (!isRecord(parsedBody)) {
+        return null;
+    }
+
+    return readOperationFailureCandidate(parsedBody.detail);
+}
+
+function readOperationFailureCandidate(value: unknown): {
+    readonly code: string;
+    readonly fieldPath: string | null;
+    readonly isRetryable: boolean;
+    readonly suggestedNextStep: string | null;
+    readonly summary: string;
+} | null {
+    if (!isRecord(value)) {
+        return null;
+    }
+
+    const code = value.code;
+    const summary = value.summary;
+    const retryable = value.retryable;
+    const isRetryable = value.is_retryable;
+    const fieldPath = value.field_path;
+    const suggestedNextStep = value.suggested_next_step;
+
+    if (typeof code !== "string" || typeof summary !== "string") {
+        return null;
+    }
+
+    return {
+        code,
+        summary,
+        fieldPath: typeof fieldPath === "string" ? fieldPath : null,
+        isRetryable:
+            typeof retryable === "boolean"
+                ? retryable
+                : typeof isRetryable === "boolean"
+                  ? isRetryable
+                  : false,
+        suggestedNextStep: typeof suggestedNextStep === "string" ? suggestedNextStep : null,
+    };
+}
+
+function readValidationErrors(parsedBody: unknown): readonly ConsoleFieldError[] {
+    if (!isRecord(parsedBody) || !Array.isArray(parsedBody.detail)) {
+        return [];
+    }
+
+    return parsedBody.detail.flatMap((entry): ConsoleFieldError[] => {
+        if (!isRecord(entry)) {
+            return [];
+        }
+
+        const message = entry.msg;
+        const type = entry.type;
+        const location = entry.loc;
+        if (typeof message !== "string" || typeof type !== "string" || !Array.isArray(location)) {
+            return [];
+        }
+
+        return [
+            {
+                code: type,
+                message,
+                path: location.map((part) => String(part)).join("."),
+            },
+        ];
+    });
+}
+
+function codeFromHttpStatus(status: number): string {
+    if (status === 401) {
+        return "auth_required";
+    }
+    if (status === 403) {
+        return "permission_denied";
+    }
+    if (status === 404) {
+        return "missing_resource";
+    }
+    return `http_${String(status)}`;
+}
+
+function fallbackHttpSummary(response: Response, bodyText: string): string {
+    const trimmedBody = bodyText.trim();
+    if (trimmedBody !== "") {
+        return trimmedBody;
+    }
+
+    return `AutoClaw API request failed with ${String(response.status)} ${response.statusText}`;
+}
+
+function titleFromCode(code: string): string {
+    return code
+        .split("_")
+        .filter((part) => part.length > 0)
+        .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
+        .join(" ");
+}
+
+function titleFromHttpStatus(status: number): string {
+    if (status === 401) {
+        return "Authentication Required";
+    }
+    if (status === 403) {
+        return "Permission Denied";
+    }
+    if (status === 404) {
+        return "Missing Resource";
+    }
+    if (status >= 500) {
+        return "API Error";
+    }
+    return "Request Failed";
+}
+
+function isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === "AbortError";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export type OperationFailureCode = components["schemas"]["OperationFailureCode"];

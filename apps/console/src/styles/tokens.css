@@ -16,6 +16,11 @@
     --ac-active-foreground: #3730a3;
     --ac-danger: #dc2626;
     --ac-danger-soft: #fef2f2;
+    --ac-success: #047857;
+    --ac-success-soft: #ecfdf5;
+    --ac-warning: #b45309;
+    --ac-warning-soft: #fffbeb;
+    --ac-code: #f8fafc;
     --ac-font-body: "Geist", sans-serif;
     --ac-font-display: "Hanken Grotesk", sans-serif;
     --ac-font-mono: "JetBrains Mono", monospace;

@@ -1,0 +1,434 @@
+import type { ConsoleMockScenario } from "../../src/mocks/handlers";
+import type { components } from "../../src/api/generated/openapi";
+import { TASK_EVENT_TYPES } from "../../src/features/task-detail/task-detail-model";
+import {
+    TEST_UPDATED_AT,
+    createCommandRunListItem,
+    createConsoleMockScenario,
+    createHumanRequestRead,
+    createRuntimeFlowRead,
+    createTaskEventRecord,
+    createTaskEventStreamFixture,
+    createWorkflowManifestRef,
+} from "./console-api";
+
+export const TASK_DETAIL_TASK_ID = "task-runtime-route-copy";
+export const TASK_DETAIL_STREAM_HEAD = "evt-008-structural-revision-adopted";
+
+export interface TaskDetailScenarioOptions {
+    readonly cursorResetCursors?: readonly string[];
+    readonly events?: readonly components["schemas"]["TaskEventRecord"][];
+    readonly status?: components["schemas"]["FlowStatus"];
+    readonly streamEvents?: readonly components["schemas"]["TaskEventRecord"][];
+    readonly streamHeadEventId?: string | null;
+}
+
+export function createTaskDetailMockScenario(
+    options: TaskDetailScenarioOptions = {},
+): ConsoleMockScenario {
+    const events = options.events ?? createTaskDetailEventRecords();
+    const streamHeadEventId =
+        options.streamHeadEventId === undefined
+            ? TASK_DETAIL_STREAM_HEAD
+            : options.streamHeadEventId;
+    const streamHeadIndex =
+        streamHeadEventId === null
+            ? -1
+            : events.findIndex((event) => event.event_id === streamHeadEventId);
+    const backfillEvents =
+        streamHeadIndex === -1
+            ? []
+            : events.filter((event) => event.event_seq <= streamHeadIndex + 1);
+    const streamEvents =
+        options.streamEvents ?? (streamHeadIndex === -1 ? events : events.slice(streamHeadIndex));
+    const taskRead = createRuntimeFlowRead({
+        active_attempt_id: "attempt-task-detail-build",
+        active_flow_revision_id: "flow-revision-task-detail-1",
+        current_node_key: "task_detail_build",
+        status: options.status ?? "running",
+        task_id: TASK_DETAIL_TASK_ID,
+        task_summary: "Replace retired runtime labels without widening the task hub.",
+        task_title: "Refresh runtime route copy",
+        updated_at: TEST_UPDATED_AT,
+        workflow_key: "frontend-console-continuation-delivery",
+        workflow_manifest_ref: createWorkflowManifestRef(),
+    });
+
+    return createConsoleMockScenario({
+        commandRunList: {
+            items: [
+                createCommandRunListItem({
+                    description: "Verify command-run runner behavior.",
+                    run_id: "run-task-detail-check",
+                    state: "running",
+                    summary: "Focused integration proof is running.",
+                }),
+            ],
+            next_cursor: null,
+            task_id: TASK_DETAIL_TASK_ID,
+        },
+        humanRequestList: {
+            items: [
+                createHumanRequestRead({
+                    kind: "approval",
+                    request_id: "hr-task-detail-approval",
+                    summary: "Approval is needed for the last copy trim.",
+                    title: "Approve the last copy trim",
+                }),
+            ],
+            task_id: TASK_DETAIL_TASK_ID,
+        },
+        snapshot: {
+            current_paths: [
+                {
+                    description: "Current assignment for Task Detail build.",
+                    kind: "assignment",
+                    path: "_runtime/attempts/task-detail/assignment.md",
+                    slot: null,
+                    version: null,
+                },
+            ],
+            flow: taskRead,
+            stream_head_event_id: streamHeadEventId,
+            top_actionable_items: [
+                {
+                    current_paths: [],
+                    node_key: "task_detail_build",
+                    suggested_action: "Implement only Task Detail.",
+                    summary: "Task Detail implementation is active.",
+                },
+            ],
+        },
+        taskEvents: {
+            items: backfillEvents,
+            next_cursor: null,
+            task_id: TASK_DETAIL_TASK_ID,
+            through_event_id: streamHeadEventId,
+        },
+        taskEventStream: createTaskEventStreamFixture({
+            chunksByCursor:
+                streamHeadEventId === null
+                    ? {}
+                    : {
+                          [streamHeadEventId]: streamEvents.map(createTaskEventStreamFrame),
+                      },
+            cursorResetCursors: options.cursorResetCursors ?? [],
+            events: streamEvents,
+        }),
+        taskRead,
+        trace: createTaskDetailTrace(),
+    });
+}
+
+export function createTaskDetailEventRecords(
+    options: {
+        readonly taskId?: string;
+        readonly nodeKeys?: readonly string[];
+    } = {},
+): readonly components["schemas"]["TaskEventRecord"][] {
+    const taskId = options.taskId ?? TASK_DETAIL_TASK_ID;
+    const nodeKeys = options.nodeKeys ?? [
+        "root",
+        "runtime_pages",
+        "task_detail",
+        "task_detail_contract",
+        "task_detail_build",
+        "task_detail_review",
+    ];
+
+    return TASK_EVENT_TYPES.map((eventType, index) => {
+        const eventSeq = index + 1;
+        const eventId = `evt-${String(eventSeq).padStart(3, "0")}-${eventType.replace(/_/g, "-")}`;
+        const nodeKey = nodeKeys[Math.min(index % nodeKeys.length, nodeKeys.length - 1)] ?? "root";
+        return createTaskEventRecord({
+            attempt_id: `attempt-${nodeKey}`,
+            dispatch_id: `dispatch-${nodeKey}`,
+            event_id: eventId,
+            event_seq: eventSeq,
+            event_source: eventSourceForType(eventType),
+            event_type: eventType,
+            flow_revision_id: "flow-revision-task-detail-1",
+            node_key: nodeKey,
+            occurred_at: new Date(Date.parse(TEST_UPDATED_AT) + index * 60_000).toISOString(),
+            payload: payloadForEvent(eventType, nodeKey),
+            task_id: taskId,
+        });
+    });
+}
+
+export function createLongTaskDetailEventRecords(): readonly components["schemas"]["TaskEventRecord"][] {
+    const nodeKeys = Array.from({ length: 18 }, (_item, index) =>
+        index === 0 ? "root" : `worker_node_${String(index).padStart(2, "0")}`,
+    );
+    const baseEvents = createTaskDetailEventRecords({ nodeKeys });
+    const extraEvents = nodeKeys.slice(6).map((nodeKey, index) =>
+        createTaskEventRecord({
+            attempt_id: `attempt-${nodeKey}`,
+            dispatch_id: `dispatch-${nodeKey}`,
+            event_id: `evt-extra-${String(index + 1).padStart(2, "0")}`,
+            event_seq: baseEvents.length + index + 1,
+            event_source: "controller",
+            event_type: "dispatch_opened",
+            flow_revision_id: "flow-revision-task-detail-1",
+            node_key: nodeKey,
+            occurred_at: new Date(
+                Date.parse(TEST_UPDATED_AT) + (baseEvents.length + index) * 60_000,
+            ).toISOString(),
+            payload: {
+                assignment_key: `assignment-${nodeKey}`,
+                control_state: "live",
+                delivery_status: "accepted",
+                node_key: nodeKey,
+                previous_node_key: nodeKeys[index] ?? "root",
+                summary: `Opened ${nodeKey}.`,
+            },
+            task_id: TASK_DETAIL_TASK_ID,
+        }),
+    );
+    return [...baseEvents, ...extraEvents];
+}
+
+function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceResponse"] {
+    return {
+        boundary_history: [
+            {
+                boundary: "green",
+                node_key: "task_detail_contract",
+                occurred_at: "2026-06-29T13:45:00Z",
+            },
+            {
+                boundary: "yield",
+                node_key: "task_detail",
+                occurred_at: "2026-06-29T13:55:00Z",
+            },
+        ],
+        checkpoint_history: [
+            {
+                attempt_id: "attempt-task_detail_contract",
+                checkpoint_id: "checkpoint-contract",
+                checkpoint_kind: "terminal",
+                outcome: "green",
+                recorded_at: "2026-06-29T13:45:00Z",
+                summary: "Task Detail contract is ready.",
+            },
+            {
+                attempt_id: "attempt-task_detail_build",
+                checkpoint_id: "checkpoint-build-progress",
+                checkpoint_kind: "progress",
+                outcome: null,
+                recorded_at: "2026-06-29T14:00:00Z",
+                summary: "Task Detail build is in progress.",
+            },
+        ],
+        current_paths: [
+            {
+                description: "Latest checkpoint for the active build node.",
+                kind: "checkpoint",
+                path: "_runtime/attempts/task-detail/latest-checkpoint.md",
+                slot: null,
+                version: null,
+            },
+        ],
+        dispatch_history: [
+            {
+                assignment_key: "assignment-root",
+                attempt_id: "attempt-root",
+                delivery_status: "accepted",
+                node_key: "root",
+                rendered_at: "2026-06-29T13:30:00Z",
+            },
+            {
+                assignment_key: "assignment-runtime-pages",
+                attempt_id: "attempt-runtime_pages",
+                delivery_status: "accepted",
+                node_key: "runtime_pages",
+                rendered_at: "2026-06-29T13:35:00Z",
+            },
+            {
+                assignment_key: "assignment-task-detail",
+                attempt_id: "attempt-task_detail",
+                delivery_status: "accepted",
+                node_key: "task_detail",
+                rendered_at: "2026-06-29T13:40:00Z",
+            },
+            {
+                assignment_key: "assignment-task-detail-contract",
+                attempt_id: "attempt-task_detail_contract",
+                delivery_status: "provider_completed",
+                node_key: "task_detail_contract",
+                rendered_at: "2026-06-29T13:43:00Z",
+            },
+            {
+                assignment_key: "assignment-task-detail-build",
+                attempt_id: "attempt-task_detail_build",
+                delivery_status: "accepted",
+                node_key: "task_detail_build",
+                rendered_at: "2026-06-29T13:58:00Z",
+            },
+            {
+                assignment_key: "assignment-task-detail-review",
+                attempt_id: "attempt-task_detail_review",
+                delivery_status: "prepared",
+                node_key: "task_detail_review",
+                rendered_at: "2026-06-29T14:05:00Z",
+            },
+        ],
+        next_cursor: null,
+        scope: "whole",
+        task_id: TASK_DETAIL_TASK_ID,
+    };
+}
+
+function payloadForEvent(
+    eventType: components["schemas"]["TaskEventType"],
+    nodeKey: string,
+): Record<string, unknown> {
+    switch (eventType) {
+        case "task_started":
+            return {
+                initial_node_key: "root",
+                summary: "Task lineage started.",
+                task_title: "Refresh runtime route copy",
+                workflow_key: "frontend-console-continuation-delivery",
+                workflow_manifest_ref: createWorkflowManifestRef(),
+            };
+        case "dispatch_opened":
+            return {
+                assignment_key: `assignment-${nodeKey}`,
+                attempt_id: `attempt-${nodeKey}`,
+                control_state: "live",
+                delivery_status: "accepted",
+                node_key: nodeKey,
+                previous_dispatch_id: null,
+                summary: "Dispatch opened.",
+            };
+        case "provider_resolution_recorded":
+            return {
+                requested_provider: "codex",
+                resolved_provider: "codex",
+                summary: "Provider resolution recorded.",
+            };
+        case "provider_event_normalized":
+            return {
+                event_kind: "message_delta",
+                event_no: 3,
+                provider_event_name: "response.output_text.delta",
+                summary: "Provider event normalized.",
+            };
+        case "checkpoint_recorded":
+            return {
+                checkpoint_id: "checkpoint-build-progress",
+                checkpoint_kind: "progress",
+                latest_checkpoint_ref: {
+                    description: "Latest checkpoint.",
+                    kind: "checkpoint",
+                    path: "_runtime/attempts/task-detail/latest-checkpoint.md",
+                },
+                next_step: "Continue Task Detail implementation.",
+                outcome: null,
+                produced_artifacts: [
+                    {
+                        description: "Task Detail implementation evidence.",
+                        kind: "artifact",
+                        path: "tmp/autoclaw-frontend/continuation-implementation/07-task-detail/report.md",
+                        slot: "frontend_scope_patch",
+                    },
+                ],
+                summary: "Checkpoint recorded.",
+            };
+        case "boundary_accepted":
+            return {
+                boundary: "green",
+                latest_checkpoint_ref: {
+                    description: "Terminal checkpoint.",
+                    kind: "checkpoint",
+                    path: "_runtime/attempts/task-detail/latest-checkpoint.md",
+                },
+                next_node_key: "task_detail_build",
+                previous_node_key: "task_detail_contract",
+                resulting_flow_status: "running",
+                summary: "Boundary accepted.",
+            };
+        case "child_assignment_staged":
+            return {
+                assignment_summary: "Review the Task Detail implementation.",
+                child_assignment_ref: {
+                    description: "Child assignment.",
+                    kind: "assignment",
+                    path: "_runtime/attempts/task-detail-review/assignment.md",
+                },
+                parent_node_key: "task_detail",
+                summary: "Child assignment staged.",
+                target_assignment_key: "assignment-task-detail-review",
+                target_node_key: "task_detail_review",
+            };
+        case "child_assignment_committed":
+            return {
+                boundary: "yield",
+                parent_node_key: "task_detail",
+                source_dispatch_id: "dispatch-task_detail",
+                summary: "Child assignment committed.",
+                target_assignment_key: "assignment-task-detail-build",
+                target_node_key: "task_detail_build",
+            };
+        case "structural_revision_adopted":
+            return {
+                active_flow_revision_id: "flow-revision-task-detail-1",
+                affected_node_keys: ["task_detail_build", "task_detail_review"],
+                operation: "add_child",
+                previous_flow_revision_id: "flow-revision-task-detail-0",
+                summary: "Structural revision adopted.",
+                target_node_key: "task_detail_review",
+            };
+        case "human_request_opened":
+        case "human_request_resolved":
+        case "human_request_timed_out":
+        case "human_request_cancelled":
+            return {
+                kind: "approval",
+                request_id: "hr-task-detail-approval",
+                status: eventType.replace("human_request_", ""),
+                summary: "Human request state changed.",
+            };
+        case "command_run_started":
+        case "command_run_progressed":
+        case "command_run_cancel_requested":
+        case "command_run_succeeded":
+        case "command_run_failed":
+        case "command_run_timed_out":
+        case "command_run_cancelled":
+            return {
+                log_ref: "tmp/command-runs/run-task-detail-check.log",
+                run_id: "run-task-detail-check",
+                state: eventType.replace("command_run_", ""),
+                summary: "Command run state changed.",
+            };
+        case "task_paused":
+        case "task_resumed":
+        case "task_cancelled":
+            return {
+                active_flow_revision_id: "flow-revision-task-detail-1",
+                status: eventType.replace("task_", ""),
+                summary: "Task control state changed.",
+            };
+    }
+}
+
+function eventSourceForType(
+    eventType: components["schemas"]["TaskEventType"],
+): components["schemas"]["TaskEventSource"] {
+    if (eventType === "provider_event_normalized") {
+        return "provider";
+    }
+    if (eventType === "task_started") {
+        return "controller";
+    }
+    if (eventType.startsWith("task_") || eventType.startsWith("human_request_")) {
+        return "control_api";
+    }
+    return "controller";
+}
+
+function createTaskEventStreamFrame(event: components["schemas"]["TaskEventRecord"]): string {
+    return `id: ${event.event_id}\ndata: ${JSON.stringify(event)}\n\n`;
+}

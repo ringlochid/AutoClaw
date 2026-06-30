@@ -1,10 +1,10 @@
 # Console Feature Behavior
 
-Status: Target
+Status: Locked target for implementation planning.
 
-This page locks page-level behavior for the AutoClaw console. It defines what
-users can see and do; backend/API contracts still own data truth and action
-legality.
+This page defines what users can see and do in the AutoClaw console. Backend
+and API contracts still own data truth, action legality, event chronology, and
+currentness.
 
 ## Global Rules
 
@@ -13,14 +13,16 @@ legality.
 - Authoring pages use authoring breadcrumbs and never appear under a selected
   task.
 - Loading, empty, no-results, error, permission, stale-action, and conflict
-  states must render inside the surface that owns the failed read or action.
-- Actions are visible only when controller truth and currentness allow them.
-  Missing buttons are not a legality model.
-- User-facing copy must use product nouns: `Tasks`, `Task Detail`,
+  states render inside the surface that owns the failed read or action.
+- Actions are visible or enabled only when controller truth and currentness
+  allow them. Missing buttons are not a legality model by themselves.
+- User-facing copy uses product nouns: `Tasks`, `Task Detail`,
   `Human Requests`, `Command Runs`, `Definitions`, `Definition Editor`, and
   `Task Start`.
 - Implementation route prefixes such as `/runtime`, `/control`, `/operator`,
   `/observability`, `/callback`, and `/node/mcp` are not primary UI labels.
+- Do not invent controller-backed fields, lifecycle states, aggregate counts,
+  progress, ETA, or launch readiness to make placeholders feel complete.
 
 ## Tasks
 
@@ -30,8 +32,7 @@ Required behavior:
 
 - Query through `q`, filter by shipped status values, sort by shipped sort
   values, and load more through `cursor` and `next_cursor`.
-- Default rows show task title, summary, status, updated time, and an open
-  affordance.
+- Rows prioritize task title, summary, status, updated time, and open target.
 - Secondary metadata may show workflow key, current node key, active attempt id,
   or task id when the layout stays scan-first.
 - Opening a row routes to `Task Detail`.
@@ -54,7 +55,7 @@ Forbidden states:
   fields
 - pause, continue, cancel, human-request resolution, or command-run cancel on
   the list page
-- numbered page totals or fake list totals
+- numbered page totals, fake totals, or page-count UI
 
 ## Task Detail
 
@@ -64,19 +65,19 @@ controls.
 
 Required behavior:
 
-- Bootstrap from REST: task read, snapshot, trace, and event backfill when a
+- Bootstrap from REST: task read, snapshot, trace, and event backfill when
   `stream_head_event_id` exists.
-- Live updates come from the locked SSE transport in
-  [API and view-model contract](api-view-model-contract.md).
-- Render a read-only execution graph, task-event lane, and focused selected
-  detail.
+- Use the shared fetch-based SSE transport for live updates.
+- Render a read-only execution graph, chronological task-event lane, and
+  selected detail.
 - Support selected detail views named `Overview`, `Checkpoint`, `Assignment`,
   `Boundary`, `Artifacts`, and `Trace`.
 - Render every current `TaskEventType` family by its controller event name.
 - Pause, continue, and cancel submit the current
-  `expected_active_flow_revision_id` and surface stale or illegal-state errors.
-- Link to `Human Requests` and `Command Runs` as sibling pages. Compact previews
-  may appear only from controller-backed reads.
+  `expected_active_flow_revision_id` and surface stale or illegal-state
+  errors.
+- Link to `Human Requests` and `Command Runs` as sibling pages. Compact
+  previews may appear only from controller-backed reads.
 
 Required states:
 
@@ -88,6 +89,7 @@ Required states:
 - paused, stale-action, cancelled, no-history, long-event-list, and read-error
   states
 - deep or wide graph with readable default zoom and reset
+- SSE reconnect/reset after `cursor_reset_required`
 
 Forbidden states:
 
@@ -97,6 +99,10 @@ Forbidden states:
   provider traces, or local UI state
 - raw logs, prompt packages, manifests, or large payload bodies in event rows
 - command-run cancel or human-request resolve as generic task controls
+
+Task Detail visual release cannot close from the current `task-detail.png`
+alone. It needs fresh promoted capture or an explicit replacement visual-review
+anchor.
 
 ## Human Requests
 
@@ -146,7 +152,7 @@ Required behavior:
 - Open full detail through disclosure grouped by command, result, timing,
   provenance, and log access.
 - Logs are hidden by default and load only when `log_ref` exists.
-- Cancel only when the controller-backed state/action contract allows it.
+- Cancel only when controller-backed state and action contract allow it.
 
 Required states:
 
@@ -159,7 +165,7 @@ Forbidden states:
 
 - cross-task command dashboard
 - always-visible raw logs
-- progress percentage, ETA, throughput, or progress rings
+- progress percentage, ETA, throughput, elapsed-time widgets, or progress rings
 - terminal-state inference from logs or local UI heuristics
 
 ## Definitions
@@ -171,8 +177,8 @@ Required behavior:
 - Use separate list reads for roles, policies, and workflows.
 - Keep a visible kind switch; do not fake a mixed registry endpoint.
 - Search, sort, filter, and cursor-load within the selected kind only.
-- Roles may filter by `allowed_node_kind`; policies may filter by
-  `applies_to`; workflows do not inherit those filters.
+- Roles may filter by `allowed_node_kind`; policies may filter by `applies_to`;
+  workflows do not inherit those filters.
 - Selected detail comes from `GET /definitions/{kind}/{key}`.
 - Version history comes from `GET /definitions/{kind}/{key}/versions` and stays
   behind compact `Versions` disclosure.
@@ -192,8 +198,7 @@ Forbidden states:
 - repo YAML or seed files as live registry truth
 - invented author identity, validation status, launch readiness, mixed
   stored/draft badges, or workflow compatibility badges
-- prompt preview, diff, draft editing, or task launch inside the default browse
-  surface
+- prompt preview, diff, draft editing, or task launch inside the browse surface
 
 ## Definition Editor
 
@@ -205,8 +210,8 @@ Required behavior:
 - Use `/authoring/definition-draft-sets/*` routes for draft-set lifecycle,
   materialization, save, reset, rematerialize-current, validate, preview, and
   apply.
-- Keep stored truth, draft-set truth, preview truth, and task-start launch truth
-  visibly separate.
+- Keep stored truth, draft-set truth, preview truth, diff truth, and task-start
+  launch truth visibly separate.
 - Draft selector rows stay compact: key, kind, and status.
 - `Reset draft` restores the captured draft baseline or local starter baseline.
 - `Replace with current stored revision` is a separate explicit
