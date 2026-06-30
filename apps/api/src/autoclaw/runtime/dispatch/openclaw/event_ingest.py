@@ -25,6 +25,7 @@ from autoclaw.runtime.dispatch.openclaw.models import (
     PROGRESS_RAW_EVENT_LABELS,
     SUPPORTED_RAW_EVENT_LABELS,
     TERMINAL_DELIVERY_STATUS,
+    TOOL_DELTA_RAW_EVENT_LABELS,
     TOOL_RAW_EVENT_LABELS,
     ActiveOpenClawDispatchRuntime,
     NormalizedOpenClawEvent,
@@ -133,8 +134,13 @@ def update_delivery_state(
 ) -> None:
     delivery_state.last_provider_event_kind = normalized.event_kind
     delivery_state.updated_at = committed_at
-    if normalized.should_advance_liveness:
-        delivery_state.last_provider_signal_at = committed_at
+    if should_advance_provider_freshness(
+        delivery_state=delivery_state,
+        normalized=normalized,
+        committed_at=committed_at,
+    ):
+        assert normalized.provider_occurred_at is not None
+        delivery_state.last_provider_signal_at = _as_utc(normalized.provider_occurred_at)
     terminal_status = TERMINAL_DELIVERY_STATUS.get(normalized.event_kind)
     if terminal_status is None:
         return
@@ -199,6 +205,8 @@ def normalize_observed_event(
     run_id = payload_string(event.payload, "runId", "run_id")
     session_key = payload_string(event.payload, "sessionKey", "session_key", "key")
     if not matches_active_run(runtime, provider_event_name, run_id, session_key):
+        return None
+    if provider_event_name in TOOL_DELTA_RAW_EVENT_LABELS:
         return None
     event_payload_json = build_event_payload(
         gateway_event_name=gateway_event_name,
@@ -388,6 +396,44 @@ def payload_datetime(payload: dict[str, object]) -> datetime | None:
     return None
 
 
+def should_advance_provider_freshness(
+    *,
+    delivery_state: DispatchDeliveryStateModel,
+    normalized: NormalizedOpenClawEvent,
+    committed_at: datetime,
+) -> bool:
+    if not normalized.should_advance_liveness:
+        return False
+    if normalized.provider_occurred_at is None:
+        return False
+
+    provider_occurred_at = _as_utc(normalized.provider_occurred_at)
+    committed_at = _as_utc(committed_at)
+    threshold_seconds = provider_freshness_prune_threshold_seconds()
+    ingest_lag_seconds = (committed_at - provider_occurred_at).total_seconds()
+    if ingest_lag_seconds > threshold_seconds:
+        return False
+
+    previous_provider_signal_at = delivery_state.last_provider_signal_at
+    if previous_provider_signal_at is None:
+        return True
+    provider_gap_seconds = (
+        provider_occurred_at - _as_utc(previous_provider_signal_at)
+    ).total_seconds()
+    return provider_gap_seconds >= threshold_seconds
+
+
+def provider_freshness_prune_threshold_seconds() -> float:
+    runtime_settings = get_settings().runtime
+    return (
+        min(
+            runtime_settings.watchdog_bootstrap_first_progress_timeout_seconds,
+            runtime_settings.watchdog_execution_stale_after_seconds,
+        )
+        / 2
+    )
+
+
 def extract_provider_error(event_payload_json: dict[str, object]) -> str | None:
     raw_value = event_payload_json.get("error")
     if isinstance(raw_value, str) and raw_value.strip():
@@ -401,3 +447,9 @@ def extract_provider_error(event_payload_json: dict[str, object]) -> str | None:
 
 def openclaw_event_poll_timeout_seconds() -> float:
     return max(0.01, float(get_settings().runtime.openclaw_event_poll_timeout_seconds))
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

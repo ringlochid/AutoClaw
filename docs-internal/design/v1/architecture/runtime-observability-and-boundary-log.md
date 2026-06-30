@@ -76,7 +76,7 @@ Live `delivery-state.json` does not carry a second `controller_observation_state
 Field meanings:
 
 - `accepted_at` is the first accepted transport timestamp for the dispatch
-- `last_provider_signal_at` is the latest committed normalized provider progress-or-terminal signal timestamp
+- `last_provider_signal_at` is the latest accepted provider-native occurrence timestamp for committed normalized provider progress-or-terminal signal
 - `last_provider_event_kind` is the latest committed normalized provider progress-or-terminal kind
 - `last_controller_progress_at` is the latest committed controller semantic-progress timestamp for the dispatch
 - `last_controller_terminal_at` is the latest committed controller terminal timestamp for the dispatch when present
@@ -147,8 +147,9 @@ Rules:
 - `provider_event_name` preserves the raw provider or OpenClaw event label as debug detail only
 - `detail` and `provider_occurred_at` are part of the frozen readback field set even when their value is `null`
 - these lines explain delivery chronology only and do not redefine checkpoint, boundary, attempt, or assignment truth
-- `tool_event` is persisted observability only and does not by itself advance liveness
-- provider progress becomes watchdog-visible only after controller-owned ingest commit
+- `tool.call.delta` frames are dropped before provider-event storage
+- retained tool lifecycle events may only advance liveness when provider-time gap and ingest-lag pruning allow it
+- provider progress becomes watchdog-visible only after controller-owned ingest commit and stale-replay pruning
 - unrelated buffered events that cannot be correlated to the active dispatch/run are not normalized into liveness progress and do not advance `last_provider_signal_at`
 
 ## Boundary Log Rule

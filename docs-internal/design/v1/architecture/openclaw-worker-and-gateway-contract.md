@@ -46,7 +46,7 @@ OpenClaw adapter is responsible for:
 Target runtime transport rule:
 
 - worker-lane dispatch uses a dispatch-scoped runtime RPC handle
-- one live dispatch owns one reader and one correlated ingest queue/worker
+- one live dispatch owns one reader and one accepted-run-correlated ingest queue/worker
 - the adapter must not treat request-local raw event buffers as authoritative dispatch truth under concurrency
 - the adapter must not perform inline DB ingest inside the transport reader
 
@@ -146,16 +146,18 @@ Rules:
 
 - the adapter does not freeze a guessed upstream raw run-event vocabulary beyond the pinned handshake and machine-control subset
 - OpenClaw accepted response returns the authoritative `runId` before same-run agent/chat events for that launched run, but unrelated broadcasts may still interleave on the shared socket
+- event frames enter the dispatch queue only after the live handle has accepted-run `runId` correlation; the later normalizer and DB commit guard still revalidate dispatch/run ownership
 - raw event names and payloads are accepted only as adapter inputs that must still pass correlation and normalization checks before they affect controller-owned observability truth
 - `runId` is the primary live-run discriminator for provider progress and terminal correlation
 - `sessionKey` is routing context and an additional guard only
 - a raw event may update delivery-state or provider-event history only when the adapter can correlate it to the active dispatch/run for the current controller slot
-- unrelated buffered events such as `presence`, `tick`, or other broadcast/session traffic must be ignored for liveness even when they arrive before a final `agent.wait` response
+- unrelated socket events such as `presence`, `tick`, or other broadcast/session traffic must be dropped before the dispatch queue or ignored for liveness when they cannot be correlated to the accepted run
 - when the raw event stream provides `seq`, AutoClaw should treat it as the primary dedupe key per dispatch stream; when `seq` is absent, any fallback dedupe remains bounded adapter behavior and must not be described as a hard replay-proof contract
 - top-level websocket frame `seq` is transport detail, not the canonical run event index
 - `provider_event_name` preserves the raw provider/OpenClaw label as debug detail only; normalized `event_kind` remains the canonical persisted monitoring enum
-- `last_provider_signal_at` and `last_provider_event_kind` are updated from normalized provider progress-or-terminal events after controller-owned ingest commit, not from unrelated buffered traffic or raw socket receipt
-- current raw labels may include `assistant.delta`, `assistant.message`, optional `thinking.delta`, `tool.call.started|delta|completed|failed`, and `run.completed|failed|cancelled|timed_out`; older `response.*` and bare `tool.call` labels remain compatibility input only
+- `last_provider_signal_at` stores provider-native occurrence time for normalized provider progress-or-terminal events after controller-owned ingest commit and stale-replay pruning, not unrelated buffered traffic, raw socket receipt, or controller ingest time
+- current raw labels may include `assistant.delta`, `assistant.message`, optional `thinking.delta`, `tool.call.started|completed|failed`, and `run.completed|failed|cancelled|timed_out`; older `response.*` and bare `tool.call` labels remain compatibility input only
+- `tool.call.delta` frames are stream chunks and should be dropped before provider-event storage
 
 ## Recovery And Send-Mode Boundary
 

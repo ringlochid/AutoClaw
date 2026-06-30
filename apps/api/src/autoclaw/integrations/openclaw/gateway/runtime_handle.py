@@ -5,7 +5,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from websockets.asyncio.client import ClientConnection
 
@@ -78,7 +78,10 @@ class OpenClawGatewayRuntimeHandle:
         self._compatibility: OpenClawCompatibilityReport | None = None
         self._reader_task: asyncio.Task[None] | None = None
         self._pending_responses: dict[str, asyncio.Future[OpenClawGatewayResponseEnvelope]] = {}
+        self._pending_agent_session_keys: dict[str, str] = {}
         self._ignored_followup_response_ids: set[str] = set()
+        self._event_scope_run_id: str | None = None
+        self._event_scope_session_key: str | None = None
         self._queued_events: asyncio.Queue[_QueuedGatewayEvent] = asyncio.Queue()
         self._queued_event_bytes = 0
         self._terminal_error: Exception | None = None
@@ -214,14 +217,20 @@ class OpenClawGatewayRuntimeHandle:
             )
         if request.id in self._pending_responses:
             raise OpenClawProtocolError(f"duplicate in-flight gateway request id '{request.id}'")
+        agent_session_key = agent_request_session_key(request)
         response_future = asyncio.get_running_loop().create_future()
         self._pending_responses[request.id] = response_future
-        if request.method == "agent":
+        if agent_session_key is not None:
+            self._event_scope_session_key = agent_session_key
+            self._pending_agent_session_keys[request.id] = agent_session_key
             self._ignored_followup_response_ids.add(request.id)
         try:
             await connection.send(serialized_request)
         except Exception as exc:
             self._pending_responses.pop(request.id, None)
+            self._pending_agent_session_keys.pop(request.id, None)
+            if agent_session_key is not None and self._event_scope_run_id is None:
+                self._event_scope_session_key = None
             raise OpenClawRequestDispatchError(error=exc, request_sent=False) from exc
         try:
             response = await response_future
@@ -230,6 +239,7 @@ class OpenClawGatewayRuntimeHandle:
             raise OpenClawRequestDispatchError(error=exc, request_sent=True) from exc
         finally:
             self._pending_responses.pop(request.id, None)
+            self._pending_agent_session_keys.pop(request.id, None)
         return cast(OpenClawGatewayResponseEnvelope, response), True
 
     async def next_event(
@@ -288,6 +298,8 @@ class OpenClawGatewayRuntimeHandle:
         frame_size: int,
         compatibility: OpenClawCompatibilityReport,
     ) -> None:
+        if not self._event_matches_bound_run_scope(frame):
+            return
         next_buffered_bytes = self._queued_event_bytes + frame_size
         max_buffered_bytes = compatibility.max_buffered_bytes
         if max_buffered_bytes is not None and next_buffered_bytes > max_buffered_bytes:
@@ -311,9 +323,36 @@ class OpenClawGatewayRuntimeHandle:
     def _deliver_response(self, frame: OpenClawGatewayResponseEnvelope) -> bool:
         future = self._pending_responses.get(frame.id)
         if future is not None and not future.done():
+            self._bind_accepted_run_event_scope(frame)
             future.set_result(frame)
             return True
         return frame.id in self._ignored_followup_response_ids
+
+    def _bind_accepted_run_event_scope(
+        self,
+        frame: OpenClawGatewayResponseEnvelope,
+    ) -> None:
+        session_key = self._pending_agent_session_keys.get(frame.id)
+        if session_key is None or not frame.ok or frame.payload is None:
+            return
+        if payload_string(frame.payload, "status") != "accepted":
+            return
+        run_id = payload_string(frame.payload, "runId", "run_id")
+        if run_id is None:
+            return
+        self._event_scope_run_id = run_id
+        self._event_scope_session_key = session_key
+
+    def _event_matches_bound_run_scope(self, frame: OpenClawGatewayEventFrame) -> bool:
+        if self._event_scope_run_id is None:
+            return False
+        frame_run_id = payload_string(frame.payload, "runId", "run_id")
+        if frame_run_id != self._event_scope_run_id:
+            return False
+        frame_session_key = payload_string(frame.payload, "sessionKey", "session_key", "key")
+        if frame_session_key is None or self._event_scope_session_key is None:
+            return True
+        return session_keys_equal(frame_session_key, self._event_scope_session_key)
 
     def _require_connection(self) -> ClientConnection:
         if self._connection is None:
@@ -334,6 +373,24 @@ class OpenClawGatewayRuntimeHandle:
 
 def utc_now() -> datetime:
     return datetime.now(tz=UTC)
+
+
+def agent_request_session_key(request: OpenClawGatewayRequest) -> str | None:
+    if request.method != "agent":
+        return None
+    return request.params.session_key
+
+
+def payload_string(payload: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def session_keys_equal(left: str, right: str) -> bool:
+    return left.strip().lower() == right.strip().lower()
 
 
 def should_retry_agent_without_extra_system_prompt(

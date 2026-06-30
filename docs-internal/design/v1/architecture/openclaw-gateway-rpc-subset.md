@@ -181,6 +181,7 @@ Live event-label note:
 - current OpenClaw event names may include labels such as `assistant.delta`, `assistant.message`, `thinking.delta`, `tool.call.started`, `tool.call.delta`, `tool.call.completed`, `tool.call.failed`, `run.completed`, `run.failed`, `run.cancelled`, and `run.timed_out`
 - older `response.*` and bare `tool.call` labels may still arrive as compatibility input during rollout
 - AutoClaw persists only the normalized monitoring enums; the raw label stays bounded debug detail in `provider_event_name`
+- `tool.call.delta` is stream-chunk traffic and is dropped before provider-event storage
 
 Protocol-v4 note:
 
@@ -304,14 +305,14 @@ Transport-policy rules:
 - normalize accepted raw progress and terminal signals into controller-owned observability enums rather than persisting raw OpenClaw event names as controller truth
 - top-level websocket frame `seq` is connection-scoped/optional transport detail and must not be treated as a run event index
 - request-local `observed_events` are not part of the target live adapter contract and must not survive as authoritative runtime truth under concurrent transport traffic
-- controller-owned normalized provider progress becomes watchdog-visible only after controller-owned ingest commit, never on raw socket receipt or uncommitted adapter buffers
+- controller-owned normalized provider progress becomes watchdog-visible only after controller-owned ingest commit and stale-replay pruning, never on raw socket receipt or uncommitted adapter buffers
 
 ## Target Runtime Transport Architecture
 
 Canonical target design for the worker-lane dispatch path:
 
 - one live dispatch owns one dispatch-scoped runtime RPC handle
-- that handle owns one websocket connection or equivalent live transport handle, one reader, and one correlated ingest queue/worker
+- that handle owns one websocket connection or equivalent live transport handle, one reader, and one accepted-run-correlated ingest queue/worker
 - startup compatibility probing may reuse transport primitives, but it is not the same thing as a shared process-global live dispatch client
 
 Explicitly rejected as target canon:
@@ -326,14 +327,14 @@ Explicitly rejected as target canon:
 | ------------------------------------------------------------------------------------------------------------ | -------------------- | --------------------------------------------------------------------- | -------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | `connect.challenge` event                                                                                    | yes                  | pre-connect handshake challenge                                       | none                 | none               | not part of run liveness                                                                                                         |
 | `hello-ok.features.events` entry `agent`                                                                     | yes                  | required event-family presence check                                  | none                 | none               | discovery-only handshake check                                                                                                   |
-| Generic event envelope `type,event,payload,seq?,stateVersion?`                                               | yes                  | raw carrier only; not semantic truth by itself                        | none directly        | none directly      | envelope is accepted before event-specific normalization                                                                         |
+| Generic event envelope `type,event,payload,seq?,stateVersion?`                                               | yes                  | raw carrier only; not semantic truth by itself                        | none directly        | none directly      | envelope may enter the dispatch queue only after accepted `runId` correlation, then event-specific normalization revalidates it  |
 | Raw event correlated to the active dispatch/run and showing first meaningful provider data                   | yes                  | provider stream proved initial live progress                          | `first_data`         | yes                | dedupe by `seq` when present; otherwise use bounded fallback heuristics and require dispatch/run correlation before accepting it |
 | Raw event correlated to the active dispatch/run and showing subsequent provider output progress              | yes                  | provider stream advanced after first meaningful data                  | `output_delta`       | yes                | same dedupe and correlation rule as above                                                                                        |
 | Raw event correlated to the active dispatch/run and showing tool-side provider activity                      | yes                  | provider-side tool activity occurred on the active dispatch/run       | `tool_event`         | optional hint only | same dedupe and correlation rule as above                                                                                        |
 | Raw event correlated to the active dispatch/run and showing provider terminal success                        | yes                  | provider transport ended normally for that run                        | `response_completed` | yes, terminal      | same dedupe and correlation rule as above                                                                                        |
 | Raw event correlated to the active dispatch/run and showing provider terminal failure                        | yes                  | provider transport ended with provider-reported failure for that run  | `response_failed`    | yes, terminal      | same dedupe and correlation rule as above                                                                                        |
 | Session-correlated event such as `session.message` or session-only `sessions.changed` without live-run proof | no for liveness      | socket/session activity outside authoritative live-run discrimination | none                 | none               | do not use `sessionKey` alone as live-run liveness proof                                                                         |
-| Unrelated buffered event such as `presence`, `tick`, or other uncorrelated broadcast traffic                 | no for liveness      | observability noise outside the active dispatch/run                   | none                 | none               | ignore for liveness and do not let it update progress anchors                                                                    |
+| Unrelated buffered event such as `presence`, `tick`, or other uncorrelated broadcast traffic                 | no for liveness      | observability noise outside the active dispatch/run                   | none                 | none               | drop before the dispatch event queue when it lacks accepted-run correlation; never update progress anchors                       |
 | Broadcast transport event such as `health` or `shutdown` with no active dispatch/run correlation             | no for liveness      | connection/runtime broadcast outside dispatch truth                   | none                 | none               | ignore for dispatch-liveness truth                                                                                               |
 
 ## Trusted Execution Context Rule

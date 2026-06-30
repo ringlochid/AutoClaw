@@ -123,7 +123,7 @@ Same-attempt recovery must not be described as retry lineage.
 Transport-handle rule:
 
 - canonical target worker-lane dispatch uses a dispatch-scoped runtime RPC handle
-- one live dispatch owns one websocket connection or equivalent live transport handle, one reader, and one correlated ingest queue/worker
+- one live dispatch owns one websocket connection or equivalent live transport handle, one reader, and one accepted-run-correlated ingest queue/worker
 - startup compatibility probing may reuse transport primitives, but it is not the same thing as a shared process-global live dispatch client
 
 Additional rules:

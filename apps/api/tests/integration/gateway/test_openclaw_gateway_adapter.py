@@ -218,48 +218,9 @@ async def test_dispatch_handle_routes_interleaved_events_and_ignores_late_agent_
 ) -> None:
     seen_methods: list[str] = []
 
-    async def handler(connection: ServerConnection) -> None:
-        await send_json(connection, connect_challenge_fixture())
-        connect_request = await recv_json(connection)
-        hello_ok = hello_ok_fixture(device_token=None)
-        hello_ok["id"] = connect_request["id"]
-        await send_json(connection, hello_ok)
-
-        launch_request = await recv_json(connection)
-        seen_methods.append(str(launch_request["method"]))
-        assert launch_request["method"] == "agent"
-        await send_json(
-            connection,
-            {
-                "type": "event",
-                "event": "presence",
-                "payload": {"presence": []},
-                "seq": 1,
-                "stateVersion": {"presence": 1},
-            },
-        )
-        accepted = agent_accepted_fixture()
-        accepted["id"] = launch_request["id"]
-        accepted["payload"]["runId"] = "run-live"
-        await send_json(connection, accepted)
-        await send_json(
-            connection,
-            {
-                "type": "res",
-                "id": launch_request["id"],
-                "ok": True,
-                "payload": {"runId": "run-live", "status": "completed"},
-            },
-        )
-
-        wait_request = await recv_json(connection)
-        seen_methods.append(str(wait_request["method"]))
-        assert wait_request["method"] == "agent.wait"
-        wait_response = agent_wait_fixture(run_id="run-live", status="ok")
-        wait_response["id"] = wait_request["id"]
-        await send_json(connection, wait_response)
-
-    async with gateway_server(handler) as base_url:
+    async with gateway_server(
+        lambda connection: _handle_scoped_interleaved_events(connection, seen_methods)
+    ) as base_url:
         adapter = build_test_adapter(
             base_url=base_url,
             data_dir=tmp_path / "data",
@@ -276,9 +237,78 @@ async def test_dispatch_handle_routes_interleaved_events_and_ignores_late_agent_
 
     assert launch_result.run_id == "run-live"
     assert observed_event is not None
-    assert observed_event.event == "presence"
+    assert observed_event.event == "agent"
+    assert observed_event.seq == 3
+    assert observed_event.payload["runId"] == "run-live"
     assert wait_result.status == OpenClawWaitStatus.OK
     assert seen_methods == ["agent", "agent.wait"]
+
+
+async def _handle_scoped_interleaved_events(
+    connection: ServerConnection,
+    seen_methods: list[str],
+) -> None:
+    await send_json(connection, connect_challenge_fixture())
+    connect_request = await recv_json(connection)
+    hello_ok = hello_ok_fixture(device_token=None)
+    hello_ok["id"] = connect_request["id"]
+    await send_json(connection, hello_ok)
+    launch_request = await recv_json(connection)
+    seen_methods.append(str(launch_request["method"]))
+    assert launch_request["method"] == "agent"
+    await _send_interleaved_launch_events(connection, launch_request)
+    wait_request = await recv_json(connection)
+    seen_methods.append(str(wait_request["method"]))
+    assert wait_request["method"] == "agent.wait"
+    wait_response = agent_wait_fixture(run_id="run-live", status="ok")
+    wait_response["id"] = wait_request["id"]
+    await send_json(connection, wait_response)
+
+
+async def _send_interleaved_launch_events(
+    connection: ServerConnection,
+    launch_request: dict[str, Any],
+) -> None:
+    session_key = str(launch_request["params"]["sessionKey"])
+    await send_json(
+        connection,
+        {
+            "type": "event",
+            "event": "presence",
+            "payload": {"presence": []},
+            "seq": 1,
+            "stateVersion": {"presence": 1},
+        },
+    )
+    accepted = agent_accepted_fixture()
+    accepted["id"] = launch_request["id"]
+    accepted["payload"]["runId"] = "run-live"
+    await send_json(connection, accepted)
+    await send_json(connection, _agent_event("run-orin", "agent:orin:direct", "wrong", 2))
+    await send_json(connection, _agent_event("run-live", session_key, "right", 3))
+    await send_json(
+        connection,
+        {
+            "type": "res",
+            "id": launch_request["id"],
+            "ok": True,
+            "payload": {"runId": "run-live", "status": "completed"},
+        },
+    )
+
+
+def _agent_event(run_id: str, session_key: str, delta: str, seq: int) -> dict[str, Any]:
+    return {
+        "type": "event",
+        "event": "agent",
+        "payload": {
+            "runId": run_id,
+            "sessionKey": session_key,
+            "stream": "assistant",
+            "data": {"delta": delta},
+        },
+        "seq": seq,
+    }
 
 
 @pytest.mark.asyncio

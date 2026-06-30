@@ -75,9 +75,9 @@ Current dispatch observation/drain facts include:
 
 - accepted-boundary waiting is not a persisted control-state enum and is not carried as a distinct raw `delivery-state.json` observation value; the raw delivery projection stays transport-focused while controller truth still waits for inactivity proof
 - the shipped boundary-accept path does not fence the dispatch immediately; it sets `control_deadline_at` and leaves the accepted dispatch controller-truth-visible until inactivity is proven or the control deadline expires
-- current watchdog/lifecycle timing now keys off acceptance time, committed controller semantic progress, and committed provider-signal progress; checkpoint time alone does not extend the execution-stale deadline
+- current watchdog/lifecycle timing now keys off acceptance time, committed controller semantic progress, and provider-time provider-signal progress after stale-replay pruning; checkpoint time alone does not extend the execution-stale deadline
 - current automatic watchdog recovery stays limited to `redispatch_same_attempt` or `escalate`; it does not auto-mint a new attempt
-- current runtime uses a dispatch-scoped Gateway reader plus controller-owned event ingester after acceptance commit; provider progress becomes runtime truth only after normalization and DB commit, not on raw socket receipt
+- current runtime uses a dispatch-scoped Gateway reader plus controller-owned event ingester after acceptance commit; provider progress becomes runtime truth only after normalization, DB commit, and stale-replay pruning, not on raw socket receipt
 
 ## Current operator and callback controls
 

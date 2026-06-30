@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -18,11 +19,12 @@ from autoclaw.runtime.dispatch.openclaw.models import (
     OpenClawDispatchLaunchLease,
 )
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from tests.helpers.openclaw_gateway_support import gateway_server, recv_json, send_json
 from tests.helpers.runtime_support import runtime_bootstrap_context
 from tests.helpers.seeded_runtime_support import launch_seeded_runtime, task_compose_payload
 from tests.integration.gateway.dispatch_gateway_support import (
+    DispatchGatewaySnapshot,
     override_gateway_base_url,
     wait_for_latest_dispatch_snapshot,
 )
@@ -92,7 +94,6 @@ def _agent_stream_observed_event(
         ("response.delta", True, "output_delta"),
         ("tool.call", False, "tool_event"),
         ("tool.call.started", False, "tool_event"),
-        ("tool.call.delta", False, "tool_event"),
         ("tool.call.completed", False, "tool_event"),
         ("tool.call.failed", False, "tool_event"),
         ("run.completed", False, "response_completed"),
@@ -115,6 +116,14 @@ def test_normalize_observed_event_maps_legacy_direct_labels(
     assert normalized is not None
     assert normalized.event_kind == expected_kind
     assert normalized.provider_event_name == raw_label
+
+
+def test_normalize_observed_event_drops_tool_call_delta() -> None:
+    runtime = _runtime_for_normalization()
+
+    normalized = normalize_observed_event(runtime, _observed_event("tool.call.delta"))
+
+    assert normalized is None
 
 
 @pytest.mark.parametrize(
@@ -222,14 +231,20 @@ async def _send_current_openclaw_progress_stream(connection: ServerConnection) -
     request = await recv_json(connection)
     assert request["method"] == "agent"
     run_id = "run-live"
-    await _send_agent_accepted_response(connection, request_id=request["id"], run_id=run_id)
+    event_base = datetime.now(tz=UTC)
+    await _send_agent_accepted_response(
+        connection,
+        request_id=request["id"],
+        run_id=run_id,
+        accepted_at=event_base - timedelta(seconds=1),
+    )
     await _send_current_openclaw_event(
         connection,
         stream="assistant",
         data={"delta": "hello"},
         run_id=run_id,
         session_key=request["params"]["sessionKey"],
-        occurred_at="2026-05-24T00:00:01+00:00",
+        occurred_at=(event_base + timedelta(seconds=1)).isoformat(),
     )
     await _send_current_openclaw_event(
         connection,
@@ -237,7 +252,7 @@ async def _send_current_openclaw_progress_stream(connection: ServerConnection) -
         data={"phase": "end", "status": "completed"},
         run_id=run_id,
         session_key=request["params"]["sessionKey"],
-        occurred_at="2026-05-24T00:00:02+00:00",
+        occurred_at=(event_base + timedelta(seconds=2)).isoformat(),
     )
     await _send_current_openclaw_event(
         connection,
@@ -245,7 +260,7 @@ async def _send_current_openclaw_progress_stream(connection: ServerConnection) -
         data={"text": "done"},
         run_id=run_id,
         session_key=request["params"]["sessionKey"],
-        occurred_at="2026-05-24T00:00:03+00:00",
+        occurred_at=(event_base + timedelta(seconds=3)).isoformat(),
     )
     await _send_current_openclaw_event(
         connection,
@@ -253,7 +268,7 @@ async def _send_current_openclaw_progress_stream(connection: ServerConnection) -
         data={"phase": "end"},
         run_id=run_id,
         session_key=request["params"]["sessionKey"],
-        occurred_at="2026-05-24T00:00:04+00:00",
+        occurred_at=(event_base + timedelta(seconds=4)).isoformat(),
     )
     try:
         await connection.wait_closed()
@@ -280,7 +295,9 @@ async def _send_agent_accepted_response(
     *,
     request_id: object,
     run_id: str,
+    accepted_at: datetime | None = None,
 ) -> None:
+    accepted_at = accepted_at or datetime.now(tz=UTC)
     await send_json(
         connection,
         {
@@ -290,7 +307,7 @@ async def _send_agent_accepted_response(
             "payload": {
                 "runId": run_id,
                 "status": "accepted",
-                "acceptedAt": "2026-05-24T00:00:00+00:00",
+                "acceptedAt": accepted_at.isoformat(),
             },
         },
     )
@@ -374,8 +391,21 @@ async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_ev
         "assistant.message",
         "run.completed",
     ]
-    async with runtime.session_factory() as session:
-        task_events = list(
+    task_events = await _load_provider_task_events(runtime.session_factory, task_id=task_id)
+    _assert_current_openclaw_task_events(task_events, snapshot)
+    assert (
+        snapshot.delivery_state.last_provider_signal_at
+        == snapshot.provider_events[1].provider_occurred_at
+    )
+
+
+async def _load_provider_task_events(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    task_id: str,
+) -> list[TaskEventModel]:
+    async with session_factory() as session:
+        return list(
             await session.scalars(
                 select(TaskEventModel)
                 .where(
@@ -386,6 +416,11 @@ async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_ev
             )
         )
 
+
+def _assert_current_openclaw_task_events(
+    task_events: list[TaskEventModel],
+    snapshot: DispatchGatewaySnapshot,
+) -> None:
     assert [event.event_source for event in task_events[:5]] == [
         "adapter",
         "provider",
@@ -404,3 +439,145 @@ async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_ev
     assert task_events[1].payload["transport_family"] == "openclaw_gateway_ws_rpc"
     assert task_events[1].payload["gateway_run_id"] == snapshot.dispatch.gateway_run_id
     assert task_events[1].payload["gateway_session_key"] == snapshot.dispatch.gateway_session_key
+
+
+async def _send_openclaw_tool_delta_noise_stream(connection: ServerConnection) -> None:
+    await _send_current_openclaw_handshake(connection)
+    request = await recv_json(connection)
+    assert request["method"] == "agent"
+    run_id = "run-with-deltas"
+    event_base = datetime.now(tz=UTC)
+    await _send_agent_accepted_response(
+        connection,
+        request_id=request["id"],
+        run_id=run_id,
+        accepted_at=event_base - timedelta(seconds=1),
+    )
+    for offset_seconds in range(1, 6):
+        await _send_current_openclaw_event(
+            connection,
+            stream="tool",
+            data={"phase": "delta"},
+            run_id=run_id,
+            session_key=request["params"]["sessionKey"],
+            occurred_at=(event_base + timedelta(seconds=offset_seconds)).isoformat(),
+        )
+    await _send_current_openclaw_event(
+        connection,
+        stream="tool",
+        data={"phase": "end", "status": "completed"},
+        run_id=run_id,
+        session_key=request["params"]["sessionKey"],
+        occurred_at=(event_base + timedelta(seconds=6)).isoformat(),
+    )
+    await _send_current_openclaw_event(
+        connection,
+        stream="lifecycle",
+        data={"phase": "end"},
+        run_id=run_id,
+        session_key=request["params"]["sessionKey"],
+        occurred_at=(event_base + timedelta(seconds=7)).isoformat(),
+    )
+    try:
+        await connection.wait_closed()
+    except ConnectionClosed:
+        return
+
+
+@pytest.mark.asyncio
+async def test_runtime_ingest_drops_tool_call_delta_before_provider_event_storage(
+    tmp_path: Path,
+) -> None:
+    task_id = "task_gateway_drops_tool_call_delta"
+
+    async with gateway_server(_send_openclaw_tool_delta_noise_stream) as base_url:
+        async with runtime_bootstrap_context(tmp_path) as runtime:
+            with override_gateway_base_url(base_url):
+                async with runtime.session_factory() as session:
+                    await launch_seeded_runtime(
+                        session,
+                        task_id=task_id,
+                        task_root=runtime.paths.task_root,
+                        task_compose=task_compose_payload("minimal-implement-change"),
+                        compiler_version="gateway-drops-tool-delta",
+                    )
+
+            snapshot = await wait_for_latest_dispatch_snapshot(
+                runtime.session_factory,
+                task_id=task_id,
+                predicate=lambda current: (
+                    current.dispatch.delivery_status == "provider_completed"
+                    and len(current.provider_events) >= 3
+                ),
+                max_cycles=200,
+            )
+
+    provider_event_names = [event.provider_event_name for event in snapshot.provider_events]
+    assert "tool.call.delta" not in provider_event_names
+    assert provider_event_names == [None, "tool.call.completed", "run.completed"]
+
+
+async def _send_stale_openclaw_replay_stream(connection: ServerConnection) -> None:
+    await _send_current_openclaw_handshake(connection)
+    request = await recv_json(connection)
+    assert request["method"] == "agent"
+    run_id = "run-stale-replay"
+    event_base = datetime.now(tz=UTC) - timedelta(minutes=15)
+    await _send_agent_accepted_response(
+        connection,
+        request_id=request["id"],
+        run_id=run_id,
+    )
+    await _send_current_openclaw_event(
+        connection,
+        stream="tool",
+        data={"phase": "end", "status": "completed"},
+        run_id=run_id,
+        session_key=request["params"]["sessionKey"],
+        occurred_at=(event_base + timedelta(seconds=1)).isoformat(),
+    )
+    await _send_current_openclaw_event(
+        connection,
+        stream="lifecycle",
+        data={"phase": "end"},
+        run_id=run_id,
+        session_key=request["params"]["sessionKey"],
+        occurred_at=(event_base + timedelta(seconds=2)).isoformat(),
+    )
+    try:
+        await connection.wait_closed()
+    except ConnectionClosed:
+        return
+
+
+@pytest.mark.asyncio
+async def test_runtime_ingest_keeps_stale_replay_out_of_provider_freshness(
+    tmp_path: Path,
+) -> None:
+    task_id = "task_gateway_stale_replay_no_freshness"
+
+    async with gateway_server(_send_stale_openclaw_replay_stream) as base_url:
+        async with runtime_bootstrap_context(tmp_path) as runtime:
+            with override_gateway_base_url(base_url):
+                async with runtime.session_factory() as session:
+                    await launch_seeded_runtime(
+                        session,
+                        task_id=task_id,
+                        task_root=runtime.paths.task_root,
+                        task_compose=task_compose_payload("minimal-implement-change"),
+                        compiler_version="gateway-stale-replay-no-freshness",
+                    )
+
+            snapshot = await wait_for_latest_dispatch_snapshot(
+                runtime.session_factory,
+                task_id=task_id,
+                predicate=lambda current: (
+                    current.dispatch.delivery_status == "provider_completed"
+                    and len(current.provider_events) >= 3
+                ),
+                max_cycles=200,
+            )
+
+    assert snapshot.delivery_state is not None
+    assert snapshot.dispatch.delivery_status == "provider_completed"
+    assert snapshot.delivery_state.last_provider_signal_at is None

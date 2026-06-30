@@ -173,11 +173,13 @@ Current controller-owned hint facts include:
 
 Current shipped contrast:
 
-- `last_provider_signal_at` now moves on committed, liveness-relevant provider progress from the dispatch-scoped ingest seam
+- `last_provider_signal_at` now stores provider-native occurrence time for committed, liveness-relevant provider progress from the dispatch-scoped ingest seam
 - current execution-stale anchoring can use committed provider-signal time as one of the progress anchors, but raw socket receipt and uncommitted queue state still do not become controller truth
 - `agent.wait` remains terminal confirmation and timeout or terminal metadata reconciliation; it is not the first mid-run provider-progress write path
 - current code uses a dispatch-scoped queue plus ingester after acceptance commit rather than request-local `agent` or `agent.wait` event buffering as runtime truth
-- current code now accepts current OpenClaw raw labels such as `assistant.delta`, `assistant.message`, optional `thinking.delta`, `tool.call.started|delta|completed|failed`, and `run.completed|failed|cancelled|timed_out`, while still tolerating older `response.*` and bare `tool.call` labels as compatibility input
+- the live Gateway handle binds event buffering to the accepted `runId` plus matching `sessionKey`; unscoped, pre-acceptance, or different-run socket frames are dropped before they consume the dispatch event queue
+- current code accepts current OpenClaw raw labels such as `assistant.delta`, `assistant.message`, optional `thinking.delta`, `tool.call.started|completed|failed`, and `run.completed|failed|cancelled|timed_out`, while still tolerating older `response.*` and bare `tool.call` labels as compatibility input
+- `tool.call.delta` frames are dropped before provider-event storage because they are stream chunks, not controller runtime truth
 
 Current controller does not treat those hints as execution truth. Checkpoints, boundaries, current dispatch truth, and current session authority still outrank provider-side transport activity.
 

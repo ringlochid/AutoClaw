@@ -20,11 +20,11 @@ TOOL_RAW_EVENT_LABELS = frozenset(
     {
         "tool.call",
         "tool.call.started",
-        "tool.call.delta",
         "tool.call.completed",
         "tool.call.failed",
     }
 )
+TOOL_DELTA_RAW_EVENT_LABELS = frozenset({"tool.call.delta"})
 COMPLETED_RAW_EVENT_LABELS = frozenset({"run.completed", "response.completed"})
 FAILED_RAW_EVENT_LABELS = frozenset(
     {"run.failed", "run.cancelled", "run.timed_out", "response.failed"}
@@ -32,6 +32,7 @@ FAILED_RAW_EVENT_LABELS = frozenset(
 SUPPORTED_RAW_EVENT_LABELS = frozenset(
     PROGRESS_RAW_EVENT_LABELS
     | TOOL_RAW_EVENT_LABELS
+    | TOOL_DELTA_RAW_EVENT_LABELS
     | COMPLETED_RAW_EVENT_LABELS
     | FAILED_RAW_EVENT_LABELS
 )

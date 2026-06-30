@@ -73,8 +73,8 @@ Current shipped contrast:
 
 - execution-stale timing keys off acceptance time, committed controller semantic progress, and committed provider-signal progress
 - checkpoint time alone does not extend the current execution-stale deadline
-- `last_provider_signal_at` contributes to the committed stale-progress anchor after controller normalization and commit
-- current watchdog-visible provider progress moves only after controller normalization and commit, not on raw transport receipt
+- `last_provider_signal_at` contributes to the committed stale-progress anchor after controller normalization and commit, but its value is provider-native occurrence time rather than controller ingest time
+- current watchdog-visible provider progress moves only after controller normalization, DB commit, and stale-replay pruning; raw transport receipt and stale backfill drain do not refresh liveness
 - external waits are recognized from controller-owned source rows before terminal-provider failure classification runs
 
 ## `CurrentWatchdogRecoveryLadder`

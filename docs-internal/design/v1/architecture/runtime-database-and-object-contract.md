@@ -836,11 +836,11 @@ Rules:
 - `delivery-state.json` is an observability projection over this row
 - provider terminal success does not imply assignment success
 - `accepted_at` is the first accepted transport timestamp for the dispatch
-- `last_provider_signal_at` is the latest normalized provider progress-or-terminal signal timestamp after controller-owned ingest commit
+- `last_provider_signal_at` is the latest accepted provider-native occurrence timestamp for normalized provider progress-or-terminal signal after controller-owned ingest commit
 - `last_provider_event_kind` is the latest normalized provider progress-or-terminal kind
 - `last_controller_progress_at` is the latest node semantic write timestamp
 - stale-timeout anchoring uses `accepted_at`, `last_provider_signal_at`, and the latest node semantic write timestamp rather than checkpoint time
-- `tool_event` is persisted observability and must not advance `last_provider_signal_at`
+- `tool.call.delta` frames are dropped before provider-event storage; retained tool lifecycle events may only advance `last_provider_signal_at` when provider-time gap and ingest-lag pruning allow it
 - raw socket receipt and uncommitted transport buffers are never support-state truth
 - if current code still persists `send_mode` here, that field is current/debt observability only rather than a meaningful live target runtime behavior field
 - accepted-boundary waiting is controller-derived from dispatch truth plus inactivity proof; raw `delivery-state.json` stays `transport_state: accepted` while that wait remains open
