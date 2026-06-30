@@ -10,12 +10,17 @@ test("routes root traffic into the task shell", async ({ page }) => {
 
 test("keeps primary navigation on real product routes", async ({ page }) => {
     await page.goto("/tasks");
+    const primaryNav = page.getByRole("navigation", { name: "Primary" });
 
-    await page.getByRole("link", { name: "Definitions" }).click();
+    await primaryNav.getByRole("link", { name: "Definitions" }).click();
     await expect(page).toHaveURL(/\/definitions$/);
     await expect(page.getByRole("heading", { level: 1, name: "Definitions" })).toBeVisible();
 
-    await page.getByRole("link", { name: "Task Start" }).click();
+    await primaryNav.getByRole("link", { name: "Definition Editor" }).click();
+    await expect(page).toHaveURL(/\/definitions\/editor$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Definition Editor" })).toBeVisible();
+
+    await primaryNav.getByRole("link", { name: "Task Start" }).click();
     await expect(page).toHaveURL(/\/task-start$/);
     await expect(page.getByRole("heading", { level: 1, name: "Task Start" })).toBeVisible();
 });
@@ -27,8 +32,11 @@ test("keeps task-scoped breadcrumbs below Tasks", async ({ page }) => {
     await expect(breadcrumb).toContainText("Tasks");
     await expect(breadcrumb).toContainText("runtime-copy-refresh");
     await expect(breadcrumb).toContainText("Human Requests");
+    await expect(breadcrumb.getByText("\u203a")).toHaveCount(2);
     await expect(page.getByRole("heading", { level: 1, name: "Human Requests" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Human Requests" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Task Detail" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Human Requests" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Command Runs" })).toBeVisible();
 });
 
 test("keeps authoring breadcrumbs separate from selected task routes", async ({ page }) => {
@@ -36,7 +44,7 @@ test("keeps authoring breadcrumbs separate from selected task routes", async ({ 
 
     const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
     await expect(breadcrumb).toContainText("Definitions");
-    await expect(breadcrumb).toContainText("Editor");
+    await expect(breadcrumb).toContainText("Definition Editor");
     await expect(page.getByText("Draft editing")).toBeVisible();
     await expect(page.getByText("Task Control Suite")).toHaveCount(0);
 });
@@ -68,6 +76,24 @@ test("avoids document-level horizontal overflow on narrow shell routes", async (
         );
 
         expect(overflow).toBeLessThanOrEqual(1);
+    }
+});
+
+test("does not expose internal fixture gallery chrome on release shell routes", async ({
+    page,
+}) => {
+    for (const route of [
+        "/tasks",
+        "/tasks/runtime-copy-refresh",
+        "/tasks/runtime-copy-refresh/human-requests",
+        "/tasks/runtime-copy-refresh/command-runs",
+        "/definitions",
+        "/definitions/editor",
+        "/task-start",
+    ]) {
+        await page.goto(route);
+        await expect(page.getByRole("main", { name: "AutoClaw Console" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "Fixture gallery" })).toHaveCount(0);
     }
 });
 
