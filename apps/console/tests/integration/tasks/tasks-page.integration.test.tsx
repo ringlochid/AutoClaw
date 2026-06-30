@@ -40,7 +40,7 @@ afterAll(() => {
 });
 
 describe("TasksPage", () => {
-    it("renders mixed rows, sends query controls, refreshes, and loads cursor pages", async () => {
+    it("renders mixed rows, sends query controls, and loads cursor pages", async () => {
         const user = userEvent.setup();
         const seenRequests: URL[] = [];
         const firstPage = createRuntimeFlowSummaryList(
@@ -78,7 +78,8 @@ describe("TasksPage", () => {
 
         renderTasksPage();
 
-        expect(screen.getByText("Loading tasks")).toBeVisible();
+        expect(screen.getByRole("status", { name: "Loading task rows" })).toBeVisible();
+        expect(screen.getByText("Loading tasks...")).toBeVisible();
         expect(await screen.findByText("Refresh runtime route copy")).toBeVisible();
         expect(
             screen.getByText(
@@ -108,12 +109,6 @@ describe("TasksPage", () => {
             expect(seenRequests.at(-1)?.searchParams.get("sort")).toBe("task_title_asc");
         });
 
-        const requestsBeforeRefresh = seenRequests.length;
-        await user.click(screen.getByRole("button", { name: "Refresh" }));
-        await waitFor(() => {
-            expect(seenRequests.length).toBeGreaterThan(requestsBeforeRefresh);
-        });
-
         await user.click(screen.getByRole("button", { name: "Load more" }));
         expect(await screen.findByText("Review accepted page")).toBeVisible();
         expect(seenRequests.at(-1)?.searchParams.get("cursor")).toBe("cursor-page-2");
@@ -129,12 +124,22 @@ describe("TasksPage", () => {
 
         renderTasksPage();
 
-        expect(await screen.findByText("No tasks available")).toBeVisible();
+        const emptyState = await screen.findByRole("status", { name: "No tasks available" });
+        expect(within(emptyState).getByText("The runtime task list is empty.")).toBeVisible();
 
         await user.type(screen.getByLabelText("Search"), "missing task");
 
-        expect(await screen.findByText("No matching tasks")).toBeVisible();
-        expect(screen.getByRole("button", { name: "Clear filters" })).toBeVisible();
+        const noResultsState = await screen.findByRole("status", { name: "No matching tasks" });
+        const clearFiltersButton = within(noResultsState).getByRole("button", {
+            name: "Clear filters",
+        });
+        clearFiltersButton.focus();
+        expect(clearFiltersButton).toHaveFocus();
+        await user.keyboard("{Enter}");
+        await waitFor(() => {
+            expect(screen.getByLabelText("Search")).toHaveValue("");
+        });
+        expect(await screen.findByRole("status", { name: "No tasks available" })).toBeVisible();
         expect(screen.queryByText(/total/i)).not.toBeInTheDocument();
     });
 
@@ -221,8 +226,13 @@ describe("TasksPage", () => {
         );
 
         const { unmount } = renderTasksPage();
-        expect(await screen.findByText("Access to tasks failed")).toBeVisible();
-        expect(screen.getByText("The AutoClaw API key is missing or invalid.")).toBeVisible();
+        const authState = await screen.findByRole("alert", { name: "Access to tasks failed" });
+        expect(
+            within(authState).getByText("The AutoClaw API key is missing or invalid."),
+        ).toBeVisible();
+        const authRetryButton = within(authState).getByRole("button", { name: "Retry" });
+        authRetryButton.focus();
+        expect(authRetryButton).toHaveFocus();
 
         unmount();
         cleanup();
@@ -234,8 +244,13 @@ describe("TasksPage", () => {
         );
 
         renderTasksPage();
-        expect(await screen.findByText("Tasks could not load")).toBeVisible();
-        expect(screen.getByText("Runtime task read failed.")).toBeVisible();
+        const readErrorState = await screen.findByRole("alert", { name: "Tasks could not load" });
+        expect(within(readErrorState).getByText("Runtime task read failed.")).toBeVisible();
+        const readErrorRetryButton = within(readErrorState).getByRole("button", {
+            name: "Retry",
+        });
+        readErrorRetryButton.focus();
+        expect(readErrorRetryButton).toHaveFocus();
     });
 
     it("opens a task row through the task-detail route", async () => {
@@ -252,7 +267,7 @@ describe("TasksPage", () => {
 
         const taskRows = within(await screen.findByRole("list", { name: "Task rows" }));
         await userEvent.click(
-            taskRows.getByRole("link", { name: "Open Refresh runtime route copy" }),
+            taskRows.getByRole("link", { name: "Open Refresh runtime route copy in Task Detail" }),
         );
 
         expect(await screen.findByTestId("task-detail-target")).toHaveTextContent(

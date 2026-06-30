@@ -1,19 +1,17 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+    useEffect,
+    useRef,
+    useState,
+    type Dispatch,
+    type ReactNode,
+    type SetStateAction,
+} from "react";
 
-import { ArrowRight, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, ArrowRight, Inbox, Search, ShieldAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { PageFrame } from "../../components/layout";
-import {
-    Button,
-    FormField,
-    IdRefText,
-    StatePanel,
-    StatusChip,
-    Surface,
-    TimestampText,
-    type StatusTone,
-} from "../../components/ui";
+import { Button, IdRefText, StatusChip, type StatusTone } from "../../components/ui";
 import {
     AutoClawApiError,
     getNextCursor,
@@ -41,8 +39,9 @@ interface TaskPageState {
 }
 
 interface TaskPageController {
-    readonly clearNarrowing: () => void;
+    readonly clearListView: () => void;
     readonly hasActiveNarrowing: boolean;
+    readonly hasModifiedListView: boolean;
     readonly loadMore: () => void;
     readonly pageState: TaskPageState;
     readonly query: string;
@@ -52,12 +51,12 @@ interface TaskPageController {
     readonly setStatus: (value: TaskStatusFilter) => void;
     readonly sort: TaskSort;
     readonly status: TaskStatusFilter;
-    readonly statusSummary: string;
 }
 
 type TaskPageStateSetter = Dispatch<SetStateAction<TaskPageState>>;
 
 const TASK_PAGE_SIZE = 25;
+const TASK_SKELETON_ROW_INDICES = [0, 1, 2, 3, 4] as const;
 const INITIAL_TASK_CRITERIA_KEY = buildTaskListCriteriaKey({
     sort: "updated_at_desc",
     status: "any",
@@ -75,10 +74,10 @@ const STATUS_FILTERS: readonly { readonly label: string; readonly value: TaskSta
 ];
 
 const SORT_OPTIONS: readonly { readonly label: string; readonly value: TaskSort }[] = [
-    { label: "Updated newest", value: "updated_at_desc" },
-    { label: "Updated oldest", value: "updated_at_asc" },
-    { label: "Title A-Z", value: "task_title_asc" },
-    { label: "Title Z-A", value: "task_title_desc" },
+    { label: "Sort by: Updated", value: "updated_at_desc" },
+    { label: "Sort by: Oldest updated", value: "updated_at_asc" },
+    { label: "Sort by: Title A-Z", value: "task_title_asc" },
+    { label: "Sort by: Title Z-A", value: "task_title_desc" },
 ];
 
 const initialState: TaskPageState = {
@@ -98,48 +97,21 @@ export function TasksPage() {
 
     return (
         <PageFrame
-            actions={
-                <Button
-                    disabled={controller.pageState.isLoading || controller.pageState.isRefreshing}
-                    icon={
-                        <RefreshCw
-                            className={controller.pageState.isRefreshing ? "animate-spin" : ""}
-                        />
-                    }
-                    onClick={controller.refresh}
-                >
-                    Refresh
-                </Button>
-            }
-            description="Scan current runtime tasks, narrow the list, and open one task."
             eyebrow="Runtime"
+            headerContent={<TaskControls controller={controller} />}
             title="Tasks"
         >
-            <Surface
-                actions={
-                    <StatusChip
-                        tone={controller.pageState.error === null ? "neutral" : "danger"}
-                        withDot
-                    >
-                        {controller.statusSummary}
-                    </StatusChip>
-                }
-                label="Runtime list"
-                title="Task rows"
-            >
-                <div className="space-y-4">
-                    <TaskControls controller={controller} />
-                    <TaskListState
-                        error={controller.pageState.error}
-                        hasActiveNarrowing={controller.hasActiveNarrowing}
-                        isLoading={controller.pageState.isLoading}
-                        onClearNarrowing={controller.clearNarrowing}
-                        onRetry={controller.refresh}
-                        rows={controller.pageState.rows}
-                    />
-                    <TaskListFooter controller={controller} />
-                </div>
-            </Surface>
+            <div className="-mx-4 -mb-4 sm:-mx-5 sm:-mb-5">
+                <TaskListState
+                    error={controller.pageState.error}
+                    hasActiveNarrowing={controller.hasActiveNarrowing}
+                    isLoading={controller.pageState.isLoading}
+                    onClearNarrowing={controller.clearListView}
+                    onRetry={controller.refresh}
+                    rows={controller.pageState.rows}
+                />
+                <TaskListFooter controller={controller} />
+            </div>
         </PageFrame>
     );
 }
@@ -154,6 +126,7 @@ function useTaskPageController(): TaskPageController {
     const trimmedQuery = query.trim();
     const criteriaKey = buildTaskListCriteriaKey({ sort, status, trimmedQuery });
     const hasActiveNarrowing = trimmedQuery.length > 0 || status !== "any";
+    const hasModifiedListView = hasActiveNarrowing || sort !== "updated_at_desc";
 
     useTaskListReadEffect({
         criteriaKey,
@@ -166,11 +139,13 @@ function useTaskPageController(): TaskPageController {
     });
 
     return {
-        clearNarrowing: () => {
+        clearListView: () => {
             setQuery("");
             setStatus("any");
+            setSort("updated_at_desc");
         },
         hasActiveNarrowing,
+        hasModifiedListView,
         loadMore: () => {
             void loadMoreTaskPage({
                 criteriaKey,
@@ -191,7 +166,6 @@ function useTaskPageController(): TaskPageController {
         setStatus,
         sort,
         status,
-        statusSummary: getStatusSummary(pageState, hasActiveNarrowing),
     };
 }
 
@@ -239,31 +213,24 @@ function useTaskListReadEffect({
 
 function TaskControls({ controller }: { readonly controller: TaskPageController }) {
     return (
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_13rem_14rem]">
-            <div>
-                <label
-                    className="block font-mono text-label font-medium uppercase text-muted"
-                    htmlFor="tasks-query"
-                >
-                    Search
-                </label>
-                <div className="relative mt-2">
-                    <Search
-                        aria-hidden="true"
-                        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
-                    />
-                    <input
-                        className={controlClassName("pl-10")}
-                        id="tasks-query"
-                        onChange={(event) => {
-                            controller.setQuery(event.target.value);
-                        }}
-                        placeholder="Search tasks"
-                        type="search"
-                        value={controller.query}
-                    />
-                </div>
-            </div>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_220px_auto]">
+            <label className="relative block" htmlFor="tasks-query">
+                <span className="sr-only">Search</span>
+                <Search
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
+                />
+                <input
+                    className={controlClassName("pl-10")}
+                    id="tasks-query"
+                    onChange={(event) => {
+                        controller.setQuery(event.target.value);
+                    }}
+                    placeholder="Search title, summary, workflow, or node"
+                    type="search"
+                    value={controller.query}
+                />
+            </label>
             <TaskSelect
                 id="tasks-status"
                 label="Status"
@@ -282,6 +249,9 @@ function TaskControls({ controller }: { readonly controller: TaskPageController 
                 options={SORT_OPTIONS}
                 value={controller.sort}
             />
+            {controller.hasModifiedListView ? (
+                <Button onClick={controller.clearListView}>Clear filters</Button>
+            ) : null}
         </div>
     );
 }
@@ -300,9 +270,11 @@ function TaskSelect({
     readonly value: string;
 }) {
     return (
-        <FormField id={id} label={label}>
+        <label className="block" htmlFor={id}>
+            <span className="sr-only">{label}</span>
             <select
                 className={controlClassName()}
+                id={id}
                 onChange={(event) => {
                     onChange(event.target.value);
                 }}
@@ -314,7 +286,7 @@ function TaskSelect({
                     </option>
                 ))}
             </select>
-        </FormField>
+        </label>
     );
 }
 
@@ -325,10 +297,10 @@ function TaskListFooter({ controller }: { readonly controller: TaskPageControlle
     }
 
     return (
-        <footer className="flex flex-col gap-3 border-t border-outline-soft pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <footer className="flex flex-col gap-3 border-t border-outline-soft bg-surface-low px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <p className="text-compact text-muted">
                 {pageState.nextCursor === null
-                    ? "End of current task results."
+                    ? "All matching tasks are shown."
                     : "More tasks are available."}
             </p>
             <Button
@@ -361,128 +333,256 @@ function TaskListState({
     readonly onRetry: () => void;
     readonly rows: readonly TaskRow[];
 }) {
+    const role = error === null ? "status" : "alert";
+
     if (isLoading) {
-        return (
-            <StatePanel summary="Reading current task rows." title="Loading tasks" tone="loading" />
-        );
+        return <TaskListFrame body={<TaskListLoadingState />} />;
     }
 
     if (error !== null) {
         return (
-            <StatePanel
-                action={<Button onClick={onRetry}>Retry</Button>}
-                summary={error.summary}
-                title={isAuthError(error) ? "Access to tasks failed" : "Tasks could not load"}
-                tone={isAuthError(error) ? "auth" : "error"}
+            <TaskListFrame
+                body={
+                    <TaskListMessageState
+                        action={<Button onClick={onRetry}>Retry</Button>}
+                        icon={
+                            isAuthError(error) ? (
+                                <ShieldAlert aria-hidden="true" className="size-6" />
+                            ) : (
+                                <AlertTriangle aria-hidden="true" className="size-6" />
+                            )
+                        }
+                        role={role}
+                        summary={error.summary}
+                        title={
+                            isAuthError(error) ? "Access to tasks failed" : "Tasks could not load"
+                        }
+                    />
+                }
             />
         );
     }
 
     if (rows.length === 0) {
-        if (hasActiveNarrowing) {
-            return (
-                <StatePanel
-                    action={<Button onClick={onClearNarrowing}>Clear filters</Button>}
-                    summary="No task rows match the current search or status filter."
-                    title="No matching tasks"
-                    tone="empty"
-                />
-            );
-        }
-
         return (
-            <StatePanel
-                summary="The runtime task list is empty."
-                title="No tasks available"
-                tone="empty"
+            <TaskListFrame
+                body={
+                    <TaskListMessageState
+                        action={
+                            hasActiveNarrowing ? (
+                                <Button onClick={onClearNarrowing}>Clear filters</Button>
+                            ) : undefined
+                        }
+                        icon={
+                            hasActiveNarrowing ? (
+                                <Search aria-hidden="true" className="size-6" />
+                            ) : (
+                                <Inbox aria-hidden="true" className="size-6" />
+                            )
+                        }
+                        role={role}
+                        summary={
+                            hasActiveNarrowing
+                                ? "No task rows match the current search or status filter."
+                                : "The runtime task list is empty."
+                        }
+                        title={hasActiveNarrowing ? "No matching tasks" : "No tasks available"}
+                    />
+                }
             />
         );
     }
 
     return (
+        <TaskListFrame
+            body={
+                <ol aria-label="Task rows" className="grid gap-2 bg-surface p-3">
+                    {rows.map((row) => (
+                        <TaskRowItem key={row.taskId} row={row} />
+                    ))}
+                </ol>
+            }
+        />
+    );
+}
+
+function TaskListFrame({ body }: { readonly body: ReactNode }) {
+    return (
         <div>
-            <div className="hidden border-y border-outline-soft bg-surface-muted px-3 py-2 font-mono text-label font-medium uppercase text-muted lg:grid lg:grid-cols-[minmax(0,1fr)_9rem_12rem_7rem] lg:items-center lg:gap-4">
-                <span>Tasks</span>
-                <span>Status</span>
-                <span>Updated</span>
-                <span className="sr-only">Open</span>
-            </div>
-            <ol aria-label="Task rows" className="space-y-2 pt-3">
-                {rows.map((row) => (
-                    <TaskRowItem key={row.taskId} row={row} />
-                ))}
-            </ol>
+            <TaskListHeader />
+            {body}
         </div>
+    );
+}
+
+function TaskListHeader() {
+    return (
+        <div className="hidden border-b border-outline-soft bg-surface-low px-4 py-3 font-mono text-label font-medium uppercase text-muted md:grid md:grid-cols-[minmax(0,1fr)_120px_120px_96px] md:items-center md:gap-4 sm:px-6">
+            <span>Tasks</span>
+            <span>Status</span>
+            <span className="text-right">Updated</span>
+            <span className="sr-only">Open</span>
+        </div>
+    );
+}
+
+function TaskListLoadingState() {
+    return (
+        <>
+            <div
+                aria-busy="true"
+                aria-label="Loading task rows"
+                className="grid gap-8 bg-surface px-4 py-8 sm:px-6"
+                role="status"
+            >
+                {TASK_SKELETON_ROW_INDICES.map((rowIndex) => (
+                    <div aria-hidden="true" className="space-y-3 py-1" key={rowIndex}>
+                        <div className="h-6 w-2/5 max-w-md animate-pulse rounded-lg bg-gradient-to-r from-surface-muted via-outline-soft/70 to-surface-muted" />
+                        <div className="h-4 w-4/5 max-w-4xl animate-pulse rounded-lg bg-gradient-to-r from-surface-muted via-outline-soft/70 to-surface-muted" />
+                        <div className="flex gap-3">
+                            <div className="h-4 w-32 animate-pulse rounded-full bg-gradient-to-r from-surface-muted via-outline-soft/70 to-surface-muted" />
+                            <div className="h-4 w-36 animate-pulse rounded-full bg-gradient-to-r from-surface-muted via-outline-soft/70 to-surface-muted" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <footer className="border-t border-outline-soft bg-surface-low px-4 py-4 sm:px-6">
+                <p className="font-mono text-utility text-muted">Loading tasks...</p>
+            </footer>
+        </>
+    );
+}
+
+function TaskListMessageState({
+    action,
+    icon,
+    role,
+    summary,
+    title,
+}: {
+    readonly action?: ReactNode;
+    readonly icon: ReactNode;
+    readonly role: "alert" | "status";
+    readonly summary: ReactNode;
+    readonly title: string;
+}) {
+    return (
+        <>
+            <div className="bg-surface px-4 py-12 sm:px-6">
+                <section
+                    aria-label={title}
+                    className="rounded-card border border-dashed border-outline bg-surface-muted p-8 text-center shadow-hairline"
+                    role={role}
+                >
+                    <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-card bg-surface-high text-muted">
+                        {icon}
+                    </div>
+                    <h2 className="font-display text-[18px] font-semibold leading-6 text-foreground">
+                        {title}
+                    </h2>
+                    <p className="mx-auto mt-2 max-w-xl text-compact text-muted">{summary}</p>
+                    {action === undefined ? null : (
+                        <div className="mt-6 flex justify-center">{action}</div>
+                    )}
+                </section>
+            </div>
+            <footer
+                aria-hidden="true"
+                className="h-8 border-t border-outline-soft bg-surface-low"
+            />
+        </>
     );
 }
 
 function TaskRowItem({ row }: { readonly row: TaskRow }) {
     return (
         <li>
-            <article className="grid min-w-0 gap-3 rounded-card border border-outline-soft bg-surface-low p-4 shadow-hairline transition-colors hover:border-primary/35 focus-within:border-primary/45 focus-within:bg-primary-soft/40 lg:grid-cols-[minmax(0,1fr)_9rem_12rem_7rem] lg:items-center lg:gap-4">
-                <div className="min-w-0">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <h2 className="min-w-0 truncate font-display text-compact font-semibold text-foreground">
-                            {row.title}
-                        </h2>
-                        <span className="lg:hidden">
-                            <TaskStatusChip status={row.status} />
+            <Link
+                aria-label={`Open ${row.title} in Task Detail`}
+                className="group relative block overflow-hidden rounded-card border border-outline-soft bg-surface-low text-foreground no-underline shadow-hairline transition-colors before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-transparent before:content-[''] hover:border-primary/30 hover:bg-gradient-to-b hover:from-primary-soft/75 hover:to-surface-low focus-visible:border-primary/40 focus-visible:bg-gradient-to-b focus-visible:from-primary-soft/85 focus-visible:to-surface-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary/45 hover:before:bg-primary focus-visible:before:bg-primary"
+                to={taskDetailPath(row.taskId)}
+            >
+                <article className="grid min-w-0 gap-4 px-4 py-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_120px_120px_96px] md:items-center">
+                    <div className="min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+                            <h2 className="min-w-0 break-words font-display text-[18px] font-semibold leading-6 text-foreground">
+                                {row.title}
+                            </h2>
+                            <TaskRowMetadata row={row} />
+                        </div>
+                        <p className="mt-2 line-clamp-2 break-words text-compact text-muted">
+                            {row.summary}
+                        </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 md:block">
+                        <p className="font-mono text-label font-medium uppercase text-muted md:sr-only">
+                            Status
+                        </p>
+                        <TaskStatusChip status={row.status} />
+                    </div>
+                    <div className="flex min-w-0 items-center justify-between gap-3 md:block md:text-right">
+                        <p className="font-mono text-label font-medium uppercase text-muted md:sr-only">
+                            Updated
+                        </p>
+                        <TaskUpdatedTime value={row.updatedAt} />
+                    </div>
+                    <div className="flex justify-end">
+                        <span className="inline-flex h-control items-center justify-center gap-2 rounded-control border border-outline bg-surface-low px-3 text-utility font-semibold text-foreground transition-colors group-hover:border-primary/30 group-hover:bg-primary-soft group-hover:text-primary-foreground">
+                            <span className="hidden lg:inline">Open</span>
+                            <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
                         </span>
                     </div>
-                    <p className="mt-1 max-w-4xl break-words text-compact text-muted">
-                        {row.summary}
-                    </p>
-                    <TaskRowMetadata row={row} />
-                </div>
-                <div className="hidden lg:block">
-                    <TaskStatusChip status={row.status} />
-                </div>
-                <div className="min-w-0">
-                    <p className="font-mono text-label font-medium uppercase text-muted lg:sr-only">
-                        Updated
-                    </p>
-                    <TimestampText className="text-foreground" value={row.updatedAt} />
-                </div>
-                <div className="flex lg:justify-end">
-                    <Link
-                        aria-label={`Open ${row.title}`}
-                        className="inline-flex h-control items-center justify-center gap-2 rounded-control border border-outline bg-surface-low px-3 text-utility font-semibold text-foreground transition-colors hover:border-primary/45 hover:text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                        to={taskDetailPath(row.taskId)}
-                    >
-                        <span>Open</span>
-                        <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
-                    </Link>
-                </div>
-            </article>
+                </article>
+            </Link>
         </li>
     );
 }
 
 function TaskRowMetadata({ row }: { readonly row: TaskRow }) {
-    const items = [
-        row.workflowKey === null ? null : { label: "Workflow", value: row.workflowKey },
-        row.currentNodeKey === null ? null : { label: "Node", value: row.currentNodeKey },
-    ].filter((item): item is { readonly label: string; readonly value: string } => item !== null);
+    const items = [row.workflowKey, row.currentNodeKey].filter(
+        (item): item is string => item !== null,
+    );
 
     return (
-        <dl className="mt-2 hidden min-w-0 flex-wrap gap-x-3 gap-y-1 md:flex">
-            {items.map((item) => (
-                <div className="flex min-w-0 items-baseline gap-1" key={item.label}>
-                    <dt className="font-mono text-label font-medium uppercase text-muted">
-                        {item.label}
-                    </dt>
-                    <dd className="min-w-0">
-                        <IdRefText className="block max-w-80 truncate" value={item.value} />
-                    </dd>
-                </div>
+        <div className="flex min-w-0 flex-wrap gap-2">
+            {items.map((item, index) => (
+                <span
+                    className="inline-flex min-w-0 max-w-full items-center rounded-full border border-outline-soft bg-surface-muted px-2.5 py-1"
+                    key={`${item}-${index.toString()}`}
+                >
+                    <IdRefText className="block max-w-80 truncate text-label" value={item} />
+                </span>
             ))}
-        </dl>
+        </div>
+    );
+}
+
+function TaskUpdatedTime({ value }: { readonly value: string }) {
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf())) {
+        return <span className="font-mono text-utility text-foreground">{value}</span>;
+    }
+
+    const relativeLabel = formatRelativeTime(date);
+    const absoluteLabel = new Intl.DateTimeFormat(undefined, {
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        month: "short",
+        timeZoneName: "short",
+    }).format(date);
+
+    return (
+        <time className="block" dateTime={date.toISOString()}>
+            <span className="block text-compact text-foreground">{relativeLabel}</span>
+            <span className="block font-mono text-label text-muted">{absoluteLabel}</span>
+        </time>
     );
 }
 
 function TaskStatusChip({ status }: { readonly status: components["schemas"]["FlowStatus"] }) {
     return (
-        <StatusChip tone={statusTone(status)} withDot>
+        <StatusChip className="rounded-full px-3" tone={statusTone(status)} withDot>
             {statusLabel(status)}
         </StatusChip>
     );
@@ -495,10 +595,11 @@ function statusTone(status: components["schemas"]["FlowStatus"]): StatusTone {
         case "succeeded":
             return "success";
         case "blocked":
-        case "cancelled":
             return "danger";
-        case "paused":
         case "pending":
+        case "cancelled":
+            return "neutral";
+        case "paused":
             return "warning";
     }
 }
@@ -507,20 +608,31 @@ function statusLabel(status: components["schemas"]["FlowStatus"]): string {
     return status.replace(/_/g, " ");
 }
 
-function getStatusSummary(pageState: TaskPageState, hasActiveNarrowing: boolean): string {
-    if (pageState.isLoading) {
-        return "Loading";
+function formatRelativeTime(date: Date): string {
+    const diffSeconds = Math.round((date.getTime() - Date.now()) / 1000);
+    const divisions: readonly {
+        readonly amount: number;
+        readonly unit: Intl.RelativeTimeFormatUnit;
+    }[] = [
+        { amount: 60, unit: "second" },
+        { amount: 60, unit: "minute" },
+        { amount: 24, unit: "hour" },
+        { amount: 7, unit: "day" },
+        { amount: 4.34524, unit: "week" },
+        { amount: 12, unit: "month" },
+        { amount: Number.POSITIVE_INFINITY, unit: "year" },
+    ];
+    const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+    let duration = diffSeconds;
+
+    for (const division of divisions) {
+        if (Math.abs(duration) < division.amount) {
+            return formatter.format(Math.round(duration), division.unit);
+        }
+        duration /= division.amount;
     }
-    if (pageState.isRefreshing) {
-        return "Refreshing";
-    }
-    if (pageState.error !== null) {
-        return isAuthError(pageState.error) ? "Access problem" : "Read error";
-    }
-    if (pageState.rows.length === 0) {
-        return hasActiveNarrowing ? "No results" : "Empty";
-    }
-    return "Ready";
+
+    return formatter.format(Math.round(duration), "year");
 }
 
 function beginTaskListRead(
@@ -708,7 +820,7 @@ async function readTaskPage({
 
 function controlClassName(className?: string): string {
     return classNames(
-        "h-control w-full min-w-0 rounded-control border border-outline bg-surface-low px-3 text-compact text-foreground shadow-hairline transition-colors placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
+        "h-12 w-full min-w-0 rounded-control border border-outline bg-surface-low px-3 text-compact text-foreground shadow-hairline transition-colors placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
         className,
     );
 }

@@ -8,6 +8,7 @@ export interface PageFrameProps {
     readonly className?: string;
     readonly description?: string;
     readonly eyebrow?: string;
+    readonly headerContent?: ReactNode;
     readonly title: string;
 }
 
@@ -17,9 +18,11 @@ export function PageFrame({
     className,
     description,
     eyebrow,
+    headerContent,
     title,
 }: PageFrameProps) {
     const headingId = useId();
+    const hasHeaderContent = headerContent !== undefined;
 
     return (
         <section
@@ -29,26 +32,34 @@ export function PageFrame({
                 className,
             )}
         >
-            <header className="mb-5 flex flex-col gap-4 border-b border-outline-soft pb-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
-                    {eyebrow === undefined ? null : (
-                        <p className="font-mono text-label font-medium uppercase text-muted">
-                            {eyebrow}
-                        </p>
-                    )}
-                    <h1
-                        className="mt-1 font-display text-display font-semibold text-foreground"
-                        id={headingId}
-                    >
-                        {title}
-                    </h1>
-                    {description === undefined ? null : (
-                        <p className="mt-2 max-w-3xl text-compact text-muted">{description}</p>
+            <header
+                className={classNames(
+                    "mb-5 flex flex-col gap-4 border-b border-outline-soft pb-4",
+                    !hasHeaderContent && "lg:flex-row lg:items-start lg:justify-between",
+                )}
+            >
+                <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                        {eyebrow === undefined ? null : (
+                            <p className="font-mono text-label font-medium uppercase text-muted">
+                                {eyebrow}
+                            </p>
+                        )}
+                        <h1
+                            className="mt-1 font-display text-display font-semibold text-foreground"
+                            id={headingId}
+                        >
+                            {title}
+                        </h1>
+                        {description === undefined ? null : (
+                            <p className="mt-2 max-w-3xl text-compact text-muted">{description}</p>
+                        )}
+                    </div>
+                    {actions === undefined ? null : (
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
                     )}
                 </div>
-                {actions === undefined ? null : (
-                    <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
-                )}
+                {headerContent}
             </header>
             {children}
         </section>
