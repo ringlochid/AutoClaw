@@ -8,6 +8,7 @@ import {
     readCommandRunDetail,
     readCommandRunLog,
     readCommandRunPage,
+    readCommandRunsPageData,
     toErrorView,
     type CommandRunListResponse,
 } from "./command-run-data";
@@ -47,6 +48,7 @@ export interface CommandRunsController {
     readonly rows: readonly CommandRunRowView[];
     readonly statusSummary: string;
     readonly taskId: string | null;
+    readonly taskTitle: string | null;
     readonly toggleExpandedRun: (runId: string) => void;
     readonly toggleLogs: (runId: string) => void;
 }
@@ -61,6 +63,7 @@ interface CommandRunsPageState {
     readonly nextCursor: string | null;
     readonly rows: readonly CommandRunRowView[];
     readonly settledTaskId: string | null;
+    readonly taskTitle: string | null;
 }
 
 const initialPageState: CommandRunsPageState = {
@@ -73,6 +76,7 @@ const initialPageState: CommandRunsPageState = {
     nextCursor: null,
     rows: EMPTY_ROWS,
     settledTaskId: null,
+    taskTitle: null,
 };
 
 const missingTaskIdError: ConsoleErrorView = {
@@ -115,13 +119,14 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
         const listGeneration = listGenerationRef.current + 1;
         listGenerationRef.current = listGeneration;
         beginCommandRunListRead(setPageState, taskId, listGeneration);
-        void readCommandRunPage({ cursor: null, signal: abortController.signal, taskId })
-            .then((page) => {
+        void readCommandRunsPageData(taskId, abortController.signal)
+            .then(({ commandRunList, taskTitle }) => {
                 applyCommandRunListPage({
                     listGeneration,
-                    page,
+                    page: commandRunList,
                     setPageState,
                     taskId,
+                    taskTitle,
                 });
             })
             .catch((error: unknown) => {
@@ -408,6 +413,7 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
         rows: visibleRows,
         statusSummary,
         taskId,
+        taskTitle: pageState.settledTaskId === taskId ? pageState.taskTitle : null,
         toggleExpandedRun,
         toggleLogs,
     };
@@ -434,11 +440,13 @@ function applyCommandRunListPage({
     page,
     setPageState,
     taskId,
+    taskTitle,
 }: {
     readonly listGeneration: number;
     readonly page: CommandRunListResponse;
     readonly setPageState: React.Dispatch<React.SetStateAction<CommandRunsPageState>>;
     readonly taskId: string;
+    readonly taskTitle: string | null;
 }): void {
     setPageState((currentState) => {
         if (currentState.listGeneration !== listGeneration) {
@@ -455,6 +463,7 @@ function applyCommandRunListPage({
             nextCursor: getNextCursor(page),
             rows: page.items.map(mapCommandRunRow).map(mapCommandRunRowView),
             settledTaskId: taskId,
+            taskTitle,
         };
     });
 }
@@ -488,6 +497,7 @@ function applyCommandRunListError({
             isRefreshing: false,
             rows: currentState.hasLoaded ? currentState.rows : EMPTY_ROWS,
             settledTaskId: taskId,
+            taskTitle: null,
         };
     });
 }

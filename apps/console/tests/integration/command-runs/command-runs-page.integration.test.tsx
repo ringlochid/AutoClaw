@@ -7,7 +7,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import type { components } from "../../../src/api/generated/openapi";
 import { CommandRunsPage } from "../../../src/features/command-runs/CommandRunsPage";
-import { createBackendOperationFailureBody } from "../../fixtures/console-api";
+import {
+    createBackendOperationFailureBody,
+    createRuntimeFlowRead,
+} from "../../fixtures/console-api";
 import {
     COMMAND_RUN_TASK_ID,
     createCommandRunDetail,
@@ -45,7 +48,10 @@ describe("CommandRunsPage", () => {
 
         renderCommandRunsPage();
 
-        expect(await screen.findByRole("heading", { name: "Command Runs" })).toBeVisible();
+        expect(
+            await screen.findByRole("heading", { name: "Refresh runtime route copy" }),
+        ).toBeVisible();
+        expect(screen.getByText("Command Runs")).toBeVisible();
         expect(screen.getByText("Queued")).toBeVisible();
         expect(screen.getByText("Running")).toBeVisible();
         expect(screen.getByText("Cancel requested")).toBeVisible();
@@ -57,13 +63,12 @@ describe("CommandRunsPage", () => {
 
         await user.click(screen.getByText("Check prompt continuation rendering."));
 
-        expect(await screen.findByText("Terminal result")).toBeVisible();
+        expect(await screen.findByText("Result")).toBeVisible();
         expect(screen.getByText("Command")).toBeVisible();
-        expect(screen.getByText("Result")).toBeVisible();
         expect(screen.getByText("Timing")).toBeVisible();
         expect(screen.getByText("Provenance")).toBeVisible();
         expect(screen.getByText("Log access")).toBeVisible();
-        expect(screen.getByText("failed")).toBeVisible();
+        expect(screen.getByText("Failed")).toBeVisible();
         expect(screen.getByText("1")).toBeVisible();
         expect(screen.queryByText(/continuation context missing terminal/)).not.toBeInTheDocument();
 
@@ -187,6 +192,14 @@ function mockCommandRuns({
                     : createCommandRunPageList();
             return HttpResponse.json(page);
         }),
+        http.get("*/control/tasks/:taskId", ({ params }) =>
+            HttpResponse.json(
+                createRuntimeFlowRead({
+                    task_id: String(params.taskId ?? COMMAND_RUN_TASK_ID),
+                    task_title: "Refresh runtime route copy",
+                }),
+            ),
+        ),
         http.get("*/control/tasks/:taskId/command-runs/:runId", ({ params }) =>
             HttpResponse.json(
                 details[String(params.runId)] ??

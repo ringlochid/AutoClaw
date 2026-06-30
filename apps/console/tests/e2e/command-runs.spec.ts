@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { mkdirSync } from "node:fs";
 
 import type { components } from "../../src/api/generated/openapi";
 import {
@@ -10,10 +11,10 @@ import {
     createCommandRunLogRead,
     createCommandRunPageList,
 } from "../fixtures/command-runs";
-import { createBackendOperationFailureBody } from "../fixtures/console-api";
+import { createBackendOperationFailureBody, createRuntimeFlowRead } from "../fixtures/console-api";
 
 const SCREENSHOT_DIR =
-    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/continuation-implementation/11-command-runs/screenshots";
+    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity/04-command-runs/screenshots";
 
 test("renders command-run detail, logs, cancel errors, and accessibility at desktop width", async ({
     page,
@@ -24,7 +25,10 @@ test("renders command-run detail, logs, cancel errors, and accessibility at desk
 
     await page.goto(`/tasks/${COMMAND_RUN_TASK_ID}/command-runs`);
 
-    await expect(page.getByRole("heading", { level: 1, name: "Command Runs" })).toBeVisible();
+    await expect(
+        page.getByRole("heading", { level: 1, name: "Refresh runtime route copy" }),
+    ).toBeVisible();
+    await expect(page.getByLabel("AutoClaw Console").getByText("Command Runs")).toBeVisible();
     await expect(page.getByText("Run focused runtime route tests.")).toBeVisible();
     await expect(page.getByText("Verify command-run runner behavior.")).toBeVisible();
     await expect(page.getByText("Cancel request accepted.")).toBeVisible();
@@ -37,7 +41,7 @@ test("renders command-run detail, logs, cancel errors, and accessibility at desk
     expect(accessibilityScanResults.violations).toEqual([]);
 
     await page.getByText("Check prompt continuation rendering.").click();
-    await expect(page.getByText("Terminal result")).toBeVisible();
+    await expect(page.getByText("Result")).toBeVisible();
     await expect(page.getByText("Log access")).toBeVisible();
     await expect(page.getByText(COMMAND_RUN_LOG_CONTENT)).toHaveCount(0);
 
@@ -45,20 +49,21 @@ test("renders command-run detail, logs, cancel errors, and accessibility at desk
     await expect(page.getByText(COMMAND_RUN_LOG_CONTENT)).toBeVisible();
     await expect(page.getByRole("button", { name: "Hide logs" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Cancel" }).first().click();
-    await expect(page.getByText("Cancel state changed")).toBeVisible();
-    await expect(page.getByText("Reread command-run truth before retrying cancel.")).toBeVisible();
-
     const taskDetailLink = page.getByRole("link", { name: "Open task detail" }).first();
     await taskDetailLink.focus();
     await expect(taskDetailLink).toBeFocused();
     await page.evaluate(() => {
         window.scrollTo(0, 0);
     });
+    mkdirSync(SCREENSHOT_DIR, { recursive: true });
     await page.screenshot({
         fullPage: true,
-        path: `${SCREENSHOT_DIR}/command-runs-desktop.png`,
+        path: `${SCREENSHOT_DIR}/app-desktop-default.png`,
     });
+
+    await page.getByRole("button", { name: "Cancel" }).first().click();
+    await expect(page.getByText("Cancel state changed")).toBeVisible();
+    await expect(page.getByText("Reread command-run truth before retrying cancel.")).toBeVisible();
 });
 
 test("keeps command-run rows and expanded detail usable at mobile width", async ({
@@ -72,7 +77,7 @@ test("keeps command-run rows and expanded detail usable at mobile width", async 
 
     await expect(page.getByText("Check prompt continuation rendering.")).toBeVisible();
     await page.getByText("Check prompt continuation rendering.").click();
-    await expect(page.getByText("Terminal result")).toBeVisible();
+    await expect(page.getByText("Result")).toBeVisible();
     await expect(page.getByRole("button", { name: "View logs" })).toBeVisible();
     await expectNoDocumentOverflow(page);
 
@@ -81,9 +86,10 @@ test("keeps command-run rows and expanded detail usable at mobile width", async 
     await page.evaluate(() => {
         window.scrollTo(0, 0);
     });
+    mkdirSync(SCREENSHOT_DIR, { recursive: true });
     await page.screenshot({
         fullPage: true,
-        path: `${SCREENSHOT_DIR}/command-runs-mobile.png`,
+        path: `${SCREENSHOT_DIR}/app-narrow-default.png`,
     });
 });
 
@@ -101,6 +107,17 @@ async function mockCommandRuns(
 
         if (request.method() === "GET" && path.endsWith(`/${COMMAND_RUN_TASK_ID}/command-runs`)) {
             await fulfillJson(route, createCommandRunPageList({ next_cursor: null }));
+            return;
+        }
+
+        if (request.method() === "GET" && path.endsWith(`/control/tasks/${COMMAND_RUN_TASK_ID}`)) {
+            await fulfillJson(
+                route,
+                createRuntimeFlowRead({
+                    task_id: COMMAND_RUN_TASK_ID,
+                    task_title: "Refresh runtime route copy",
+                }),
+            );
             return;
         }
 
