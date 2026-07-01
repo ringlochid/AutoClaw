@@ -1,208 +1,111 @@
-# Console Validation And Evidence
+# Console Validation And Evidence Contract
 
-Status: Locked target for implementation planning.
+Date: 2026-06-30
 
-This page defines proof requirements for console implementation slices and
-final release review.
+This document defines the evidence required for implementation scopes and final
+release review.
 
-## Current Evidence Baseline
+## Scope Evidence Directory
 
-The current accepted audit recorded a clean tracked repo at `feb796a`, current
-generated OpenAPI, and passing focused console scaffold checks. It also found:
+Use the fresh evidence root:
 
-- all seven feature pages are placeholders
-- MSW handlers, fixtures, integration tests, and visual tests are empty
-- the SSE helper only builds a URL and does not implement protected streaming
-- `/console/config` is absent from current API/OpenAPI truth
-- Task Detail lacks trusted final visual proof
-- live registry current revisions and Orin draft-pack currentness remain
-  unverified
+`/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity`
 
-Do not treat scaffold pass results as product readiness.
+Per-scope directories:
 
-## Command Matrix
+- `00-foundation/`
+- `01-tasks/`
+- `02-task-detail/`
+- `03-human-requests/`
+- `04-command-runs/`
+- `05-definitions/`
+- `06-task-start/`
+- `07-definition-editor/`
 
-Base commands for frontend implementation slices:
+Each scope must save:
+
+- served-design browser screenshots for desktop and narrow viewports;
+- app browser screenshots for matching states;
+- browser comparison notes;
+- command output or command summary;
+- accessibility/focus notes;
+- review report;
+- commit hash after review passes.
+
+## Served Design Requirement
+
+Design pages are served through `python3 -m http.server` for browser
+inspection:
+
+```sh
+cd /home/ubuntu/leo/projects/autoclaw/references/frontend_design/pages
+python3 -m http.server 18773 --bind 127.0.0.1
+```
+
+Review must record the exact served URL, viewport, state, and screenshot path.
+If browser or image inspection is unavailable, the scope must publish an
+explicit degraded-evidence note or blocker. Shell reads of HTML/CSS/PNG are not
+visual acceptance.
+
+## Command Gates
+
+Always run:
+
+- `git diff --check`
+
+For shared console or page code, run the applicable subset:
 
 - `make console-format-check`
 - `make console-lint`
 - `make console-typecheck`
+- `make console-openapi-check`
 - `make console-test`
 - `make console-test-integration`
 - `make console-build`
+- `make console-e2e`
 
-Add `make console-openapi-check` when a slice touches API clients, generated
-types, route usage, view models, fixtures derived from OpenAPI, action
-handling, or API contracts.
+Run `make console-openapi-check` when API types, route helpers, generated
+clients, SSE, fixtures, or backend-shape assumptions change.
 
-Add `make console-e2e` when a slice changes navigation, page-level flows,
-browser-only behavior, visual parity, accessibility-critical interactions, or
-the final release suite and browser dependencies are available.
+If a command is skipped, record why, the risk, and the compensating evidence.
 
-`make check-console` is the non-browser aggregate gate and must pass before
-release readiness once integration coverage is non-empty.
+## Existing Test Surface
 
-## Current Coverage Caveat
+Current source has API foundation integration tests, page integration tests for
+required pages, MSW fixtures, and Playwright e2e specs for required pages. The
+visual test directory is still an empty lane, so saved screenshots and browser
+review notes remain required for design parity.
 
-`make console-test-integration` currently passes with no tests because
-`passWithNoTests` is enabled. This is not meaningful workflow proof.
+Older docs that say integration tests or mocks are empty are stale.
 
-The API/config foundation slice must add real MSW-backed integration coverage
-before page slices can claim API-backed workflow readiness.
+## Review Gate
 
-## Fixture Ownership
+Strict review must check:
 
-The foundation slice owns:
+- source precedence and backend/design conflict handling;
+- current app config/source before active-state judgment;
+- all states required by `feature-behavior.md`;
+- browser parity against served HTML and PNG references;
+- desktop and narrow viewport behavior;
+- keyboard focus, modal focus trap/restore, labels, errors, and hit targets;
+- no fake metrics, counts, ETAs, progress, support-file truth, routes, or
+  labels;
+- fixture and test coverage for changed behavior;
+- no unrelated worktree churn.
 
-- MSW setup
-- handler conventions
-- fixture directory naming
-- shared success/loading/empty/auth/error/stale/network scenarios
-- OpenAPI-shaped payload factories
-- stream fixture helpers
-- normalized error fixture helpers
+## Commit Gate
 
-Required fixture families:
+After review passes, commit that scope before starting the next scope. Do not
+batch multiple functional pages into one commit unless the current review scope
+explicitly allows it.
 
-- task list
-- task detail current read, snapshot, trace, events backfill, and SSE stream
-- human requests and typed resolutions
-- command-run list, detail, log, and cancel
-- definition role/policy/workflow lists, detail, and versions
-- draft-set authoring lifecycle
-- task start workflow selection, root bindings, success, and failures
-- OperationFailure, FastAPI validation, auth, stale currentness, missing
-  resource, network, abort, and `cursor_reset_required`
+If unrelated user or prior changes are present, leave them alone and document
+the dirty-worktree boundary in the review evidence.
 
-Page slices may extend fixtures for their route family, but they must not fork
-shared API helpers or create page-local mock transport layers.
+## Final Release Gate
 
-## Per-Slice Evidence
-
-Every implementation or review scope must write evidence under:
-
-```text
-/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery/<scope>/
-```
-
-Each report must name:
-
-- consumed source docs and artifacts
-- files changed
-- commands run and outcomes
-- skipped commands with exact environment or scope reason
-- API routes exercised
-- fixtures/scenarios covered
-- browser/manual checks performed
-- screenshots or screenshot paths when visual parity is in scope
-- accessibility, keyboard, and responsive checks
-- known residual risks and routed debt
-
-## Browser And Manual Evidence
-
-Use browser evidence for any page-level flow, navigation, visual, responsive, or
-accessibility claim.
-
-Minimum page browser states:
-
-- Tasks: default list, dense list, filters/search/sort, no-results, empty,
-  load-more, error/auth, row focus/open navigation.
-- Task Detail: REST bootstrap, graph, event lane, selected node/event, trace
-  detail, stale task action, reconnect/reset path, sibling navigation.
-- Human Requests: each request kind, multi-item navigation, notes, structured
-  input, stale resolution, terminal readback, empty queue.
-- Command Runs: every state, expanded row, log hidden/visible, missing log,
-  cancel allowed/denied, empty list.
-- Definitions: kind switching, filters/search/sort, selected detail, versions,
-  empty/no-results/error, pivots.
-- Task Start: workflow search/select, required fields, root modes, preview,
-  success, unknown workflow, invalid host path, auth/validation failure.
-- Definition Editor: draft load, new draft, edit dirty/clean, reset,
-  rematerialize-current confirmation, validation, preview, apply, auth error.
-
-## Visual Evidence
-
-Use copied design references as visual anchors:
-
-- `references/frontend_design/pages/tasks.html` and `tasks.png`
-- `task-detail.html` and `task-detail-modal-open.png`
-- `human-request.html` and `human-request.png`
-- `command-runs.html` and `command-runs.png`
-- `definitions.html` and `definitions.png`
-- `task-start.html` and `task-start.png`
-- `definition-editor.html`, `definition-editor.png`, and
-  `definition-editor-replace-modal.png`
-
-Task Detail caveat:
-
-- `task-detail.png` is not trusted as final parity proof.
-- `task-detail-last-known-good.jpeg` is absent.
-- Task Detail release readiness requires fresh promoted capture or an explicit
-  visual-review note that names the replacement anchor used.
-
-Screenshots must cover desktop and narrow/mobile widths for each released page.
-States with modals, disclosures, logs, validation output, preview, result, or
-error content need their own evidence when those states are part of the
-acceptance surface.
-
-## Accessibility Evidence
-
-Each page slice must check:
-
-- keyboard path through primary controls
-- visible focus states
-- labels for inputs and icon buttons
-- dialog/drawer focus behavior and close/return
-- disclosure and tab keyboard behavior
-- color-with-text status treatment
-- no horizontal overflow at narrow widths
-- no text overlap or clipped button labels
-
-Use automated accessibility checks when available, but do not treat automated
-checks as a substitute for keyboard and focus walkthrough evidence.
-
-## Review Gates
-
-Required reviews:
-
-- Planning/contract review before implementation dispatch.
-- Foundation contract/integration review before page slices start.
-- Focused SSE/API review before Task Detail closure.
-- Authoring contract review before Definition Editor closure.
-- Strict review after every code-editing scope.
-- Final suite release review after all page slices publish implementation,
-  verification, review, and closure evidence.
-
-Reviewers must reject slices that:
-
-- invent unsupported controller fields or states
-- hide structured errors
-- skip meaningful integration coverage
-- claim visual parity from untrusted Task Detail PNG
-- omit browser evidence for page-level behavior
-- pass raw API payloads deeply through components
-- launch from stale compose drafts or unknown registry currentness
-
-## Final Release Evidence Index
-
-The final release review must collect an index under:
-
-```text
-/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery/99-suite-release-review/
-```
-
-The index must link:
-
-- implementation reports for each slice
-- review reports
-- command summaries
-- browser notes
-- screenshots
-- accessibility notes
-- visual parity notes
-- known accepted nonblocking debt
-- unresolved blockers, if any
-
-Release may accept only explicitly phase-bounded nonblocking debt that does not
-violate controller truth, action legality, accessibility, security, data
-integrity, or release proof.
+Final validation must serve the design pages, compare every released page
+against served design HTML plus PNG references in browser, check desktop and
+narrow viewports, verify accessibility/focus behavior, verify scope commits,
+run applicable console validation commands, and block release on visual
+mismatch or hidden debt.

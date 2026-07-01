@@ -1,238 +1,94 @@
-# Console Component System
+# Console Component System Contract
 
-Status: Locked target for implementation planning.
+Date: 2026-06-30
 
-This page defines the frontend component and design-system boundaries for the
-V2 console. It translates the design handoff into implementation rules without
-copying static prototype HTML, page-local CSS selectors, or prototype scripts.
+This document locks visual and component expectations for implementation
+review. Design references win for layout, spacing, color, shadows, typography,
+component shape, active states, icon usage, visual density, and responsive
+hierarchy.
 
-## Source Anchors
+## Design Anchors
 
-Use these design references for visual behavior:
+- Static pages:
+  `/home/ubuntu/leo/projects/autoclaw/references/frontend_design/pages`.
+- Mirror pages: `/home/ubuntu/leo/design/autoclaw-v2-ui/pages`.
+- Shared CSS and shell script: `shared-ui.css`, `shared-shell.js`.
+- Direction docs:
+  `references/frontend_design/design/DESIGN.md` and `navigation.md`.
+- Page charters:
+  `references/frontend_design/feature-charters/pages/*.md`.
 
-- `references/frontend_design/design/navigation.md`
-- `references/frontend_design/design/DESIGN.md`
-- `references/frontend_design/design/product-brief.md`
-- `references/frontend_design/design/work-package-map.md`
-- `references/frontend_design/design/reference-anchors.md`
-- `references/frontend_design/feature-charters/pages/*.md`
-- `references/frontend_design/feature-charters/packages/*.md`
-- `references/frontend_design/pages/*.html`
-- `references/frontend_design/pages/*.png`
-- `/home/ubuntu/leo/design/autoclaw-v2-ui/**` when checking upstream design
-  parity
+Design pages must be served through `python3 -m http.server` and inspected in
+the browser. PNGs and source reads support review but are not a replacement for
+browser inspection.
 
-The copied `references/frontend_design/**` paths currently match the external
-design workspace except for workspace-only files such as `.git`, `.agents`,
-`AGENTS.md`, `README.md`, and `STYLE.md`. Prefer copied refs for implementation
-tasks and use the external workspace only for parity checks or design-owner
-inspection.
+## Shell And Navigation
 
-## Design Language
+- The console shell uses a warm paper background, dense operational content,
+  left rail/top breadcrumb structure, one main page surface, and compact page
+  controls.
+- Tasks is the runtime entry point. Task Detail, Human Requests, and Command
+  Runs are task-scoped under Tasks.
+- Definitions, Task Start, and Definition Editor are authoring surfaces.
+- Implementation reviews must inspect actual router/nav/source before judging
+  active states. Do not infer active behavior from screenshots alone.
+- At narrow widths, the prototype keeps navigation visible and wraps/stacks
+  rather than hiding the full shell behind an unreviewed pattern.
 
-The console uses the warm light, task-first control-room direction:
+## Tokens And Density
 
-- light paper-like surfaces
-- compact operational metadata
-- restrained blue/indigo active state
-- quiet borders and selection states
-- progressive disclosure over always-open detail
-- one shared shell across runtime and authoring
-- minimal components for full feature coverage
+Design direction anchors:
 
-The implementation token owner is `apps/console/src/styles/tokens.css` with the
-`--ac-*` namespace. Do not carry prototype-only `--oc-*` tokens, copied static
-page selectors, or inline prototype scripts into `apps/console`.
+- Background: `#F5F3F1`.
+- Primary surface: `#FDFCFB`.
+- High surface/container: `#EFECE9`.
+- Low surface: `#FFFFFF`.
+- Border tones: `#E5E7EB` and `#D1D5DB`.
+- Primary blue: `#3B82F6`.
+- Primary container: `#EFF6FF`.
+- On-primary text: `#1E40AF`.
+- Secondary container: `#E0E7FF`.
+- On-secondary text: `#3730A3`.
 
-## Shared Shell
+The implementation should reuse existing app tokens and primitives where they
+match the design. Do not introduce a separate visual language, decorative
+orbs, marketing hero layout, oversized cards, or low-density dashboard chrome.
 
-The shared shell owns:
+## Components
 
-- left rail primary navigation
-- top breadcrumb/status row
-- page content inset
-- runtime versus authoring grouping
-- responsive mobile primary navigation
+Required component behavior:
 
-Required primary nav entries:
+- Buttons, icon buttons, segmented controls, tabs, checkboxes/toggles, inputs,
+  selects/menus, textareas, disclosure rows, status chips, empty states, error
+  states, modals, drawers, and page cards must have visible focus states.
+- Dense rows should not resize on hover, focus, or status changes.
+- Modals must trap focus while open, restore focus on close, and present
+  destructive actions distinctly.
+- Page cards and panels should follow the served design shape and spacing; do
+  not nest decorative cards inside cards.
 
-- `Tasks`
-- `Definitions`
-- `Task Start`
+## Icons
 
-Required breadcrumb families:
+The current console uses `lucide-react`. Static design pages use Material
+Symbols names as prototype intent only.
 
-- `Tasks`
-- `Tasks / {task title or task id}`
-- `Tasks / {task title or task id} / Human Requests`
-- `Tasks / {task title or task id} / Command Runs`
-- `Definitions`
-- `Definitions / Editor`
-- `Task Start`
+Rules:
 
-Do not show `Task Control Suite`, `/runtime`, `/control`, `/operator`,
-`Overview` as a page, or raw task ids as the preferred breadcrumb label when a
-task title is available.
+- Prefer current lucide icons already used by the console.
+- Add a new lucide icon only when it is a direct semantic match for a design
+  affordance and review approves it.
+- Do not add Material Symbols or unsupported icon font dependencies.
+- Do not invent icons or chrome for unsupported backend states.
 
-## Primitive Ownership
+## Responsive And Accessibility Review
 
-Shared primitives should exist only when they remove real repetition or enforce
-a contract:
+Every implementation scope must compare desktop and narrow viewports against
+served design HTML and PNG references. Review must include:
 
-- buttons and icon buttons
-- chips for status, kind, and selected state
-- segmented controls for kind/mode switches
-- tabs for selected detail modes
-- dialogs and drawers
-- disclosure rows
-- table/list rows
-- empty, loading, error, auth failure, and stale-action panels
-- form fields, selects, textareas, and schema-backed inputs
-- property grids
-- log viewer
-- timestamp and id/ref renderers
-
-Use `lucide-react` icons in icon buttons when a matching icon exists.
-Icon-only controls must have accessible labels and tooltips when meaning is not
-obvious from nearby text.
-
-## Page Composition Patterns
-
-### Scan-First List
-
-Use for `Tasks` and `Definitions`.
-
-Contract:
-
-- controls above the list
-- rows front-load identity, status or kind, and updated time
-- secondary metadata stays compact
-- load-more follows cursor truth
-- no KPI/dashboard cards competing with the list
-
-### Control Room
-
-Use for `Task Detail`.
-
-Contract:
-
-- graph is read-only and dominant on wide screens
-- event lane stays chronological and compact
-- selected detail opens through focused modal, drawer, or equivalent disclosure
-- sibling page previews stay compact
-- large logs, manifests, and prompt bodies stay behind refs or sibling pages
-
-### Queue And Focused Work
-
-Use for `Human Requests`.
-
-Contract:
-
-- queue stays compact
-- selected request summary is separate from item response
-- one focused item at a time
-- notes are item-scoped
-- resolve actions stay grouped with the selected request
-
-### Disclosure-First List
-
-Use for `Command Runs`.
-
-Contract:
-
-- one large list surface
-- row summary first, detail on deliberate expansion
-- logs hidden by default
-- cancel stays contextual and legal-state-bound
-
-### Authoring Workbench
-
-Use for `Definitions`, `Definition Editor`, and `Task Start`.
-
-Contract:
-
-- stored truth, draft truth, preview truth, diff truth, apply truth, and launch
-  truth are visually labeled and separated
-- draft selector is a compact list, not nested decorative cards
-- editor mode switches own `Edit`, `Validation`, and `Preview`
-- task start is a flat form with preview/result disclosures
-
-## Responsive Rules
-
-- Preserve hierarchy before squeezing columns.
-- On medium widths, switch secondary surfaces into tabs, drawers, or mode
-  switches before compressing them into unreadable rails.
-- On narrow widths, stack source/list/summary before focused detail and actions.
-- Avoid horizontal overflow except for intentionally scrollable log/code blocks.
-- Preserve primary action reachability without oversized sticky toolbars.
-- Text must not overlap or overflow parent controls.
-
-Page-specific order on narrow screens:
-
-- Tasks: controls, list, load more.
-- Task Detail: header, graph, events, open-detail actions, sibling handoffs.
-- Human Requests: queue, selected summary, instruction, item navigation,
-  response controls, notes, resolve actions.
-- Command Runs: list rows, expanded detail, log disclosure.
-- Definitions: kind switch, controls, list, selected detail, versions.
-- Task Start: workflow search, selected workflow summary, task fields, roots,
-  preview/start actions, result.
-- Definition Editor: draft selector, editor, validation/preview output, apply.
-
-## Accessibility Rules
-
-Implementation slices must cover:
-
-- semantic headings and landmarks
-- labelled form controls
-- keyboard access to nav, filters, rows, disclosures, tabs, dialogs, graph
-  selection, and actions
-- visible focus states
-- modal/drawer focus return and close behavior
-- color-with-text status treatment
-- disabled versus hidden action semantics that match legality
-- no keyboard traps in log/code/editor regions
-
-Action failure and stale-currentness states must be announced near the action
-that failed and must preserve operator context.
-
-## Visual Reference Caveat
-
-`task-detail.png` is not a trusted final visual parity target.
-
-Task Detail implementation should use:
-
-- `references/frontend_design/pages/task-detail.html`
-- `references/frontend_design/pages/task-detail-modal-open.png`
-- semantic design docs and page charter
-- a fresh promoted Task Detail capture before release readiness
-
-The referenced `task-detail-last-known-good.jpeg` is absent in both copied and
-external design page folders. Release review must require a fresh capture or an
-explicit replacement visual-review note.
-
-## Component Extraction Rules
-
-Extract shared components when:
-
-- two or more pages use the same behavior and state grammar
-- a primitive enforces accessibility or action legality consistently
-- a mapper/state pattern becomes a true shared API boundary
-- repeated Tailwind utility clusters would otherwise drift from tokens
-
-Do not extract:
-
-- page-specific orchestration before a second real use exists
-- components that hide controller state or action legality
-- generic helper names without domain responsibility
-- prototype wrappers that preserve stale HTML structure
-
-## Forbidden Component Drift
-
-- no card inside card nesting for ordinary page sections
-- no decorative dashboard tiles for unsupported metrics
-- no one-off color palettes outside `--ac-*` tokens
-- no dynamic Tailwind class construction such as `bg-${status}`
-- no page-local copies of auth/config/error/pagination behavior
-- no static prototype JavaScript in React components
-- no invented count badges unless the controller exposes real count fields
+- shell/nav wrapping and active states;
+- visible and keyboard focus;
+- modal focus trap and restore;
+- form label/error association;
+- row/action hit targets;
+- no overlapping text or controls;
+- no hidden required backend state at narrow width.

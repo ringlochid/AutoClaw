@@ -1,281 +1,163 @@
-# Console Feature Behavior
+# Console Feature Behavior Contract
 
-Status: Locked target for implementation planning.
+Date: 2026-06-30
 
-This page defines what users can see and do in the AutoClaw console. Backend
-and API contracts still own data truth, action legality, event chronology, and
-currentness.
+This document defines the user-visible behavior required for each console page.
+Backend/OpenAPI truth wins for route shape, state names, action legality, auth,
+and currentness. Served design references win for visual hierarchy,
+interaction layout, density, active states, and responsive behavior.
 
-## Global Rules
+## Shared Behavior
 
-- Runtime begins at `Tasks`; do not create another runtime home.
-- Runtime task pages use `Tasks > {task title or task id}` breadcrumbs.
-- Authoring pages use authoring breadcrumbs and never appear under a selected
-  task.
-- Loading, empty, no-results, error, permission, stale-action, and conflict
-  states render inside the surface that owns the failed read or action.
-- Actions are visible or enabled only when controller truth and currentness
-  allow them. Missing buttons are not a legality model by themselves.
-- User-facing copy uses product nouns: `Tasks`, `Task Detail`,
-  `Human Requests`, `Command Runs`, `Definitions`, `Definition Editor`, and
-  `Task Start`.
-- Implementation route prefixes such as `/runtime`, `/control`, `/operator`,
-  `/observability`, `/callback`, and `/node/mcp` are not primary UI labels.
-- Do not invent controller-backed fields, lifecycle states, aggregate counts,
-  progress, ETA, or launch readiness to make placeholders feel complete.
+- The console is task-first. Runtime work begins from Tasks; Task Detail, Human
+  Requests, and Command Runs are task-scoped siblings.
+- Definitions, Task Start, and Definition Editor are authoring surfaces.
+- No page may display fake metrics, fake counts, ETAs, progress percentages,
+  unsupported support-file truth, unsupported routes, or labels not backed by
+  source and backend contract.
+- Loading, empty, no-results, auth/error, validation, and narrow viewport
+  states are required review states for every page that can reach them.
+- Implementation reviews must inspect actual app config/source before judging
+  active-state behavior.
 
 ## Tasks
 
-Purpose: let an operator scan task rows, narrow the list, and open one task.
+Design anchors: `tasks.html`, `tasks.png`, `shared-ui.css`,
+`shared-shell.js`, and the Tasks page charter.
 
-Required behavior:
+Backend anchor: `GET /runtime/tasks`.
 
-- Query through `q`, filter by shipped status values, sort by shipped sort
-  values, and load more through `cursor` and `next_cursor`.
-- Rows prioritize task title, summary, status, updated time, and open target.
-- Secondary metadata may show workflow key, current node key, active attempt id,
-  or task id when the layout stays scan-first.
-- Opening a row routes to `Task Detail`.
+Required states: loading, populated list, empty list, no search results, search,
+status filter, sort, pagination/load more, row open/focus, API/auth error, and
+narrow stacked controls.
 
-Required states:
+Behavior contract:
 
-- loading or refresh
-- mixed dense task list
-- no tasks
-- no results for current query/filter
-- read error
-- auth or permission failure
-- focus and hover on row/open controls
-- cursor-backed load more
-
-Forbidden states:
-
-- row-level waiting cause, request count, run count, child count, artifact
-  count, or dashboard metrics unless a later task-list route exposes bounded
-  fields
-- pause, continue, cancel, human-request resolution, or command-run cancel on
-  the list page
-- numbered page totals, fake totals, or page-count UI
+- Show runtime task list data only from the backend route or fixtures that
+  faithfully model it.
+- Status filters and sort controls must match backend-supported values.
+- Rows open task detail without inventing task metadata.
+- The Tasks nav item remains active for task detail, human-request, and
+  command-run task-scoped routes.
 
 ## Task Detail
 
-Purpose: let an operator inspect one task, read current task shape, follow
-persisted chronology, inspect selected detail, and take legal task-level
-controls.
+Design anchors: `task-detail.html`, `task-detail-modal-open.png`, shared
+CSS/JS, and the Task Detail page charter. `task-detail.png` is caveated by the
+design docs and must not be the sole visual authority.
 
-Required behavior:
+Backend anchors: runtime task detail, control snapshot, trace, event list,
+event stream, pause, continue, and cancel routes.
 
-- Bootstrap from REST: task read, snapshot, trace, and event backfill when
-  `stream_head_event_id` exists.
-- Use the shared fetch-based SSE transport for live updates.
-- Render a read-only execution graph, chronological task-event lane, and
-  selected detail.
-- Support selected detail views named `Overview`, `Checkpoint`, `Assignment`,
-  `Boundary`, `Artifacts`, and `Trace`.
-- Render every current `TaskEventType` family by its controller event name.
-- Pause, continue, and cancel submit the current
-  `expected_active_flow_revision_id` and surface stale or illegal-state
-  errors.
-- Link to `Human Requests` and `Command Runs` as sibling pages. Compact
-  previews may appear only from controller-backed reads.
+Required states: REST bootstrap, snapshot graph, trace/event lane, live stream,
+cursor reset, stream error, selected graph/event detail, detail modal tabs,
+pause/continue/cancel legal/disabled/stale, empty event lane, and task-scoped
+sibling links.
 
-Required states:
+Behavior contract:
 
-- running task with graph, events, and legal controls
-- selected node, selected event, and focused detail
-- trace view for every event family
-- checkpoint, assignment, boundary, artifact/ref detail
-- human-request and command-run previews
-- paused, stale-action, cancelled, no-history, long-event-list, and read-error
-  states
-- deep or wide graph with readable default zoom and reset
-- SSE reconnect/reset after `cursor_reset_required`
-
-Forbidden states:
-
-- chat framing
-- graph editing
-- synthesized event families or chronology from trace, snapshot, support files,
-  provider traces, or local UI state
-- raw logs, prompt packages, manifests, or large payload bodies in event rows
-- command-run cancel or human-request resolve as generic task controls
-
-Task Detail visual release cannot close from the current `task-detail.png`
-alone. It needs fresh promoted capture or an explicit replacement visual-review
-anchor.
+- Display task graph, event, checkpoint, assignment, boundary, artifact, and
+  trace details only from backend/control data.
+- Pause, continue, and cancel must use current backend action legality and
+  currentness requirements, including fresh `expected_active_flow_revision_id`
+  when required.
+- Cursor reset is a first-class recovery state, not a silent failure.
 
 ## Human Requests
 
-Purpose: let an operator resolve typed pending human requests for one task.
+Design anchors: `human-request.html`, `human-request.png`, shared CSS/JS, and
+the Human Requests page charter.
 
-Required behavior:
+Backend anchors: task-scoped human-request list and resolve routes.
 
-- Use the task-scoped human-request list and resolve control routes.
-- Show a request queue and one focused selected request item.
-- Preserve request-level summary separately from item-level response controls.
-- Support request kinds `direction`, `approval`, `input`, and `review`.
-- For option-based items, submit exactly one selected option or one freeform
-  answer, plus optional item-scoped notes.
-- For `input` items, validate and submit a schema-backed `response_payload`
-  when the controller provides a schema.
-- Show suggested human instruction, due time, recommendation, timeout/default
-  behavior, and terminal readback when available.
+Required states: empty queue, pending queue, `direction`, `approval`, `input`,
+and `review` requests, option selection, freeform input, structured input,
+notes, resolve success, validation error, terminal readback, stale request, and
+auth/error.
 
-Required states:
+Behavior contract:
 
-- open direction/review/approval/input requests
-- multi-item navigation with per-item response memory
-- mixed queue with one selected request
-- empty queue
-- resolved, timed out, and cancelled terminal readback
-- stale or resolved-elsewhere conflict
-- auth, legality, and validation errors
-
-Forbidden states:
-
-- generic chat, transcript recovery, or `continue` tunneling
-- treating an approval rejection option as request status `cancelled`
-- always-open giant multi-item form
-- invented risk, expected-effect, progress, or default-response metadata
+- Resolve controls must be typed to the request kind.
+- The page must not become a generic chat, continue-task, or approval tunnel.
+- Terminal requests remain readable without offering illegal resolution actions.
 
 ## Command Runs
 
-Purpose: let an operator inspect task-scoped controller-managed command runs.
+Design anchors: `command-runs.html`, `command-runs.png`, shared CSS/JS, and
+the Command Runs page charter.
 
-Required behavior:
+Backend anchors: task-scoped command-run list, detail, log, and cancel routes.
 
-- Use command-run list, detail, log, and cancel routes.
-- Render states `pending_start`, `running`, `cancellation_requested`,
-  `succeeded`, `failed`, `timed_out`, and `cancelled`.
-- Keep rows compact: description, command, bounded summary, state, and legal
-  action.
-- Open full detail through disclosure grouped by command, result, timing,
-  provenance, and log access.
-- Logs are hidden by default and load only when `log_ref` exists.
-- Cancel only when controller-backed state and action contract allow it.
+Required states: empty list, `pending_start`, `running`,
+`cancellation_requested`, `succeeded`, `failed`, `timed_out`, `cancelled`,
+expanded detail, hidden log, visible log, missing log, cancel allowed, cancel
+denied, and auth/error.
 
-Required states:
+Behavior contract:
 
-- every command-run state
-- expanded row with full record
-- log hidden, log visible, and missing-log variants
-- legal cancel, stale/denied cancel, empty list, read error, and auth failure
-
-Forbidden states:
-
-- cross-task command dashboard
-- always-visible raw logs
-- progress percentage, ETA, throughput, elapsed-time widgets, or progress rings
-- terminal-state inference from logs or local UI heuristics
+- Log content, command, timing, state, and provenance come from command-run
+  routes only.
+- Do not show progress, ETA, or invented health labels.
+- Cancel affordance must follow backend legality.
 
 ## Definitions
 
-Purpose: let an author browse current stored roles, policies, and workflows.
+Design anchors: `definitions.html`, `definitions.png`, shared CSS/JS, and the
+Definitions page charter.
 
-Required behavior:
+Backend anchors: definition list/detail/history routes for `role`, `policy`,
+and `workflow`.
 
-- Use separate list reads for roles, policies, and workflows.
-- Keep a visible kind switch; do not fake a mixed registry endpoint.
-- Search, sort, filter, and cursor-load within the selected kind only.
-- Roles may filter by `allowed_node_kind`; policies may filter by `applies_to`;
-  workflows do not inherit those filters.
-- Selected detail comes from `GET /definitions/{kind}/{key}`.
-- Version history comes from `GET /definitions/{kind}/{key}/versions` and stays
-  behind compact `Versions` disclosure.
-- Adjacent pivots to `Definition Editor` and workflow-only `Task Start` are
-  handoffs, not inline editor or launch flows.
+Required states: kind switch, search, filter, sort, populated list,
+empty/no-results, selected detail, version history, stale selected entity,
+auth/error, Definition Editor handoff, and Task Start handoff.
 
-Required states:
+Behavior contract:
 
-- role, policy, and workflow list views
-- kind switching without stale filters or stale detail leakage
-- selected current detail
-- single and multi-revision history
-- empty, no-results, detail-missing, read-error, and auth states
-
-Forbidden states:
-
-- repo YAML or seed files as live registry truth
-- invented author identity, validation status, launch readiness, mixed
-  stored/draft badges, or workflow compatibility badges
-- prompt preview, diff, draft editing, or task launch inside the browse surface
-
-## Definition Editor
-
-Purpose: let an author edit backend-owned draft sets and apply them to stored
-definition truth without confusing draft, preview, and launch truth.
-
-Required behavior:
-
-- Use `/authoring/definition-draft-sets/*` routes for draft-set lifecycle,
-  materialization, save, reset, rematerialize-current, validate, preview, and
-  apply.
-- Keep stored truth, draft-set truth, preview truth, diff truth, and task-start
-  launch truth visibly separate.
-- Draft selector rows stay compact: key, kind, and status.
-- `Reset draft` restores the captured draft baseline or local starter baseline.
-- `Replace with current stored revision` is a separate explicit
-  rematerialize-current action that discards local edits only after explicit
-  intent.
-- Validation distinguishes schema, cross-reference, stale, preview, warning,
-  no-op, and new-revision outcomes.
-- Preview labels provenance as stored truth or draft truth.
-- Task start remains a separate page and launches only from current stored
-  controller truth.
-
-Required states:
-
-- default workbench with draft rail and editor
-- new draft modal and added draft state
-- dirty and clean draft states
-- reset confirmation and rematerialize-current confirmation
-- validation pending, valid, warning, invalid, and stale
-- preview unavailable, stored truth preview, draft truth preview
-- apply no-op and new revision outcomes
-- auth and permission failure
-
-Forbidden states:
-
-- unsaved draft as current, applied, or launchable
-- autosave, collaboration presence, approval, or compile states not owned by
-  the controller
-- reset that silently fetches newest stored registry truth
-- browser-only draft state as saved backend truth
+- Do not assume a mixed-definition endpoint.
+- Filters must be kind-appropriate and backend-supported.
+- Handoffs to editor and task start must preserve the distinction between
+  stored definitions, draft sets, and task-startable workflow definitions.
 
 ## Task Start
 
-Purpose: let an author launch a task from current stored workflow truth.
+Design anchors: `task-start.html`, `task-start.png`, shared CSS/JS, and the
+Task Start page charter.
 
-Required behavior:
+Backend anchors: workflow definition list/detail/history routes and
+`POST /tasks/start`.
 
-- Discover workflows through stored definition reads.
-- Launch through `POST /tasks/start` only.
-- Collect task key, title, summary, optional instruction, workflow key, and
-  optional workspace/context root bindings.
-- Root modes are `ensure_task_default`, `ensure_host_path`, and
-  `use_existing_host`.
-- `host_path` is forbidden for `ensure_task_default` and required for the two
-  host-path modes.
-- Preview is local semantic readback over selected stored workflow and current
-  form fields. It is not controller truth and not a server-side preflight.
-- Success renders compact handoff readiness without default raw ids, compiled
-  plan ids, flow revision ids, or raw manifest filesystem paths.
+Required states: workflow search/select, workflow detail/history, required
+fields, root selection modes, optional params, preview modal/disclosure,
+validation errors, successful start, occupied root, unknown workflow, and
+auth/error.
 
-Required states:
+Behavior contract:
 
-- ready-to-launch with selected workflow
-- workflow search/loading/empty
-- required-field errors
-- all root binding mode combinations
-- preview modal/disclosure
-- success result with `flow_status`
-- unknown workflow, invalid host path, occupied workspace, auth error, and
-  validation error
+- Preview is a user-facing review of the request payload, not a fake backend
+  simulation.
+- Do not launch drafts or expose raw manifest paths unless backend and product
+  contract explicitly support it.
+- Root ownership and validation errors must follow backend shape.
 
-Forbidden states:
+## Definition Editor
 
-- launch from unsaved drafts, repo files, preview output, or diff output
-- server-side dry-run or preflight claims before a backend route exists
-- runtime graph, event thread, human-request handling, or command-run detail
-  inside Task Start
-- raw request JSON or raw host-path echoes as default visible result copy
+Design anchors: `definition-editor.html`, `definition-editor.png`,
+`definition-editor-replace-modal.png`, shared CSS/JS, and the Definition Editor
+page charter.
+
+Backend anchors: authoring draft-set routes.
+
+Required states: draft list, empty draft list, create draft client template,
+load existing draft, clean editor, dirty editor, save, validate, preview, apply,
+reset, rematerialize/replace modal, stale draft, validation warnings/errors,
+auth/error, and focus recovery.
+
+Behavior contract:
+
+- Stored definition truth, draft-set truth, preview truth, and task-start truth
+  stay separate.
+- Reset and rematerialize/replace are distinct operations and need distinct
+  confirmation behavior.
+- Apply, validate, preview, and save feedback must match authoring route
+  responses.

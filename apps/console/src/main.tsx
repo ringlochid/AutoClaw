@@ -11,8 +11,19 @@ if (rootElement === null) {
     throw new Error("AutoClaw console root element was not found");
 }
 
-createRoot(rootElement).render(
-    <StrictMode>
-        <RouterProvider router={router} />
-    </StrictMode>,
-);
+const consoleRootElement = rootElement;
+
+async function startConsole(): Promise<void> {
+    if (import.meta.env.DEV && import.meta.env.VITE_AUTOCLAW_MOCK_API === "true") {
+        const { enableMockApi } = await import("./mocks/browser");
+        await enableMockApi();
+    }
+
+    createRoot(consoleRootElement).render(
+        <StrictMode>
+            <RouterProvider router={router} />
+        </StrictMode>,
+    );
+}
+
+void startConsole();

@@ -1,130 +1,74 @@
-# Console Environment And Runtime Config
+# Console Environment And Runtime Config Contract
 
-Status: Locked target for implementation planning.
+Date: 2026-06-30
 
-This page defines the environment and runtime-configuration contract for the
-console frontend.
+This document locks the environment and runtime config assumptions for the
+frontend rebuild.
 
-## Current Decision
+## Current Runtime Config
 
-Initial console implementation uses build-time Vite environment variables and a
-centralized frontend config module. It must not call `/console/config` until a
-backend route exists and is documented in current API/OpenAPI truth.
+Current console config lives in frontend source. The app normalizes:
 
-`/console/config` remains the target same-origin serving preference from
-`control-ui-runtime-and-authoring-surfaces.md`, but it is not a shipped current
-route in FastAPI routers, generated OpenAPI, or the route map inspected for
-this lock.
+- API base URL, defaulting to `http://127.0.0.1:18125`.
+- Blank API key values to `null`.
+- API-key headers through the shared client for protected routes.
 
-## Current Variables
-
-`apps/console/.env.example` exposes:
-
-```text
-VITE_AUTOCLAW_API_BASE_URL=http://127.0.0.1:18125
-VITE_AUTOCLAW_API_KEY=replace-me-with-your-operator-api-key
-```
-
-Current `apps/console/src/app/config.ts` behavior is the baseline:
-
-- default API base URL is `http://127.0.0.1:18125`
-- configured base URL is trimmed
-- trailing slashes are removed
-- blank API key becomes `null`
-
-The foundation slice may refactor config internals, but it must preserve one
-central config owner.
-
-## API Base URL Rules
-
-- All API paths are resolved through the shared API client against one
-  normalized base URL.
-- Feature pages must not construct absolute API URLs directly.
-- Test fixtures may configure a test base URL, but component code must consume
-  the same config shape.
-- Subpath hosting must be handled deliberately through app/base-path config
-  before release; do not assume it from Vite defaults.
-
-## API Key Rules
-
-- The API key is an operator secret.
-- The key is sent only through `X-AutoClaw-API-Key`.
-- Do not render it in UI.
-- Do not include it in query params, screenshots, test names, fixture files,
-  logs, markdown evidence, or browser storage.
-- Do not copy it into MSW fixtures except as an obvious placeholder when a test
-  must assert header presence.
-- If the key is absent, API reads and writes should surface access/auth errors
-  from the backend rather than pretending data is empty.
-
-## Actor Ref
-
-Some shipped write routes expose optional `X-AutoClaw-Actor-Ref`. The console
-must not invent actor identity. Add actor-ref support only when a product
-contract names how current operator identity is obtained.
-
-Until then, action routes may omit actor ref and rely on backend auth context.
-
-## `/console/config` Route Status
-
-Decision: do not implement a frontend dependency on `/console/config` in the
-initial slices.
-
-Route status:
-
-- target preference: same-origin runtime config at `/console/config`
-- current shipped route: absent
-- current OpenAPI: absent
-- current implementation blocker: backend/API prerequisite if production
-  deployment requires runtime config after build
-
-Affected slices:
-
-- The API/config foundation slice owns centralizing env-based config now.
-- A future backend/runtime-config prerequisite owns adding `/console/config`
-  and updating route map and generated OpenAPI if same-origin deploy requires
-  it.
-- Page slices must consume the shared config and must not each add fallback
-  config behavior.
-
-## Same-Origin Serving Assumptions
-
-Preferred future same-origin shape:
-
-- SPA shell at `/`
-- assets at `/assets/*`
-- runtime config at `/console/config`
-- API and MCP lanes stay on explicit prefixed routes
-
-Initial implementation may run with a Vite dev server and explicit API base
-URL. Same-origin production serving is a deployment/runtime slice, not a reason
-for page implementations to call missing routes.
+No current API route map or OpenAPI evidence supports a backend
+`/console/config` endpoint. Do not implement or depend on that route unless a
+backend contract is added.
 
 ## Local Development
 
-Developers should use:
+Expected local surfaces:
 
-- `make console-install`
-- `make console-dev`
-- `.env` values copied from `.env.example` with a local operator API key
+- Console package: `apps/console`.
+- Package scripts: `dev`, `build`, `typecheck`, `lint`, `format:check`,
+  `test`, `test:integration`, `test:e2e`, and `openapi:generate`.
+- Root Make targets include `console-format-check`, `console-lint`,
+  `console-typecheck`, `console-openapi-check`, `console-test`,
+  `console-test-integration`, `console-e2e`, `console-build`, and
+  `check-console`.
+- MSW handlers and fixtures support local contract tests and page review.
 
-Do not commit local `.env` secrets.
+Design pages must be served separately for visual review:
 
-## Test And Fixture Config
+```sh
+cd /home/ubuntu/leo/projects/autoclaw/references/frontend_design/pages
+python3 -m http.server 18773 --bind 127.0.0.1
+```
 
-Tests should avoid real API secrets:
+Record the served source, port, viewport, page URL, and screenshot paths in the
+scope evidence directory.
 
-- unit/component tests use explicit config objects or MSW
-- integration tests assert that the configured API key is forwarded as a
-  placeholder header
-- e2e tests may use a controlled test key only when the test environment starts
-  or points at a real API intentionally
+## Fixture And Mock Boundaries
 
-## Release Gate
+Fixtures are allowed for local and test coverage only when they model backend
+schema. Backend schema wins over visual mock data when they conflict.
 
-Before final suite release review, decide whether the target deployment still
-uses build-time env config or requires `/console/config`.
+Fixture data must not add product truth for:
 
-If `/console/config` is required, release is blocked until a backend/API slice
-adds the route, updates route/OpenAPI truth, and the console consumes it
-through the shared config owner.
+- task counts not exposed by backend;
+- progress or ETA;
+- support-file content not returned by a route;
+- action legality not provided by backend;
+- route families not in the current route map;
+- user-facing labels invented from prototype copy.
+
+## Deployment And Auth Assumptions
+
+- Protected requests use `X-AutoClaw-API-Key`.
+- Missing or blank API key must produce a clear frontend state and must not
+  silently bypass protected route errors.
+- Network, abort, HTTP, validation, and backend operation errors must render
+  through normalized error views.
+- Currentness-sensitive actions must use fresh backend tokens or revision ids
+  where required.
+
+## Blockers
+
+Block implementation or release if:
+
+- release requires backend-served console config but no route is documented;
+- generated OpenAPI and route docs disagree on a required shape;
+- an environment variable or deployment assumption is not documented in source;
+- local fixtures are the only evidence for a user-facing backend field.
