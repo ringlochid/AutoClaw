@@ -81,12 +81,14 @@ export interface TaskStartController {
     readonly loadMoreWorkflows: () => void;
     readonly preview: TaskStartPreview | null;
     readonly previewOpen: boolean;
+    readonly resultOpen: boolean;
     readonly refresh: () => void;
     readonly selectWorkflow: (key: string) => void;
     readonly selectedWorkflow: TaskStartWorkflowChoice | null;
     readonly selectedWorkflowKey: string | null;
     readonly setField: (field: keyof TaskStartFormState, value: string) => void;
     readonly setPreviewOpen: (value: boolean) => void;
+    readonly setResultOpen: (value: boolean) => void;
     readonly setRootMode: (root: "context" | "workspace", mode: TaskRootMode) => void;
     readonly showPreview: () => void;
     readonly sort: DefinitionListSort;
@@ -146,6 +148,7 @@ export function useTaskStartController(): TaskStartController {
     const [submitState, setSubmitState] = useState<TaskStartSubmitState>(initialSubmitState);
     const [preview, setPreview] = useState<TaskStartPreview | null>(null);
     const [previewOpen, setPreviewOpen] = useState(false);
+    const [resultOpen, setResultOpen] = useState(false);
     const listGenerationRef = useRef(0);
     const trimmedWorkflowQuery = workflowQuery.trim();
     const criteriaKey = buildWorkflowCriteriaKey(trimmedWorkflowQuery, sort);
@@ -332,6 +335,7 @@ export function useTaskStartController(): TaskStartController {
         }
 
         setSubmitState({ error: null, isSubmitting: true, result: submitState.result });
+        setPreviewOpen(false);
         void startTask(buildTaskStartRequest(form, selectedWorkflowKey))
             .then((response) => {
                 setSubmitState({
@@ -339,6 +343,7 @@ export function useTaskStartController(): TaskStartController {
                     isSubmitting: false,
                     result: mapTaskStartResult(response),
                 });
+                setResultOpen(true);
             })
             .catch((error: unknown) => {
                 if (isAbortError(error)) {
@@ -349,6 +354,7 @@ export function useTaskStartController(): TaskStartController {
                     isSubmitting: false,
                     result: null,
                 });
+                setResultOpen(true);
             });
     }, [form, selectedWorkflowKey, submitState.result, validateCurrentForm]);
 
@@ -378,9 +384,11 @@ export function useTaskStartController(): TaskStartController {
         },
         preview,
         previewOpen,
+        resultOpen,
         refresh: () => {
             setSubmitState(initialSubmitState);
             setPreviewOpen(false);
+            setResultOpen(false);
             setRefreshToken((value) => value + 1);
         },
         selectWorkflow: (key: string) => {
@@ -391,6 +399,7 @@ export function useTaskStartController(): TaskStartController {
         selectedWorkflowKey,
         setField,
         setPreviewOpen,
+        setResultOpen,
         setRootMode,
         showPreview,
         sort,

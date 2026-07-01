@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Search } from "lucide-react";
 
 import {
@@ -7,7 +9,6 @@ import {
     PropertyGrid,
     StatePanel,
     StatusChip,
-    Surface,
     TimestampText,
 } from "../../components/ui";
 import { classNames } from "../../lib/classNames";
@@ -21,31 +22,46 @@ import {
 import { controlClassName } from "./task-start-ui";
 
 export function WorkflowSection({ controller }: { readonly controller: TaskStartController }) {
+    const [isSearchOpen, setSearchOpen] = useState(false);
+    const shouldShowChoices =
+        isSearchOpen ||
+        controller.workflowQuery.trim().length > 0 ||
+        controller.listState.isLoading ||
+        controller.listState.error !== null ||
+        controller.listState.rows.length === 0 ||
+        controller.selectedWorkflowKey === null;
+
     return (
-        <Surface
-            actions={
-                <StatusChip
-                    tone={controller.listState.error === null ? "active" : "danger"}
-                    withDot
-                >
-                    {controller.statusSummary}
-                </StatusChip>
-            }
-            label="Workflow"
-            title="Stored workflow source"
-        >
-            <div className="space-y-4">
-                <WorkflowSearch controller={controller} />
-                <WorkflowChoices controller={controller} />
-                <SelectedWorkflow controller={controller} />
-            </div>
-        </Surface>
+        <div className="space-y-4">
+            <WorkflowSearch
+                controller={controller}
+                onSearchOpen={() => {
+                    setSearchOpen(true);
+                }}
+            />
+            {shouldShowChoices ? (
+                <WorkflowChoices
+                    controller={controller}
+                    onSelectWorkflow={(key) => {
+                        controller.selectWorkflow(key);
+                        setSearchOpen(false);
+                    }}
+                />
+            ) : null}
+            <SelectedWorkflow controller={controller} />
+        </div>
     );
 }
 
-function WorkflowSearch({ controller }: { readonly controller: TaskStartController }) {
+function WorkflowSearch({
+    controller,
+    onSearchOpen,
+}: {
+    readonly controller: TaskStartController;
+    readonly onSearchOpen: () => void;
+}) {
     return (
-        <div>
+        <div className="min-w-0 flex-1">
             <label
                 className="block font-mono text-label font-medium uppercase text-muted"
                 htmlFor="task-start-workflow-search"
@@ -61,8 +77,10 @@ function WorkflowSearch({ controller }: { readonly controller: TaskStartControll
                     className={controlClassName("pl-10")}
                     id="task-start-workflow-search"
                     onChange={(event) => {
+                        onSearchOpen();
                         controller.updateWorkflowQuery(event.target.value);
                     }}
+                    onFocus={onSearchOpen}
                     placeholder="Search stored workflows"
                     type="search"
                     value={controller.workflowQuery}
@@ -77,7 +95,13 @@ function WorkflowSearch({ controller }: { readonly controller: TaskStartControll
     );
 }
 
-function WorkflowChoices({ controller }: { readonly controller: TaskStartController }) {
+function WorkflowChoices({
+    controller,
+    onSelectWorkflow,
+}: {
+    readonly controller: TaskStartController;
+    readonly onSelectWorkflow: (key: string) => void;
+}) {
     const { listState } = controller;
 
     if (listState.isLoading) {
@@ -131,7 +155,7 @@ function WorkflowChoices({ controller }: { readonly controller: TaskStartControl
                         <WorkflowChoiceButton
                             isSelected={controller.selectedWorkflowKey === workflow.key}
                             onSelect={() => {
-                                controller.selectWorkflow(workflow.key);
+                                onSelectWorkflow(workflow.key);
                             }}
                             workflow={workflow}
                         />
@@ -185,7 +209,6 @@ function WorkflowChoiceButton({
                 <StatusChip tone="success" withDot>
                     Workflow
                 </StatusChip>
-                <StatusChip>{workflow.revisionLabel}</StatusChip>
             </span>
             <span className="break-words text-compact text-muted">
                 {workflow.description ?? "No description reported."}
@@ -248,15 +271,22 @@ function SelectedWorkflow({ controller }: { readonly controller: TaskStartContro
         return null;
     }
 
+    const selectedWorkflowUpdatedAt =
+        controller.detailState.detail?.updatedAt ?? controller.selectedWorkflow.updatedAt;
+
     return (
         <div className="rounded-card border border-outline-soft bg-surface-low p-4 shadow-hairline">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div
+                aria-label="Selected workflow summary"
+                className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+                role="group"
+            >
                 <div className="min-w-0">
                     <p className="font-mono text-label font-medium uppercase text-muted">
                         Selected workflow
                     </p>
-                    <h2 className="mt-1 break-words font-display text-compact font-semibold text-foreground">
-                        {controller.selectedWorkflow.displayName}
+                    <h2 className="mt-1 break-all font-mono text-compact font-semibold text-foreground">
+                        {controller.selectedWorkflow.key}
                     </h2>
                     <p className="mt-2 break-words text-compact text-muted">
                         {controller.detailState.detail?.description ??
@@ -265,10 +295,10 @@ function SelectedWorkflow({ controller }: { readonly controller: TaskStartContro
                     </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
-                    <StatusChip>{controller.selectedWorkflow.revisionLabel}</StatusChip>
-                    <Button onClick={controller.clearWorkflow} variant="ghost">
-                        Clear workflow
-                    </Button>
+                    <StatusChip>
+                        <span>Updated</span>
+                        <TimestampText className="text-current" value={selectedWorkflowUpdatedAt} />
+                    </StatusChip>
                 </div>
             </div>
             <WorkflowDetailDisclosure

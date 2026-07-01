@@ -63,19 +63,56 @@ describe("TaskStartPage", () => {
 
         expect(await screen.findByRole("heading", { name: "Task Start" })).toBeVisible();
         expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
-        expect(screen.getByText("Ready to start from the selected stored workflow.")).toBeVisible();
+        const selectedWorkflowSummary = await screen.findByRole("group", {
+            name: "Selected workflow summary",
+        });
+        expect(
+            within(selectedWorkflowSummary).getByRole("heading", {
+                level: 2,
+                name: TASK_START_WORKFLOW_KEY,
+            }),
+        ).toBeVisible();
+        expect(within(selectedWorkflowSummary).getByText("Updated")).toBeVisible();
+        expect(within(selectedWorkflowSummary).queryByText(/Revision/)).not.toBeInTheDocument();
+        expect(screen.getByText("Ready to start from the selected workflow.")).toBeVisible();
         expect(seenRequests[0]?.pathname).toBe("/definitions/workflows");
         expect(seenRequests[0]?.searchParams.get("limit")).toBe("8");
         expect(seenRequests[0]?.searchParams.get("sort")).toBe("updated_at_desc");
 
+        await user.click(screen.getByLabelText("Search workflow"));
+        const workflowChoices = await screen.findByRole("list", { name: "Workflow choices" });
+        expect(
+            within(workflowChoices).getAllByText(TASK_START_WORKFLOW_KEY).length,
+        ).toBeGreaterThan(0);
+        expect(within(workflowChoices).queryByText(/Revision/)).not.toBeInTheDocument();
+
         await user.click(screen.getByRole("button", { name: "Preview" }));
-        const preview = within(screen.getByRole("region", { name: "Preview" }));
+        const previewDialog = screen.getByRole("dialog", { name: "Preview" });
+        const preview = within(previewDialog);
         expect(preview.getByText("Workflow")).toBeVisible();
+        expect(preview.getByText(TASK_START_WORKFLOW_KEY)).toBeVisible();
+        expect(preview.getByText("Task")).toBeVisible();
+        expect(preview.getByText("Implement Task Start launch form")).toBeVisible();
+        expect(preview.getByText("implement-task-start-launch-form")).toBeVisible();
+        expect(preview.getByText("Summary")).toBeVisible();
+        expect(
+            preview.getByText("Launch one bounded task from stored workflow truth."),
+        ).toBeVisible();
+        expect(preview.getByText("Instruction")).toBeVisible();
+        expect(
+            preview.getByText(
+                "Keep the work scoped to the current assignment and publish focused verification.",
+            ),
+        ).toBeVisible();
+        expect(preview.getByText("Workspace")).toBeVisible();
+        expect(preview.getByText("Context")).toBeVisible();
         expect(preview.getAllByText("Task default")).toHaveLength(2);
+        expect(preview.queryByText(/Revision/)).not.toBeInTheDocument();
         expect(startBody).toBeNull();
 
-        await user.click(screen.getByRole("button", { name: "Start Task" }));
+        await user.click(preview.getByRole("button", { name: "Start Task" }));
         expect(await screen.findByText("Task start accepted")).toBeVisible();
+        expect(screen.getByRole("dialog", { name: "Result" })).toBeVisible();
         expect(screen.getByText("Running")).toBeVisible();
         expect(screen.queryByText(TEST_TASK_ID)).not.toBeInTheDocument();
         expect(screen.queryByText("compiled-plan-001")).not.toBeInTheDocument();
@@ -224,7 +261,10 @@ describe("TaskStartPage", () => {
         renderTaskStartPage();
         expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
         await user.click(screen.getByRole("button", { name: "Start Task" }));
-        expect(await screen.findByText("Task Start validation failed")).toBeVisible();
+        const validationDialog = await screen.findByRole("dialog", {
+            name: "Task Start validation failed",
+        });
+        expect(validationDialog).toBeVisible();
         expect(screen.getByLabelText("Task key")).toHaveValue("implement-task-start-launch-form");
     });
 
@@ -257,6 +297,7 @@ describe("TaskStartPage", () => {
         );
         await user.click(screen.getByRole("button", { name: "Start Task" }));
         expect(await screen.findByText("Workspace host path does not exist.")).toBeVisible();
+        expect(screen.getByRole("dialog", { name: "Task could not start" })).toBeVisible();
         expect(screen.getByLabelText("Task key")).toHaveValue("implement-task-start-launch-form");
 
         cleanup();
@@ -293,8 +334,45 @@ describe("TaskStartPage", () => {
         renderTaskStartPage();
         expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
         await user.click(screen.getByRole("button", { name: "Start Task" }));
-        expect(await screen.findByText("Access to Task Start failed")).toBeVisible();
-        expect(screen.getByText("Starting tasks requires an operator API key.")).toBeVisible();
+        const accessDialog = await screen.findByRole("dialog", {
+            name: "Access to Task Start failed",
+        });
+        expect(accessDialog).toBeVisible();
+        expect(
+            within(accessDialog).getByText("Starting tasks requires an operator API key."),
+        ).toBeVisible();
+    });
+
+    it("keeps preview and result dialogs focused, closes with Escape, and restores focus", async () => {
+        const user = userEvent.setup();
+        installTaskStartHandlers();
+
+        renderTaskStartPage();
+        expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
+
+        const previewButton = screen.getByRole("button", { name: "Preview" });
+        previewButton.focus();
+        await user.click(previewButton);
+        const previewDialog = await screen.findByRole("dialog", { name: "Preview" });
+        expect(within(previewDialog).getByRole("button", { name: "Back to edit" })).toHaveFocus();
+
+        await user.keyboard("{Escape}");
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "Preview" })).not.toBeInTheDocument();
+        });
+        expect(previewButton).toHaveFocus();
+
+        const startButton = screen.getByRole("button", { name: "Start Task" });
+        startButton.focus();
+        await user.click(startButton);
+        const resultDialog = await screen.findByRole("dialog", { name: "Result" });
+        expect(within(resultDialog).getByRole("button", { name: "Back to edit" })).toHaveFocus();
+
+        await user.keyboard("{Escape}");
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog", { name: "Result" })).not.toBeInTheDocument();
+        });
+        expect(startButton).toHaveFocus();
     });
 });
 

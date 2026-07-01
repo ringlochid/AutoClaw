@@ -36,7 +36,6 @@ export interface TaskStartFormErrors {
 
 export interface TaskStartWorkflowChoice extends DefinitionSummary {
     readonly displayName: string;
-    readonly revisionLabel: string;
 }
 
 export interface TaskStartWorkflowDetail {
@@ -66,7 +65,6 @@ export interface TaskStartPreview {
     readonly title: string;
     readonly workflowDescription: string;
     readonly workflowKey: string;
-    readonly workflowRevisionLabel: string;
     readonly workspaceModeLabel: string;
     readonly workspaceSummary: string;
 }
@@ -108,7 +106,6 @@ export function mapTaskStartWorkflowChoice(
     return {
         ...summary,
         displayName: summary.title ?? summary.key,
-        revisionLabel: `Revision ${String(summary.currentRevisionNo)}`,
     };
 }
 
@@ -214,7 +211,6 @@ export function buildTaskStartPreview({
         workflowDescription:
             detail?.description ?? workflow.description ?? "No workflow description reported.",
         workflowKey: workflow.key,
-        workflowRevisionLabel: `Revision ${String(detail?.revisionNo ?? workflow.currentRevisionNo)}`,
         workspaceModeLabel: rootModeLabel(form.workspaceMode),
         workspaceSummary: rootModeSummary(form.workspaceMode),
     };

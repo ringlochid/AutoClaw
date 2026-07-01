@@ -25,16 +25,48 @@ test("starts a task from stored workflow truth at desktop width", async ({ page 
     await page.goto("/task-start");
 
     await expect(page.getByRole("heading", { level: 1, name: "Task Start" })).toBeVisible();
+    await expect(page.getByText(TASK_START_WORKFLOW_KEY).first()).toBeVisible();
+    const selectedWorkflowSummary = page.getByRole("group", {
+        name: "Selected workflow summary",
+    });
     await expect(
-        page.getByRole("button", { name: new RegExp(TASK_START_WORKFLOW_KEY) }),
+        selectedWorkflowSummary.getByRole("heading", { name: TASK_START_WORKFLOW_KEY }),
     ).toBeVisible();
+    await expect(selectedWorkflowSummary.getByText("Updated")).toBeVisible();
+    await expect(selectedWorkflowSummary.getByText(/Revision/)).toHaveCount(0);
     await expectNoDocumentOverflow(page);
+
+    await page.getByLabel("Search workflow").focus();
+    const workflowChoices = page.getByRole("list", { name: "Workflow choices" });
+    await expect(workflowChoices).toBeVisible();
+    await expect(workflowChoices.getByText(TASK_START_WORKFLOW_KEY).first()).toBeVisible();
+    await expect(workflowChoices.getByText(/Revision/)).toHaveCount(0);
 
     const previewButton = page.getByRole("button", { name: "Preview" });
     await previewButton.focus();
     await expect(previewButton).toBeFocused();
     await previewButton.click();
-    await expect(page.getByRole("region", { name: "Preview" })).toBeVisible();
+    const previewDialog = page.getByRole("dialog", { name: "Preview" });
+    await expect(previewDialog).toBeVisible();
+    await expect(previewDialog.getByRole("button", { name: "Back to edit" })).toBeFocused();
+    await expect(previewDialog.getByText("Workflow", { exact: true })).toBeVisible();
+    await expect(previewDialog.getByText(TASK_START_WORKFLOW_KEY)).toBeVisible();
+    await expect(previewDialog.getByText("Task", { exact: true })).toBeVisible();
+    await expect(previewDialog.getByText("Implement Task Start launch form")).toBeVisible();
+    await expect(previewDialog.getByText("implement-task-start-launch-form")).toBeVisible();
+    await expect(previewDialog.getByText("Summary", { exact: true })).toBeVisible();
+    await expect(
+        previewDialog.getByText("Launch one bounded task from stored workflow truth."),
+    ).toBeVisible();
+    await expect(previewDialog.getByText("Instruction", { exact: true })).toBeVisible();
+    await expect(
+        previewDialog.getByText(
+            "Keep the work scoped to the current assignment and publish focused verification.",
+        ),
+    ).toBeVisible();
+    await expect(previewDialog.getByText("Workspace", { exact: true })).toBeVisible();
+    await expect(previewDialog.getByText("Context", { exact: true })).toBeVisible();
+    await expect(previewDialog.getByText(/Revision/)).toHaveCount(0);
     await expect(page.getByText("Task default").first()).toBeVisible();
 
     const accessibilityScanResults = await new AxeBuilder({ page })
@@ -42,8 +74,9 @@ test("starts a task from stored workflow truth at desktop width", async ({ page 
         .analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
-    await page.getByRole("button", { name: "Start Task" }).click();
+    await previewDialog.getByRole("button", { name: "Start Task" }).click();
     await expect(page.getByText("Task start accepted")).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Result" })).toBeVisible();
     await expect(page.getByText("Running")).toBeVisible();
     await expect(page.getByText("task-console-fixture")).toHaveCount(0);
     await expect(page.getByText("compiled-plan-001")).toHaveCount(0);
@@ -71,10 +104,22 @@ test("keeps Task Start root modes, validation, and layout usable at mobile width
     await page.goto("/task-start");
 
     await expect(page.getByRole("heading", { level: 1, name: "Task Start" })).toBeVisible();
+    await expect(page.getByText(TASK_START_WORKFLOW_KEY).first()).toBeVisible();
+    const selectedWorkflowSummary = page.getByRole("group", {
+        name: "Selected workflow summary",
+    });
     await expect(
-        page.getByRole("button", { name: new RegExp(TASK_START_WORKFLOW_KEY) }),
+        selectedWorkflowSummary.getByRole("heading", { name: TASK_START_WORKFLOW_KEY }),
     ).toBeVisible();
+    await expect(selectedWorkflowSummary.getByText("Updated")).toBeVisible();
+    await expect(selectedWorkflowSummary.getByText(/Revision/)).toHaveCount(0);
     await expectNoDocumentOverflow(page);
+
+    await page.getByLabel("Search workflow").focus();
+    const workflowChoices = page.getByRole("list", { name: "Workflow choices" });
+    await expect(workflowChoices).toBeVisible();
+    await expect(workflowChoices.getByText(TASK_START_WORKFLOW_KEY).first()).toBeVisible();
+    await expect(workflowChoices.getByText(/Revision/)).toHaveCount(0);
 
     const workspaceRoot = page.getByRole("region", { name: "Workspace root" });
     await workspaceRoot.getByRole("button", { name: "Create host path" }).click();

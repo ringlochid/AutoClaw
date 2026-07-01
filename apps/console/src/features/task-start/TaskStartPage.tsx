@@ -1,11 +1,9 @@
-import { RefreshCw } from "lucide-react";
-
 import { PageFrame } from "../../components/layout";
-import { Button } from "../../components/ui";
 import {
     PreviewPanel,
     ResultPanel,
     RootsSection,
+    TaskStartSection,
     TaskIdentitySection,
     TaskStartActions,
 } from "./task-start-form-sections";
@@ -16,35 +14,30 @@ export function TaskStartPage() {
     const controller = useTaskStartController();
 
     return (
-        <PageFrame
-            actions={
-                <Button
-                    disabled={controller.listState.isLoading || controller.listState.isRefreshing}
-                    icon={
-                        <RefreshCw
-                            className={controller.listState.isRefreshing ? "animate-spin" : ""}
-                        />
-                    }
-                    onClick={controller.refresh}
-                >
-                    Refresh
-                </Button>
-            }
-            description="Launch a new task from current stored workflow truth with bounded task inputs."
-            eyebrow="Authoring"
-            title="Task Start"
-        >
+        <PageFrame eyebrow="Authoring" title="Task Start">
             <div className="space-y-4">
-                <WorkflowSection controller={controller} />
-                <TaskIdentitySection controller={controller} />
-                <RootsSection controller={controller} />
-                <TaskStartActions controller={controller} />
+                <div className="divide-y divide-outline-soft">
+                    <TaskStartSection label="Workflow">
+                        <WorkflowSection controller={controller} />
+                    </TaskStartSection>
+                    <TaskStartSection label="Task">
+                        <TaskIdentitySection controller={controller} />
+                    </TaskStartSection>
+                    <TaskStartSection label="Roots">
+                        <RootsSection controller={controller} />
+                    </TaskStartSection>
+                    <TaskStartSection label="Launch">
+                        <TaskStartActions controller={controller} />
+                    </TaskStartSection>
+                </div>
                 {controller.previewOpen && controller.preview !== null ? (
                     <PreviewPanel
                         onClose={() => {
                             controller.setPreviewOpen(false);
                         }}
+                        onStart={controller.start}
                         preview={controller.preview}
+                        startDisabled={controller.submitState.isSubmitting}
                     />
                 ) : null}
                 <ResultPanel controller={controller} />

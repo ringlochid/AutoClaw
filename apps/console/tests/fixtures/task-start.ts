@@ -7,7 +7,7 @@ import {
 } from "./definitions";
 
 export const TASK_START_SCREENSHOT_DIR =
-    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/continuation-implementation/13-task-start/screenshots";
+    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity/06-task-start/screenshots";
 
 export const TASK_START_WORKFLOW_KEY = WORKFLOW_KEY;
 export const SECOND_TASK_START_WORKFLOW_KEY = "normal-parent-first-release";

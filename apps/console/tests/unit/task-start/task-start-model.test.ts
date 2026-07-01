@@ -1,0 +1,113 @@
+import { describe, expect, it } from "vitest";
+
+import {
+    TASK_START_INITIAL_FORM,
+    buildTaskStartPreview,
+    buildTaskStartRequest,
+    mapTaskStartWorkflowDetail,
+    mapTaskStartWorkflowChoice,
+    validateTaskStartForm,
+    type TaskStartFormState,
+} from "../../../src/features/task-start/task-start-model";
+import {
+    TASK_START_WORKFLOW_KEY,
+    createTaskStartWorkflowDetail,
+    createTaskStartWorkflowRows,
+} from "../../fixtures/task-start";
+
+describe("task start request mapper", () => {
+    it("omits default roots and trims required task fields", () => {
+        expect(
+            buildTaskStartRequest(
+                {
+                    ...TASK_START_INITIAL_FORM,
+                    instruction: "  ",
+                    summary: "  Summary from stored truth  ",
+                    taskKey: "  launch-from-workflow  ",
+                    title: "  Launch from workflow  ",
+                },
+                "normal-parent-first-release",
+            ),
+        ).toEqual({
+            task: {
+                key: "launch-from-workflow",
+                summary: "Summary from stored truth",
+                title: "Launch from workflow",
+            },
+            workflow: {
+                key: "normal-parent-first-release",
+            },
+        });
+    });
+
+    it("sends only explicit host root bindings", () => {
+        expect(
+            buildTaskStartRequest(
+                {
+                    ...TASK_START_INITIAL_FORM,
+                    contextHostPath: " /tmp/context-root ",
+                    contextMode: "use_existing_host",
+                    workspaceHostPath: " /tmp/workspace-root ",
+                    workspaceMode: "ensure_host_path",
+                },
+                "feature-implementation",
+            ).roots,
+        ).toEqual({
+            context: {
+                host_path: "/tmp/context-root",
+                mode: "use_existing_host",
+            },
+            workspace: {
+                host_path: "/tmp/workspace-root",
+                mode: "ensure_host_path",
+            },
+        });
+    });
+
+    it("requires host paths only for explicit host modes", () => {
+        const form: TaskStartFormState = {
+            ...TASK_START_INITIAL_FORM,
+            contextMode: "ensure_task_default",
+            workspaceMode: "ensure_host_path",
+            workspaceHostPath: "",
+        };
+
+        expect(validateTaskStartForm(form, "feature-implementation")).toMatchObject({
+            contextHostPath: undefined,
+            workspaceHostPath: "Workspace host path is required.",
+        });
+    });
+
+    it("keeps stored workflow key and updated freshness without picker revision readback", () => {
+        const choice = mapTaskStartWorkflowChoice({
+            ...createTaskStartWorkflowRows()[0],
+            title: "Display title for picker only",
+        });
+
+        expect(choice.key).toBe(TASK_START_WORKFLOW_KEY);
+        expect(choice.displayName).toBe("Display title for picker only");
+        expect(choice.updatedAt).toBe("2026-06-29T14:00:00Z");
+        expect("revisionLabel" in choice).toBe(false);
+    });
+
+    it("keeps preview readback to launch intent fields without workflow revision", () => {
+        const workflow = mapTaskStartWorkflowChoice(createTaskStartWorkflowRows()[0]);
+        const preview = buildTaskStartPreview({
+            detail: mapTaskStartWorkflowDetail(createTaskStartWorkflowDetail()),
+            form: TASK_START_INITIAL_FORM,
+            workflow,
+        });
+
+        expect(preview).toMatchObject({
+            contextModeLabel: "Task default",
+            instructionSummary:
+                "Keep the work scoped to the current assignment and publish focused verification.",
+            summary: "Launch one bounded task from stored workflow truth.",
+            taskKey: "implement-task-start-launch-form",
+            title: "Implement Task Start launch form",
+            workflowKey: TASK_START_WORKFLOW_KEY,
+            workspaceModeLabel: "Task default",
+        });
+        expect("workflowRevisionLabel" in preview).toBe(false);
+    });
+});
