@@ -1,7 +1,5 @@
 # Planning only workflow example
 
-Status: Reference
-
 This example mirrors the shipped `planning-only` workflow fixture.
 
 ```yaml
@@ -37,9 +35,9 @@ root:
         - id: map_work
           role: project_manager
           policy: standard-worker-human-request
-          description: Convert the scope brief into work packages, sequencing, dependencies, and risks.
+          description: Convert the scope brief into task slices, sequencing, dependencies, and risks.
           instruction: >-
-            Keep work packages bounded and ready for later assignment. Do not implement them.
+            Keep task slices bounded and ready for later assignment. Do not implement them.
           consumes:
               artifacts:
                   - slot: scope_brief
@@ -82,5 +80,5 @@ root:
               artifacts:
                   - slot: final_plan
                     file_hint: final_plan.md
-                    description: Final scoped plan with work packages, risks, decisions, and acceptance criteria.
+                    description: Final scoped plan with task slices, risks, decisions, and acceptance criteria.
 ```

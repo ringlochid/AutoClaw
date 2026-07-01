@@ -1,7 +1,5 @@
 # CLI reference
 
-Status: Reference
-
 This surface owns shipped CLI commands, config precedence, install/start, and local verification reference.
 
 ## Start here

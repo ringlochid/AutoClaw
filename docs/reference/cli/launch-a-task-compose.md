@@ -1,9 +1,5 @@
 # Launch a task
 
-Status: Reference
-
-Last verified: 2026-05-18
-
 This page describes the shipped task-start surface.
 
 ## Current status

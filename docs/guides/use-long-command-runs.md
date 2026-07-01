@@ -1,7 +1,5 @@
 # Use long command runs
 
-Status: Reference
-
 Use command runs for controller-managed long-running command work. Do not use them for ordinary quick shell commands.
 
 Ordinary inline commands should finish comfortably under about two minutes. If a command is likely to exceed that, use a command-run-enabled policy or redesign the assignment so the dispatch does not stall.
@@ -36,9 +34,7 @@ Keep the instruction clear about the inline boundary:
 
 ```yaml
 instruction: >-
-    Use controller-managed command runs only for commands expected to be long,
-    asynchronous, or log-heavy enough that inline execution is the wrong surface. Normal
-    shell commands should stay inline and comfortably under two minutes.
+  Use controller-managed command runs only for commands expected to be long, asynchronous, or log-heavy enough that inline execution is the wrong surface. Normal shell commands should stay inline and comfortably under two minutes.
 ```
 
 If duration is ambiguous, estimate from command history, repo size, cache state, test size, and local convention before choosing the surface.

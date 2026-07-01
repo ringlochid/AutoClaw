@@ -1,7 +1,5 @@
 # Standard root policy example
 
-Status: Reference
-
 Use this policy when the root node owns final task closure without human waits or command runs.
 
 This example teaches:

@@ -1,7 +1,5 @@
 # Normal workflow example
 
-Status: Reference
-
 This example mirrors the shipped `normal-parent-first-release` workflow fixture.
 
 ```yaml

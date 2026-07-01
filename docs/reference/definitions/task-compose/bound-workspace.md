@@ -1,7 +1,5 @@
 # Bound workspace task-compose example
 
-Status: Reference
-
 Use this example when the task should bind to a specific host path and create it if needed.
 
 ```yaml

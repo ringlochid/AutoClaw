@@ -1,7 +1,5 @@
 # Bug triage role example
 
-Status: Reference
-
 This example mirrors the shipped `bug_triage` role fixture.
 
 ```yaml

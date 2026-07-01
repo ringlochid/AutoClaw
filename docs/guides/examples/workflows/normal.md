@@ -1,7 +1,5 @@
 # Normal workflow guide example
 
-Status: Reference
-
 Use the normal workflow when you want implementation, review, and release closure without the coordination overhead of the maximal lane.
 
 This example teaches:

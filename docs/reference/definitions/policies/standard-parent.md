@@ -1,7 +1,5 @@
 # Standard Parent policy example
 
-Status: Reference
-
 This example mirrors the shipped `standard-parent` policy fixture.
 
 ```yaml

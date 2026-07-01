@@ -1,7 +1,5 @@
 # Standard worker command-run policy example
 
-Status: Reference
-
 Use this policy when a worker may need controller-managed long command runs.
 
 This example teaches:

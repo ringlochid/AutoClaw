@@ -1,9 +1,5 @@
 # Diagnostic bundle
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this page to collect enough local evidence to debug an AutoClaw problem without guessing.
 
 Do not paste secrets into issues, chat, logs, or tickets. Redact API keys, Gateway tokens, passwords, private task content, and private artifact content before sharing.

@@ -1,7 +1,5 @@
 # Bug fix engineer role example
 
-Status: Reference
-
 This example mirrors the shipped `bug_fix_engineer` role fixture.
 
 ```yaml

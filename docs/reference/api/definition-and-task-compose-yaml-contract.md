@@ -1,9 +1,5 @@
 # Definition and task-compose YAML contract
 
-Status: Reference
-
-Last verified: 2026-05-12
-
 This page is the shipped authoring contract for:
 
 - role YAML

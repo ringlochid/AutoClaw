@@ -1,7 +1,5 @@
 # Standard Root Human Request policy example
 
-Status: Reference
-
 This example mirrors the shipped `standard-root-human-request` policy fixture.
 
 ```yaml

@@ -1,9 +1,5 @@
 # Choose a verification lane
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this guide to decide which checks prove a change. Start from the surface changed, then add deeper lanes only when the change reaches that behavior.
 
 `make check-api` is not a test command. It runs lint, mypy, and pyright.

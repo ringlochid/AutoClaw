@@ -1,7 +1,5 @@
 # Release operator role example
 
-Status: Reference
-
 This example mirrors the shipped `release_operator` role fixture.
 
 ```yaml

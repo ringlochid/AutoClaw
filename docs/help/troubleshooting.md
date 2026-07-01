@@ -1,7 +1,5 @@
 # Troubleshooting
 
-Status: Reference
-
 Use this page to route a failure to the right help topic.
 
 Start with the visible symptom. Do not jump straight to reset or reinstall; most AutoClaw failures are clearer after `doctor`, `openclaw check`, runtime readbacks, or service health reads.

@@ -1,7 +1,5 @@
 # Delivery batch workflow example
 
-Status: Reference
-
 This example mirrors the shipped `delivery-batch` workflow fixture.
 
 ```yaml

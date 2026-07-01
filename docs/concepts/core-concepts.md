@@ -1,109 +1,107 @@
 # Core concepts
 
-Status: Reference
-
-AutoClaw separates reusable design, concrete launch input, runtime truth, and operator readbacks. Most confusion comes from mixing those surfaces.
+AutoClaw separates reusable design, one launch request, runtime truth, and operator readbacks. Most confusion comes from mixing those surfaces.
 
 ## Four planes
 
-### Authoring plane
+| Plane | Owns | Example nouns |
+| --- | --- | --- |
+| Authoring | reusable definitions | role, policy, workflow, node, criteria, consumes, produces |
+| Launch | one concrete task request | task-compose, task instruction, workspace root, context root |
+| Runtime | controller-owned execution state | task, flow, assignment, attempt, dispatch, checkpoint, artifact, boundary, wait, replan |
+| Operator | trusted inspection and control | snapshot, trace, human request resolution, command-run inspection, pause, continue, cancel |
 
-The authoring plane contains reusable definitions:
+Authored files describe intent. Runtime records describe what happened in one launched task. Operator readbacks help humans and trusted operators inspect that runtime truth.
 
-- roles describe a stable capability profile and instruction contract
-- policies describe budgets, retries, guardrails, and allowed capabilities
-- workflows describe the node tree, durable criteria, consumed inputs, and produced artifacts
+## The minimum vocabulary
 
-These files are importable definition inputs. After seed or upload, current registry revisions become the source used by compile and launch.
+Learn these first:
 
-### Launch plane
+- **Workflow:** reusable evidence path for a kind of work.
+- **Task-compose:** one concrete launch request.
+- **Assignment:** bounded mission currently given to a root, parent, or worker node.
+- **Checkpoint:** durable progress or handoff record for an assignment attempt.
+- **Artifact:** durable output published into a declared slot.
 
-The launch plane is task-compose. It names one concrete task, selects a workflow, carries the task instruction, and binds roots such as `workspace` and `context` to host paths.
+Assignment is the delegation boundary. Checkpoints and artifacts are evidence for that assigned mission.
 
-Task-compose is not a reusable workflow definition. It is the launch body for one task.
+## Definition concepts
 
-### Runtime plane
+Definitions are reusable:
 
-The runtime plane is the controller-owned record of one launched task. It includes the task, compiled plan, flow, nodes, assignments, attempts, dispatches, checkpoints, artifacts, boundaries, wait states, and structural revisions.
+- **Role:** specialist lens and behavior contract.
+- **Policy:** authority, budgets, capabilities, and guardrails.
+- **Workflow:** node tree plus evidence path.
+- **Node:** one mission inside a workflow.
+- **Criteria:** hard requirements that can block closure.
+- **Consumes:** evidence a node must read.
+- **Produces:** artifacts a node must publish.
 
-Runtime state is the authority for what is current. Generated task-root files and operator read models are projections over that state.
+Role says who the node is good at being. Policy says what the node may do. Workflow says how evidence moves.
 
-### Operator plane
+## Runtime concepts
 
-The operator plane exposes views and controls for trusted runtime steering. Its intended product shape is a trusted OpenClaw operator agent profile using operator MCP, with humans using UI surfaces for review, approval, and recovery decisions.
+Runtime nouns describe one launched task:
 
-Operator readbacks are useful views. They do not replace controller-owned runtime truth.
+- **Task:** one launched unit of work.
+- **Compiled plan:** launch-time snapshot of workflow, roles, policies, and dependencies.
+- **Flow:** active runtime graph for the task.
+- **Flow node:** one root, parent, or worker node in the flow.
+- **Attempt:** one try at an assignment.
+- **Dispatch:** one opened agent turn for an attempt.
+- **Boundary:** node exit such as `yield`, `green`, `retry`, or `blocked`.
+- **Wait:** controller pause caused by a human request or command run.
+- **Replan:** controller-approved structural change to the active flow.
 
-## People
-
-- definition author: writes reusable roles, policies, and workflows
-- task launcher: creates a task-compose body and starts concrete work
-- operator agent: trusted OpenClaw profile that uses operator tools to inspect runtime state and steer tasks
-- human operator: trusted human using UI surfaces to review, approve, resolve waits, or request recovery
+Generated task-root files such as manifest, assignment, checkpoint, and artifacts are projections over controller-owned runtime records.
 
 ## Node kinds
 
 Node kind comes from workflow structure:
 
-- `root`: the top node that owns whole-task closure
-- `parent`: a non-root node with children; it orchestrates a subtree
-- `worker`: a leaf node with no children; it performs one bounded assignment
+- `root`: owns whole-task purpose and final closure.
+- `parent`: owns routing and release for a subtree.
+- `worker`: performs one bounded assignment.
 
-Review, verification, research, implementation, planning, failure analysis, and release work are modes of work. They are not separate node kinds.
+Review, research, implementation, verification, planning, and release are modes of work. They are not separate node kinds.
 
-## Policy compatibility and budgets
+## Budgets and authority
 
-Policies attach by node kind through `applies_to`. Use `root`, `parent`, or `worker`; do not write `leaf` in policy YAML. A leaf node is a worker node without children.
+Policies attach by node kind through `applies_to`.
 
-Budgets are controller guardrails:
+- `retry_limit` belongs on worker policies.
+- `child_assignment_limit` belongs on root or parent policies.
+- A policy must not mix retry and child-assignment budgets.
+- Omitted `budget_spec` means no controller budget counter for that budget family.
 
-- `retry_limit` is for worker retry of the same assignment
-- `child_assignment_limit` is for root or parent child assignment
-
-Do not mix retry and child-assignment budget in one policy. If a node needs a different capability or budget posture, choose a different policy instead of stretching the current one.
-
-## Workflow shape
-
-A workflow is a purpose-specific evidence path, not just a list of roles. Good workflow shape answers:
-
-- what purpose this run serves
-- what artifacts and criteria prove closure
-- where parent orchestration, review, retry, replan, or human judgment may be needed
-- which work must stay out of scope
-
-Write the workflow for the automation you want to run. The shipped workflows are examples of valid shapes, not the boundary of what AutoClaw can orchestrate.
+Budgets do not grant tools. Human request and command-run capability are separate policy fields.
 
 ## Proof model
 
 AutoClaw treats evidence as part of the workflow contract:
 
-- `criteria` are hard acceptance or guardrail requirements
-- `consumes` declare durable artifacts or criteria a node needs before work can proceed
-- `produces` declare durable artifacts a node must publish before successful completion
-- checkpoints record progress, reasoning, criteria status, and handoff context during execution
-- artifacts carry durable output that later nodes and operators can inspect
+- criteria define hard closure requirements
+- consumes declare the evidence a node needs
+- produces declare durable outputs
+- checkpoints record progress and handoff context
+- artifacts carry inspectable output
 
 A child returning green is evidence, not proof by itself. Parent and root nodes should inspect current evidence before release.
 
-## Capability boundaries
-
-Policies can allow human requests and command runs independently.
-
-Human request capability is for typed human judgment: direction, approval, input, or review.
-
-Command-run capability is for controller-managed long-running command work. It should not be used for ordinary commands that can finish inline inside a dispatch.
-
 ## Small example
 
-A minimal implementation workflow may have one root and one worker. The root reads the task instruction, assigns the worker, then waits for the worker checkpoint and produced artifacts. The worker completes the scoped change, publishes verification evidence, records a checkpoint, and returns a terminal boundary. The root then decides whether the evidence satisfies the criteria, needs retry, needs replan, or should close.
+A small bugfix workflow might have a root, an implementer, and a reviewer.
+
+1. Root assigns a bounded fix mission to the implementer.
+2. Implementer patches, tests, publishes a patch summary and verification artifact, records a checkpoint, then returns `green`.
+3. Root or parent assigns review.
+4. Reviewer consumes the patch and verification artifact, publishes review evidence, records a checkpoint, then returns `green` or `blocked`.
+5. Root closes only after current evidence satisfies criteria.
 
 ## Related pages
 
+- [Orchestration model](orchestration-model.md)
 - [Authoring model](authoring-model.md)
-- [Task-compose model](task-compose-model.md)
 - [Runtime model](runtime-model.md)
-- [Write a workflow](../guides/write-a-workflow.md)
-- [Workspace model](workspace-model.md)
-- [Capability model](capability-model.md)
 - [Policy model](policy-model.md)
-- [Inspect and control a task](../guides/inspect-and-control-a-task.md)
+- [Design workflows and instructions](../guides/design-workflows-and-instructions.md)

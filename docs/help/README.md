@@ -1,7 +1,5 @@
 # Help docs
 
-Status: Reference
-
 Use this subtree when AutoClaw does not behave as expected and you need to decide what to check next.
 
 - [Troubleshooting](troubleshooting.md)

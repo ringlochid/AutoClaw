@@ -1,9 +1,5 @@
 # Prepare a release
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this guide when preparing public package artifacts.
 
 Release-ready means code, tests, docs, examples, package resources, install behavior, DB behavior, and supported workflows agree.

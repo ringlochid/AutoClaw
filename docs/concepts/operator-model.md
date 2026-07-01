@@ -1,7 +1,5 @@
 # Operator model
 
-Status: Reference
-
 Operators inspect and steer running tasks. In AutoClaw's intended product model, the primary operator is a trusted OpenClaw agent profile with operator MCP tools.
 
 A human can also act as an operator, but through a different surface: humans use the UI, while operator agents use tools such as operator MCP. Both act over controller-owned runtime state, but they are not the same user experience or execution lane.

@@ -1,7 +1,5 @@
 # Scope reviewer role example
 
-Status: Reference
-
 This example mirrors the shipped `scope_reviewer` role fixture.
 
 ```yaml

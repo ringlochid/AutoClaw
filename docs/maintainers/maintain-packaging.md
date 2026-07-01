@@ -1,9 +1,5 @@
 # Maintain packaging
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this guide when changing the package surface, install story, bundled resources, dependencies, entrypoint, or version.
 
 The root Python package is the release artifact. `pipx` is the primary public install lane. `uv` is the supported secondary tool-install lane over the same published artifacts.

@@ -1,7 +1,5 @@
 # Standard worker human-request policy example
 
-Status: Reference
-
 Use this policy when a worker may need a typed human wait for judgment, input, approval, or review.
 
 This example teaches:

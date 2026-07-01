@@ -1,7 +1,5 @@
 # Marketing strategist role example
 
-Status: Reference
-
 This example mirrors the shipped `marketing_strategist` role fixture.
 
 ```yaml

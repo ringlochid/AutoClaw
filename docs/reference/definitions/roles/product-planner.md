@@ -1,7 +1,5 @@
 # Product planner role example
 
-Status: Reference
-
 This example mirrors the shipped `product_planner` role fixture.
 
 ```yaml

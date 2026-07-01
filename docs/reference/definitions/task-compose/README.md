@@ -1,7 +1,5 @@
 # Task-compose reference examples
 
-Status: Reference
-
 Use these pages when you want exact current launch-body examples.
 
 - [Minimal](minimal.md)

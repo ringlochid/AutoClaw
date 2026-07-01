@@ -1,9 +1,5 @@
 # Maintain database support
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this guide when changing persistence, schema, migrations, reset, upgrade, registry currentness, or SQLite/Postgres behavior.
 
 ## Supported DB posture

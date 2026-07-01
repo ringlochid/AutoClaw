@@ -1,9 +1,5 @@
 # Use the OpenClaw integration
 
-Status: Reference
-
-Last verified: 2026-06-29
-
 Use this page when you need the shipped OpenClaw-facing surfaces from this checkout. It covers callback HTTP, mounted node MCP, mounted operator MCP, operator reads, and task-scoped observability.
 
 ## Keywords

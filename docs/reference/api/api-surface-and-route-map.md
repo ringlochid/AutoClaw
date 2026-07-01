@@ -1,9 +1,5 @@
 # API route families and lane map
 
-Status: Reference
-
-Last verified: 2026-06-29
-
 This page owns the exact current HTTP route families, mounted surface nouns, and auth grouping for the shipped FastAPI tree.
 
 For operator-role meaning and lane authority, see [API trust lanes](api-trust-lanes.md).

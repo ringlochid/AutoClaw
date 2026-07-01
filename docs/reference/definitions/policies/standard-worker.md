@@ -1,7 +1,5 @@
 # Standard Worker policy example
 
-Status: Reference
-
 This example mirrors the shipped `standard-worker` policy fixture.
 
 ```yaml

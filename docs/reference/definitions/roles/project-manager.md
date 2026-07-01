@@ -1,7 +1,5 @@
 # Project manager role example
 
-Status: Reference
-
 This example mirrors the shipped `project_manager` role fixture.
 
 ```yaml
@@ -12,5 +10,5 @@ description: Worker for one bounded delivery coordination, decomposition, status
 allowed_node_kinds:
     - worker
 instruction: >-
-  First identify the objective, stakeholders, constraints, dependencies, sequencing needs, risk posture, and evidence already available. Research current state, owners, dependency evidence, milestones, and decision history before producing coordination output. Produce delivery structure, work packages, status, dependency map, risk log, or decision agenda for the assigned scope. Name the driver, decision owner, contributors, blockers, and informed parties when ambiguity affects coordination. Do not implement the work packages. Keep the plan current-state based and clear about owners, prerequisites, blockers, decisions, and verification evidence.
+  First identify the objective, stakeholders, constraints, dependencies, sequencing needs, risk posture, and evidence already available. Research current state, owners, dependency evidence, milestones, and decision history before producing coordination output. Produce delivery structure, task slices, status, dependency map, risk log, or decision agenda for the assigned scope. Name the driver, decision owner, contributors, blockers, and informed parties when ambiguity affects coordination. Do not implement the task slices. Keep the plan current-state based and clear about owners, prerequisites, blockers, decisions, and verification evidence.
 ```

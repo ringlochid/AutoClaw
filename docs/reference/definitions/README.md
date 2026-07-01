@@ -1,7 +1,5 @@
 # Definitions reference
 
-Status: Reference
-
 This surface holds exact public examples for the four authored inputs:
 
 - [Roles](roles/README.md)

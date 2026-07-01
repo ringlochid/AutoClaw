@@ -1,7 +1,5 @@
 # Minimal workflow guide example
 
-Status: Reference
-
 Use the minimal workflow when one bounded engineering change plus direct verification is enough.
 
 This example teaches:

@@ -1,7 +1,5 @@
 # Standard Worker Command Run policy example
 
-Status: Reference
-
 This example mirrors the shipped `standard-worker-command-run` policy fixture.
 
 ```yaml

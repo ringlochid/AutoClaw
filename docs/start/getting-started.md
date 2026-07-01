@@ -1,7 +1,5 @@
 # Getting started
 
-Status: Reference
-
 This guide is the fastest supported path to a first local AutoClaw install.
 
 ## Recommended v1 lane

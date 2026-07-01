@@ -1,7 +1,5 @@
 # Engineer role example
 
-Status: Reference
-
 This example mirrors the shipped `engineer` role fixture.
 
 ```yaml

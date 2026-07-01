@@ -1,7 +1,5 @@
 # Minimal task-compose guide example
 
-Status: Reference
-
 Use this example when you want AutoClaw to create task-local authored roots and prove the smallest launch path.
 
 This example teaches:

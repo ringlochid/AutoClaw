@@ -1,7 +1,5 @@
 # Delivery planner role example
 
-Status: Reference
-
 This example mirrors the shipped `delivery_planner` role fixture.
 
 ```yaml

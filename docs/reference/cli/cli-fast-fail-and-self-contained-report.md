@@ -1,9 +1,5 @@
 # CLI support checks and self-contained setup
 
-Status: Reference
-
-Last verified: 2026-05-28
-
 This page records the shipped CLI commands, the OpenClaw support-check decisions, and the self-contained onboarding and service stance in this workspace.
 
 ## Summary decisions

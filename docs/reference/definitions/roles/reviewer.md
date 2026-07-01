@@ -1,7 +1,5 @@
 # Reviewer role example
 
-Status: Reference
-
 This example mirrors the shipped `reviewer` role fixture.
 
 ```yaml

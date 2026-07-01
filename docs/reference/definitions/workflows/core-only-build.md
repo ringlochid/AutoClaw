@@ -1,7 +1,5 @@
 # Core-only build workflow example
 
-Status: Reference
-
 This example mirrors the shipped `core-only-build` workflow fixture.
 
 ```yaml

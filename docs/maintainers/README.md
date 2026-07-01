@@ -1,7 +1,5 @@
 # Maintainer docs
 
-Status: Reference
-
 Use this subtree for maintainer workflows: choosing verification, maintaining package resources, preparing releases, preserving DB support, keeping docs current, and recovering from broken releases.
 
 - [Choose a verification lane](choose-a-verification-lane.md)

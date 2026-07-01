@@ -1,7 +1,5 @@
 # Core architect role example
 
-Status: Reference
-
 This example mirrors the shipped `core_architect` role fixture.
 
 ```yaml

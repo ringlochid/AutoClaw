@@ -1,7 +1,5 @@
 # Standard root human-request policy example
 
-Status: Reference
-
 Use this policy when the root may need a typed human wait before honest whole-task closure.
 
 This example teaches:

@@ -1,9 +1,5 @@
 # Task start failures
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this page when `autoclaw task-compose start --file ...` or `POST /tasks/start` fails before useful runtime work begins.
 
 ## Start with the launch input

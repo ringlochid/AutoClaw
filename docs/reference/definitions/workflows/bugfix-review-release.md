@@ -1,7 +1,5 @@
 # Bugfix review release workflow example
 
-Status: Reference
-
 This example mirrors the shipped `bugfix-review-release` workflow fixture.
 
 ```yaml

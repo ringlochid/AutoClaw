@@ -1,7 +1,5 @@
 # Recover or replan a task
 
-Status: Reference
-
 Use recovery when runtime state needs operator action. Use replan when the current workflow shape no longer fits the work.
 
 ## Start with inspection

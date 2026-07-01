@@ -1,7 +1,5 @@
 # Standard Worker Human Request policy example
 
-Status: Reference
-
 This example mirrors the shipped `standard-worker-human-request` policy fixture.
 
 ```yaml

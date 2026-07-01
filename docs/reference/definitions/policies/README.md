@@ -1,7 +1,5 @@
 # Policies reference examples
 
-Status: Reference
-
 Use these pages when you want exact policy YAML examples mirrored from the shipped seed definitions.
 
 - [Standard Parent](standard-parent.md)

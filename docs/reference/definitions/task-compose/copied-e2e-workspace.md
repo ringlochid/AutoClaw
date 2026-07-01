@@ -1,7 +1,5 @@
 # Copied e2e workspace task-compose example
 
-Status: Reference
-
 Use this example when you already copied a workspace for an isolated e2e run and the bound paths must already exist.
 
 ```yaml

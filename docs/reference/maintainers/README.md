@@ -1,7 +1,5 @@
 # Maintainer reference
 
-Status: Reference
-
 This surface owns stable public maintainer reference for packaging, release, testing, and DB support.
 
 ## Start here

@@ -1,7 +1,5 @@
 # Workspace model
 
-Status: Reference
-
 Task start binds authored roots into real host paths. That binding is part of the task-compose launch input.
 
 ## Root kinds

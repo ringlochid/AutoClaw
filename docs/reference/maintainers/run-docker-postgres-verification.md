@@ -1,9 +1,5 @@
 # Run Docker-backed Postgres verification
 
-Status: Reference
-
-Last verified: 2026-05-05 Command surface synced: 2026-05-23
-
 This page defines the stronger DB-backed verification lane.
 
 ## Procedure

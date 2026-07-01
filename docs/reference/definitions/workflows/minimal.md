@@ -1,7 +1,5 @@
 # Minimal workflow example
 
-Status: Reference
-
 This example mirrors the shipped `minimal-implement-change` workflow fixture.
 
 ```yaml

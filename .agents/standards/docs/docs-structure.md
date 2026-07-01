@@ -49,15 +49,17 @@ Treat that as the live information architecture.
 
 Do not recreate deleted execution or archive trees just to satisfy stale references.
 
-## Status line rule
+## Authority metadata rule
 
-Use the `Status:` line to signal the document's authority role, not its importance or rough shape.
+Use `Status:` lines only where authority metadata helps maintainers distinguish internal truth surfaces.
+
+Do not expose `Status:` or `Last verified:` headers in public reader-facing docs under `README.md` or `docs/**`. Those headers are internal context, not useful product documentation. Public pages should open with the product claim, task, or answer.
 
 Allowed live status values for canon docs are:
 
 - `Status: Target` Use for live design owner pages and design appendix owners under `docs-internal/design/**`.
 - `Status: Current` Use for shipped-behavior contrast pages under `docs-internal/current/**`.
-- `Status: Reference` Use for public docs, standards, ADRs, and any secondary router or search page that is not the live owner of target or current truth.
+- `Status: Reference` Use for standards, ADR front doors, internal routers, and any secondary internal search page that is not the live owner of target or current truth.
 - `Status: Template` Use only for reusable templates.
 - `Status: Accepted` Use only for individual ADR decision records under `docs-internal/adr/**`.
 

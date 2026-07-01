@@ -1,9 +1,5 @@
 # Operator roles and API trust lanes
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 This page owns the exact current operator authority, trust-lane split, and the difference between operator agent, human operator, callback caller, node-tool caller, worker, parent/root, and controller in the shipped tree.
 
 For the exact current path families and route nouns, see [API route families and lane map](api-surface-and-route-map.md).

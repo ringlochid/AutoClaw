@@ -1,7 +1,5 @@
 # Task-compose model
 
-Status: Reference
-
 Task-compose is the launch body for one AutoClaw task. It connects the user's concrete request to reusable definition registry state and real host paths.
 
 ## What task-compose owns

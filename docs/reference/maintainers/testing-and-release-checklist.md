@@ -1,7 +1,5 @@
 # Testing and release checklist
 
-Status: Reference
-
 This page defines the stable maintainer checklist for tests, package validation, release readiness, and docs parity.
 
 ## Hard rule

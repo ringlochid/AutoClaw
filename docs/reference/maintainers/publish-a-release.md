@@ -1,7 +1,5 @@
 # Publish a release
 
-Status: Reference
-
 This page describes the maintainer release path.
 
 ## Procedure

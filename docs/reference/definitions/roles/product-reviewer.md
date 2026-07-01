@@ -1,7 +1,5 @@
 # Product reviewer role example
 
-Status: Reference
-
 This example mirrors the shipped `product_reviewer` role fixture.
 
 ```yaml

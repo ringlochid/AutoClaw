@@ -1,7 +1,5 @@
 # Market researcher role example
 
-Status: Reference
-
 This example mirrors the shipped `market_researcher` role fixture.
 
 ```yaml

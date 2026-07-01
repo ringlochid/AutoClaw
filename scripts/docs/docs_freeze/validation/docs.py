@@ -183,9 +183,10 @@ def _validate_inventory_doc_rule_issues(
         errors.append(
             f"{path.relative_to(ROOT)} is missing exact `## Evidence` or `## Verification`"
         )
-    for path in inventory.public_reference_status_issues:
+    for metadata_issue in inventory.public_metadata_leak_issues:
         errors.append(
-            f"{path.relative_to(ROOT)} must use `Status: Reference` in the public reference tree"
+            f"{metadata_issue.path.relative_to(ROOT)} must not expose public-doc metadata "
+            f"`{metadata_issue.label}` at line {metadata_issue.line}"
         )
     for nav_issue in inventory.navigation_link_label_issues:
         errors.append(

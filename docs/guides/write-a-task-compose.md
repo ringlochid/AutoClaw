@@ -1,7 +1,5 @@
 # Write a task-compose file
 
-Status: Reference
-
 Use task-compose when you are ready to launch one concrete task from reusable AutoClaw definitions.
 
 Task-compose is not where reusable behavior lives. Put durable behavior in roles, policies, and workflows. Put the concrete launch request, selected workflow, and root bindings in task-compose.
@@ -16,8 +14,7 @@ task:
     title: First local AutoClaw run
     summary: Prove the seeded minimal workflow on a bounded local task.
     instruction: >-
-        Use the shipped minimal workflow to prove local launch, task-root creation, and
-        runtime materialization.
+      Use the shipped minimal workflow to prove local launch, task-root creation, and runtime materialization.
 workflow:
     key: minimal-implement-change
 roots:
@@ -67,8 +64,7 @@ Good:
 
 ```yaml
 instruction: >-
-    Reproduce the reported invoice date parsing regression, fix the narrow cause, add
-    regression proof, and do not change unrelated import behavior.
+  Reproduce the reported invoice date parsing regression, fix the narrow cause, add regression proof, and do not change unrelated import behavior.
 ```
 
 If the same instruction should apply to many tasks, move it into a role, policy, or workflow instead.

@@ -1,9 +1,5 @@
 # Service and health problems
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this page when the API process, managed service, `/healthz`, or `/readyz` fails.
 
 ## Supported service lane

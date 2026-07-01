@@ -1,7 +1,5 @@
 # Maximal workflow example
 
-Status: Reference
-
 This example mirrors the shipped `maximal-parent-first-release` workflow fixture.
 
 ```yaml

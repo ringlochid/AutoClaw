@@ -1,9 +1,5 @@
 # Packaging, CLI, and install
 
-Status: Reference
-
-Last verified: 2026-05-12
-
 AutoClaw ships as the `autoclaw` Python package and is published as the root release artifact.
 
 ## Package facts

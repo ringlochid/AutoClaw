@@ -1,9 +1,5 @@
 # Runtime read models and operator surfaces
 
-Status: Reference
-
-Last verified: 2026-06-27
-
 This page defines the current read-model and operator-query surfaces for task runtime inspection, operator summary, trace drilldown, and task-scoped observability.
 
 Operator here means a trusted runtime-steering principal, not a callback caller and not the controller itself.

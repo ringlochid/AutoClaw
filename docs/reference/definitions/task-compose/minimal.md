@@ -1,7 +1,5 @@
 # Minimal task-compose example
 
-Status: Reference
-
 Use this example to launch the shipped minimal workflow with task-local authored roots.
 
 ```yaml

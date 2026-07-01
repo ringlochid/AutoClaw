@@ -1,7 +1,5 @@
 # Operator reference
 
-Status: Reference
-
 This surface owns shipped operator-facing inspect, OpenClaw integration, and runtime-readback reference.
 
 ## Start here

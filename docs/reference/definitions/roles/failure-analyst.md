@@ -1,7 +1,5 @@
 # Failure analyst role example
 
-Status: Reference
-
 This example mirrors the shipped `failure_analyst` role fixture.
 
 ```yaml

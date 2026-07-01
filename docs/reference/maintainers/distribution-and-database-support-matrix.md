@@ -1,7 +1,5 @@
 # Distribution and database support matrix
 
-Status: Reference
-
 This page defines the supported v1 distribution and database matrix.
 
 ## Shipped package paths

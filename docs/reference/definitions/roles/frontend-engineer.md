@@ -1,7 +1,5 @@
 # Frontend engineer role example
 
-Status: Reference
-
 This example mirrors the shipped `frontend_engineer` role fixture.
 
 ```yaml

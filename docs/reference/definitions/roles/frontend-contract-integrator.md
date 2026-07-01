@@ -1,7 +1,5 @@
 # Frontend contract integrator role example
 
-Status: Reference
-
 This example mirrors the shipped `frontend_contract_integrator` role fixture.
 
 ```yaml

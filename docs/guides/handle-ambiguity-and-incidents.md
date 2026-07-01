@@ -1,7 +1,5 @@
 # Handle ambiguity and incidents
 
-Status: Reference
-
 Use this guide when a workflow must survive missing facts, unclear scope, contradictory evidence, unexpected failures, or intent mismatch.
 
 AutoClaw should not make every worker improvise. Workers surface uncertainty. Parents and roots route it through focused children, replan, human requests, or honest blocked closure.

@@ -1,9 +1,5 @@
 # Run real minimal, normal, and maximal e2e workflow lanes
 
-Status: Reference
-
-Last verified: 2026-05-21
-
 This page describes the current manual operator runbook for exercising the shipped minimal, normal, and maximal workflow fixtures against a real local `autoclaw serve` process.
 
 Use this page when you want a real current-service e2e check instead of an in-process pytest helper.

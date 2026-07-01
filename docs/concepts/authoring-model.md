@@ -1,12 +1,17 @@
 # Authoring model
 
-Status: Reference
+AutoClaw authoring separates reusable definitions from one concrete launch. Roles, policies, and workflows are reusable. Task-compose is the launch input for one task.
 
-AutoClaw authoring separates reusable behavior from one concrete launch. Roles, policies, and workflows are reusable definitions. Task-compose is the launch input for one task.
+## Authoring objects
+
+| Object | Plain meaning | Owns | Should not own |
+| --- | --- | --- | --- |
+| Role | specialist lens | behavior posture, evidence-reading habits, output style | one task's paths, secrets, launch details |
+| Policy | authority rules | node kind, budgets, capabilities, guardrails | specialist identity or node tree |
+| Workflow | evidence path | node tree, criteria, consumes, produces, routing intent | live runtime state |
+| Task-compose | this launch | task instruction, selected workflow, root bindings | reusable doctrine |
 
 ## Roles
-
-Roles describe a stable capability profile and instruction contract.
 
 Use roles for durable specialist posture:
 
@@ -14,26 +19,23 @@ Use roles for durable specialist posture:
 - what evidence it should read first
 - what it should publish
 - what it should avoid doing
+- how it should surface uncertainty
 
-Do not put one task's paths, secrets, or launch details in a role.
+Good role names are specific enough to review: `bug-fix-engineer`, `scope-reviewer`, `market-researcher`.
 
 ## Policies
 
-Policies describe guardrails and capabilities for a node.
+Policies describe what a node is allowed to do.
 
 Use policies for:
 
+- `applies_to`: `root`, `parent`, or `worker`
 - retry or child-assignment budget posture
 - human request capability
 - command-run capability
-- evidence and checkpoint expectations
-- boundaries such as "do not implement" or "do not publish externally"
+- concrete authority rules and prohibitions
 
-Human request and command-run capability are separate. A node can have one, both, or neither.
-
-Policies attach to node kinds with `applies_to`. Current values are `root`, `parent`, and `worker`. Use `retry_limit` only for worker policies, and use `child_assignment_limit` only for root or parent policies.
-
-Policy instructions should read like authority rules, not a second role. Specialist behavior belongs in roles and workflow-node instructions.
+Do not create a policy just because the role changes. A planner, reviewer, researcher, and engineer can all use the same ordinary worker policy when their authority is the same.
 
 ## Workflows
 
@@ -41,13 +43,14 @@ Workflows describe the evidence path for a purpose.
 
 Use workflows for:
 
-- the root, parent, and worker node tree
-- node descriptions and node-local guidance
-- required consumed artifacts or criteria
-- required produced artifacts
-- hard criteria that can block closure
+- root, parent, and worker node tree
+- node-local missions
+- criteria that can block closure
+- consumed artifacts or criteria
+- produced artifacts
+- parent/root routing and release posture
 
-A workflow is not a runtime log. It does not own checkpoints, dispatch state, operator decisions, or live task currentness.
+A workflow is not a runtime log. It does not own checkpoints, dispatch state, operator decisions, or live currentness.
 
 ## Task-compose
 
@@ -55,12 +58,28 @@ Task-compose names one concrete task, selects a workflow, gives task-specific in
 
 Task-compose is intentionally separate from reusable definitions. It is the thing you start.
 
+## Criteria, consumes, and produces
+
+These three fields make workflows evidence-driven:
+
+- **criteria** describe hard requirements
+- **consumes** declare what a node must read
+- **produces** declare what a node must leave behind
+
+For fixed workflows, make handoffs explicit. For dynamic workflows, keep artifacts broad and stable so parents can route from current evidence.
+
+## Provider skills
+
+Provider skills can add task-specific instructions to the harness loop. Use them when the agent needs specialized local guidance, such as security review, frontend visual verification, PDF reading, browser triage, or release safety.
+
+Skills should support the role and node mission. They should not replace workflow criteria or controller-owned evidence.
+
 ## Related pages
 
-- [Task-compose model](task-compose-model.md)
+- [Core concepts](core-concepts.md)
 - [Policy model](policy-model.md)
+- [Task-compose model](task-compose-model.md)
+- [Design workflows and instructions](../guides/design-workflows-and-instructions.md)
 - [Write a role](../guides/write-a-role.md)
 - [Write a policy](../guides/write-a-policy.md)
 - [Write a workflow](../guides/write-a-workflow.md)
-- [Design workflows and instructions](../guides/design-workflows-and-instructions.md)
-- [Definitions reference](../reference/definitions/README.md)

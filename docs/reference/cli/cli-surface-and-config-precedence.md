@@ -1,9 +1,5 @@
 # CLI surface and config precedence
 
-Status: Reference
-
-Last verified: 2026-05-28
-
 This page defines the current CLI command families, important flags, and current config and env precedence.
 
 ## Current command groups

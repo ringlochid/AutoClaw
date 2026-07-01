@@ -1,9 +1,5 @@
 # OpenClaw integration boundary
 
-Status: Reference
-
-Last verified: 2026-06-29
-
 This page captures the shipped OpenClaw integration boundary that worker clients and operator tooling must honor.
 
 The current repo-owned contract is controller-side dispatch, prompt rendering, callback HTTP, mounted node MCP, mounted operator MCP, and runtime readbacks.

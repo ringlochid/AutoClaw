@@ -1,7 +1,5 @@
 # Standard parent policy example
 
-Status: Reference
-
 Use this policy when a parent node coordinates children without human waits or command runs.
 
 This example teaches:

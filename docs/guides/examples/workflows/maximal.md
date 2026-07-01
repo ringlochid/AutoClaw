@@ -1,7 +1,5 @@
 # Maximal workflow guide example
 
-Status: Reference
-
 Use the maximal workflow when discovery, planning, implementation, review, QA, and release need separate stages.
 
 This example teaches:

@@ -1,7 +1,5 @@
 # Project management delivery workflow example
 
-Status: Reference
-
 This example mirrors the shipped `project-management-delivery` workflow fixture.
 
 ```yaml
@@ -12,7 +10,7 @@ root:
     id: root
     role: root_planning_lead
     policy: standard-root
-    description: Preserve delivery-management purpose and close only when objectives, work packages, risks, and status plan are current.
+    description: Preserve delivery-management purpose and close only when objectives, task slices, risks, and status plan are current.
     instruction: >-
       Keep this workflow in coordination mode. Do not implement package work from project-management assignments.
     criteria:

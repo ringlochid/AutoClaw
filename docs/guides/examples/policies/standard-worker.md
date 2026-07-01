@@ -1,7 +1,5 @@
 # Standard worker policy example
 
-Status: Reference
-
 Use this policy when a worker assignment should stay bounded and should not wait on humans or start controller-managed command runs.
 
 This example teaches:

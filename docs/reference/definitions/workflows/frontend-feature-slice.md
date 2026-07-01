@@ -1,7 +1,5 @@
 # Frontend feature slice workflow example
 
-Status: Reference
-
 This example mirrors the shipped `frontend-feature-slice` workflow fixture.
 
 ```yaml

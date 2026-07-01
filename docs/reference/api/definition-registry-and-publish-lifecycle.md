@@ -1,9 +1,5 @@
 # Definition registry and publish lifecycle
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 This page defines the shipped DB-backed definition registry lifecycle for roles, policies, and workflows.
 
 ## Definition source of truth

@@ -1,58 +1,50 @@
 # Overview
 
-Status: Reference
-
-AutoClaw is an orchestration layer for structured AI-assisted work. It turns reusable workflow definitions and one concrete launch request into controller-owned runtime state that can be inspected, resumed, replanned, or closed with evidence.
-
-Use AutoClaw when a task needs more structure than a chat transcript can provide: multiple roles, bounded assignments, durable checkpoints, artifacts, human-in-the-loop decisions, long command runs, or operator recovery.
+AutoClaw turns reusable workflow definitions and one concrete launch request into a controller-owned workflow run. Use it when the work needs bounded delegation, durable evidence, retry, replan, human waits, long command runs, or operator recovery.
 
 ## The short model
 
-An AutoClaw run moves through a small set of surfaces:
+AutoClaw has three teaching layers:
 
-1. Author reusable role, policy, and workflow definitions.
-2. Seed or upload those definitions into the registry.
-3. Start a concrete task from a task-compose launch body.
-4. Compile the current registry revisions into a runtime flow.
-5. Dispatch the current root, parent, or worker node.
-6. Record checkpoints, artifacts, boundaries, waits, and replans as controller-owned runtime state.
-7. Inspect or control the task through operator read and recovery surfaces.
+1. **General orchestration:** why long delegated work needs more than chat memory.
+2. **Definition authoring:** how roles, policies, workflows, and task-compose describe reusable intent and one launch.
+3. **Runtime operation:** how manifest, assignment, attempt, dispatch, checkpoint, artifact, boundary, wait, and replan describe one running task.
 
-The important rule is that authored files describe reusable intent. Runtime records describe what happened in one launched task.
+Read [orchestration model](orchestration-model.md) before memorizing runtime nouns.
+
+## The first four concepts
+
+| Concept | Plain meaning | Why it matters |
+| --- | --- | --- |
+| Workflow | reusable evidence path | gives the task shape and closure criteria |
+| Task-compose | one concrete launch | binds the workflow to the task instruction and roots |
+| Assignment | bounded mission for the current node | keeps delegation explicit |
+| Checkpoint/artifact | durable progress, handoff, or output | lets another node or operator inspect evidence |
+
+Checkpoint only makes sense after assignment. A checkpoint records progress against an assigned mission.
 
 ## What AutoClaw owns
 
-- authored definitions for roles, policies, and workflows
-- task-compose launch input for one concrete task
-- registry revisions used by compile and launch
-- runtime flow, node, assignment, attempt, and dispatch records
-- durable evidence through criteria, checkpoints, and artifacts
+- definition registry revisions used by compile and launch
+- compiled task flow, nodes, assignments, attempts, and dispatches
+- checkpoint and artifact publication
+- boundary handling for `yield`, `green`, `retry`, and `blocked`
 - human request and command-run wait states
-- operator read, control, and recovery surfaces
+- structural replan and flow revision adoption
+- operator readbacks, trace, and recovery controls
 
 ## What AutoClaw is not
 
-AutoClaw is not just a prompt library. Prompt text is one projection of controller-owned task state, not the source of truth.
+AutoClaw is not a prompt library. Prompts are dispatch-specific projections over controller truth.
 
-AutoClaw is not hidden chat memory. A run should be understandable from its workflow manifest, assignment surfaces, checkpoints, artifacts, and operator readbacks.
+AutoClaw is not hidden chat memory. A run should be understandable from the workflow manifest, assignment, checkpoints, artifacts, and operator readbacks.
 
-AutoClaw is not a generic shell runner. Ordinary commands should finish inline and comfortably under about two minutes. Controller-managed command runs are for long-running command work that must outlive a single dispatch.
-
-## Built-in orchestration features
-
-- **Parent and root orchestration:** parent nodes can assign child work, inspect child evidence, release completed subtrees, or block honestly.
-- **Replan:** the runtime can adopt revised structure when the current flow shape no longer fits the work.
-- **Human-in-the-loop:** policies can allow specific human request kinds such as direction, approval, input, or review.
-- **Long command runs:** policies can allow controller-managed command runs without granting unrelated human request capabilities.
-- **Operator recovery:** a trusted OpenClaw operator agent can inspect task state, trace events, resolve human requests, read or cancel command runs, and recover from runtime issues; humans should do equivalent steering through UI surfaces.
+AutoClaw is not a generic shell runner. Ordinary commands should stay inline. Controller-managed command runs are for long-running command work that needs logs, terminal state, cancellation, or continuation.
 
 ## Where to go next
 
-- [Core concepts](core-concepts.md) for the main nouns and truth boundaries
-- [Runtime model](runtime-model.md) for task, flow, assignment, attempt, dispatch, checkpoint, artifact, boundary, and wait-state concepts
-- [Authoring model](authoring-model.md) for reusable authored inputs
-- [Task-compose model](task-compose-model.md) for concrete launch input
-- [Write a workflow](../guides/write-a-workflow.md) for purpose-specific automation design
-- [Workspace model](workspace-model.md) for task roots and host path binding
-- [Operator model](operator-model.md) and [Capability model](capability-model.md) for control, human requests, command runs, and replan
-- [API reference](../reference/api/README.md) and [CLI reference](../reference/cli/README.md) for exact contracts
+- [Orchestration model](orchestration-model.md)
+- [Core concepts](core-concepts.md)
+- [Authoring model](authoring-model.md)
+- [Runtime model](runtime-model.md)
+- [Design workflows and instructions](../guides/design-workflows-and-instructions.md)

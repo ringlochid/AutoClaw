@@ -1,9 +1,5 @@
 # Task stuck or waiting
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this page when a task exists but appears stuck, waiting, stale, paused, or unclear.
 
 ## Observe first

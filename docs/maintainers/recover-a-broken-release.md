@@ -1,9 +1,5 @@
 # Recover a broken release
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this guide when a published or release-candidate package is wrong.
 
 AutoClaw does not define a special rollback command. Recovery is a maintainer process: identify the broken surface, preserve evidence, repair the smallest correct slice, verify the affected lanes, and publish a fixed artifact when needed.

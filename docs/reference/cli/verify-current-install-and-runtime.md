@@ -1,9 +1,5 @@
 # Verify an install and runtime
 
-Status: Reference
-
-Last verified: 2026-05-28
-
 This page defines the fast local verification lane that is still supported by the shipped CLI and API tree.
 
 ## Procedure

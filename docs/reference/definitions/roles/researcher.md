@@ -1,7 +1,5 @@
 # Researcher role example
 
-Status: Reference
-
 This example mirrors the shipped `researcher` role fixture.
 
 ```yaml

@@ -1,7 +1,5 @@
 # FAQ
 
-Status: Reference
-
 ## Should I use `pipx` or `uv`?
 
 Use `pipx` for the default public v1 path. Use `uv` if you prefer its tool-install workflow and want the same published package artifacts.

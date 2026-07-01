@@ -1,7 +1,5 @@
 # Bound workspace task-compose guide example
 
-Status: Reference
-
 Use this example when a task should target a real host path instead of an AutoClaw-created task-local root.
 
 This example teaches:

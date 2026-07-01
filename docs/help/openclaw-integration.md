@@ -1,9 +1,5 @@
 # OpenClaw integration problems
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this page when `openclaw check`, OpenClaw setup, wrapper repair, or OpenClaw-gated service startup fails.
 
 ## What the check means

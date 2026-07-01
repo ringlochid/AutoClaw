@@ -1,7 +1,5 @@
 # Roles reference examples
 
-Status: Reference
-
 Use these pages when you want exact role YAML examples mirrored from the shipped seed definitions.
 
 - [Architect](architect.md)

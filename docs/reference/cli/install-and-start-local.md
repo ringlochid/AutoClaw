@@ -1,9 +1,5 @@
 # Install and start AutoClaw locally
 
-Status: Reference
-
-Last verified: 2026-05-28
-
 This page defines the supported local install and start paths for the shipped AutoClaw package.
 
 ## Primary supported install lane: `pipx`

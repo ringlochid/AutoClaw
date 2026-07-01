@@ -1,7 +1,5 @@
 # Architect role example
 
-Status: Reference
-
 This example mirrors the shipped `architect` role fixture.
 
 ```yaml

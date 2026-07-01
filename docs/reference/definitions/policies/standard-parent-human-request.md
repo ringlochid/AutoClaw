@@ -1,7 +1,5 @@
 # Standard Parent Human Request policy example
 
-Status: Reference
-
 This example mirrors the shipped `standard-parent-human-request` policy fixture.
 
 ```yaml

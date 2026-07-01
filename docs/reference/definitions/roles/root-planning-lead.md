@@ -1,7 +1,5 @@
 # Root planning lead role example
 
-Status: Reference
-
 This example mirrors the shipped `root_planning_lead` role fixture.
 
 ```yaml

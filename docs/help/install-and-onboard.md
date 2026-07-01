@@ -1,9 +1,5 @@
 # Install and onboard problems
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this page when install, first-run setup, or the top-level health checks fail.
 
 ## Supported install lanes

@@ -1,7 +1,5 @@
 # Planning lead role example
 
-Status: Reference
-
 This example mirrors the shipped `planning_lead` role fixture.
 
 ```yaml

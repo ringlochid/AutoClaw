@@ -1,7 +1,5 @@
 # Marketing campaign workflow example
 
-Status: Reference
-
 This example mirrors the shipped `marketing-campaign` workflow fixture.
 
 ```yaml

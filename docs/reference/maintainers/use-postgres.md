@@ -1,7 +1,5 @@
 # Use Postgres on the DB-backed lane
 
-Status: Reference
-
 This page defines the stronger DB-backed verification and concurrency lane for the shipped AutoClaw package.
 
 ## Package path

@@ -1,10 +1,8 @@
 # Write a workflow
 
-Status: Reference
-
 Write a workflow when you want AutoClaw to run your own automation. A workflow is a purpose-specific evidence path, not a menu choice from the shipped examples.
 
-Start with the work your automation must prove. Then choose roles, policies, node structure, artifacts, and criteria that make closure honest.
+Start with the work your automation must prove. Then choose roles, policies, node structure, artifacts, criteria, and scope-control instructions that make closure honest.
 
 ## Start from the purpose
 
@@ -16,6 +14,20 @@ Write one sentence that defines success:
 - "Reconcile invoices against source records and flag mismatches for review."
 
 If the purpose changes, write a different workflow. Similar-looking work can need different evidence.
+
+## Preflight the tool assumptions
+
+Before writing nodes, list the tools the workflow expects:
+
+- file read/write/patch tools
+- shell or CLI tools
+- browser tools
+- visual screenshot or image tools
+- PDF or document tools
+- external service tools
+- provider skills
+
+Then verify the selected harness can actually use them. If a workflow requires browser review of local pages, check that the browser tool can reach localhost. If a workflow needs long verification, assign it to a command-run-enabled worker. If the required tool is unavailable, encode the fallback, human request, or blocked route explicitly.
 
 ## Decide fixed or dynamic
 
@@ -41,6 +53,65 @@ root closes from evidence bundle and root criteria
 
 Dynamic does not mean loose. It means the parent/root chooses the next child from evidence while the workflow still defines purpose, authority, and closure.
 
+## Choose the smallest useful structure
+
+| Shape | Use when |
+| --- | --- |
+| Single worker | one bounded output and one proof loop are enough |
+| Root + worker + reviewer | ordinary implementation, research, docs, or planning work needs one independent check |
+| Fixed sequence | each step depends on the previous artifact |
+| Parent orchestration | a parent must inspect evidence and choose the next child |
+| Parallel specialists | independent perspectives improve confidence |
+| Review/fix loop | clear criteria allow useful critique and correction |
+| Human checkpoint | direction, approval, input, or review needs human judgment |
+| Command-run worker | long/log-heavy/cancelable command work matters |
+| Delivery batch parent | many similar scopes should run one at a time |
+
+Every parent should have a real routing job. Every worker should have one bounded mode.
+
+## Merge tasks when the handoff adds no value
+
+One agent can often do more than one mechanical activity inside a single assignment.
+
+Good merges:
+
+- read docs, patch code, and run focused tests
+- inspect root cause, patch the narrow defect, and report regression risk
+- review implementation and test evidence together
+- gather sources and synthesize a bounded research brief
+
+Good splits:
+
+- implementer and reviewer should be separate when review gates release
+- long command execution needs command-run state
+- human judgment changes the route
+- a parent must route repeated scopes or ambiguous evidence
+- permissions or tool requirements differ sharply
+
+The question is not "can I name four roles?" The question is "does this handoff improve evidence, authority, or recovery?"
+
+## Control repeated scope with parent instructions
+
+For repeated work, make the parent the scope controller.
+
+Example: implementing 10 frontend pages from design should usually be one parent that assigns one page or slice at a time, not 10 parallel workers.
+
+Parent/root scope-control instructions should define:
+
+- one child assignment size
+- required input references for each assignment
+- required artifacts before the next assignment
+- when to stop and ask for direction
+- when to route to review, verification, failure analysis, or replan
+- what should not be parallelized
+
+Example:
+
+```yaml
+instruction: >-
+  Assign one page at a time. Each child assignment must include the page route, design reference, expected states, viewport targets, required screenshots, and validation commands. Inspect child checkpoint and artifacts before assigning the next page. Do not assign parallel page work when pages share components, fixtures, or visual tokens.
+```
+
 ## Define the evidence path
 
 Before writing YAML, answer:
@@ -55,29 +126,16 @@ Before writing YAML, answer:
 
 Do this before choosing node count. A smaller workflow is better only when it can still prove the work is done.
 
-Choose policies by authority, not by domain. Use `standard-worker` for ordinary bounded worker steps, `standard-worker-human-request` when that worker may need a typed human wait, and `standard-worker-command-run` when that worker may need controller-managed long commands. Use root and parent policies for orchestration nodes.
+## Choose policies by authority
 
-## Choose the structure
-
-Use the simplest structure that fits the evidence path:
-
-| Shape                | Use when                                                   |
-| -------------------- | ---------------------------------------------------------- |
-| Single worker        | one bounded output and one proof loop are enough           |
-| Fixed sequence       | each step depends on the previous artifact                 |
-| Parent orchestration | a parent must inspect evidence and choose the next child   |
-| Parallel specialists | independent perspectives improve confidence                |
-| Review loop          | clear criteria allow useful critique and correction        |
-| Human in loop        | direction, approval, input, or review needs human judgment |
-
-Every parent should have a real routing job. Every worker should have one bounded mode.
-
-Policy budget should match the shape:
+Use policies by authority, not by domain:
 
 - root and parent nodes use child-assignment budget
 - worker nodes use retry budget
 - command-run policy belongs on the worker that will own the long command
 - human-request policy belongs only where human judgment is a real gate
+
+Omitted `budget_spec` means no controller budget counter for that budget family. Use that intentionally, not by accident.
 
 ## Author nodes around contracts
 
@@ -147,6 +205,38 @@ For dynamic workflows, keep artifacts broad and stable:
 
 Avoid speculative slots for future branches the parent may never assign.
 
+## Add skills when the provider supports them
+
+Use provider skills to give the harness loop sharper task-specific guidance:
+
+- frontend visual verification
+- security review
+- PDF/document reading
+- browser repro and UI triage
+- database query review
+- release safety
+
+Skills should support the node mission. They do not replace workflow criteria, assignment scope, checkpoints, or artifact requirements.
+
+## Pilot before scaling
+
+Run the smallest useful version first:
+
+- root
+- one worker
+- one reviewer when quality matters
+
+After the run, inspect:
+
+- workflow manifest
+- assignment
+- checkpoint
+- artifacts
+- provider tool usage
+- operator snapshot and trace
+
+Only scale the workflow after the pilot proves the assignment size, evidence path, and review gate are understandable.
+
 ## Route ambiguity
 
 Add explicit routing posture when a workflow may encounter gaps.
@@ -155,10 +245,7 @@ Good dynamic parent instruction:
 
 ```yaml
 instruction: >-
-  Inspect current evidence before assigning the next child. Route unclear scope to a
-  scope reviewer, weak verification to a verifier, repeated failure to failure analysis,
-  and workflow-shape mismatch to replan. Do not force a worker to widen scope to make
-  progress.
+  Inspect current evidence before assigning the next child. Route unclear scope to a scope reviewer, weak verification to a verifier, repeated failure to failure analysis, and workflow-shape mismatch to replan. Do not force a worker to widen scope to make progress.
 ```
 
 Workers should surface ambiguity. Parents and roots should route it.
@@ -188,6 +275,8 @@ Good automation workflows are domain-specific:
 - dynamic workflows use sparse stable anchors
 - human request points are intentional
 - command-run points are isolated to nodes that need them
+- parent/root instructions control repeated scope size
+- provider skills are listed only where the harness can use them
 - the workflow says what is out of scope
 
 ## Related pages
@@ -196,5 +285,5 @@ Good automation workflows are domain-specific:
 - [Write layered instructions](write-layered-instructions.md)
 - [Write a role](write-a-role.md)
 - [Write a policy](write-a-policy.md)
-- [Handle ambiguity and incidents](handle-ambiguity-and-incidents.md)
+- [Inspect and control a task](inspect-and-control-a-task.md)
 - [Workflow reference examples](../reference/definitions/workflows/README.md)

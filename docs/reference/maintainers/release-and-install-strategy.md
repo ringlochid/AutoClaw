@@ -1,7 +1,5 @@
 # Release and install strategy
 
-Status: Reference
-
 This page defines the supported v1 install and release posture.
 
 ## Primary v1 path

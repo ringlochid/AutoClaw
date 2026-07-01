@@ -1,7 +1,5 @@
 # Frontend code reviewer role example
 
-Status: Reference
-
 This example mirrors the shipped `frontend_code_reviewer` role fixture.
 
 ```yaml

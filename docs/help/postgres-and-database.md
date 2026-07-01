@@ -1,9 +1,5 @@
 # Postgres and database problems
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this page when DB setup, migrations, reset, `/readyz`, or the Postgres-backed lane fails.
 
 ## Supported DB lanes

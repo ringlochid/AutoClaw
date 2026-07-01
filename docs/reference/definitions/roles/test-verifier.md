@@ -1,7 +1,5 @@
 # Test verifier role example
 
-Status: Reference
-
 This example mirrors the shipped `test_verifier` role fixture.
 
 ```yaml

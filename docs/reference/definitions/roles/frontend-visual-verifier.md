@@ -1,7 +1,5 @@
 # Frontend visual verifier role example
 
-Status: Reference
-
 This example mirrors the shipped `frontend_visual_verifier` role fixture.
 
 ```yaml

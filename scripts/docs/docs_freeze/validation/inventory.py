@@ -42,9 +42,9 @@ class DocsFreezeInventory:
     repo_path_issues: list[RepoPathReferenceIssue]
     navigation_link_label_issues: list[NavigationLinkLabelIssue]
     status_issues: list[DocStatusIssue]
+    public_metadata_leak_issues: list[LinePatternIssue]
     formatter_violations: list[FormatterViolation]
     unreferenced_paths: list[Path]
-    public_reference_status_issues: list[Path]
     public_reference_contrast_issues: list[tuple[Path, str]]
 
 
@@ -59,9 +59,9 @@ def build_inventory() -> DocsFreezeInventory:
         repo_path_issues=repo_path_reference_issues(),
         navigation_link_label_issues=navigation_link_label_issues(),
         status_issues=doc_status_issues(),
+        public_metadata_leak_issues=public_metadata_leak_issues(),
         formatter_violations=markdown_formatter_violations(),
         unreferenced_paths=unreferenced_design_paths(),
-        public_reference_status_issues=public_reference_status_issues(),
         public_reference_contrast_issues=public_reference_contrast_issues(),
     )
 
@@ -101,6 +101,11 @@ def print_inventory(*, inventory: DocsFreezeInventory | None = None) -> None:
     print_navigation_link_label_issues(inventory.navigation_link_label_issues)
     print("")
     print_status_issues(inventory.status_issues)
+    print("")
+    print_line_pattern_issues(
+        "Public-doc metadata leaks:",
+        inventory.public_metadata_leak_issues,
+    )
     print("")
     print_public_reference_issues(inventory)
     print("")
@@ -230,14 +235,10 @@ def allowed_statuses_for_path(path: Path) -> tuple[str, ...] | None:
     if relative_path in {
         Path("AGENTS.md"),
         Path("STYLE.md"),
-        Path("README.md"),
-        Path("docs/README.md"),
         Path("docs-internal/README.md"),
     }:
         return ("Reference",)
     if parts[0] == ".agents":
-        return ("Reference",)
-    if parts[0] == "docs":
         return ("Reference",)
     if parts[:2] == ("docs-internal", "adr"):
         return ("Reference", "Accepted")
@@ -333,17 +334,33 @@ def current_doc_closeout_heading_issues() -> list[Path]:
     return issues
 
 
-def public_reference_status_issues() -> list[Path]:
-    reference_root = ROOT / "docs" / "reference"
-    issues: list[Path] = []
-    for path in sorted(reference_root.rglob("*.md")):
-        text = path.read_text(encoding="utf-8")
-        status_line = next(
-            (line.strip() for line in text.splitlines() if line.startswith("Status: ")),
-            None,
-        )
-        if status_line != "Status: Reference":
-            issues.append(path)
+def public_metadata_leak_issues() -> list[LinePatternIssue]:
+    issues: list[LinePatternIssue] = []
+    public_roots = (DOCS_PUBLIC_ROOT,)
+    public_files = (ROOT / "README.md",)
+    patterns = (
+        ("Status header", re.compile(r"^Status:\s+", re.IGNORECASE)),
+        ("Last verified header", re.compile(r"^Last verified:\s+", re.IGNORECASE)),
+    )
+    for path in public_files:
+        issues.extend(_public_metadata_leaks_for_path(path, patterns))
+    for root in public_roots:
+        for path in sorted(root.rglob("*.md")):
+            issues.extend(_public_metadata_leaks_for_path(path, patterns))
+    return issues
+
+
+def _public_metadata_leaks_for_path(
+    path: Path,
+    patterns: tuple[tuple[str, re.Pattern[str]], ...],
+) -> list[LinePatternIssue]:
+    if not path.exists():
+        return []
+    issues: list[LinePatternIssue] = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        for label, pattern in patterns:
+            if pattern.search(line):
+                issues.append(LinePatternIssue(path=path, line=line_number, label=label))
     return issues
 
 
@@ -385,13 +402,8 @@ def public_reference_contrast_issues() -> list[tuple[Path, str]]:
 
 def print_public_reference_issues(inventory: DocsFreezeInventory) -> None:
     print("Public reference contract issues:")
-    if (
-        not inventory.public_reference_status_issues
-        and not inventory.public_reference_contrast_issues
-    ):
+    if not inventory.public_reference_contrast_issues:
         print("- none")
         return
-    for path in inventory.public_reference_status_issues:
-        print(f"- {path.relative_to(ROOT)}: public reference page must use `Status: Reference`")
     for path, marker in inventory.public_reference_contrast_issues:
         print(f"- {path.relative_to(ROOT)}: contains `{marker}`")

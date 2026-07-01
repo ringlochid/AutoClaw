@@ -1,7 +1,5 @@
 # Write layered instructions
 
-Status: Reference
-
 Use this guide when you need to decide where wording belongs in a role, policy, workflow node, or task-compose file.
 
 AutoClaw definitions work best as layered contracts. Each layer should own one kind of truth. If the same sentence could live in several places, put it in the narrowest stable layer that will still be true across runs.
@@ -53,9 +51,7 @@ Put behavior in `instruction`:
 
 ```yaml
 instruction: >-
-  Read triage evidence and criteria before editing. Fix only the verified defect. If
-  root cause remains ambiguous, publish the unresolved risk instead of widening the
-  patch.
+  Read triage evidence and criteria before editing. Fix only the verified defect. If root cause remains ambiguous, publish the unresolved risk instead of widening the patch.
 ```
 
 ## Write role instructions as lenses
@@ -131,9 +127,7 @@ Good:
 
 ```yaml
 instruction: >-
-  Research local contracts and nearby tests before editing. If the accepted scope
-  conflicts with the current API contract, publish the conflict and residual risk
-  instead of widening the patch.
+  Research local contracts and nearby tests before editing. If the accepted scope conflicts with the current API contract, publish the conflict and residual risk instead of widening the patch.
 ```
 
 Too vague:

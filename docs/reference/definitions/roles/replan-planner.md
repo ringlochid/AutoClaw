@@ -1,7 +1,5 @@
 # Replan planner role example
 
-Status: Reference
-
 This example mirrors the shipped `replan_planner` role fixture.
 
 ```yaml

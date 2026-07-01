@@ -1,7 +1,5 @@
 # Use human requests
 
-Status: Reference
-
 Use human requests when a node needs human judgment before it can safely continue.
 
 Human requests are policy-granted capabilities. They are not a generic way to keep chatting with the operator.
@@ -47,8 +45,7 @@ Keep the policy instruction specific about when the node may ask:
 
 ```yaml
 instruction: >-
-    Ask for approval only before externally visible action. Ask for direction only when
-    current evidence leaves multiple valid routes with different risk.
+  Ask for approval only before externally visible action. Ask for direction only when current evidence leaves multiple valid routes with different risk.
 ```
 
 Do not bundle human-request and command-run capability by default. A node can have human request only, command run only, both, or neither.

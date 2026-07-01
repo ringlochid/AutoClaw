@@ -1,12 +1,10 @@
 # Maintain docs
 
-Status: Reference
-
-Last verified: 2026-06-28
-
 Use this guide when adding, moving, deleting, or rewriting docs.
 
 AutoClaw docs must keep public product docs, public reference docs, and internal canon separate.
+
+Public docs should not expose internal authority or verification headers. Internal canon, ADRs, standards, and generated internal readbacks may use authority metadata when the metadata helps maintainers distinguish target, current, reference, template, or accepted decision surfaces.
 
 ## Placement rules
 

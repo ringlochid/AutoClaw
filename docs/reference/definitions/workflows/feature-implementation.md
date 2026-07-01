@@ -1,7 +1,5 @@
 # Feature implementation workflow example
 
-Status: Reference
-
 This example mirrors the shipped `feature-implementation` workflow fixture.
 
 ```yaml

@@ -1,7 +1,5 @@
 # Engineer example
 
-Status: Reference
-
 Use the engineer role when a worker should complete one bounded implementation assignment and publish durable outputs.
 
 This example teaches:

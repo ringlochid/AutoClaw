@@ -1,7 +1,5 @@
 # MVP build workflow example
 
-Status: Reference
-
 This example mirrors the shipped `mvp-build` workflow fixture.
 
 ```yaml

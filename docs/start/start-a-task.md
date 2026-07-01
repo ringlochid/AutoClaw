@@ -1,7 +1,5 @@
 # Start a task
 
-Status: Reference
-
 This tutorial starts one local task with the shipped minimal workflow. It uses task-local roots so the first run stays isolated and easy to inspect.
 
 ## Before you start
@@ -25,9 +23,8 @@ task:
     key: first-run
     title: First local AutoClaw run
     summary: Prove the seeded minimal workflow on a bounded local task.
-    instruction: >
-        Use the shipped minimal workflow to prove local launch, task-root creation,
-        and runtime materialization.
+    instruction: >-
+      Use the shipped minimal workflow to prove local launch, task-root creation, and runtime materialization.
 workflow:
     key: minimal-implement-change
 roots:
@@ -58,7 +55,8 @@ The command reads one local file and starts the same task body that the public t
 - the command returns a task id
 - a task root is materialized on disk
 - `_runtime/workflow-manifest.md` exists under the task root
-- the first assignment and checkpoint surfaces become inspectable
+- the first assignment surface is inspectable
+- checkpoint and artifact surfaces become inspectable as the node works
 
 ## Next step
 

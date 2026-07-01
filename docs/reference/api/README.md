@@ -1,7 +1,5 @@
 # API reference
 
-Status: Reference
-
 This surface owns shipped API route, auth-lane, and definition/task-start reference material.
 
 ## Start here

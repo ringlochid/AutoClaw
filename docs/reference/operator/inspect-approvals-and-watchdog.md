@@ -1,9 +1,5 @@
 # Inspect approvals and watchdog state
 
-Status: Reference
-
-Last verified: 2026-05-21
-
 This page describes the shipped watchdog inspection surfaces and where approval-related activity now appears.
 
 ## Approvals
