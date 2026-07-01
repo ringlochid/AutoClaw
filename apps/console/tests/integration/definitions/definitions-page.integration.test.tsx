@@ -134,7 +134,8 @@ describe("DefinitionsPage", () => {
         expect(await screen.findByText("implementation_loop")).toBeVisible();
         expect(screen.queryByText("Stored root role")).not.toBeInTheDocument();
         expect(screen.queryByText("Root tree")).not.toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Create/update draft" })).toHaveAttribute(
+        expect(screen.queryByRole("link", { name: "Create/update draft" })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Edit in draft" })).toHaveAttribute(
             "href",
             "/definitions/editor?materialize_key=maximal-parent-first-release&materialize_kind=workflow",
         );

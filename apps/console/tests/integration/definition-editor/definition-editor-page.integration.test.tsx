@@ -145,6 +145,54 @@ describe("DefinitionEditorPage", () => {
         ]);
     });
 
+    it("keeps duplicate draft-key failures inside the new-draft dialog", async () => {
+        const user = userEvent.setup();
+        installDefinitionEditorHandlers();
+        server.use(
+            http.put(
+                "*/authoring/definition-draft-sets/:draftSetId/files/:kind/:key",
+                ({ params }) =>
+                    HttpResponse.json(
+                        {
+                            detail: {
+                                code: "illegal_state",
+                                retryable: false,
+                                summary: `draft set does not yet materialize current ${String(params.kind)} '${String(params.key)}'`,
+                            },
+                        },
+                        { status: 409 },
+                    ),
+            ),
+        );
+
+        renderDefinitionEditorPage();
+        expect(
+            await screen.findByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
+        ).toBeVisible();
+
+        await user.click(screen.getByRole("button", { name: "New draft" }));
+        const newDraftDialog = await screen.findByRole("dialog", { name: "New draft" });
+        const draftKeyInput = within(newDraftDialog).getByLabelText("Draft key");
+        await user.type(draftKeyInput, DEFINITION_EDITOR_ROLE_KEY);
+        await user.click(within(newDraftDialog).getByRole("button", { name: "Create draft" }));
+        expect(
+            await within(newDraftDialog).findByText(
+                "That draft key already exists in this draft set.",
+            ),
+        ).toBeVisible();
+
+        await user.clear(draftKeyInput);
+        await user.type(draftKeyInput, "stored-role");
+        await user.click(within(newDraftDialog).getByRole("button", { name: "Create draft" }));
+
+        expect(
+            await within(newDraftDialog).findByText(
+                "That key already exists in stored definitions. Use Create/update draft from Definitions to edit it here.",
+            ),
+        ).toBeVisible();
+        expect(screen.queryByText("Illegal State")).not.toBeInTheDocument();
+    });
+
     it("saves dirty drafts, resets to captured baseline, and replaces from current stored revision separately", async () => {
         const user = userEvent.setup();
         installDefinitionEditorHandlers({

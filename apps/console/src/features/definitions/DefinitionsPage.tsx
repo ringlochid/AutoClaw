@@ -38,23 +38,6 @@ export function DefinitionsPage() {
                     <DefinitionsNavLink to="/definitions/editor">
                         Definition Editor
                     </DefinitionsNavLink>
-                    {controller.selectedKey === null ? (
-                        <span
-                            aria-disabled="true"
-                            className="inline-flex h-control items-center justify-center rounded-control border border-outline-soft bg-surface-muted px-3 text-utility font-semibold text-muted"
-                        >
-                            Create/update draft
-                        </span>
-                    ) : (
-                        <DefinitionsNavLink
-                            to={definitionEditorMaterializeRoute(
-                                controller.singularKind,
-                                controller.selectedKey,
-                            )}
-                        >
-                            Create/update draft
-                        </DefinitionsNavLink>
-                    )}
                     <DefinitionsNavLink to="/task-start">Task Start</DefinitionsNavLink>
                 </div>
             }
@@ -508,6 +491,13 @@ function DefinitionDetailHeader({
 }) {
     return (
         <div className="flex min-h-control flex-wrap items-center justify-end gap-2">
+            <Link
+                className="inline-flex h-8 items-center justify-center gap-2 rounded-control border border-outline bg-surface px-3 font-body text-compact font-semibold text-foreground transition-colors hover:border-primary/45 hover:text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                to={definitionEditorMaterializeRoute(detail.kind, detail.key)}
+            >
+                <span>Edit in draft</span>
+                <ExternalLink aria-hidden="true" className="size-3.5 shrink-0" />
+            </Link>
             <StatusChip>{detail.kind}</StatusChip>
             <button
                 className="inline-flex h-8 items-center justify-center rounded-control border border-outline bg-surface px-3 font-mono text-label font-medium text-foreground transition-colors hover:border-primary/45 hover:text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -519,6 +509,14 @@ function DefinitionDetailHeader({
             </button>
         </div>
     );
+}
+
+function definitionEditorMaterializeRoute(kind: string, key: string): string {
+    const query = new URLSearchParams({
+        materialize_key: key,
+        materialize_kind: kind,
+    });
+    return `/definitions/editor?${query.toString()}`;
 }
 
 function DefinitionDetailSummary({ detail }: { readonly detail: DefinitionDetailView }) {
@@ -862,14 +860,6 @@ function DefinitionsNavLink({ children, to }: { readonly children: string; reado
             <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
         </Link>
     );
-}
-
-function definitionEditorMaterializeRoute(kind: string, key: string): string {
-    const query = new URLSearchParams({
-        materialize_key: key,
-        materialize_kind: kind,
-    });
-    return `/definitions/editor?${query.toString()}`;
 }
 
 function formatRowUpdatedDate(value: string): string {

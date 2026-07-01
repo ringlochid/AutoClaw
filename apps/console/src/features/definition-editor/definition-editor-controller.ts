@@ -66,6 +66,8 @@ interface DraftSetDetailState {
     readonly isLoading: boolean;
 }
 
+const UNMATERIALIZED_CURRENT_DRAFT_PREFIX = "draft set does not yet materialize current ";
+
 export interface DefinitionEditorController {
     readonly actionError: ConsoleErrorView | null;
     readonly applyState: DraftActionState<DraftApplyResponse>;
@@ -553,7 +555,13 @@ export function useDefinitionEditorController(): DefinitionEditorController {
                 setRefreshToken((value) => value + 1);
             })
             .catch((error: unknown) => {
-                setActionError(toErrorView(error));
+                const errorView = toErrorView(error);
+                const draftError = newDraftWriteError(errorView);
+                if (draftError !== null) {
+                    setNewDraftError(draftError);
+                    return;
+                }
+                setActionError(errorView);
             })
             .finally(() => {
                 setIsMutatingDraft(false);
@@ -811,6 +819,16 @@ export function useDefinitionEditorController(): DefinitionEditorController {
         validationState,
         validationView,
     };
+}
+
+function newDraftWriteError(error: ConsoleErrorView): string | null {
+    if (
+        error.code !== "illegal_state" ||
+        !error.summary.startsWith(UNMATERIALIZED_CURRENT_DRAFT_PREFIX)
+    ) {
+        return null;
+    }
+    return "That key already exists in stored definitions. Use Create/update draft from Definitions to edit it here.";
 }
 
 export { applyResultTitle, isAuthError };

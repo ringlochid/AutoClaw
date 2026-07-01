@@ -63,10 +63,11 @@ test("renders Definitions browse detail, versions, focus, and accessibility at d
     await expect(page.getByLabel("Allowed node kind")).toHaveCount(0);
     await expect(page.getByLabel("Applies to")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Task Start" }).first()).toBeVisible();
-    const materializeLink = page.getByRole("link", { name: "Create/update draft" }).first();
-    const materializeHref = await materializeLink.getAttribute("href");
-    expect(materializeHref).toContain("materialize_kind=workflow");
-    expect(materializeHref).toContain("materialize_key=maximal-parent-first-release");
+    await expect(page.getByRole("link", { name: "Create/update draft" })).toHaveCount(0);
+    const editDraftLink = page.getByRole("link", { name: "Edit in draft" });
+    const editDraftHref = await editDraftLink.getAttribute("href");
+    expect(editDraftHref).toContain("materialize_kind=workflow");
+    expect(editDraftHref).toContain("materialize_key=maximal-parent-first-release");
 
     const revisionButton = page.getByRole("button", { name: "Revision 5" });
     await revisionButton.click();
