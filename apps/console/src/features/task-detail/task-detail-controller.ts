@@ -31,7 +31,6 @@ export interface TaskDetailController {
     readonly isRefreshing: boolean;
     readonly openDetail: () => void;
     readonly refresh: () => void;
-    readonly resetGraph: () => void;
     readonly selectedContext: ReturnType<typeof buildSelectedContext> | null;
     readonly selectedEventId: string | null;
     readonly selectedNodeKey: string | null;
@@ -44,9 +43,6 @@ export interface TaskDetailController {
     readonly tab: TaskDetailTab;
     readonly taskAction: (action: TaskControlAction) => void;
     readonly view: TaskDetailView | null;
-    readonly zoomIn: () => void;
-    readonly zoomOut: () => void;
-    readonly zoomPercent: number;
 }
 
 interface TaskDetailState {
@@ -65,7 +61,6 @@ interface TaskDetailState {
     readonly streamResetStaleCursor: string | null;
     readonly streamStatus: TaskEventStreamStatus;
     readonly tab: TaskDetailTab;
-    readonly zoomPercent: number;
 }
 
 type TaskDetailAction =
@@ -87,15 +82,12 @@ type TaskDetailAction =
       }
     | { readonly type: "open-detail" }
     | { readonly type: "refresh" }
-    | { readonly type: "reset-graph" }
     | { readonly eventId: string; readonly type: "select-event" }
     | { readonly nodeKey: string; readonly type: "select-node" }
     | { readonly status: TaskEventStreamStatus; readonly type: "stream-status" }
     | { readonly staleCursor: string | null; readonly type: "stream-reset" }
     | { readonly error: ConsoleErrorView; readonly type: "stream-error" }
-    | { readonly tab: TaskDetailTab; readonly type: "tab" }
-    | { readonly type: "zoom-in" }
-    | { readonly type: "zoom-out" };
+    | { readonly tab: TaskDetailTab; readonly type: "tab" };
 
 const initialState: TaskDetailState = {
     actionError: null,
@@ -113,11 +105,7 @@ const initialState: TaskDetailState = {
     streamResetStaleCursor: null,
     streamStatus: "closed",
     tab: "overview",
-    zoomPercent: 100,
 };
-
-const MIN_ZOOM_PERCENT = 75;
-const MAX_ZOOM_PERCENT = 175;
 
 export function useTaskDetailController(taskId: string | null): TaskDetailController {
     const [state, dispatch] = useReducer(taskDetailReducer, initialState);
@@ -279,9 +267,6 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
         refresh: () => {
             dispatch({ type: "refresh" });
         },
-        resetGraph: () => {
-            dispatch({ type: "reset-graph" });
-        },
         selectedContext,
         selectedEventId: state.selectedEventId,
         selectedNodeKey: state.selectedNodeKey,
@@ -300,13 +285,6 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
         tab: state.tab,
         taskAction,
         view,
-        zoomIn: () => {
-            dispatch({ type: "zoom-in" });
-        },
-        zoomOut: () => {
-            dispatch({ type: "zoom-out" });
-        },
-        zoomPercent: state.zoomPercent,
     };
 }
 
@@ -403,21 +381,6 @@ function taskDetailReducer(state: TaskDetailState, action: TaskDetailAction): Ta
                 ...state,
                 actionError: action.error,
                 actionPending: null,
-            };
-        case "zoom-in":
-            return {
-                ...state,
-                zoomPercent: Math.min(MAX_ZOOM_PERCENT, state.zoomPercent + 15),
-            };
-        case "zoom-out":
-            return {
-                ...state,
-                zoomPercent: Math.max(MIN_ZOOM_PERCENT, state.zoomPercent - 15),
-            };
-        case "reset-graph":
-            return {
-                ...state,
-                zoomPercent: 100,
             };
     }
 }

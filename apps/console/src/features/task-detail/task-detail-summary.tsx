@@ -1,77 +1,62 @@
 import type { ReactNode } from "react";
 
-import { Ban, Pause, Play, RefreshCw } from "lucide-react";
-
-import { Button, IconButton, IdRefText, StatusChip, TimestampText } from "../../components/ui";
+import { Button, StatusChip } from "../../components/ui";
+import { classNames } from "../../lib/classNames";
 import type { TaskControlAction } from "./task-detail-data";
-import type { TaskDetailController } from "./task-detail-controller";
 import { flowStatusTone, type TaskDetailView } from "./task-detail-model";
 
-export function TaskSummaryHeader({
-    controller,
-    view,
-}: {
-    readonly controller: TaskDetailController;
-    readonly view: TaskDetailView;
-}) {
+export function TaskSummaryHeader({ view }: { readonly view: TaskDetailView }) {
     return (
-        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <HeaderFact label="Status">
-                    <StatusChip tone={flowStatusTone(view.task.status)} withDot>
-                        {view.task.status}
-                    </StatusChip>
-                </HeaderFact>
-                <HeaderFact label="Node">
-                    {view.task.currentNodeKey === null ? (
-                        "not exposed"
-                    ) : (
-                        <IdRefText value={view.task.currentNodeKey} />
-                    )}
-                </HeaderFact>
-                <HeaderFact label="Updated">
-                    <TimestampText value={view.task.updatedAt} />
-                </HeaderFact>
-                <HeaderFact label="Stream head">
-                    {view.snapshot.streamHeadEventId ?? "live-only"}
-                </HeaderFact>
-            </div>
-            <div className="flex shrink-0 items-center">
-                <StatusChip tone={streamStatusTone(controller.streamStatus)} withDot>
-                    {streamStatusLabel(controller.streamStatus)}
-                </StatusChip>
-            </div>
+        <div className="contents">
+            <HeaderFact label="Node">
+                {view.task.currentNodeKey === null
+                    ? "not exposed"
+                    : titleCaseNodeLabel(view.task.currentNodeKey)}
+            </HeaderFact>
+            <HeaderFact label="Updated">
+                <TaskDetailTimestamp value={view.task.updatedAt} />
+            </HeaderFact>
         </div>
     );
 }
 
+export function TaskDetailEyebrow({ view }: { readonly view: TaskDetailView }) {
+    return (
+        <span className="flex min-w-0 flex-wrap items-center gap-2.5">
+            <span>Task Detail</span>
+            <StatusChip
+                className="h-auto rounded-full px-3 py-1 normal-case"
+                tone={flowStatusTone(view.task.status)}
+            >
+                {view.task.status}
+            </StatusChip>
+        </span>
+    );
+}
+
 export function TaskActionControls({
-    actionError,
     actionPending,
     onAction,
-    onRefresh,
     view,
 }: {
     readonly actionError: { readonly code: string } | null;
     readonly actionPending: TaskControlAction | null;
     readonly onAction: (action: TaskControlAction) => void;
-    readonly onRefresh: () => void;
     readonly view: TaskDetailView;
 }) {
     return (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
             <Button
                 disabled={!view.actionMode.canPause || actionPending !== null}
-                icon={<Pause />}
                 onClick={() => {
                     onAction("pause");
                 }}
+                variant="primary"
             >
                 {actionPending === "pause" ? "Pausing" : "Pause"}
             </Button>
             <Button
                 disabled={!view.actionMode.canContinue || actionPending !== null}
-                icon={<Play />}
                 onClick={() => {
                     onAction("continue");
                 }}
@@ -80,7 +65,6 @@ export function TaskActionControls({
             </Button>
             <Button
                 disabled={!view.actionMode.canCancel || actionPending !== null}
-                icon={<Ban />}
                 onClick={() => {
                     onAction("cancel");
                 }}
@@ -88,50 +72,90 @@ export function TaskActionControls({
             >
                 {actionPending === "cancel" ? "Cancelling" : "Cancel"}
             </Button>
-            <IconButton
-                icon={<RefreshCw />}
-                label={actionError === null ? "Refresh Task Detail" : "Refresh after action error"}
-                onClick={onRefresh}
-            />
         </div>
+    );
+}
+
+export function titleCaseNodeLabel(nodeKey: string): string {
+    const designLabels: Readonly<Partial<Record<string, string>>> = {
+        command_runs: "Command Runs",
+        command_runs_page: "Command Runs",
+        human_request_page: "Human Requests",
+        human_requests: "Human Requests",
+        root: "Root",
+        runtime_pages: "Runtime pages",
+        source_contract: "Source contract",
+        task_control_suite: "Runtime pages",
+        task_detail: "Task Detail",
+        task_detail_build: "Task Detail build",
+        task_detail_contract: "Task Detail contract",
+        task_detail_page: "Task Detail",
+        task_detail_review: "Task Detail review",
+        task_detail_source_contract: "Task Detail contract",
+        tasks_page: "Tasks",
+    };
+    const designLabel = designLabels[nodeKey];
+    if (designLabel !== undefined) {
+        return designLabel;
+    }
+
+    return nodeKey
+        .split("_")
+        .filter((part) => part.length > 0)
+        .map((part, index) => (index === 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+        .join(" ");
+}
+
+export function TaskDetailTimestamp({
+    className,
+    value,
+    variant = "dateTime",
+}: {
+    readonly className?: string;
+    readonly value: Date | string;
+    readonly variant?: "dateTime" | "time";
+}) {
+    const date = value instanceof Date ? value : new Date(value);
+    const label = Number.isNaN(date.valueOf())
+        ? String(value)
+        : formatSydneyTimestamp(date, variant);
+
+    return (
+        <time
+            className={classNames("font-mono text-utility", className)}
+            dateTime={Number.isNaN(date.valueOf()) ? undefined : date.toISOString()}
+        >
+            {label}
+        </time>
     );
 }
 
 function HeaderFact({ children, label }: { readonly children: ReactNode; readonly label: string }) {
     return (
-        <div className="inline-flex min-h-8 max-w-full items-center gap-2 rounded-control border border-outline-soft bg-surface-low px-3 py-1.5">
-            <span className="shrink-0 font-mono text-label font-medium uppercase text-muted">
-                {label}
-            </span>
+        <span className="inline-flex min-h-8 max-w-full items-center gap-2 rounded-full border border-outline-soft bg-surface-low px-3 py-1.5">
+            <span className="shrink-0 font-mono text-label font-medium text-muted">{label}</span>
             <span className="min-w-0 text-utility text-foreground">{children}</span>
-        </div>
+        </span>
     );
 }
 
-function streamStatusTone(status: TaskDetailController["streamStatus"]) {
-    switch (status) {
-        case "live":
-            return "active";
-        case "reset":
-        case "reconnecting":
-            return "warning";
-        case "closed":
-        case "connecting":
-            return "neutral";
-    }
-}
-
-function streamStatusLabel(status: TaskDetailController["streamStatus"]) {
-    switch (status) {
-        case "closed":
-            return "Stream closed";
-        case "connecting":
-            return "Connecting stream";
-        case "live":
-            return "Live events";
-        case "reconnecting":
-            return "Reconnecting";
-        case "reset":
-            return "Stream reset";
-    }
+function formatSydneyTimestamp(date: Date, variant: "dateTime" | "time"): string {
+    const options: Intl.DateTimeFormatOptions =
+        variant === "time"
+            ? {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  timeZone: "Australia/Sydney",
+                  timeZoneName: "short",
+              }
+            : {
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  month: "long",
+                  timeZone: "Australia/Sydney",
+                  timeZoneName: "short",
+                  year: "numeric",
+              };
+    return new Intl.DateTimeFormat("en-AU", options).format(date).replace(" at ", ", ");
 }

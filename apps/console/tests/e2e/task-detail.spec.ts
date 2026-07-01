@@ -27,11 +27,11 @@ test("renders the API-backed Task Detail control room at desktop width", async (
         page.getByRole("heading", { level: 1, name: "Refresh runtime route copy" }),
     ).toBeVisible();
     await expect(page.getByText("Execution graph")).toBeVisible();
-    await expect(page.getByText("Task event chronology")).toBeVisible();
-    await expect(page.getByText("Approve the last copy trim")).toBeVisible();
-    await expect(page.getByText("Verify command-run runner behavior.")).toBeVisible();
-    await expect(page.getByText("task_cancelled")).toBeVisible();
-    await expect(page.getByText("provider_event_normalized")).toBeVisible();
+    await expect(page.getByText("Events")).toBeVisible();
+    await expect(page.getByText("Approve the last copy trim")).toHaveCount(0);
+    await expect(page.getByText("Verify command-run runner behavior.")).toHaveCount(0);
+    await expect(page.getByText("Task cancelled")).toBeVisible();
+    await expect(page.getByText("Provider event normalized")).toBeVisible();
     await expectNoDocumentOverflow(page);
 
     const accessibilityScanResults = await new AxeBuilder({ page })
@@ -44,8 +44,32 @@ test("renders the API-backed Task Detail control room at desktop width", async (
         path: `${SCREENSHOT_DIR}/task-detail-desktop.png`,
     });
 
+    const initialZoom = await readGraphZoom(page);
+    expect(initialZoom).toBe(156);
+    for (let index = 0; index < 8; index += 1) {
+        await page.getByRole("button", { name: "Zoom out graph" }).click();
+    }
+    expect(await readGraphZoom(page)).toBeLessThan(100);
+    const transformBeforeDrag = await readGraphTransform(page);
+    const graphBox = await page.getByLabel("Execution graph").boundingBox();
+    expect(graphBox).not.toBeNull();
+    if (graphBox !== null) {
+        await page.mouse.move(graphBox.x + graphBox.width / 2, graphBox.y + graphBox.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(
+            graphBox.x + graphBox.width / 2 + 160,
+            graphBox.y + graphBox.height / 2 + 80,
+            {
+                steps: 8,
+            },
+        );
+        await page.mouse.up();
+    }
+    expect(await readGraphTransform(page)).not.toBe(transformBeforeDrag);
+    await page.getByRole("button", { name: "Reset graph zoom" }).click();
+
     await page
-        .getByRole("button", { name: /checkpoint_recorded/i })
+        .getByRole("button", { name: /Checkpoint recorded/i })
         .first()
         .click();
     const openDetailButton = page.getByRole("button", { name: "Open detail" });
@@ -54,7 +78,11 @@ test("renders the API-backed Task Detail control room at desktop width", async (
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Close node detail" })).toBeFocused();
-    await expect(dialog.getByText("task_detail_build")).toBeVisible();
+    await expect(
+        dialog.getByRole("heading", { level: 2, name: "Task detail contract" }),
+    ).toBeVisible();
+    await expect(dialog.getByText("Approve the last copy trim")).toBeVisible();
+    await expect(dialog.getByText("Verify command-run runner behavior.")).toBeVisible();
     await page.screenshot({
         fullPage: true,
         path: `${SCREENSHOT_DIR}/task-detail-modal-desktop.png`,
@@ -93,7 +121,7 @@ test("keeps the Task Detail graph and event lane responsive at mobile width", as
     await expect(page.getByLabel("Zoom in graph")).toBeVisible();
     await expect(page.getByText("worker_node_17").first()).toBeVisible();
     await expect(
-        page.getByRole("button", { name: /dispatch_opened worker_node_17/i }),
+        page.getByRole("button", { name: /Dispatch opened worker node 17/i }),
     ).toBeVisible();
     await expectNoDocumentOverflow(page);
 
@@ -178,4 +206,22 @@ async function expectNoDocumentOverflow(page: Page): Promise<void> {
     );
 
     expect(overflow).toBeLessThanOrEqual(1);
+}
+
+async function readGraphZoom(page: Page): Promise<number> {
+    const graphSectionText = await page
+        .locator("section")
+        .filter({ hasText: "Execution graph" })
+        .first()
+        .innerText();
+    const zoomMatch = /(\d+)%/.exec(graphSectionText);
+    expect(zoomMatch).not.toBeNull();
+    return Number(zoomMatch?.[1] ?? 0);
+}
+
+async function readGraphTransform(page: Page): Promise<string | null> {
+    return page
+        .locator('svg[aria-label="Execution graph"] > g[transform]')
+        .first()
+        .getAttribute("transform");
 }

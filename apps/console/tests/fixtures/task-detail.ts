@@ -2,7 +2,6 @@ import type { ConsoleMockScenario } from "../../src/mocks/handlers";
 import type { components } from "../../src/api/generated/openapi";
 import { TASK_EVENT_TYPES } from "../../src/features/task-detail/task-detail-model";
 import {
-    TEST_UPDATED_AT,
     createCommandRunListItem,
     createConsoleMockScenario,
     createHumanRequestRead,
@@ -14,6 +13,38 @@ import {
 
 export const TASK_DETAIL_TASK_ID = "task-runtime-route-copy";
 export const TASK_DETAIL_STREAM_HEAD = "evt-008-structural-revision-adopted";
+export const TASK_DETAIL_EVENT_BASE_AT = "2026-06-21T15:03:00Z";
+export const TASK_DETAIL_UPDATED_AT = "2026-06-21T15:24:00Z";
+
+const TASK_DETAIL_VISUAL_EVENT_TIMES: Partial<
+    Record<components["schemas"]["TaskEventType"], string>
+> = {
+    boundary_accepted: "2026-06-21T15:10:00Z",
+    checkpoint_recorded: "2026-06-21T15:09:00Z",
+    child_assignment_committed: "2026-06-21T15:12:00Z",
+    child_assignment_staged: "2026-06-21T15:11:00Z",
+    dispatch_opened: "2026-06-21T15:08:00Z",
+    provider_event_normalized: "2026-06-21T15:08:00Z",
+    provider_resolution_recorded: "2026-06-21T15:04:00Z",
+    structural_revision_adopted: "2026-06-21T15:13:00Z",
+    task_started: "2026-06-21T15:03:00Z",
+};
+
+const TASK_DETAIL_VISUAL_EVENT_TYPES: readonly components["schemas"]["TaskEventType"][] = [
+    "task_started",
+    "provider_resolution_recorded",
+    "dispatch_opened",
+    "provider_event_normalized",
+    "checkpoint_recorded",
+    "boundary_accepted",
+    "child_assignment_staged",
+    "structural_revision_adopted",
+];
+
+const TASK_DETAIL_EVENT_TYPES = [
+    ...TASK_DETAIL_VISUAL_EVENT_TYPES,
+    ...TASK_EVENT_TYPES.filter((eventType) => !TASK_DETAIL_VISUAL_EVENT_TYPES.includes(eventType)),
+];
 
 export interface TaskDetailScenarioOptions {
     readonly cursorResetCursors?: readonly string[];
@@ -49,7 +80,7 @@ export function createTaskDetailMockScenario(
         task_id: TASK_DETAIL_TASK_ID,
         task_summary: "Replace retired runtime labels without widening the task hub.",
         task_title: "Refresh runtime route copy",
-        updated_at: TEST_UPDATED_AT,
+        updated_at: TASK_DETAIL_UPDATED_AT,
         workflow_key: "frontend-console-continuation-delivery",
         workflow_manifest_ref: createWorkflowManifestRef(),
     });
@@ -129,17 +160,21 @@ export function createTaskDetailEventRecords(
     const taskId = options.taskId ?? TASK_DETAIL_TASK_ID;
     const nodeKeys = options.nodeKeys ?? [
         "root",
-        "runtime_pages",
-        "task_detail",
-        "task_detail_contract",
+        "source_contract",
+        "task_control_suite",
+        "tasks_page",
+        "task_detail_page",
+        "human_request_page",
+        "command_runs_page",
+        "task_detail_source_contract",
         "task_detail_build",
         "task_detail_review",
     ];
 
-    return TASK_EVENT_TYPES.map((eventType, index) => {
+    return TASK_DETAIL_EVENT_TYPES.map((eventType, index) => {
         const eventSeq = index + 1;
         const eventId = `evt-${String(eventSeq).padStart(3, "0")}-${eventType.replace(/_/g, "-")}`;
-        const nodeKey = nodeKeys[Math.min(index % nodeKeys.length, nodeKeys.length - 1)] ?? "root";
+        const nodeKey = nodeKeyForEvent(eventType, index, nodeKeys);
         return createTaskEventRecord({
             attempt_id: `attempt-${nodeKey}`,
             dispatch_id: `dispatch-${nodeKey}`,
@@ -149,11 +184,43 @@ export function createTaskDetailEventRecords(
             event_type: eventType,
             flow_revision_id: "flow-revision-task-detail-1",
             node_key: nodeKey,
-            occurred_at: new Date(Date.parse(TEST_UPDATED_AT) + index * 60_000).toISOString(),
+            occurred_at: occurredAtForEvent(eventType, index),
             payload: payloadForEvent(eventType, nodeKey),
             task_id: taskId,
         });
     });
+}
+
+function nodeKeyForEvent(
+    eventType: components["schemas"]["TaskEventType"],
+    index: number,
+    nodeKeys: readonly string[],
+): string {
+    const nodeByEventType: Partial<Record<components["schemas"]["TaskEventType"], string>> = {
+        boundary_accepted: "task_detail_build",
+        checkpoint_recorded: "task_detail_source_contract",
+        child_assignment_staged: "task_detail_review",
+        command_run_cancel_requested: "task_detail_build",
+        command_run_cancelled: "task_detail_build",
+        command_run_failed: "task_detail_build",
+        command_run_progressed: "task_detail_build",
+        command_run_started: "task_detail_build",
+        command_run_succeeded: "task_detail_build",
+        command_run_timed_out: "task_detail_build",
+        dispatch_opened: "task_detail_build",
+        human_request_cancelled: "task_detail_build",
+        human_request_opened: "task_detail_build",
+        human_request_resolved: "task_detail_build",
+        human_request_timed_out: "task_detail_build",
+        provider_event_normalized: "task_detail_build",
+        provider_resolution_recorded: "root",
+        structural_revision_adopted: "task_detail_page",
+        task_started: "root",
+    };
+    return (
+        nodeByEventType[eventType] ??
+        nodeKeys[Math.min(index % nodeKeys.length, nodeKeys.length - 1)]
+    );
 }
 
 export function createLongTaskDetailEventRecords(): readonly components["schemas"]["TaskEventRecord"][] {
@@ -172,7 +239,7 @@ export function createLongTaskDetailEventRecords(): readonly components["schemas
             flow_revision_id: "flow-revision-task-detail-1",
             node_key: nodeKey,
             occurred_at: new Date(
-                Date.parse(TEST_UPDATED_AT) + (baseEvents.length + index) * 60_000,
+                Date.parse(TASK_DETAIL_EVENT_BASE_AT) + (baseEvents.length + index) * 60_000,
             ).toISOString(),
             payload: {
                 assignment_key: `assignment-${nodeKey}`,
@@ -193,7 +260,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
         boundary_history: [
             {
                 boundary: "green",
-                node_key: "task_detail_contract",
+                node_key: "task_detail_source_contract",
                 occurred_at: "2026-06-29T13:45:00Z",
             },
             {
@@ -204,7 +271,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
         ],
         checkpoint_history: [
             {
-                attempt_id: "attempt-task_detail_contract",
+                attempt_id: "attempt-task_detail_source_contract",
                 checkpoint_id: "checkpoint-contract",
                 checkpoint_kind: "terminal",
                 outcome: "green",
@@ -238,24 +305,52 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
                 rendered_at: "2026-06-29T13:30:00Z",
             },
             {
-                assignment_key: "assignment-runtime-pages",
-                attempt_id: "attempt-runtime_pages",
+                assignment_key: "assignment-source-contract",
+                attempt_id: "attempt-source_contract",
+                delivery_status: "provider_completed",
+                node_key: "source_contract",
+                rendered_at: "2026-06-29T13:32:00Z",
+            },
+            {
+                assignment_key: "assignment-task-control-suite",
+                attempt_id: "attempt-task_control_suite",
                 delivery_status: "accepted",
-                node_key: "runtime_pages",
+                node_key: "task_control_suite",
                 rendered_at: "2026-06-29T13:35:00Z",
             },
             {
-                assignment_key: "assignment-task-detail",
-                attempt_id: "attempt-task_detail",
+                assignment_key: "assignment-tasks-page",
+                attempt_id: "attempt-tasks_page",
+                delivery_status: "provider_completed",
+                node_key: "tasks_page",
+                rendered_at: "2026-06-29T13:38:00Z",
+            },
+            {
+                assignment_key: "assignment-task-detail-page",
+                attempt_id: "attempt-task_detail_page",
                 delivery_status: "accepted",
-                node_key: "task_detail",
+                node_key: "task_detail_page",
                 rendered_at: "2026-06-29T13:40:00Z",
             },
             {
-                assignment_key: "assignment-task-detail-contract",
-                attempt_id: "attempt-task_detail_contract",
+                assignment_key: "assignment-human-request-page",
+                attempt_id: "attempt-human_request_page",
+                delivery_status: "prepared",
+                node_key: "human_request_page",
+                rendered_at: "2026-06-29T13:41:00Z",
+            },
+            {
+                assignment_key: "assignment-command-runs-page",
+                attempt_id: "attempt-command_runs_page",
+                delivery_status: "prepared",
+                node_key: "command_runs_page",
+                rendered_at: "2026-06-29T13:42:00Z",
+            },
+            {
+                assignment_key: "assignment-task-detail-source-contract",
+                attempt_id: "attempt-task_detail_source_contract",
                 delivery_status: "provider_completed",
-                node_key: "task_detail_contract",
+                node_key: "task_detail_source_contract",
                 rendered_at: "2026-06-29T13:43:00Z",
             },
             {
@@ -344,8 +439,8 @@ function payloadForEvent(
                     kind: "checkpoint",
                     path: "_runtime/attempts/task-detail/latest-checkpoint.md",
                 },
-                next_node_key: "task_detail_build",
-                previous_node_key: "task_detail_contract",
+                next_node_key: "task_detail_page",
+                previous_node_key: "task_detail_source_contract",
                 resulting_flow_status: "running",
                 summary: "Boundary accepted.",
             };
@@ -357,7 +452,7 @@ function payloadForEvent(
                     kind: "assignment",
                     path: "_runtime/attempts/task-detail-review/assignment.md",
                 },
-                parent_node_key: "task_detail",
+                parent_node_key: "task_detail_page",
                 summary: "Child assignment staged.",
                 target_assignment_key: "assignment-task-detail-review",
                 target_node_key: "task_detail_review",
@@ -365,8 +460,8 @@ function payloadForEvent(
         case "child_assignment_committed":
             return {
                 boundary: "yield",
-                parent_node_key: "task_detail",
-                source_dispatch_id: "dispatch-task_detail",
+                parent_node_key: "task_detail_page",
+                source_dispatch_id: "dispatch-task_detail-page",
                 summary: "Child assignment committed.",
                 target_assignment_key: "assignment-task-detail-build",
                 target_node_key: "task_detail_build",
@@ -412,6 +507,17 @@ function payloadForEvent(
                 summary: "Task control state changed.",
             };
     }
+}
+
+function occurredAtForEvent(
+    eventType: components["schemas"]["TaskEventType"],
+    index: number,
+): string {
+    const visualTime = TASK_DETAIL_VISUAL_EVENT_TIMES[eventType];
+    if (visualTime !== undefined) {
+        return visualTime;
+    }
+    return new Date(Date.parse(TASK_DETAIL_EVENT_BASE_AT) + (index + 6) * 60_000).toISOString();
 }
 
 function eventSourceForType(

@@ -62,14 +62,14 @@ export function AppShell() {
 
     return (
         <ShellTaskTitleContext.Provider value={shellTaskTitleContext}>
-            <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-                <aside className="hidden border-r border-outline-soft bg-surface lg:flex lg:min-h-screen lg:flex-col">
+            <div className="min-h-screen bg-background text-foreground lg:grid lg:h-screen lg:grid-cols-[16rem_minmax(0,1fr)] lg:overflow-hidden">
+                <aside className="hidden border-r border-outline-soft bg-surface lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto">
                     <ShellBrand />
                     <nav aria-label="Primary" className="flex flex-1 flex-col gap-5 px-3 py-4">
                         <PrimaryNavGroups groups={navGroups} variant="rail" />
                     </nav>
                 </aside>
-                <div className="min-w-0">
+                <div className="min-w-0 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
                     <nav
                         aria-label="Primary"
                         className="grid grid-cols-2 gap-1 border-b border-outline-soft bg-surface px-3 py-3 lg:hidden"
@@ -80,7 +80,7 @@ export function AppShell() {
                         <PrimaryNavGroups groups={navGroups} variant="mobile" />
                     </nav>
                     <header className="sticky top-0 z-10 border-b border-outline-soft bg-surface">
-                        <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 px-page-inline py-3">
+                        <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 px-page-inline py-2 lg:py-0">
                             <div className="min-w-0">
                                 <nav
                                     aria-label="Breadcrumb"
@@ -150,7 +150,7 @@ export function AppShell() {
                     </header>
                     <main
                         aria-label="AutoClaw Console"
-                        className="min-h-[calc(100vh-4rem)] px-page-inline py-page-block"
+                        className="min-w-0 flex-1 px-page-inline py-page-block lg:overflow-y-auto"
                     >
                         <Outlet />
                     </main>
@@ -244,17 +244,31 @@ function PrimaryNavLink({
         <NavLink
             className={({ isActive }) =>
                 classNames(
-                    "flex h-control items-center gap-3 rounded-control px-3 text-utility font-semibold text-muted transition-colors hover:bg-surface-muted hover:text-foreground",
+                    "flex h-control items-center gap-3 rounded-control border px-4 text-compact font-semibold transition-colors hover:bg-surface-muted hover:text-foreground",
                     variant === "rail" && "w-full",
                     variant === "mobile" && "w-full border border-transparent",
-                    isActive && "bg-active text-active-foreground",
+                    isActive
+                        ? "border-indigo-300/25 bg-active text-active-foreground"
+                        : "border-transparent text-muted",
                 )
             }
             end={item.end ?? true}
             to={item.to}
         >
-            <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-current" />
-            <span className="truncate">{item.label}</span>
+            {({ isActive }) => (
+                <>
+                    <span
+                        aria-hidden="true"
+                        className={classNames(
+                            "size-2 shrink-0 rounded-full",
+                            isActive
+                                ? "bg-primary shadow-[0_0_6px_rgba(59,130,246,0.4)]"
+                                : "bg-outline-soft",
+                        )}
+                    />
+                    <span className="truncate">{item.label}</span>
+                </>
+            )}
         </NavLink>
     );
 }

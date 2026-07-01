@@ -79,9 +79,9 @@ describe("TaskDetailPage", () => {
             await screen.findByRole("heading", { name: "Refresh runtime route copy" }),
         ).toBeVisible();
         expect(screen.getByText("Execution graph")).toBeVisible();
-        expect(screen.getByText("Task event chronology")).toBeVisible();
-        expect(screen.getByText("Approve the last copy trim")).toBeVisible();
-        expect(screen.getByText("Verify command-run runner behavior.")).toBeVisible();
+        expect(screen.getByText("Events")).toBeVisible();
+        expect(screen.queryByText("Approve the last copy trim")).not.toBeInTheDocument();
+        expect(screen.queryByText("Verify command-run runner behavior.")).not.toBeInTheDocument();
         expect(seenEventBackfills[0]?.searchParams.get("through_event_id")).toBe(
             TASK_DETAIL_STREAM_HEAD,
         );
@@ -94,12 +94,12 @@ describe("TaskDetailPage", () => {
         ]);
         expect(seenStreamUrls[0]?.searchParams.get("cursor")).toBe(TASK_DETAIL_STREAM_HEAD);
 
-        expect(await screen.findByText("task_cancelled")).toBeVisible();
-        expect(screen.getByText("provider_event_normalized")).toBeVisible();
-        expect(screen.getAllByText("provider_event_normalized")).toHaveLength(1);
-        expect(screen.getAllByText("checkpoint_recorded").length).toBeGreaterThan(0);
+        expect(await screen.findByText("Task cancelled")).toBeVisible();
+        expect(screen.getByText("Provider event normalized")).toBeVisible();
+        expect(screen.getAllByText("Provider event normalized")).toHaveLength(1);
+        expect(screen.getAllByText("Checkpoint recorded").length).toBeGreaterThan(0);
 
-        await user.click(screen.getByRole("button", { name: /checkpoint_recorded/i }));
+        await user.click(screen.getByRole("button", { name: /Checkpoint recorded/i }));
         const openDetailButton = screen.getByRole("button", { name: /Open detail/i });
         await user.click(openDetailButton);
 
@@ -108,17 +108,22 @@ describe("TaskDetailPage", () => {
             expect(within(dialog).getByRole("button", { name: "Close node detail" })).toHaveFocus();
         });
         await user.tab({ shift: true });
-        expect(within(dialog).getByRole("tab", { name: "Overview" })).toHaveFocus();
+        expect(within(dialog).getByRole("link", { name: "Open Command Runs" })).toHaveFocus();
         await user.tab();
         expect(within(dialog).getByRole("button", { name: "Close node detail" })).toHaveFocus();
-        expect(within(dialog).getByText("task_detail_build")).toBeVisible();
+        expect(
+            within(dialog).getByRole("heading", { level: 2, name: "Task Detail contract" }),
+        ).toBeVisible();
+        expect(within(dialog).getByText("Approve the last copy trim")).toBeVisible();
+        expect(within(dialog).getByText("Verify command-run runner behavior.")).toBeVisible();
         expect(within(dialog).getByRole("tab", { name: "Overview" })).toHaveAttribute(
             "aria-selected",
             "true",
         );
         await user.click(within(dialog).getByRole("tab", { name: "Checkpoint" }));
-        expect(within(dialog).getByText("Checkpoint id")).toBeVisible();
-        expect(within(dialog).getByText("checkpoint-build-progress")).toBeVisible();
+        expect(within(dialog).getByText("Kind")).toBeVisible();
+        expect(within(dialog).getByText("progress")).toBeVisible();
+        expect(within(dialog).getByText("Checkpoint recorded.")).toBeVisible();
         await user.click(within(dialog).getByRole("tab", { name: "Artifacts" }));
         expect(within(dialog).getByText("frontend_scope_patch")).toBeVisible();
         await user.click(within(dialog).getByRole("tab", { name: "Trace" }));
@@ -162,9 +167,9 @@ describe("TaskDetailPage", () => {
 
         renderTaskDetailPage();
 
-        expect(await screen.findByText("Stream reset")).toBeVisible();
+        expect(await screen.findByText("Stream cursor reset")).toBeVisible();
         expect(await screen.findByText(/current task truth was reread/i)).toBeVisible();
-        expect(await screen.findByText("task_cancelled")).toBeVisible();
+        expect(await screen.findByText("Task cancelled")).toBeVisible();
         expect(snapshotReads).toBeGreaterThanOrEqual(2);
         expect(streamCursors).toEqual([TASK_DETAIL_STREAM_HEAD, null]);
     });
@@ -225,7 +230,12 @@ describe("TaskDetailPage", () => {
         renderTaskDetailPage();
 
         await screen.findByRole("heading", { name: "Refresh runtime route copy" });
-        await user.click(screen.getByRole("link", { name: /Open Human Requests/i }));
+        expect(
+            screen.queryByRole("link", { name: /Open Human Requests/i }),
+        ).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: /Open detail/i }));
+        const dialog = await screen.findByRole("dialog");
+        await user.click(within(dialog).getByRole("link", { name: /Open Human Requests/i }));
         expect(await screen.findByTestId("location")).toHaveTextContent(
             `/tasks/${TASK_DETAIL_TASK_ID}/human-requests`,
         );

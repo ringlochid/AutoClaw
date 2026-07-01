@@ -7,8 +7,9 @@ export interface PageFrameProps {
     readonly children: ReactNode;
     readonly className?: string;
     readonly description?: string;
-    readonly eyebrow?: string;
+    readonly eyebrow?: ReactNode;
     readonly headerContent?: ReactNode;
+    readonly headerContentPlacement?: "after-description" | "title-inline";
     readonly title: string;
 }
 
@@ -19,38 +20,41 @@ export function PageFrame({
     description,
     eyebrow,
     headerContent,
+    headerContentPlacement = "after-description",
     title,
 }: PageFrameProps) {
     const headingId = useId();
     const hasHeaderContent = headerContent !== undefined;
+    const hasInlineHeaderContent = hasHeaderContent && headerContentPlacement === "title-inline";
 
     return (
         <section
             aria-labelledby={headingId}
             className={classNames(
-                "mx-auto min-h-[calc(100vh-7rem)] max-w-[82.5rem] overflow-hidden rounded-shell border border-outline-soft bg-surface p-4 shadow-shell sm:p-5",
+                "mx-auto min-h-[calc(100vh-7rem)] max-w-[102.5rem] overflow-hidden rounded-shell border border-outline-soft bg-surface shadow-shell",
                 className,
             )}
         >
             <header
                 className={classNames(
-                    "mb-5 flex flex-col gap-4 border-b border-outline-soft pb-4",
+                    "flex flex-col gap-3 border-b border-outline-soft px-5 py-3.5 sm:px-6 lg:px-7",
                     !hasHeaderContent && "lg:flex-row lg:items-start lg:justify-between",
                 )}
             >
                 <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                         {eyebrow === undefined ? null : (
-                            <p className="font-mono text-label font-medium uppercase text-muted">
-                                {eyebrow}
-                            </p>
+                            <p className="font-mono text-label font-medium text-muted">{eyebrow}</p>
                         )}
-                        <h1
-                            className="mt-1 font-display text-display font-semibold text-foreground"
-                            id={headingId}
-                        >
-                            {title}
-                        </h1>
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+                            <h1
+                                className="font-display text-display font-semibold text-foreground"
+                                id={headingId}
+                            >
+                                {title}
+                            </h1>
+                            {hasInlineHeaderContent ? headerContent : null}
+                        </div>
                         {description === undefined ? null : (
                             <p className="mt-2 max-w-3xl text-compact text-muted">{description}</p>
                         )}
@@ -59,9 +63,9 @@ export function PageFrame({
                         <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
                     )}
                 </div>
-                {headerContent}
+                {hasHeaderContent && !hasInlineHeaderContent ? headerContent : null}
             </header>
-            {children}
+            <div className="px-4 py-4 sm:px-5 lg:px-6">{children}</div>
         </section>
     );
 }

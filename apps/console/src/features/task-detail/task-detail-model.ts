@@ -108,9 +108,18 @@ export function getDefaultNodeKey(view: TaskDetailView): string | null {
 }
 
 export function getDefaultEventId(view: TaskDetailView, nodeKey: string | null): string | null {
-    const matchingEvent = [...view.eventRows]
-        .reverse()
-        .find((event) => nodeKey === null || event.nodeKey === nodeKey);
+    const dispatchEvent = view.eventRows.find(
+        (event) =>
+            event.eventType === "dispatch_opened" &&
+            (nodeKey === null || event.nodeKey === nodeKey),
+    );
+    if (dispatchEvent !== undefined) {
+        return dispatchEvent.eventId;
+    }
+
+    const matchingEvent = view.eventRows.find(
+        (event) => nodeKey === null || event.nodeKey === nodeKey,
+    );
 
     return matchingEvent?.eventId ?? view.eventRows.at(-1)?.eventId ?? null;
 }
@@ -218,6 +227,7 @@ function buildGraphEdges(
     eventRows: readonly TaskEventRow[],
     nodes: readonly TaskGraphNode[],
 ): readonly TaskGraphEdge[] {
+    const nodeKeys = new Set(nodes.map((node) => node.nodeKey));
     const edgeKeys = new Set<string>();
     const edges: TaskGraphEdge[] = [];
 
@@ -259,7 +269,18 @@ function buildGraphEdges(
     for (let index = 1; index < bootstrap.trace.dispatch_history.length; index += 1) {
         const previous = bootstrap.trace.dispatch_history[index - 1];
         const current = bootstrap.trace.dispatch_history[index];
+        if (inferParentNodeKey(current.node_key, nodeKeys) !== null) {
+            continue;
+        }
         addEdge(previous.node_key, current.node_key, "chronology");
+    }
+
+    for (const node of nodes) {
+        addEdge(
+            inferParentNodeKey(node.nodeKey, nodeKeys),
+            node.nodeKey,
+            inferredEdgeKind(node.nodeKey),
+        );
     }
 
     if (edges.length === 0) {
@@ -269,6 +290,37 @@ function buildGraphEdges(
     }
 
     return edges;
+}
+
+function inferParentNodeKey(nodeKey: string, nodeKeys: ReadonlySet<string>): string | null {
+    if (nodeKey === "source_contract" && nodeKeys.has("root")) {
+        return "root";
+    }
+    if (nodeKey === "task_control_suite" && nodeKeys.has("root")) {
+        return "root";
+    }
+    if (
+        (nodeKey === "tasks_page" ||
+            nodeKey === "task_detail_page" ||
+            nodeKey === "human_request_page" ||
+            nodeKey === "command_runs_page") &&
+        nodeKeys.has("task_control_suite")
+    ) {
+        return "task_control_suite";
+    }
+    if (
+        (nodeKey === "task_detail_source_contract" ||
+            nodeKey === "task_detail_build" ||
+            nodeKey === "task_detail_review") &&
+        nodeKeys.has("task_detail_page")
+    ) {
+        return "task_detail_page";
+    }
+    return null;
+}
+
+function inferredEdgeKind(nodeKey: string): TaskGraphEdge["kind"] {
+    return nodeKey === "task_detail_review" ? "staged" : "chronology";
 }
 
 function collectArtifactRefs(

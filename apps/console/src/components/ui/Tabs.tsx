@@ -73,7 +73,7 @@ export function Tabs<Value extends string>({ label, onChange, tabs, value }: Tab
                             "inline-flex h-9 items-center justify-center rounded-control border px-3 text-utility font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-55",
                             isSelected
                                 ? "border-primary/25 bg-primary-soft text-primary-foreground"
-                                : "border-transparent bg-transparent text-muted hover:bg-surface-muted hover:text-foreground",
+                                : "border-transparent bg-surface-muted text-muted hover:bg-surface-high hover:text-foreground",
                         )}
                         disabled={tab.disabled}
                         key={tab.value}

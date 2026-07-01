@@ -10,6 +10,10 @@ import {
 } from "../../tests/fixtures/console-api";
 import { createDefinitionSummaryList } from "../../tests/fixtures/definitions";
 import {
+    TASK_DETAIL_TASK_ID,
+    createTaskDetailMockScenario,
+} from "../../tests/fixtures/task-detail";
+import {
     SECOND_TASK_START_WORKFLOW_KEY,
     TASK_START_WORKFLOW_KEY,
     createTaskStartWorkflowDetail,
@@ -36,9 +40,32 @@ export async function enableMockApi(): Promise<void> {
 }
 
 function createDevMockScenario() {
+    const taskDetailScenario = createTaskDetailMockScenario();
     const scenario = createConsoleMockScenario({
+        commandRunList: taskDetailScenario.commandRunList,
+        humanRequestList: taskDetailScenario.humanRequestList,
+        snapshot: taskDetailScenario.snapshot,
+        taskEvents: taskDetailScenario.taskEvents,
+        taskEventStream: taskDetailScenario.taskEventStream,
         taskList: createRuntimeFlowSummaryList(
-            [...createMixedRuntimeTaskRows(), createLongRuntimeTaskRow()],
+            [
+                createRuntimeFlowSummary({
+                    active_attempt_id: taskDetailScenario.taskRead.active_attempt_id,
+                    active_flow_revision_id: taskDetailScenario.taskRead.active_flow_revision_id,
+                    current_node_key: taskDetailScenario.taskRead.current_node_key,
+                    status: taskDetailScenario.taskRead.status,
+                    task_id: TASK_DETAIL_TASK_ID,
+                    task_summary: taskDetailScenario.taskRead.task_summary,
+                    task_title: taskDetailScenario.taskRead.task_title,
+                    updated_at: taskDetailScenario.taskRead.updated_at,
+                    workflow_key: taskDetailScenario.taskRead.workflow_key,
+                    workflow_manifest_ref: taskDetailScenario.taskRead.workflow_manifest_ref,
+                }),
+                ...createMixedRuntimeTaskRows().filter(
+                    (task) => task.task_id !== "task-runtime-copy-refresh",
+                ),
+                createLongRuntimeTaskRow(),
+            ],
             "cursor-page-2",
         ),
         taskListPages: {
@@ -52,6 +79,8 @@ function createDevMockScenario() {
                 }),
             ]),
         },
+        taskRead: taskDetailScenario.taskRead,
+        trace: taskDetailScenario.trace,
     });
 
     return {

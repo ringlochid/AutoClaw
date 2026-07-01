@@ -1,6 +1,7 @@
-import { IdRefText, StatePanel, StatusChip, Surface, TimestampText } from "../../components/ui";
+import { StatePanel } from "../../components/ui";
 import { classNames } from "../../lib/classNames";
 import type { TaskEventRow } from "./task-detail-model";
+import { TaskDetailTimestamp, titleCaseNodeLabel } from "./task-detail-summary";
 
 export function TaskEventLane({
     events,
@@ -14,65 +15,185 @@ export function TaskEventLane({
     readonly selectedEventId: string | null;
 }) {
     return (
-        <Surface className="min-w-0" label="Events" title="Task event chronology">
+        <section className="min-w-0 overflow-hidden rounded-[22px] border border-outline-soft bg-surface-low shadow-panel">
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-soft px-4 py-3 sm:px-5">
+                <p className="font-mono text-label font-medium text-muted">Events</p>
+            </header>
             {events.length === 0 ? (
-                <StatePanel
-                    summary="No persisted task-event history was returned for the current snapshot anchor."
-                    title="No event history"
-                    tone="empty"
-                />
+                <div className="px-4 py-4">
+                    <StatePanel
+                        summary="No persisted task-event history was returned for the current snapshot anchor."
+                        title="No event history"
+                        tone="empty"
+                    />
+                </div>
             ) : (
                 <ol
                     aria-label="Task events"
-                    className="max-h-[38rem] space-y-2 overflow-y-auto pr-1"
+                    className="grid max-h-[560px] min-w-0 gap-2.5 overflow-x-hidden overflow-y-auto px-4 py-4 sm:max-h-[630px] xl:max-h-[689px]"
                 >
                     {events.map((event) => (
-                        <li key={event.eventId}>
-                            <button
-                                aria-pressed={event.eventId === selectedEventId}
-                                className={classNames(
-                                    "w-full rounded-card border p-3 text-left shadow-hairline transition-colors hover:border-primary/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                                    event.eventId === selectedEventId
-                                        ? "border-primary/40 bg-primary-soft"
-                                        : "border-outline-soft bg-surface-low",
-                                )}
-                                onClick={() => {
-                                    onSelectEvent(event.eventId);
-                                }}
-                                onDoubleClick={onOpenDetail}
-                                type="button"
-                            >
-                                <div className="grid min-w-0 gap-2">
-                                    <div className="min-w-0">
-                                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                            <StatusChip
-                                                className="max-w-full min-w-0 break-all"
-                                                tone={event.tone}
-                                                withDot
-                                            >
-                                                {event.eventType}
-                                            </StatusChip>
-                                            {event.nodeKey === null ? null : (
-                                                <IdRefText
-                                                    className="max-w-40 truncate"
-                                                    value={event.nodeKey}
-                                                />
-                                            )}
-                                        </div>
-                                        <p className="mt-2 line-clamp-2 text-compact text-foreground">
-                                            {event.payloadSummary}
-                                        </p>
-                                    </div>
-                                    <TimestampText
-                                        className="text-muted"
-                                        value={event.occurredAt}
-                                    />
-                                </div>
-                            </button>
-                        </li>
+                        <TaskEventItem
+                            event={event}
+                            isSelected={event.eventId === selectedEventId}
+                            key={event.eventId}
+                            onOpenDetail={onOpenDetail}
+                            onSelectEvent={onSelectEvent}
+                        />
                     ))}
                 </ol>
             )}
-        </Surface>
+        </section>
     );
+}
+
+function TaskEventItem({
+    event,
+    isSelected,
+    onOpenDetail,
+    onSelectEvent,
+}: {
+    readonly event: TaskEventRow;
+    readonly isSelected: boolean;
+    readonly onOpenDetail: () => void;
+    readonly onSelectEvent: (eventId: string) => void;
+}) {
+    const detailRows = isSelected ? eventInlineRows(event) : [];
+
+    return (
+        <li>
+            <button
+                aria-pressed={isSelected}
+                className={classNames(
+                    "min-h-[74px] w-full rounded-[16px] border px-4 py-3.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                    isSelected
+                        ? "border-primary/20 bg-active"
+                        : "border-outline-soft bg-surface-low hover:border-primary/25",
+                )}
+                onClick={() => {
+                    onSelectEvent(event.eventId);
+                }}
+                onDoubleClick={onOpenDetail}
+                type="button"
+            >
+                <div className="flex min-w-0 items-start gap-3">
+                    <span
+                        aria-hidden="true"
+                        className={classNames(
+                            "mt-1 size-3.5 shrink-0 rounded-full border-4 border-surface",
+                            eventDotClass(event.eventType),
+                        )}
+                    />
+                    <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <p
+                                    className={classNames(
+                                        "break-words font-display text-utility font-semibold",
+                                        isSelected ? "text-primary-foreground" : "text-foreground",
+                                    )}
+                                >
+                                    {eventLabel(event.eventType)}
+                                </p>
+                                {event.nodeKey === null ? null : (
+                                    <p className="break-all font-mono text-utility text-muted">
+                                        {titleCaseNodeLabel(event.nodeKey)}
+                                    </p>
+                                )}
+                            </div>
+                            <TaskDetailTimestamp
+                                className="shrink-0 font-mono text-utility text-muted"
+                                value={event.occurredAt}
+                                variant="time"
+                            />
+                        </div>
+                        {detailRows.length === 0 ? null : (
+                            <div className="grid gap-3 rounded-[16px] border border-outline-soft bg-surface px-4 py-3">
+                                {detailRows.map((row) => (
+                                    <div className="min-w-0" key={row.label}>
+                                        <p className="font-mono text-label font-medium text-muted">
+                                            {row.label}
+                                        </p>
+                                        <p className="mt-1 break-all font-mono text-utility text-foreground">
+                                            {row.value}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </button>
+        </li>
+    );
+}
+
+function eventDotClass(eventType: TaskEventRow["eventType"]): string {
+    if (eventType.startsWith("command_run")) {
+        return "bg-primary";
+    }
+    if (eventType.startsWith("human_request")) {
+        return "bg-warning";
+    }
+    if (eventType === "checkpoint_recorded" || eventType === "boundary_accepted") {
+        return "bg-success";
+    }
+    if (eventType.startsWith("child_assignment") || eventType === "structural_revision_adopted") {
+        return "bg-[#8b5cf6]";
+    }
+    if (eventType === "task_cancelled") {
+        return "bg-danger";
+    }
+    if (eventType === "task_started") {
+        return "bg-outline";
+    }
+    return "bg-foreground";
+}
+
+function eventLabel(eventType: TaskEventRow["eventType"]): string {
+    const labelByType: Partial<Record<TaskEventRow["eventType"], string>> = {
+        boundary_accepted: "Boundary accepted",
+        checkpoint_recorded: "Checkpoint recorded",
+        child_assignment_committed: "Child assignment committed",
+        child_assignment_staged: "Child assignment staged",
+        dispatch_opened: "Dispatch opened",
+        provider_event_normalized: "Provider event normalized",
+        provider_resolution_recorded: "Provider resolution recorded",
+        structural_revision_adopted: "Structural revision adopted",
+        task_started: "Task started",
+    };
+    return labelByType[eventType] ?? titleCaseNodeLabel(eventType);
+}
+
+function eventInlineRows(
+    event: TaskEventRow,
+): readonly { readonly label: string; readonly value: string }[] {
+    const payload = event.record.payload;
+    const keysByType: Partial<Record<TaskEventRow["eventType"], readonly string[]>> = {
+        boundary_accepted: ["boundary", "resulting_flow_status"],
+        checkpoint_recorded: ["checkpoint_kind", "outcome"],
+        dispatch_opened: ["delivery_status", "control_state"],
+        provider_event_normalized: ["event_kind", "provider_event_name"],
+        provider_resolution_recorded: ["requested_provider", "resolved_provider"],
+        task_started: ["workflow_key", "initial_node_key"],
+    };
+    const keys = keysByType[event.eventType] ?? [];
+    return keys.flatMap((key) => {
+        const value = readDisplayString(payload, key);
+        return value === null ? [] : [{ label: key.replaceAll("_", " "), value }];
+    });
+}
+
+function readDisplayString(value: unknown, key: string): string | null {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return null;
+    }
+    const item = (value as Record<string, unknown>)[key];
+    if (typeof item === "string" && item.trim().length > 0) {
+        return item;
+    }
+    if (typeof item === "number" || typeof item === "boolean") {
+        return String(item);
+    }
+    return null;
 }

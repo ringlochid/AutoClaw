@@ -9,8 +9,7 @@ import { useTaskDetailController, type TaskDetailController } from "./task-detai
 import { TaskEventLane } from "./task-detail-event-lane";
 import { TaskGraph } from "./task-detail-graph";
 import { TaskDetailModal } from "./task-detail-modal";
-import { SiblingHandoffs } from "./task-detail-sibling-handoffs";
-import { TaskActionControls, TaskSummaryHeader } from "./task-detail-summary";
+import { TaskActionControls, TaskDetailEyebrow, TaskSummaryHeader } from "./task-detail-summary";
 
 export function TaskDetailPage() {
     const { taskId } = useParams();
@@ -45,7 +44,7 @@ function TaskDetailUnavailableState({
         >
             {controller.isLoading ? (
                 <StatePanel
-                    summary="Reading task, snapshot, trace, event history, and sibling handoffs."
+                    summary="Reading task, snapshot, trace, and event history."
                     title="Loading Task Detail"
                     tone="loading"
                 />
@@ -105,13 +104,13 @@ function TaskDetailLoadedState({ controller }: { readonly controller: TaskDetail
                     actionError={controller.actionError}
                     actionPending={controller.actionPending}
                     onAction={controller.taskAction}
-                    onRefresh={controller.refresh}
                     view={view}
                 />
             }
             description={view.task.summary}
-            eyebrow="Task Detail"
-            headerContent={<TaskSummaryHeader controller={controller} view={view} />}
+            eyebrow={<TaskDetailEyebrow view={view} />}
+            headerContent={<TaskSummaryHeader view={view} />}
+            headerContentPlacement="title-inline"
             title={view.task.title}
         >
             <div className="space-y-4">
@@ -141,17 +140,13 @@ function TaskDetailLoadedState({ controller }: { readonly controller: TaskDetail
                         tone="stale"
                     />
                 ) : null}
-                <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+                <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_348px] xl:grid-cols-[minmax(0,1fr)_392px]">
                     <TaskGraph
                         edges={view.graphEdges}
                         nodes={view.graphNodes}
                         onOpenDetail={handleOpenDetail}
-                        onReset={controller.resetGraph}
                         onSelectNode={controller.selectNode}
-                        onZoomIn={controller.zoomIn}
-                        onZoomOut={controller.zoomOut}
                         selectedNodeKey={controller.selectedNodeKey}
-                        zoomPercent={controller.zoomPercent}
                     />
                     <div className="grid min-w-0 gap-4">
                         <TaskEventLane
@@ -160,7 +155,6 @@ function TaskDetailLoadedState({ controller }: { readonly controller: TaskDetail
                             onSelectEvent={controller.selectEvent}
                             selectedEventId={controller.selectedEventId}
                         />
-                        <SiblingHandoffs taskId={view.task.taskId} view={view} />
                     </div>
                 </div>
             </div>
@@ -171,6 +165,7 @@ function TaskDetailLoadedState({ controller }: { readonly controller: TaskDetail
                     onTabChange={controller.setDetailTab}
                     tab={controller.tab}
                     taskId={view.task.taskId}
+                    view={view}
                 />
             ) : null}
         </PageFrame>

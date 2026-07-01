@@ -9,7 +9,7 @@
     --ac-outline-soft: #e5e7eb;
     --ac-foreground: #1a1a1a;
     --ac-muted: #4b5563;
-    --ac-primary: #3b82f6;
+    --ac-primary: #2563eb;
     --ac-primary-soft: #eff6ff;
     --ac-primary-foreground: #1e40af;
     --ac-active: #e0e7ff;
@@ -34,8 +34,8 @@
     --ac-text-body-line-height: 1.5rem;
     --ac-text-display: 1.5rem;
     --ac-text-display-line-height: 2rem;
-    --ac-space-page-inline: clamp(1rem, 2.2vw, 2rem);
-    --ac-space-page-block: clamp(1.25rem, 2.6vw, 2.5rem);
+    --ac-space-page-inline: 24px;
+    --ac-space-page-block: 24px;
     --ac-size-control: 2.5rem;
     --ac-size-icon-control: 2.25rem;
     --ac-radius-xs: 4px;
