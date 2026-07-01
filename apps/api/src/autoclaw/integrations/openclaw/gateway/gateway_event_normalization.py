@@ -49,10 +49,10 @@ def normalize_agent_gateway_event_name(payload: dict[str, object]) -> str | None
             return "tool.call.started"
         if phase in {"delta", "update"}:
             return "tool.call.delta"
-        if phase == "end" or status == "completed":
-            return "tool.call.completed"
         if status in {"failed", "blocked"}:
             return "tool.call.failed"
+        if phase == "end" or status == "completed":
+            return "tool.call.completed"
         return "tool.call.delta"
     if stream == "error":
         return "run.failed"

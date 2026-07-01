@@ -223,6 +223,9 @@ Rules:
 - `event_hash` and `prev_event_hash` form the tamper-evident chain required by the capability, security, and audit contract
 - `event_hash` is computed over the canonical serialized event record with `event_hash` excluded and `prev_event_hash` included
 - task events are authoritative for UI replay, audit sequence, and "what changed"; they do not replace controller source rows for currentness or legality
+- task events are not a raw adapter notification archive; noisy adapter fragments must be
+  pruned or coalesced before persistence unless they become accepted controller progress,
+  terminal state, or another owned source row update
 
 ## Event backfill envelope
 

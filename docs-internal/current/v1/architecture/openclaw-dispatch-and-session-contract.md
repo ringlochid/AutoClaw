@@ -180,6 +180,7 @@ Current shipped contrast:
 - the live Gateway handle binds event buffering to the accepted `runId` plus matching `sessionKey`; unscoped, pre-acceptance, or different-run socket frames are dropped before they consume the dispatch event queue
 - current code accepts current OpenClaw raw labels such as `assistant.delta`, `assistant.message`, optional `thinking.delta`, `tool.call.started|completed|failed`, and `run.completed|failed|cancelled|timed_out`, while still tolerating older `response.*` and bare `tool.call` labels as compatibility input
 - `tool.call.delta` frames are dropped before provider-event storage because they are stream chunks, not controller runtime truth
+- retained tool lifecycle frames are appended to provider-event and task-event storage only when they also refresh `last_provider_signal_at`; stale, too-frequent, or timestamp-missing tool frames are pruned without storage
 
 Current controller does not treat those hints as execution truth. Checkpoints, boundaries, current dispatch truth, and current session authority still outrank provider-side transport activity.
 

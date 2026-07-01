@@ -158,6 +158,7 @@ Rules:
 - `last_provider_signal_at` stores provider-native occurrence time for normalized provider progress-or-terminal events after controller-owned ingest commit and stale-replay pruning, not unrelated buffered traffic, raw socket receipt, or controller ingest time
 - current raw labels may include `assistant.delta`, `assistant.message`, optional `thinking.delta`, `tool.call.started|completed|failed`, and `run.completed|failed|cancelled|timed_out`; older `response.*` and bare `tool.call` labels remain compatibility input only
 - `tool.call.delta` frames are stream chunks and should be dropped before provider-event storage
+- retained tool lifecycle frames are stored only when provider-time gap and ingest-lag pruning accept them as a new provider-signal timestamp
 
 ## Recovery And Send-Mode Boundary
 

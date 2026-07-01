@@ -140,6 +140,8 @@ def test_normalize_observed_event_drops_tool_call_delta() -> None:
             "tool_event",
             "tool.call.completed",
         ),
+        ("tool", {"phase": "end", "status": "failed"}, False, "tool_event", "tool.call.failed"),
+        ("tool", {"phase": "end", "status": "blocked"}, False, "tool_event", "tool.call.failed"),
         ("lifecycle", {"phase": "end"}, False, "response_completed", "run.completed"),
         (
             "lifecycle",
@@ -360,12 +362,11 @@ async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_ev
                 runtime.session_factory,
                 task_id=task_id,
                 predicate=lambda current: (
-                    len(current.provider_events) >= 5
-                    and [event.event_kind for event in current.provider_events[:5]]
+                    len(current.provider_events) >= 4
+                    and [event.event_kind for event in current.provider_events[:4]]
                     == [
                         "accepted",
                         "first_data",
-                        "tool_event",
                         "output_delta",
                         "response_completed",
                     ]
@@ -378,16 +379,14 @@ async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_ev
             )
 
     assert snapshot.delivery_state is not None
-    assert [event.event_source for event in snapshot.provider_events[:5]] == [
+    assert [event.event_source for event in snapshot.provider_events[:4]] == [
         "adapter",
         "provider",
         "provider",
         "provider",
-        "provider",
     ]
-    assert [event.provider_event_name for event in snapshot.provider_events[1:5]] == [
+    assert [event.provider_event_name for event in snapshot.provider_events[1:4]] == [
         "assistant.delta",
-        "tool.call.completed",
         "assistant.message",
         "run.completed",
     ]
@@ -421,17 +420,15 @@ def _assert_current_openclaw_task_events(
     task_events: list[TaskEventModel],
     snapshot: DispatchGatewaySnapshot,
 ) -> None:
-    assert [event.event_source for event in task_events[:5]] == [
+    assert [event.event_source for event in task_events[:4]] == [
         "adapter",
         "provider",
         "provider",
         "provider",
-        "provider",
     ]
-    assert [event.payload["event_kind"] for event in task_events[:5]] == [
+    assert [event.payload["event_kind"] for event in task_events[:4]] == [
         "accepted",
         "first_data",
-        "tool_event",
         "output_delta",
         "response_completed",
     ]
@@ -452,6 +449,14 @@ async def _send_openclaw_tool_delta_noise_stream(connection: ServerConnection) -
         request_id=request["id"],
         run_id=run_id,
         accepted_at=event_base - timedelta(seconds=1),
+    )
+    await _send_current_openclaw_event(
+        connection,
+        stream="tool",
+        data={"phase": "start", "status": "running"},
+        run_id=run_id,
+        session_key=request["params"]["sessionKey"],
+        occurred_at=(event_base + timedelta(milliseconds=500)).isoformat(),
     )
     for offset_seconds in range(1, 6):
         await _send_current_openclaw_event(
@@ -485,7 +490,7 @@ async def _send_openclaw_tool_delta_noise_stream(connection: ServerConnection) -
 
 
 @pytest.mark.asyncio
-async def test_runtime_ingest_drops_tool_call_delta_before_provider_event_storage(
+async def test_runtime_ingest_prunes_tool_events_that_do_not_refresh_provider_signal(
     tmp_path: Path,
 ) -> None:
     task_id = "task_gateway_drops_tool_call_delta"
@@ -514,7 +519,8 @@ async def test_runtime_ingest_drops_tool_call_delta_before_provider_event_storag
 
     provider_event_names = [event.provider_event_name for event in snapshot.provider_events]
     assert "tool.call.delta" not in provider_event_names
-    assert provider_event_names == [None, "tool.call.completed", "run.completed"]
+    assert "tool.call.completed" not in provider_event_names
+    assert provider_event_names == [None, "tool.call.started", "run.completed"]
 
 
 async def _send_stale_openclaw_replay_stream(connection: ServerConnection) -> None:
@@ -573,7 +579,7 @@ async def test_runtime_ingest_keeps_stale_replay_out_of_provider_freshness(
                 task_id=task_id,
                 predicate=lambda current: (
                     current.dispatch.delivery_status == "provider_completed"
-                    and len(current.provider_events) >= 3
+                    and len(current.provider_events) >= 2
                 ),
                 max_cycles=200,
             )
@@ -581,3 +587,7 @@ async def test_runtime_ingest_keeps_stale_replay_out_of_provider_freshness(
     assert snapshot.delivery_state is not None
     assert snapshot.dispatch.delivery_status == "provider_completed"
     assert snapshot.delivery_state.last_provider_signal_at is None
+    assert [event.provider_event_name for event in snapshot.provider_events] == [
+        None,
+        "run.completed",
+    ]

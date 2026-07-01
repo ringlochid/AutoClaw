@@ -67,6 +67,11 @@ When an adapter offers streamed events:
 
 - raw adapter ordering is input detail only
 - controller event ordering is commit order of normalized controller records
+- high-volume adapter notifications, progress fragments, and tool-output fragments become
+  controller events only when the controller accepts them as durable progress or terminal
+  state
+- adapter notifications that do not advance a controller-owned signal must be pruned or
+  coalesced before `task_event` storage rather than replayed as unbounded rows
 - adapter sequence numbers may survive as secondary debug detail only
 - reconnect, replay, and dedupe for control UI/API reads must use controller task-event ids, not adapter-local cursors alone
 

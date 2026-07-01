@@ -47,7 +47,8 @@ async def ingest_dispatch_events(runtime: ActiveOpenClawDispatchRuntime) -> None
             normalized = normalize_observed_event(runtime, event)
             if normalized is None or event_is_duplicate(runtime, event):
                 continue
-            await commit_normalized_event(runtime, normalized)
+            if not await commit_normalized_event(runtime, normalized):
+                continue
             if normalized.should_advance_liveness:
                 runtime.has_seen_provider_progress = True
             if normalized.event_kind in TERMINAL_DELIVERY_STATUS:
@@ -70,13 +71,23 @@ async def ingest_dispatch_events(runtime: ActiveOpenClawDispatchRuntime) -> None
 async def commit_normalized_event(
     runtime: ActiveOpenClawDispatchRuntime,
     normalized: NormalizedOpenClawEvent,
-) -> None:
+) -> bool:
     async with runtime.session_factory() as session:
         dispatch = await session.get(DispatchTurnModel, runtime.dispatch_id)
         delivery_state = await session.get(DispatchDeliveryStateModel, runtime.dispatch_id)
         if not event_matches_runtime(dispatch, delivery_state, runtime):
-            return
+            return False
         committed_at = utc_now()
+        should_advance_freshness = should_advance_provider_freshness(
+            delivery_state=delivery_state,
+            normalized=normalized,
+            committed_at=committed_at,
+        )
+        if should_prune_provider_event_storage(
+            normalized,
+            should_advance_freshness=should_advance_freshness,
+        ):
+            return False
         await append_provider_event(
             session,
             dispatch=dispatch,
@@ -94,6 +105,7 @@ async def commit_normalized_event(
             delivery_state=delivery_state,
             normalized=normalized,
             committed_at=committed_at,
+            should_advance_freshness=should_advance_freshness,
         )
         from autoclaw.runtime.post_commit import (
             commit_runtime_session,
@@ -108,6 +120,7 @@ async def commit_normalized_event(
         )
         await commit_runtime_session(session)
         notify_runtime_effect_runner()
+        return True
 
 
 def event_matches_runtime(
@@ -131,14 +144,11 @@ def update_delivery_state(
     delivery_state: DispatchDeliveryStateModel,
     normalized: NormalizedOpenClawEvent,
     committed_at: datetime,
+    should_advance_freshness: bool,
 ) -> None:
     delivery_state.last_provider_event_kind = normalized.event_kind
     delivery_state.updated_at = committed_at
-    if should_advance_provider_freshness(
-        delivery_state=delivery_state,
-        normalized=normalized,
-        committed_at=committed_at,
-    ):
+    if should_advance_freshness:
         assert normalized.provider_occurred_at is not None
         delivery_state.last_provider_signal_at = _as_utc(normalized.provider_occurred_at)
     terminal_status = TERMINAL_DELIVERY_STATUS.get(normalized.event_kind)
@@ -421,6 +431,14 @@ def should_advance_provider_freshness(
         provider_occurred_at - _as_utc(previous_provider_signal_at)
     ).total_seconds()
     return provider_gap_seconds >= threshold_seconds
+
+
+def should_prune_provider_event_storage(
+    normalized: NormalizedOpenClawEvent,
+    *,
+    should_advance_freshness: bool,
+) -> bool:
+    return normalized.provider_event_name in TOOL_RAW_EVENT_LABELS and not should_advance_freshness
 
 
 def provider_freshness_prune_threshold_seconds() -> float:

@@ -182,6 +182,7 @@ Live event-label note:
 - older `response.*` and bare `tool.call` labels may still arrive as compatibility input during rollout
 - AutoClaw persists only the normalized monitoring enums; the raw label stays bounded debug detail in `provider_event_name`
 - `tool.call.delta` is stream-chunk traffic and is dropped before provider-event storage
+- retained `tool.call.started|completed|failed` lifecycle frames are stored only when provider-time freshness pruning accepts them as a new `last_provider_signal_at`
 
 Protocol-v4 note:
 

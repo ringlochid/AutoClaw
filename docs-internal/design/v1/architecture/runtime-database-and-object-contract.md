@@ -840,7 +840,7 @@ Rules:
 - `last_provider_event_kind` is the latest normalized provider progress-or-terminal kind
 - `last_controller_progress_at` is the latest node semantic write timestamp
 - stale-timeout anchoring uses `accepted_at`, `last_provider_signal_at`, and the latest node semantic write timestamp rather than checkpoint time
-- `tool.call.delta` frames are dropped before provider-event storage; retained tool lifecycle events may only advance `last_provider_signal_at` when provider-time gap and ingest-lag pruning allow it
+- `tool.call.delta` frames are dropped before provider-event storage; retained tool lifecycle events are appended only when provider-time gap and ingest-lag pruning allow them to advance `last_provider_signal_at`
 - raw socket receipt and uncommitted transport buffers are never support-state truth
 - if current code still persists `send_mode` here, that field is current/debt observability only rather than a meaningful live target runtime behavior field
 - accepted-boundary waiting is controller-derived from dispatch truth plus inactivity proof; raw `delivery-state.json` stays `transport_state: accepted` while that wait remains open
