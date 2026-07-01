@@ -25,7 +25,7 @@ Use observability refs only after current runtime state is understood.
 
 ## Waiting on human request
 
-A human request is a typed wait for human judgment. It can be:
+A human request is a controller-visible typed wait for human judgment. It can be:
 
 - `direction`
 - `approval`
@@ -43,10 +43,11 @@ Fix:
 - resolve the pending human request through the control or operator surface
 - answer the request narrowly
 - do not use human requests as status updates or generic chat continuation
+- do not resolve it by editing task-root files or continuing an unrelated chat
 
 ## Waiting on command run
 
-A command run is controller-managed long command work.
+A command run is controller-managed long command work. It is separate from ordinary inline shell use.
 
 Check:
 

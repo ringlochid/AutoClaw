@@ -16,6 +16,8 @@ This repo proves the API-side callback lane plus the mounted MCP surfaces that O
 
 Use this page for shipped AutoClaw behavior. Do not use it as proof for any external client package, publication metadata, or UI component outside this checkout.
 
+The shipped adapter is OpenClaw Gateway. Model/provider routing belongs to OpenClaw for this path; controller-owned assignment, checkpoint, artifact, wait, replan, and closure truth belongs to AutoClaw.
+
 ## Repo-proven integration surfaces
 
 Current callback lane:
@@ -69,6 +71,7 @@ Current auth and session facts visible in this repo:
 - callback and operator auth are enforced at the API layer
 - trusted operator agents should use operator MCP or equivalent operator-authorized backend surfaces
 - humans can act as trusted operators, but their natural surface is the UI over the same operator-authorized backend controls
+- when this page says operator without a qualifier, read it as a trusted external operator agent or operator-authorized client
 
 ## Related pages
 

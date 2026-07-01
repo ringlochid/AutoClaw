@@ -132,6 +132,8 @@ Current non-root node shape is:
 
 `title` is optional node display metadata. `instruction` is optional node-local prompt guidance. `provider_preference`, when present, must be one of `openclaw`, `codex`, or `claude`; omission means runtime resolves through the machine-local default provider.
 
+The current shipped adapter support is OpenClaw Gateway. Use `openclaw` or omit `provider_preference` for the public supported path. `codex` and `claude` are schema-recognized provider preference values, but they require provider-specific support before they are a shipped execution path.
+
 Node `description` is node purpose: why this node exists and what success means. Node `instruction` is node-local guidance: how to behave for this node without replacing role or policy guidance. Mode words such as planning, implementation, review, verification, failure analysis, replan, or release belong in role/policy/node instruction text, not in a separate workflow field.
 
 ### Consume, produce, criteria, and child-default shapes

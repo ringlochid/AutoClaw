@@ -1,10 +1,14 @@
 # Operator model
 
-Operators inspect and steer running tasks. In AutoClaw's intended product model, the primary operator is a trusted OpenClaw agent profile with operator MCP tools.
+Operators inspect and steer running tasks. In AutoClaw docs, `operator` means a trusted external operator agent or operator-authorized client unless the text explicitly says `human operator`.
+
+In AutoClaw's intended product model, the primary operator is a trusted OpenClaw agent profile with operator MCP tools.
 
 A human can also act as an operator, but through a different surface: humans use the UI, while operator agents use tools such as operator MCP. Both act over controller-owned runtime state, but they are not the same user experience or execution lane.
 
 An operator is not the worker, parent/root node, or controller. Operator authority is for trusted runtime steering, not for ordinary node execution.
+
+This distinction matters because node tools and operator tools have different authority. A worker cannot become an operator by writing a note, and a human operator should not act like a hidden worker by manually editing task-root files.
 
 ## Operator forms
 

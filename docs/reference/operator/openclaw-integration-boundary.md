@@ -4,6 +4,8 @@ This page captures the shipped OpenClaw integration boundary that worker clients
 
 The current repo-owned contract is controller-side dispatch, prompt rendering, callback HTTP, mounted node MCP, mounted operator MCP, and runtime readbacks.
 
+OpenClaw Gateway is the shipped adapter for this contract. Other harnesses may map to the same logical node/operator MCP surfaces later, but they are not current package support unless a provider-specific support page says so.
+
 ## Keywords
 
 - OpenClaw integration boundary
@@ -69,6 +71,7 @@ That means the current tree locally proves:
 - prompt and session continuity are dispatch-bound
 - manifest and checkpoint lineage remain controller-owned prompt and runtime truth, not caller-authored write-envelope fields
 - human-request waits and command-run waits are separate capability-driven node operations
+- worker node authority and operator authority stay separate; a node does not become an operator by writing task-root files
 
 ## Current prompt-source rule
 

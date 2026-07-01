@@ -98,7 +98,7 @@ Current support preflight classifies:
 
 Current supported shapes:
 
-- loopback Gateway with token auth
+- loopback Gateway with token auth, the recommended first-run shape
 - loopback Gateway with password auth
 - explicit loopback no-auth Gateway
 
@@ -137,6 +137,12 @@ Current blocked shapes:
 - `openclaw setup` writes only the AutoClaw-owned OpenClaw integration slice.
 - `openclaw doctor --fix` repairs only the AutoClaw-owned OpenClaw integration slice.
 - `service ...` is the managed lifecycle surface; install/start/restart now share the same fail-fast support gate.
+
+## Current adapter support
+
+The shipped runtime adapter is OpenClaw Gateway. AutoClaw does not currently launch Codex, Claude, or other harnesses directly.
+
+For this lane, OpenClaw owns model/provider routing and the agent loop. AutoClaw owns task, flow, assignment, checkpoint, artifact, wait, replan, and closure truth.
 
 ## Related pages
 

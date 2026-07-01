@@ -1,15 +1,28 @@
 # Getting started
 
-This guide is the fastest supported path to a first local AutoClaw install.
+This guide is the fastest supported path to a first local AutoClaw install after OpenClaw is healthy.
+
+If OpenClaw is not installed, configured, or reachable yet, start with [prepare OpenClaw first](prepare-openclaw.md).
 
 ## Recommended v1 lane
 
 Use the published package with `pipx`.
 
 ```bash
+# Prepare OpenClaw before AutoClaw writes integration state.
+openclaw status
+openclaw gateway status
+
+# Install the AutoClaw package.
 pipx install autoclaw
+
+# Guided first-run setup for AutoClaw.
 autoclaw onboard
+
+# Check local config, DB, packaged resources, service, and integration health.
 autoclaw doctor
+
+# Verify the OpenClaw side without writing.
 autoclaw openclaw check
 ```
 
@@ -31,9 +44,16 @@ If you skipped service install during onboarding, either run `autoclaw service i
 If you prefer `uv`, install the same package artifacts with:
 
 ```bash
+# Install the same published AutoClaw package through uv.
 uv tool install autoclaw
+
+# Guided first-run setup for AutoClaw.
 autoclaw onboard
+
+# Check local AutoClaw state.
 autoclaw doctor
+
+# Verify the OpenClaw side without writing.
 autoclaw openclaw check
 ```
 
@@ -48,6 +68,8 @@ Then set `AUTOCLAW_DATABASE_URL` to a real `postgresql+asyncpg://...` URL before
 
 ## What each command does
 
+- `openclaw status` checks OpenClaw before AutoClaw depends on it
+- `openclaw gateway status` checks Gateway service state and reachability
 - `autoclaw onboard` is the guided first-run path
 - `autoclaw doctor` checks local AutoClaw state plus the AutoClaw-owned OpenClaw integration slice
 - `autoclaw openclaw check` verifies the OpenClaw side without writing

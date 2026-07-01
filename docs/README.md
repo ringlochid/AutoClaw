@@ -6,11 +6,12 @@ AutoClaw is a local-first orchestration tool for delegated AI work. Use these do
 
 **Run one task before writing your own workflow.**
 
-1. [Get started](start/getting-started.md)
-2. [Start a task](start/start-a-task.md)
-3. [Inspect a task](start/inspect-a-task.md)
-4. [Learn the orchestration model](concepts/orchestration-model.md)
-5. [Design your first workflow](guides/design-workflows-and-instructions.md)
+1. [Prepare OpenClaw first](start/prepare-openclaw.md)
+2. [Get started](start/getting-started.md)
+3. [Start a task](start/start-a-task.md)
+4. [Inspect a task](start/inspect-a-task.md)
+5. [Learn the orchestration model](concepts/orchestration-model.md)
+6. [Design your first workflow](guides/design-workflows-and-instructions.md)
 
 ## Learn the model
 

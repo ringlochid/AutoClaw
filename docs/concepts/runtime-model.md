@@ -15,7 +15,7 @@ A task usually moves through this loop:
 5. The node records checkpoints, publishes artifacts, opens a wait, stages a child assignment, or returns a boundary.
 6. The controller advances, retries, replans, waits, releases, blocks, or opens the next dispatch.
 
-The controller updates runtime truth first, then writes generated projections such as workflow manifests, assignments, checkpoint files, artifact indexes, and support refs.
+The controller updates runtime truth first, then materializes generated projections such as workflow manifests, assignments, checkpoint files, artifact indexes, and support refs.
 
 ## Core runtime nouns
 
@@ -83,9 +83,11 @@ Use replan for:
 
 Use retry for another attempt at the same assignment shape. Use replan when the shape itself is wrong.
 
-## Readbacks and projections
+## Materialization
 
-Runtime truth lives in controller-owned records. Public files and read models help humans and workers inspect that truth:
+Materialization is the act of projecting controller-owned runtime truth into durable files or read models.
+
+Materialized surfaces are not casual logs. They are the shared workbench for agents, operator agents, human operators, and debugging tools:
 
 - `_runtime/workflow-manifest.md` summarizes the current workflow and refs
 - `_runtime/attempts/<attempt_id>/assignment.md` shows the active assignment
@@ -94,7 +96,13 @@ Runtime truth lives in controller-owned records. Public files and read models he
 - operator snapshot and trace views summarize current state and history
 - support refs expose dispatch files for debugging transport and recovery
 
-If a generated projection and controller readback disagree, prefer controller/runtime truth.
+The direction matters:
+
+```text
+controller truth -> materialized files/readbacks -> agent and operator inspection
+```
+
+Do not reverse it. A task-root file can help a node or operator understand the run, but it does not legalize a state transition by itself. If a generated projection and controller readback disagree, prefer controller/runtime truth.
 
 ## MCP node tools
 

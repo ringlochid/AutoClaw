@@ -17,6 +17,8 @@ Use them when a node cannot safely continue from current evidence:
 
 Do not use human requests for status updates, ordinary progress, hidden chat continuation, or long command work.
 
+Opening a human request creates a controller-visible wait. The task should resume through the control or operator surface after the request is resolved, not through an ad hoc chat reply that bypasses runtime truth.
+
 ## Command-run capability
 
 Command runs are controller-managed long-running command work.
@@ -26,6 +28,8 @@ Use them when command work is expected to exceed a normal dispatch and needs con
 Ordinary commands should run inline and finish comfortably under about two minutes. If that is unlikely, use a command-run-enabled worker policy or redesign the assignment.
 
 Command-run capability is usually a worker policy concern. Parent and root nodes should route long command work to a command-run-enabled worker instead of owning the process themselves.
+
+A command run is not a synonym for any shell command. It is an external wait lane with controller-owned status, logs, terminal result, and cancellation semantics.
 
 ## Budget is separate from capability
 

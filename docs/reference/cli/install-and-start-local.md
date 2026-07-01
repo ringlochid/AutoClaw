@@ -2,6 +2,23 @@
 
 This page defines the supported local install and start paths for the shipped AutoClaw package.
 
+## Prerequisite: supported OpenClaw
+
+The current shipped agent adapter is OpenClaw Gateway. Prepare OpenClaw before running mutating AutoClaw setup commands:
+
+```bash
+# Inspect OpenClaw itself.
+openclaw status
+openclaw doctor --lint
+openclaw update status
+
+# Inspect Gateway reachability and auth capability.
+openclaw gateway status
+openclaw gateway probe
+```
+
+The recommended Gateway shape is loopback with token auth. Password auth and explicit no-auth loopback are supported compatibility shapes. Non-loopback, trusted-proxy, ambiguous auth, unresolved secret refs, and missing auth material are blocked by the AutoClaw support check.
+
 ## Primary supported install lane: `pipx`
 
 Use `pipx` as the default public install path for v1.
@@ -17,8 +34,13 @@ Use `pipx` as the default public install path for v1.
 Postgres package lane for multiple concurrent task runs:
 
 ```bash
+# Install AutoClaw with the async Postgres driver.
 pipx install "autoclaw[postgres]"
+
+# Point AutoClaw at a real Postgres database before onboarding.
 export AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@127.0.0.1:5432/autoclaw
+
+# Onboard and verify the local runtime plus OpenClaw integration.
 autoclaw onboard --install-daemon
 autoclaw doctor
 autoclaw openclaw check
@@ -32,7 +54,10 @@ Use `uv` when you want the same published package artifacts through uv's tool-in
 Default package lane:
 
 ```bash
+# Install the published package through uv.
 uv tool install autoclaw
+
+# Onboard and verify the local runtime plus OpenClaw integration.
 autoclaw onboard --install-daemon
 autoclaw doctor
 autoclaw openclaw check
@@ -42,8 +67,13 @@ autoclaw service status
 Postgres package lane for multiple concurrent task runs:
 
 ```bash
+# Install AutoClaw with the async Postgres driver through uv.
 uv tool install "autoclaw[postgres]"
+
+# Point AutoClaw at a real Postgres database before onboarding.
 export AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@127.0.0.1:5432/autoclaw
+
+# Onboard and verify the local runtime plus OpenClaw integration.
 autoclaw onboard --install-daemon
 autoclaw doctor
 autoclaw openclaw check
@@ -94,3 +124,8 @@ These path notes help contributor/dev checkout ergonomics only. They do not impl
 - when the local SQLite runtime comes from an older incompatible schema, `autoclaw onboard` backs that DB up and reconciles a fresh current-schema runtime DB instead of failing immediately
 - the AutoClaw API port is stored in `server.port`
 - the current shipped v1 loopback-only OpenClaw port is stored through `openclaw.base_url`
+
+## Related pages
+
+- [Prepare OpenClaw first](../../start/prepare-openclaw.md)
+- [OpenClaw integration problems](../../help/openclaw-integration.md)

@@ -16,6 +16,20 @@ No. The fully supported v1 managed-service path is Linux with `systemd --user`. 
 
 Setup and service commands need a reliable local OpenClaw integration. AutoClaw supports loopback Gateway shapes with token auth, password auth, or explicit no-auth loopback. It blocks non-loopback, trusted-proxy, ambiguous, or unresolved-secret shapes instead of writing partial local state.
 
+Use token auth for the clearest first-run path. The other supported auth shapes are compatibility lanes, not the recommended public default.
+
+## Which agent providers does AutoClaw support now?
+
+The current shipped adapter is OpenClaw Gateway. AutoClaw does not directly launch Codex, Claude, or other harnesses in the current package.
+
+Model and provider routing belongs to OpenClaw for this path. AutoClaw owns workflow state, assignments, checkpoints, artifacts, waits, replan, and closure.
+
+## What is materialization?
+
+Materialization means AutoClaw projects controller-owned runtime truth into inspectable files and readbacks, such as the workflow manifest, assignment, latest checkpoint, artifacts, snapshot, trace, and support refs.
+
+Those files are the shared workbench. They are not the source of legal state transitions. If a file and controller readback disagree, controller truth wins.
+
 ## What is the difference between `doctor` and `openclaw check`?
 
 `autoclaw doctor` checks local AutoClaw config, database, packaged resources, managed-service visibility, and the AutoClaw-owned OpenClaw integration slice.
@@ -42,15 +56,15 @@ Current shipped task-compose launch is a launch-body contract, not a separate pu
 
 ## When should a node use a human request?
 
-Use a human request when the node needs typed human judgment: direction, approval, input, or review. Do not use it as a generic status update.
+Use a human request when the node needs typed human judgment: direction, approval, input, or review. It creates a controller-visible wait. Do not use it as a generic status update, hidden chat continuation, or replacement for a checkpoint.
 
 ## When should a node use a command run?
 
-Use a command run for controller-managed long-running command work that needs progress, logs, terminal state, or cancellation. for example tests or model training. Ordinary commands should run inline and finish comfortably under about two minutes.
+Use a command run for controller-managed long-running command work that needs progress, logs, terminal state, or cancellation, for example a large test lane or model-training job. Ordinary commands should run inline and finish comfortably under about two minutes.
 
 ## Is an operator always a human?
 
-No. AutoClaw's intended operator shape is a trusted OpenClaw operator agent profile using operator tools. A human can also act as an operator through UI surfaces, but that is a different surface from an agent using tools.
+No. In AutoClaw docs, `operator` means a trusted external operator agent or operator-authorized client unless the text explicitly says `human operator`. AutoClaw's intended operator shape is a trusted OpenClaw operator agent profile using operator tools. A human can also act as an operator through UI surfaces, but that is a different surface from an agent using tools.
 
 ## When should I use Postgres?
 

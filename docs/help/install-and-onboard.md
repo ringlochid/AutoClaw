@@ -12,6 +12,8 @@ The public v1 install story is:
 
 The fully supported managed-service lane is Linux with `systemd --user`. Ubuntu, Debian, Fedora, Arch, and similar systemd user-service hosts are the intended lane when Python 3.12 is available. Use `autoclaw serve` as the foreground fallback when service management is not available.
 
+The current shipped agent adapter is OpenClaw Gateway. Prepare OpenClaw before running mutating AutoClaw setup commands.
+
 ## `autoclaw` is not found
 
 Check:
@@ -44,7 +46,7 @@ Fix:
 
 - confirm the OpenClaw Gateway base URL is loopback
 - confirm the OpenClaw binary and config path can be resolved
-- use a supported auth shape: token auth, password auth, or explicit no-auth loopback
+- use token auth for the clearest first-run path, or another supported auth shape: password auth or explicit no-auth loopback
 - avoid trusted-proxy, non-loopback, ambiguous auth, or unresolved secret-reference shapes for the v1 path
 
 Continue with [OpenClaw integration problems](openclaw-integration.md) if the support check is blocked.
@@ -87,5 +89,6 @@ If a command needs a missing value in non-interactive mode, pass the value expli
 ## Related pages
 
 - [Getting started](../start/getting-started.md)
+- [Prepare OpenClaw first](../start/prepare-openclaw.md)
 - [CLI surface and config precedence](../reference/cli/cli-surface-and-config-precedence.md)
 - [CLI support checks and self-contained setup](../reference/cli/cli-fast-fail-and-self-contained-report.md)

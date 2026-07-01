@@ -53,7 +53,7 @@ Runtime nouns describe one launched task:
 - **Wait:** controller pause caused by a human request or command run.
 - **Replan:** controller-approved structural change to the active flow.
 
-Generated task-root files such as manifest, assignment, checkpoint, and artifacts are projections over controller-owned runtime records.
+Generated task-root files such as manifest, assignment, checkpoint, and artifacts are materialized projections over controller-owned runtime records. They make runtime truth readable; they do not replace controller truth.
 
 ## Node kinds
 
