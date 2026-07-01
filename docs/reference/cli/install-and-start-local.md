@@ -14,7 +14,7 @@ Use `pipx` as the default public install path for v1.
 6. Start the managed Linux user service: `autoclaw service start`
 7. Optional foreground host-proof path: `autoclaw serve`
 
-Postgres package lane:
+Postgres package lane for multiple concurrent task runs:
 
 ```bash
 pipx install "autoclaw[postgres]"
@@ -39,7 +39,7 @@ autoclaw openclaw check
 autoclaw service status
 ```
 
-Postgres package lane:
+Postgres package lane for multiple concurrent task runs:
 
 ```bash
 uv tool install "autoclaw[postgres]"
@@ -77,7 +77,8 @@ These path notes help contributor/dev checkout ergonomics only. They do not impl
 
 ## Support boundary
 
-- the fully supported v1 managed-service path is Linux `systemd --user`
+- the fully supported v1 managed-service path is Linux with `systemd --user`
+- distro support is capability-based: Ubuntu, Debian, Fedora, Arch, and similar systemd user-service hosts are the intended lane when Python 3.12 and user services are available
 - `autoclaw service install|start|stop|restart|status` should be taught as Linux-first v1 behavior
 - macOS `launchd` and Windows Scheduled Task support are planned follow-on work, not shipped v1 parity
 - `autoclaw serve` remains the foreground fallback for local host proof and debugging

@@ -123,6 +123,7 @@ def test_packaged_seed_tree_contains_expected_definition_files() -> None:
         "workflows/delivery_batch.yaml",
         "workflows/planning_only.yaml",
         "workflows/project_management_delivery.yaml",
+        "workflows/topic_research_brief.yaml",
     }
 
 

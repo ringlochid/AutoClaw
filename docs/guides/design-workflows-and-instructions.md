@@ -88,7 +88,7 @@ Use each authored object for one kind of truth.
 | Role | reusable specialist lens and mode posture | one task's scope, paths, secrets, or launch detail |
 | Policy | authority, budgets, capabilities, retry and closure guardrails | role identity or node tree |
 | Workflow | node tree, evidence path, criteria, node missions, stable artifacts | hidden runtime state or live registry truth |
-| Task-compose | one concrete task launch, selected workflow, roots, task instruction | reusable doctrine |
+| Task-compose | one concrete task launch, selected workflow, optional roots, task instruction | reusable doctrine |
 
 The simple memory model:
 

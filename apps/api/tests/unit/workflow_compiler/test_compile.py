@@ -410,6 +410,14 @@ def test_compile_delivery_batch_workflow_normalizes_parent_and_worker_edges() ->
                 "publish_delivery_plan",
             ],
         ),
+        (
+            "topic_research_brief",
+            "topic-research-brief",
+            [
+                "root",
+                "research_topic",
+            ],
+        ),
     ],
 )
 def test_compile_new_workflow_archetype_seed_smoke(

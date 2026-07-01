@@ -10,7 +10,7 @@ No. Editable checkout is the contributor/dev lane. The public v1 install story i
 
 ## Is managed-service support cross-platform in v1?
 
-No. The fully supported v1 managed-service path is Linux `systemd --user`. macOS and Windows service-manager parity are later work.
+No. The fully supported v1 managed-service path is Linux with `systemd --user`. Ubuntu, Debian, Fedora, Arch, and similar systemd user-service hosts are the intended lane when Python 3.12 is available. macOS and Windows can use the foreground `autoclaw serve` path, but native service-manager parity is later work.
 
 ## Why does AutoClaw require a supported OpenClaw shape before setup?
 
@@ -34,7 +34,7 @@ Write your own workflow when the automation has its own purpose, evidence path, 
 
 A workflow is reusable definition truth. It owns the node tree, durable inputs, outputs, and criteria.
 
-Task-compose is one launch input. It names one task, selects a workflow, provides task-specific instruction, and binds roots such as `workspace` and `context`.
+Task-compose is one launch input. It names one task, selects a workflow, provides task-specific instruction, and can bind roots such as `workspace` and `context`. If roots are omitted, AutoClaw uses task-owned defaults.
 
 ## Why does task start use `POST /tasks/start` instead of a separate task-compose route?
 

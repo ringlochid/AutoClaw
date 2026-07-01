@@ -25,4 +25,4 @@ The shipped examples teach valid shapes. Your definition set should still be pur
 - Does the policy budget match root/parent/worker authority?
 - Does the workflow evidence path fit your task?
 - Are required tools available in your harness?
-- Does task-compose bind the right workspace and context roots?
+- Does task-compose omit roots intentionally, or bind the right workspace and context roots?

@@ -1,15 +1,15 @@
 # Workspace model
 
-Task start binds authored roots into real host paths. That binding is part of the task-compose launch input.
+Task start resolves authored roots into real host paths. Explicit bindings are part of task-compose launch input, but roots are optional.
 
 ## Root kinds
 
-Current task-compose input has two authored roots:
+Current task-compose input can bind two authored roots:
 
 - `workspace`
 - `context`
 
-Each root can choose one of three modes:
+If roots are omitted, AutoClaw uses task-owned default paths for both roots. Each explicit root can choose one of three modes:
 
 - `ensure_task_default`
 - `ensure_host_path`

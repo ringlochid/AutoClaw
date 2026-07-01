@@ -58,7 +58,7 @@ This list reflects the shipped CLI surface.
 ### Service
 
 - `service render` prints a user service unit from the packaged template
-- on the current shipped checkout, the managed service implementation is Linux `systemd --user`
+- on the current shipped checkout, the managed service implementation is Linux with `systemd --user`
 - `service install` fail-fast checks OpenClaw support, validates that the chosen local API bind target is available, persists an explicit `--port` override when supplied, then writes the env file and unit and runs `systemctl --user` commands
 - `service uninstall` removes the user unit and optionally removes the env file
 - `service start|restart` fail-fast check OpenClaw support before operating on the managed `systemd --user` service; `stop|status` remain managed-service readbacks/actions rather than detached local pid-file behavior

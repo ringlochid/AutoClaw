@@ -16,9 +16,11 @@ This page defines the supported v1 distribution and database matrix.
 
 ## Service-manager support
 
-- Linux `systemd --user`: shipped v1 managed-service path
+- Linux with `systemd --user`: shipped v1 managed-service path
+- intended Linux distros: Ubuntu, Debian, Fedora, Arch, and similar systemd user-service hosts with Python 3.12
 - macOS `launchd`: not yet shipped as v1 parity
 - Windows Scheduled Task: not yet shipped as v1 parity
+- macOS and Windows foreground path: `autoclaw serve`
 
 Repo-native editable checkout is a contributor/dev path, not part of the public distribution matrix.
 
@@ -36,3 +38,4 @@ Optional manual development stack commands remain available when you want a long
 - standalone binaries
 - npm shim package
 - Homebrew or other convenience installer
+- native macOS or Windows managed-service parity

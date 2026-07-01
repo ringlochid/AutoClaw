@@ -13,7 +13,9 @@ autoclaw doctor
 autoclaw openclaw check
 ```
 
-This guide is written for the shipped Linux lane. The fully supported v1 managed-service path is `systemd --user`.
+This guide is written for the shipped Linux lane. The fully supported v1 managed-service path is Linux with `systemd --user`, which covers common systemd user-service distros such as Ubuntu, Debian, Fedora, and Arch when Python 3.12 and the normal user-service environment are available.
+
+On macOS or Windows, use `autoclaw serve` as the foreground local-proof path. Native `launchd` and Windows Scheduled Task service parity are later work.
 
 If you want the managed service installed during onboarding, use:
 
@@ -37,10 +39,12 @@ autoclaw openclaw check
 
 If `autoclaw` is not on `PATH` yet after the `uv` install, run `uv tool update-shell` once and restart the shell.
 
-For the Postgres-enabled package, use either:
+Use the Postgres-enabled package when you need to run multiple tasks concurrently:
 
 - `pipx install "autoclaw[postgres]"`
 - `uv tool install "autoclaw[postgres]"`
+
+Then set `AUTOCLAW_DATABASE_URL` to a real `postgresql+asyncpg://...` URL before onboarding.
 
 ## What each command does
 

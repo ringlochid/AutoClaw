@@ -2,26 +2,21 @@
 
 Use task-compose when you are ready to launch one concrete task from reusable AutoClaw definitions.
 
-Task-compose is not where reusable behavior lives. Put durable behavior in roles, policies, and workflows. Put the concrete launch request, selected workflow, and root bindings in task-compose.
+Task-compose is not where reusable behavior lives. Put durable behavior in roles, policies, and workflows. Put the concrete launch request, selected workflow, and any explicit root bindings in task-compose.
 
 ## Minimal shape
 
-A task-compose file needs a task, a workflow, and roots:
+A task-compose file needs a task and a workflow. Roots are optional; omitted roots default to task-owned `workspace` and `context` paths.
 
 ```yaml
 task:
-    key: first-run
-    title: First local AutoClaw run
-    summary: Prove the seeded minimal workflow on a bounded local task.
+    key: first-research-brief
+    title: First research brief
+    summary: Turn one topic into a polished source-grounded idea brief.
     instruction: >-
-      Use the shipped minimal workflow to prove local launch, task-root creation, and runtime materialization.
+      Research local-first orchestration for delegated AI work and produce a concise idea brief with evidence, tradeoffs, and a recommended next step.
 workflow:
-    key: minimal-implement-change
-roots:
-    workspace:
-        mode: ensure_task_default
-    context:
-        mode: ensure_task_default
+    key: topic-research-brief
 ```
 
 Use this shape for first-run work and isolated local experiments.
@@ -71,7 +66,7 @@ If the same instruction should apply to many tasks, move it into a role, policy,
 
 ## Bind roots
 
-Task-compose root bindings decide whether AutoClaw creates task-local paths or binds directly to existing host paths.
+Task-compose root bindings decide whether AutoClaw creates task-local paths or binds directly to existing host paths. If you omit `roots`, AutoClaw uses task-owned defaults.
 
 ### Default task-local binding
 
@@ -131,7 +126,7 @@ Before launch, check:
 - `workflow.key` names the intended reusable workflow
 - task summary and instruction are concrete to this run
 - secrets are not copied into task-compose
-- root bindings point at the intended workspace and context
+- omitted roots or explicit root bindings match the intended workspace and context
 - reusable behavior is not duplicated from role, policy, or workflow docs
 
 ## Related pages

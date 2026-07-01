@@ -30,6 +30,8 @@ OpenClaw is the harness. AutoClaw is the orchestration tool.
 
 OpenClaw executes agent turns. AutoClaw decides which bounded assignment should run and whether the evidence is good enough to advance.
 
+The key separation is orchestration versus harness. AutoClaw should be able to integrate with any capable agent product that can accept a generated assignment prompt, expose the required working tools, and call the AutoClaw runtime tools. OpenClaw is the first adapter because it already provides local sessions, tools, skills, channels, workspace policy, and provider events.
+
 ## How AutoClaw works
 
 ```mermaid
@@ -76,6 +78,8 @@ To the harness, tools such as `record_checkpoint`, `return_boundary`, `assign_ch
 
 That design makes the execution loop replaceable. OpenClaw is the current adapter. Other capable harnesses can participate later if they can receive assignments and call the runtime tools correctly.
 
+This is different from building another all-in-one agent framework. AutoClaw adds a real orchestration layer above a harness: the harness runs model/tool loops, while AutoClaw owns assignment legality, evidence, waits, replan, and closure.
+
 ## A2A boundary
 
 A2A is complementary, not the internal AutoClaw runtime protocol.
@@ -113,6 +117,7 @@ The result is less magical than a free-form swarm, deliberately. AutoClaw trades
 | AutoGen / AG2 | multi-agent conversation, teams, and selector/group-chat patterns | AutoClaw is tree/runtime/evidence centered rather than conversation centered |
 | OpenAI Agents SDK | agent loop, tools, handoffs, guardrails, tracing, sandbox agents | AutoClaw keeps workflow authority and evidence outside one provider SDK |
 | A2A | cross-agent interoperability between independent agents | AutoClaw uses MCP internally for controller-validated node operations and can use A2A at external opaque-agent boundaries |
+| OpenClaw | local agent harness, tools, skills, sessions, and channels | AutoClaw adds orchestration above OpenClaw instead of replacing the harness |
 
 ## Next
 

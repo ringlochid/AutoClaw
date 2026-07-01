@@ -17,3 +17,4 @@ The examples include optional node `instruction` fields. Node instruction is nod
 - [MVP build](mvp-build.md)
 - [Planning only](planning-only.md)
 - [Project management delivery](project-management-delivery.md)
+- [Topic research brief](topic-research-brief.md)

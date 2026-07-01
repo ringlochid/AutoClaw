@@ -4,9 +4,9 @@ Use this page when the API process, managed service, `/healthz`, or `/readyz` fa
 
 ## Supported service lane
 
-The shipped v1 managed-service path is Linux `systemd --user`.
+The shipped v1 managed-service path is Linux with `systemd --user`.
 
-macOS `launchd` and Windows Scheduled Task parity are not shipped v1 support. Use `autoclaw serve` as the foreground fallback for local host proof and debugging.
+Ubuntu, Debian, Fedora, Arch, and similar systemd user-service hosts are the intended lane when Python 3.12 is available. macOS `launchd` and Windows Scheduled Task parity are not shipped v1 support. Use `autoclaw serve` as the foreground fallback for local host proof and debugging.
 
 ## `autoclaw service install` fails
 

@@ -189,11 +189,11 @@ Current fields are:
     - `instruction`
 - `workflow`
     - `key`
-- `roots`
+- `roots` (optional)
     - `workspace`
     - `context`
 
-Each current root binding uses:
+When omitted, roots default to task-owned `workspace` and `context` paths. Each explicit root binding uses:
 
 - `mode`
 - `host_path`
@@ -244,6 +244,7 @@ Current shipped workflow fixtures are:
 - `mvp-build`
 - `planning-only`
 - `project-management-delivery`
+- `topic-research-brief`
 
 The packaged bootstrap mirror under `apps/api/src/autoclaw/definitions/seeds/workflows/*.yaml` is the committed authored and shipped seed source for those fixtures. No repo-root definitions mirror is required by shipped paths.
 

@@ -9,9 +9,9 @@ Check:
 - the task-compose file exists on the AutoClaw host
 - `task.key`, `task.title`, `task.summary`, and `task.instruction` are present
 - `workflow.key` names a current workflow definition in the registry
-- `roots.workspace` and `roots.context` use supported binding modes
+- optional `roots.workspace` and `roots.context` use supported binding modes when present
 
-Supported root binding modes are:
+If `roots` is omitted, AutoClaw uses task-owned default roots. Supported explicit root binding modes are:
 
 - `ensure_task_default`
 - `ensure_host_path`
@@ -43,7 +43,7 @@ Use the shipped schema contract:
 - role YAML owns reusable role behavior
 - policy YAML owns budgets, guardrails, and capabilities
 - workflow YAML owns the node tree, consumes, produces, and criteria
-- task-compose owns one launch request and root bindings
+- task-compose owns one launch request and optional root bindings
 
 Fix:
 

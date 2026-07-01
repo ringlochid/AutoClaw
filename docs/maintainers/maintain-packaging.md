@@ -45,13 +45,14 @@ Useful checks:
 
 ## When changing service resources
 
-The shipped managed-service lane is Linux `systemd --user`.
+The shipped managed-service lane is Linux with `systemd --user`.
 
 Check:
 
 - `autoclaw service render` still renders the packaged template
 - `autoclaw service install` still writes the env file and user unit on a supported Linux host
 - docs do not imply macOS or Windows managed-service parity
+- docs describe distro support as capability-based systemd user-service support rather than a separate packaged binary per distro
 
 ## When changing dependencies or extras
 

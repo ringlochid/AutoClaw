@@ -10,7 +10,7 @@ The public v1 install story is:
 - secondary: `uv tool install autoclaw`
 - contributor/dev only: editable repo checkout
 
-The fully supported managed-service lane is Linux `systemd --user`. Use `autoclaw serve` as the foreground fallback when service management is not available.
+The fully supported managed-service lane is Linux with `systemd --user`. Ubuntu, Debian, Fedora, Arch, and similar systemd user-service hosts are the intended lane when Python 3.12 is available. Use `autoclaw serve` as the foreground fallback when service management is not available.
 
 ## `autoclaw` is not found
 

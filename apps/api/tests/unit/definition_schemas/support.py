@@ -46,6 +46,7 @@ EXPECTED_WORKFLOW_IDS = {
     "mvp-build",
     "planning-only",
     "project-management-delivery",
+    "topic-research-brief",
 }
 EXPECTED_ROLE_IDS = {
     "architect",

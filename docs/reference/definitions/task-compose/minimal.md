@@ -1,19 +1,14 @@
 # Minimal task-compose example
 
-Use this example to launch the shipped minimal workflow with task-local authored roots.
+Use this example to launch the shipped topic-research workflow with default task-owned roots.
 
 ```yaml
 task:
-    key: first-run
-    title: First local AutoClaw run
-    summary: Prove the seeded minimal workflow on a bounded local task.
+    key: first-research-brief
+    title: First research brief
+    summary: Turn one topic into a polished source-grounded idea brief.
     instruction: >-
-      Use the shipped minimal workflow to prove local launch, task-root creation, and runtime materialization.
+      Research local-first orchestration for delegated AI work and produce a concise idea brief with evidence, tradeoffs, and a recommended next step.
 workflow:
-    key: minimal-implement-change
-roots:
-    workspace:
-        mode: ensure_task_default
-    context:
-        mode: ensure_task_default
+    key: topic-research-brief
 ```

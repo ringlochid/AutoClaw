@@ -31,7 +31,9 @@ AutoClaw is not for every prompt. If the work is one short answer, one direct co
 | Best fit                  | Personal assistance, local tool use, ad hoc coding/help | Long work with evidence, review, retry, replan, waits  |
 | Failure mode if stretched | Long work becomes transcript-heavy                      | Small work becomes over-structured                     |
 
-AutoClaw currently uses OpenClaw as its execution adapter, sits above that loop and decides what bounded assignment should run next.
+This decoupling is the core product boundary. AutoClaw should not need to own the agent loop, model provider, chat surface, or tool harness. It owns the orchestration layer above those systems: workflow state, assignment authority, evidence, recovery, and release.
+
+OpenClaw is the first integration target. The same pattern can integrate with other capable agent products when they can receive assignment prompts, expose the needed tools, and call AutoClaw's MCP runtime tools correctly.
 
 ## Recommended default flow
 
@@ -71,7 +73,22 @@ autoclaw doctor
 autoclaw openclaw check
 ```
 
-The shipped managed-service path is Linux-first with `systemd --user`. For local debugging, `autoclaw serve` can run the API in the foreground.
+If you prefer `uv`, use the same package through uv's tool-install lane:
+
+```bash
+uv tool install autoclaw
+```
+
+Use the Postgres extra when you want to run multiple tasks concurrently:
+
+```bash
+pipx install "autoclaw[postgres]"
+# or
+uv tool install "autoclaw[postgres]"
+export AUTOCLAW_DATABASE_URL=postgresql+asyncpg://user:pass@127.0.0.1:5432/autoclaw
+```
+
+The fully supported managed-service path is Linux with `systemd --user`; this is distro-shaped rather than distro-branded, so Ubuntu, Debian, Fedora, Arch, and similar systemd user-service hosts are the intended lane. macOS and Windows can use `autoclaw serve` for foreground local proof, but their native service managers are not shipped parity yet.
 
 ## A good first task
 
@@ -79,18 +96,13 @@ Create `task-compose.yaml` in an empty working directory:
 
 ```yaml
 task:
-    key: first-run
-    title: First local AutoClaw run
-    summary: Prove the seeded minimal workflow on a bounded local task.
+    key: first-research-brief
+    title: First research brief
+    summary: Turn one topic into a polished source-grounded idea brief.
     instruction: >-
-        Use the shipped minimal workflow to prove local launch, task-root creation, and runtime materialization.
+      Research local-first orchestration for delegated AI work and produce a concise idea brief with evidence, tradeoffs, and a recommended next step.
 workflow:
-    key: minimal-implement-change
-roots:
-    workspace:
-        mode: ensure_task_default
-    context:
-        mode: ensure_task_default
+    key: topic-research-brief
 ```
 
 Start it:
@@ -108,7 +120,7 @@ _runtime/attempts/<attempt_id>/latest-checkpoint.md
 outputs/artifacts/
 ```
 
-The first useful success is not just "the command returned." It is seeing the workflow, assignment, checkpoint, and artifacts line up with the task you launched.
+The first useful success is not just "the command returned." It is seeing the workflow, assignment, checkpoint, and `research_brief.md` artifact line up with the topic you launched.
 
 ## How AutoClaw works
 
@@ -154,6 +166,7 @@ AutoClaw belongs near modern orchestration systems, but its emphasis is narrower
 | AutoGen / AG2     | Multi-agent conversation and group-chat patterns                  | AutoClaw is workflow/tree/evidence centered, not conversation centered                                |
 | OpenAI Agents SDK | Lightweight agents, handoffs, guardrails, tracing, sandbox agents | AutoClaw externalizes assignment, evidence, and recovery outside one provider SDK                     |
 | A2A               | Interop between independent opaque agents                         | AutoClaw uses MCP internally for controller-validated transitions; A2A fits external agent boundaries |
+| OpenClaw          | Local agent harness, tools, skills, sessions, and channels        | AutoClaw adds a real orchestration layer above the harness instead of replacing the harness            |
 
 Do not position AutoClaw as a universal multi-agent standard. Its assumption is sharper: provider completion is not task completion; task completion requires controller-validated evidence.
 

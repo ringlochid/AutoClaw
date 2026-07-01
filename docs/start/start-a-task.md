@@ -1,6 +1,6 @@
 # Start a task
 
-This tutorial starts one local task with the shipped minimal workflow. It uses task-local roots so the first run stays isolated and easy to inspect.
+This tutorial starts one local task with the shipped topic-research workflow. The first task is intentionally small: one root delegates one researcher, then AutoClaw records the assignment, checkpoint, and artifact evidence.
 
 ## Before you start
 
@@ -12,7 +12,7 @@ autoclaw doctor
 autoclaw openclaw check
 ```
 
-The shipped onboarding path seeds the packaged definition fixtures, including the minimal workflow used here.
+The shipped onboarding path seeds the packaged definition fixtures, including the topic-research workflow used here.
 
 ## Create `task-compose.yaml`
 
@@ -20,25 +20,20 @@ Create this file in an empty working directory:
 
 ```yaml
 task:
-    key: first-run
-    title: First local AutoClaw run
-    summary: Prove the seeded minimal workflow on a bounded local task.
+    key: first-research-brief
+    title: First research brief
+    summary: Turn one topic into a polished source-grounded idea brief.
     instruction: >-
-      Use the shipped minimal workflow to prove local launch, task-root creation, and runtime materialization.
+      Research local-first orchestration for delegated AI work and produce a concise idea brief with evidence, tradeoffs, and a recommended next step.
 workflow:
-    key: minimal-implement-change
-roots:
-    workspace:
-        mode: ensure_task_default
-    context:
-        mode: ensure_task_default
+    key: topic-research-brief
 ```
 
 This task-compose file does three things:
 
 - describes one task
-- selects the `minimal-implement-change` workflow
-- asks AutoClaw to create isolated task-local `workspace` and `context` roots
+- selects the `topic-research-brief` workflow
+- relies on the default task-owned `workspace` and `context` roots
 
 ## Start the task
 
@@ -56,7 +51,8 @@ The command reads one local file and starts the same task body that the public t
 - a task root is materialized on disk
 - `_runtime/workflow-manifest.md` exists under the task root
 - the first assignment surface is inspectable
-- checkpoint and artifact surfaces become inspectable as the node works
+- checkpoint and artifact surfaces become inspectable as the researcher works
+- the final artifact includes a polished `research_brief.md`
 
 ## Next step
 

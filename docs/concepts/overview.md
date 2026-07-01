@@ -17,7 +17,7 @@ Read [orchestration model](orchestration-model.md) before memorizing runtime nou
 | Concept | Plain meaning | Why it matters |
 | --- | --- | --- |
 | Workflow | reusable evidence path | gives the task shape and closure criteria |
-| Task-compose | one concrete launch | binds the workflow to the task instruction and roots |
+| Task-compose | one concrete launch | binds the workflow to the task instruction and optional roots |
 | Assignment | bounded mission for the current node | keeps delegation explicit |
 | Checkpoint/artifact | durable progress, handoff, or output | lets another node or operator inspect evidence |
 

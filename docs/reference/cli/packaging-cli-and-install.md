@@ -46,7 +46,8 @@ Current surface includes:
 
 ## Service support note
 
-- the fully supported managed-service implementation in this checkout is Linux `systemd --user`
+- the fully supported managed-service implementation in this checkout is Linux with `systemd --user`
+- distro support is capability-based systemd user-service support, not a separate packaged binary per distro
 - macOS `launchd` and Windows Scheduled Task managers are not shipped v1 parity in this checkout
 - `autoclaw serve` remains the foreground runner for local host proof and service-manager execution
 

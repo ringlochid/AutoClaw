@@ -93,11 +93,11 @@ Shipped v1 support includes:
 - SQLite local-first smoke lane
 - Postgres plus Docker strong verification lane
 - guided first-run through `autoclaw onboard`
-- Linux `systemd --user` managed service lifecycle through `autoclaw service install|start|stop|restart|status`
+- Linux with `systemd --user` managed service lifecycle through `autoclaw service install|start|stop|restart|status`
 
 Managed-service support boundary for v1:
 
-- Linux: `systemd --user` by default
+- Linux: `systemd --user` by default on systemd user-service hosts such as Ubuntu, Debian, Fedora, and Arch
 - macOS: not yet a shipped v1 parity lane
 - Windows: not yet a shipped v1 parity lane
 
