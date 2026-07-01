@@ -56,7 +56,7 @@ describe("DefinitionsPage", () => {
 
         const definitionRows = within(await screen.findByRole("list", { name: "Definition rows" }));
         const planningLeadRow = await definitionRows.findByRole("button", {
-            name: new RegExp(ROLE_KEY),
+            name: new RegExp(`^${ROLE_KEY}\\b`),
         });
         expect(planningLeadRow.textContent.trim().startsWith(ROLE_KEY)).toBe(true);
         expect(
@@ -106,12 +106,12 @@ describe("DefinitionsPage", () => {
         await user.click(screen.getByRole("button", { name: "Policies" }));
         const policyRows = within(await screen.findByRole("list", { name: "Definition rows" }));
         const policyRow = await policyRows.findByRole("button", {
-            name: new RegExp(POLICY_KEY),
+            name: new RegExp(`^${POLICY_KEY}\\b`),
         });
         expect(policyRow.textContent.trim().startsWith(POLICY_KEY)).toBe(true);
         expect(screen.getByLabelText("Applies to")).toBeVisible();
         expect(screen.queryByLabelText("Allowed node kind")).not.toBeInTheDocument();
-        expect(screen.getByText(/child assignment limit not reported; 2 retries/)).toBeVisible();
+        expect(screen.getByText(/3 child assignments; retry limit not reported/)).toBeVisible();
 
         await user.selectOptions(screen.getByLabelText("Applies to"), "worker");
         await waitFor(() => {
@@ -129,7 +129,15 @@ describe("DefinitionsPage", () => {
         const workflowRequest = lastPathRequest(seenRequests, "/definitions/workflows");
         expect(workflowRequest?.searchParams.get("allowed_node_kind")).toBeNull();
         expect(workflowRequest?.searchParams.get("applies_to")).toBeNull();
-        expect(await screen.findByText("implement_frontend_scope")).toBeVisible();
+        expect(await screen.findByText("Structure")).toBeVisible();
+        expect(await screen.findByText("First-level nodes")).toBeVisible();
+        expect(await screen.findByText("implementation_loop")).toBeVisible();
+        expect(screen.queryByText("Stored root role")).not.toBeInTheDocument();
+        expect(screen.queryByText("Root tree")).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Create/update draft" })).toHaveAttribute(
+            "href",
+            "/definitions/editor?materialize_key=maximal-parent-first-release&materialize_kind=workflow",
+        );
         const taskStartLinks = screen.getAllByRole("link", { name: "Task Start" });
         expect(taskStartLinks[taskStartLinks.length - 1]).toHaveAttribute("href", "/task-start");
     });
@@ -227,10 +235,8 @@ describe("DefinitionsPage", () => {
         installDefinitionsHandlers([]);
         renderDefinitionsPage();
         expect((await screen.findAllByText(ROLE_KEY)).length).toBeGreaterThan(0);
-        await user.click(screen.getByRole("button", { name: /frontend_engineer/ }));
-        expect(
-            await screen.findByText(/Implement only the current meaningful frontend scope/),
-        ).toBeVisible();
+        await user.click(screen.getByRole("button", { name: /planner/ }));
+        expect(await screen.findByText(/Plan only the assigned scope/)).toBeVisible();
         await user.click(screen.getByRole("button", { name: "Revision 3" }));
         expect(await screen.findByText("Single current revision recorded.")).toBeVisible();
         const singleRevisionVersions = within(

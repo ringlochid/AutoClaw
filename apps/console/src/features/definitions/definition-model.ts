@@ -41,8 +41,15 @@ export interface WorkflowNodeSummary {
     readonly depth: number;
     readonly id: string;
     readonly policy: string | null;
+    readonly producedSlots: readonly string[];
     readonly role: string;
     readonly title: string | null;
+}
+
+export interface WorkflowStats {
+    readonly childCount: number;
+    readonly leafRoleCount: number;
+    readonly producedArtifactCount: number;
 }
 
 export interface DefinitionDetailBase {
@@ -68,10 +75,12 @@ export interface PolicyDefinitionDetail extends DefinitionDetailBase {
 }
 
 export interface WorkflowDefinitionDetail extends DefinitionDetailBase {
+    readonly firstLevelNodes: readonly WorkflowNodeSummary[];
     readonly kind: "workflow";
     readonly nodeCount: number;
     readonly root: WorkflowNodeSummary;
     readonly visibleNodes: readonly WorkflowNodeSummary[];
+    readonly workflowStats: WorkflowStats;
 }
 
 export type DefinitionDetailView =
@@ -87,10 +96,10 @@ export const DEFINITION_SORT_OPTIONS: readonly {
     readonly label: string;
     readonly value: DefinitionListSort;
 }[] = [
-    { label: "Updated newest", value: "updated_at_desc" },
-    { label: "Updated oldest", value: "updated_at_asc" },
-    { label: "Key A-Z", value: "key_asc" },
-    { label: "Key Z-A", value: "key_desc" },
+    { label: "Sort by: Updated", value: "updated_at_desc" },
+    { label: "Sort by: Oldest updated", value: "updated_at_asc" },
+    { label: "Sort by: Key A-Z", value: "key_asc" },
+    { label: "Sort by: Key Z-A", value: "key_desc" },
 ];
 
 export const NODE_KIND_FILTERS: readonly { readonly label: string; readonly value: NodeKind }[] = [
@@ -160,11 +169,11 @@ export function mapDefinitionDetail(
     detail: DefinitionRevisionDetailResponse,
 ): DefinitionDetailView {
     if (kind === "policy") {
-        const content = detail.content as PolicyContent;
+        const content = detail.content as Partial<PolicyContent>;
         return {
-            appliesTo: content.applies_to,
+            appliesTo: content.applies_to ?? [],
             budgetSpec: content.budget_spec ?? null,
-            description: content.description,
+            description: content.description ?? detail.key,
             instruction: content.instruction ?? null,
             key: detail.key,
             kind,
@@ -175,25 +184,28 @@ export function mapDefinitionDetail(
     }
 
     if (kind === "workflow") {
-        const content = detail.content as WorkflowContent;
-        const visibleNodes = summarizeWorkflowNodes(content.root);
+        const content = detail.content as Partial<WorkflowContent>;
+        const root = content.root ?? fallbackWorkflowRoot(detail.key, content.description);
+        const visibleNodes = summarizeWorkflowNodes(root);
         return {
-            description: content.description,
+            description: content.description ?? detail.key,
+            firstLevelNodes: (root.children ?? []).map((node) => summarizeWorkflowNode(node, 1)),
             key: detail.key,
             kind,
-            nodeCount: countWorkflowNodes(content.root),
+            nodeCount: countWorkflowNodes(root),
             recordedBy: detail.recorded_by ?? null,
             revisionNo: detail.revision_no,
-            root: visibleNodes[0] ?? summarizeWorkflowNode(content.root, 0),
+            root: visibleNodes[0] ?? summarizeWorkflowNode(root, 0),
             updatedAt: detail.updated_at,
             visibleNodes,
+            workflowStats: countWorkflowStats(root),
         };
     }
 
-    const content = detail.content as RoleContent;
+    const content = detail.content as Partial<RoleContent>;
     return {
-        allowedNodeKinds: content.allowed_node_kinds,
-        description: content.description,
+        allowedNodeKinds: content.allowed_node_kinds ?? [],
+        description: content.description ?? detail.key,
         instruction: content.instruction ?? null,
         key: detail.key,
         kind,
@@ -279,9 +291,16 @@ function summarizeWorkflowNode(
         depth,
         id: node.id,
         policy: node.policy ?? null,
+        producedSlots: producedArtifactSlots(node),
         role: node.role,
         title: node.title ?? null,
     };
+}
+
+function producedArtifactSlots(
+    node: WorkflowRootDefinition | WorkflowNodeDefinition,
+): readonly string[] {
+    return (node.produces?.artifacts ?? []).map((artifact) => artifact.slot);
 }
 
 function countWorkflowNodes(root: WorkflowRootDefinition): number {
@@ -290,4 +309,52 @@ function countWorkflowNodes(root: WorkflowRootDefinition): number {
 
 function countWorkflowChild(node: WorkflowNodeDefinition): number {
     return 1 + (node.children ?? []).reduce((count, child) => count + countWorkflowChild(child), 0);
+}
+
+function countWorkflowStats(root: WorkflowRootDefinition): WorkflowStats {
+    const stats: WorkflowStats = {
+        childCount: Math.max(0, countWorkflowNodes(root) - 1),
+        leafRoleCount: countWorkflowLeaves(root),
+        producedArtifactCount: countWorkflowProducedArtifacts(root),
+    };
+    return stats;
+}
+
+function countWorkflowLeaves(node: WorkflowRootDefinition | WorkflowNodeDefinition): number {
+    const children = node.children ?? [];
+    if (children.length === 0) {
+        return 1;
+    }
+    return children.reduce((count, child) => count + countWorkflowLeaves(child), 0);
+}
+
+function countWorkflowProducedArtifacts(
+    node: WorkflowRootDefinition | WorkflowNodeDefinition,
+): number {
+    return (
+        producedArtifactSlots(node).length +
+        (node.children ?? []).reduce(
+            (count, child) => count + countWorkflowProducedArtifacts(child),
+            0,
+        )
+    );
+}
+
+function fallbackWorkflowRoot(
+    key: string,
+    description: string | null | undefined,
+): WorkflowRootDefinition {
+    return {
+        child_defaults: null,
+        children: null,
+        criteria: null,
+        description: description ?? key,
+        id: "root",
+        instruction: null,
+        policy: null,
+        produces: null,
+        provider_preference: null,
+        role: key,
+        title: null,
+    };
 }

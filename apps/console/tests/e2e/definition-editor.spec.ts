@@ -31,9 +31,9 @@ test("renders Definition Editor workbench, focus, accessibility, and replace mod
     await expect(
         page.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
     ).toBeVisible();
-    await expect(page.getByText("draft set open")).toBeVisible();
-    await expect(page.getByText("rev 12")).toBeVisible();
     await expect(page.getByLabel("Editable draft body")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save draft" })).toBeDisabled();
     await expectNoDocumentOverflow(page);
 
     const validateButton = page.getByRole("button", { name: "Validate" });
@@ -87,6 +87,23 @@ test("renders Definition Editor workbench, focus, accessibility, and replace mod
     await page.keyboard.press("Escape");
     await expect(replaceDialog).toBeHidden();
     await expect(replaceButton).toBeFocused();
+
+    await page.getByRole("button", { name: "Apply" }).click();
+    const applyDialog = page.getByRole("dialog", {
+        name: "Apply published new current revisions",
+    });
+    await expect(applyDialog).toBeVisible();
+    await expect(
+        applyDialog.getByText(/workflow\/definition-editor-page revision 14/),
+    ).toBeVisible();
+    await page.evaluate(() => {
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+    });
+    await page.screenshot({
+        path: `${DEFINITION_EDITOR_SCREENSHOT_DIR}/definition-editor-apply-modal.png`,
+    });
 });
 
 test("keeps Definition Editor draft selection and editor usable at mobile width", async ({

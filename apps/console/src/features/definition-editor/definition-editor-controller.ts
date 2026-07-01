@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { getNextCursor, type ConsoleErrorView } from "../../api/client";
 import { mapDraftSetSummary, type DraftSetSummary } from "../../api/view-models";
@@ -43,6 +44,7 @@ import {
     type ValidationView,
 } from "./definition-editor-model";
 import type {
+    DefinitionKind,
     DraftApplyResponse,
     DraftPreviewResponse,
     DraftSetDetailResponse,
@@ -223,6 +225,7 @@ function syncEditorFromSelectedFile({
 }
 
 export function useDefinitionEditorController(): DefinitionEditorController {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [listState, setListState] = useState<DraftSetListState>(initialListState);
     const [detailState, setDetailState] = useState<DraftSetDetailState>(initialDetailState);
     const [selectedDraftSetId, setSelectedDraftSetId] = useState<string | null>(null);
@@ -251,6 +254,11 @@ export function useDefinitionEditorController(): DefinitionEditorController {
     const [validationFingerprint, setValidationFingerprint] = useState<string | null>(null);
     const [actionError, setActionError] = useState<ConsoleErrorView | null>(null);
     const [isMutatingDraft, setIsMutatingDraft] = useState(false);
+    const materializeRequest = useMemo(
+        () => materializeRequestFromSearchParams(searchParams),
+        [searchParams],
+    );
+    const handledMaterializeRequestRef = useRef<string | null>(null);
     const selectedFile = selectedFileFromDraftSet(currentDraftSet, selectedFileId);
     const isEditorDirty = selectedFile !== null && editorBody !== selectedFile.body;
     const currentFingerprint = editorFingerprint({
@@ -377,6 +385,64 @@ export function useDefinitionEditorController(): DefinitionEditorController {
             setEditorSourceKey,
         });
     }, [editorBody, editorSourceKey, selectedFile]);
+
+    useEffect(() => {
+        if (
+            materializeRequest === null ||
+            handledMaterializeRequestRef.current === materializeRequest.requestKey ||
+            isMutatingDraft ||
+            !listState.hasLoaded ||
+            listState.isLoading
+        ) {
+            return;
+        }
+
+        handledMaterializeRequestRef.current = materializeRequest.requestKey;
+        setIsMutatingDraft(true);
+        setActionError(null);
+        void createDraftSet({
+            materialize: [{ key: materializeRequest.key, kind: materializeRequest.kind }],
+            title: `Draft from ${materializeRequest.kind}:${materializeRequest.key}`,
+        })
+            .then((response) => {
+                const preferredFileId = draftFileId(
+                    materializeRequest.kind,
+                    materializeRequest.key,
+                );
+                applyDraftSetDetailResponse(response, preferredFileId);
+                const nextSummary = mapDraftSetSummary(response.draft_set);
+                setListState((currentState) => ({
+                    ...currentState,
+                    error: null,
+                    hasLoaded: true,
+                    isLoading: false,
+                    rows: [
+                        nextSummary,
+                        ...currentState.rows.filter(
+                            (row) => row.draftSetId !== nextSummary.draftSetId,
+                        ),
+                    ],
+                }));
+                const nextParams = new URLSearchParams(searchParams);
+                nextParams.delete("materialize_kind");
+                nextParams.delete("materialize_key");
+                setSearchParams(nextParams, { replace: true });
+            })
+            .catch((error: unknown) => {
+                setActionError(toErrorView(error));
+            })
+            .finally(() => {
+                setIsMutatingDraft(false);
+            });
+    }, [
+        applyDraftSetDetailResponse,
+        isMutatingDraft,
+        listState.hasLoaded,
+        listState.isLoading,
+        materializeRequest,
+        searchParams,
+        setSearchParams,
+    ]);
 
     const refresh = useCallback(() => {
         setRefreshToken((value) => value + 1);
@@ -748,3 +814,26 @@ export function useDefinitionEditorController(): DefinitionEditorController {
 }
 
 export { applyResultTitle, isAuthError };
+
+interface MaterializeRequest {
+    readonly key: string;
+    readonly kind: DefinitionKind;
+    readonly requestKey: string;
+}
+
+function materializeRequestFromSearchParams(params: URLSearchParams): MaterializeRequest | null {
+    const kind = params.get("materialize_kind");
+    const key = normalizeKey(params.get("materialize_key") ?? "");
+    if (!isDefinitionKind(kind) || key.length === 0) {
+        return null;
+    }
+    return {
+        key,
+        kind,
+        requestKey: `${kind}:${key}`,
+    };
+}
+
+function isDefinitionKind(value: string | null): value is DefinitionKind {
+    return value === "policy" || value === "role" || value === "workflow";
+}

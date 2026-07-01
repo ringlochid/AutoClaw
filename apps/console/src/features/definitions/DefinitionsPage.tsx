@@ -1,19 +1,10 @@
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
-import { ExternalLink, Search, X } from "lucide-react";
+import { ChevronDown, ExternalLink, Search, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { PageFrame } from "../../components/layout";
-import {
-    Button,
-    FormField,
-    IdRefText,
-    PropertyGrid,
-    SegmentedControl,
-    StatePanel,
-    StatusChip,
-    TimestampText,
-} from "../../components/ui";
+import { Button, PropertyGrid, StatePanel, StatusChip, TimestampText } from "../../components/ui";
 import { classNames } from "../../lib/classNames";
 import {
     isAuthError,
@@ -47,6 +38,23 @@ export function DefinitionsPage() {
                     <DefinitionsNavLink to="/definitions/editor">
                         Definition Editor
                     </DefinitionsNavLink>
+                    {controller.selectedKey === null ? (
+                        <span
+                            aria-disabled="true"
+                            className="inline-flex h-control items-center justify-center rounded-control border border-outline-soft bg-surface-muted px-3 text-utility font-semibold text-muted"
+                        >
+                            Create/update draft
+                        </span>
+                    ) : (
+                        <DefinitionsNavLink
+                            to={definitionEditorMaterializeRoute(
+                                controller.singularKind,
+                                controller.selectedKey,
+                            )}
+                        >
+                            Create/update draft
+                        </DefinitionsNavLink>
+                    )}
                     <DefinitionsNavLink to="/task-start">Task Start</DefinitionsNavLink>
                 </div>
             }
@@ -79,17 +87,36 @@ export function DefinitionsPage() {
 
 function DefinitionsKindSwitch({ controller }: { readonly controller: DefinitionsController }) {
     return (
-        <SegmentedControl
-            label="Definition kind"
-            onChange={(value) => {
-                controller.setKind(value);
-            }}
-            options={DEFINITION_KIND_OPTIONS.map((option) => ({
-                label: option.label,
-                value: option.listKind,
-            }))}
-            value={controller.kind}
-        />
+        <div aria-label="Definition kind" className="flex min-w-0 flex-wrap gap-2" role="group">
+            {DEFINITION_KIND_OPTIONS.map((option) => {
+                const isSelected = option.listKind === controller.kind;
+                return (
+                    <button
+                        aria-pressed={isSelected}
+                        className={classNames(
+                            "kind-button inline-flex h-control items-center justify-center gap-3 rounded-control border px-4 text-utility font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                            isSelected
+                                ? "border-primary/25 bg-active text-active-foreground"
+                                : "border-outline bg-surface-low text-foreground hover:border-primary/45 hover:bg-surface-muted",
+                        )}
+                        key={option.listKind}
+                        onClick={() => {
+                            controller.setKind(option.listKind);
+                        }}
+                        type="button"
+                    >
+                        <span
+                            aria-hidden="true"
+                            className={classNames(
+                                "size-2 rounded-full",
+                                isSelected ? "bg-primary" : "bg-outline-soft",
+                            )}
+                        />
+                        <span>{option.label}</span>
+                    </button>
+                );
+            })}
+        </div>
     );
 }
 
@@ -99,18 +126,15 @@ function DefinitionsControls({ controller }: { readonly controller: DefinitionsC
             className={classNames(
                 "grid gap-3",
                 controller.kind === "workflows"
-                    ? "lg:grid-cols-[minmax(0,1fr)_14rem]"
-                    : "lg:grid-cols-[minmax(0,1fr)_13rem_13rem]",
+                    ? "lg:grid-cols-[minmax(0,1fr)_220px]"
+                    : "lg:grid-cols-[minmax(0,1fr)_220px_220px]",
             )}
         >
             <div>
-                <label
-                    className="block font-mono text-label font-medium uppercase text-muted"
-                    htmlFor="definitions-query"
-                >
+                <label className="sr-only" htmlFor="definitions-query">
                     Search
                 </label>
-                <div className="relative mt-2">
+                <div className="relative">
                     <Search
                         aria-hidden="true"
                         className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
@@ -151,7 +175,7 @@ function KindFilterSelect({ controller }: { readonly controller: DefinitionsCont
                     controller.setRoleNodeKindFilter(value as NodeKind | "any");
                 }}
                 options={[
-                    { label: "Any node kind", value: "any" },
+                    { label: "Allowed node kind", value: "any" },
                     ...NODE_KIND_FILTERS.map((option) => ({
                         label: option.label,
                         value: option.value,
@@ -171,7 +195,7 @@ function KindFilterSelect({ controller }: { readonly controller: DefinitionsCont
                     controller.setAppliesToFilter(value as NodeKind | "any");
                 }}
                 options={[
-                    { label: "Any node kind", value: "any" },
+                    { label: "Applies to", value: "any" },
                     ...NODE_KIND_FILTERS.map((option) => ({
                         label: option.label,
                         value: option.value,
@@ -199,9 +223,12 @@ function DefinitionSelect({
     readonly value: string;
 }) {
     return (
-        <FormField id={id} label={label}>
+        <label className="relative block" htmlFor={id}>
+            <span className="sr-only">{label}</span>
             <select
-                className={controlClassName()}
+                aria-label={label}
+                className={controlClassName("appearance-none bg-none pr-10")}
+                id={id}
                 onChange={(event) => {
                     onChange(event.target.value);
                 }}
@@ -213,7 +240,11 @@ function DefinitionSelect({
                     </option>
                 ))}
             </select>
-        </FormField>
+            <ChevronDown
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-foreground"
+            />
+        </label>
     );
 }
 
@@ -303,38 +334,45 @@ function DefinitionRowButton({
         <button
             aria-pressed={isSelected}
             className={classNames(
-                "grid w-full min-w-0 gap-3 rounded-card border bg-surface-low p-4 text-left shadow-hairline transition-colors hover:border-primary/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:grid-cols-[minmax(0,1fr)_8rem] lg:items-start lg:gap-4",
-                isSelected ? "border-primary/60 bg-primary-soft/45" : "border-outline-soft",
+                "definition-row block w-full min-w-0 rounded-card border bg-surface-low text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary",
+                isSelected ? "border-primary/35" : "border-outline-soft",
             )}
             onClick={onSelect}
             type="button"
         >
-            <span className="min-w-0">
-                <span className="flex min-w-0 flex-wrap items-center gap-2">
-                    <span className="min-w-0 truncate font-mono text-compact font-semibold text-foreground">
-                        {row.key}
+            <div className="space-y-3 px-4 py-3 sm:px-6 md:grid md:grid-cols-[minmax(0,1fr)_8rem] md:items-start md:gap-4 md:space-y-0">
+                <div className="min-w-0 space-y-1.5">
+                    <div className="space-y-0.5">
+                        <span className="definition-title min-w-0 break-words font-display text-body font-semibold text-foreground">
+                            {row.key}
+                        </span>
+                        <p className="definition-summary text-compact text-muted">
+                            {row.description ?? "No description reported."}
+                        </p>
+                    </div>
+                    <div className="flex min-w-0 flex-wrap gap-2">
+                        {row.compatibilityLabels.map((label) => (
+                            <StatusChip key={label}>{label}</StatusChip>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex items-start justify-between gap-3 text-right md:block">
+                    <span className="font-mono text-label font-medium uppercase text-muted md:sr-only">
+                        Updated
                     </span>
-                </span>
-                <span className="mt-1 block break-words text-compact text-muted">
-                    {row.description ?? "No description reported."}
-                </span>
-                <span className="mt-2 flex min-w-0 flex-wrap gap-2">
-                    {row.compatibilityLabels.map((label) => (
-                        <StatusChip key={label}>{label}</StatusChip>
-                    ))}
-                </span>
-            </span>
-            <span className="min-w-0 lg:text-right">
-                <span className="block font-mono text-label font-medium uppercase text-muted lg:sr-only">
-                    Updated
-                </span>
-                <time
-                    className="block font-body text-compact text-foreground"
-                    dateTime={row.updatedAt}
-                >
-                    {formatRowUpdatedDate(row.updatedAt)}
-                </time>
-            </span>
+                    <div className="space-y-1">
+                        <time
+                            className="block font-body text-compact text-foreground md:whitespace-nowrap"
+                            dateTime={row.updatedAt}
+                        >
+                            {formatRowUpdatedDate(row.updatedAt)}
+                        </time>
+                        <span className="block break-words font-mono text-label text-muted md:whitespace-nowrap">
+                            {formatRowRelativeDate(row.updatedAt)}
+                        </span>
+                    </div>
+                </div>
+            </div>
         </button>
     );
 }
@@ -349,7 +387,7 @@ function DefinitionListFooter({ controller }: { readonly controller: Definitions
         <footer className="flex flex-col gap-3 border-t border-outline-soft bg-surface px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-compact text-muted">
                 {listState.nextCursor === null
-                    ? `End of current ${listLabelForKind(controller.kind)}.`
+                    ? `${String(listState.rows.length)} ${listLabelForKind(controller.kind)} loaded.`
                     : `More ${listLabelForKind(controller.kind)} are available.`}
             </p>
             <Button
@@ -449,7 +487,6 @@ function DefinitionDetailPanel({ controller }: { readonly controller: Definition
             />
             <DefinitionDetailSummary detail={controller.detailState.detail} />
             <DefinitionKindDetail detail={controller.detailState.detail} />
-            <DefinitionPivots detail={controller.detailState.detail} />
             <DefinitionVersionsModal
                 controller={controller}
                 detail={controller.detailState.detail}
@@ -544,46 +581,79 @@ function WorkflowDetail({
 }) {
     return (
         <div className="space-y-4">
-            <PropertyGrid
-                items={[
-                    { label: "Stored root role", value: detail.root.role },
-                    { label: "Stored root policy", value: detail.root.policy ?? "Not reported" },
-                    { label: "Stored nodes", value: detail.nodeCount },
-                ]}
-            />
             <div className="rounded-card border border-outline-soft bg-surface-low p-4">
-                <p className="font-mono text-label font-medium uppercase text-muted">Root tree</p>
-                <ol className="mt-3 space-y-3" aria-label="Workflow root tree summary">
-                    {detail.visibleNodes.map((node) => (
-                        <WorkflowNodeRow key={`${String(node.depth)}:${node.id}`} node={node} />
+                <p className="font-mono text-label font-medium uppercase text-muted">Structure</p>
+                <div className="mt-3 rounded-card border border-outline-soft bg-surface px-4 py-3">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <StatusChip>root</StatusChip>
+                        <span className="break-words font-display text-compact font-semibold text-foreground">
+                            {detail.root.role}
+                        </span>
+                        {detail.root.policy === null ? null : (
+                            <StatusChip>{detail.root.policy}</StatusChip>
+                        )}
+                    </div>
+                    <p className="mt-3 max-w-3xl break-words text-compact text-muted">
+                        {detail.root.description}
+                    </p>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                    <WorkflowMetric label="Children" value={detail.workflowStats.childCount} />
+                    <WorkflowMetric label="Leaf roles" value={detail.workflowStats.leafRoleCount} />
+                    <WorkflowMetric
+                        label="Produced slots"
+                        value={detail.workflowStats.producedArtifactCount}
+                    />
+                </div>
+            </div>
+            <div className="rounded-card border border-outline-soft bg-surface-low p-4">
+                <p className="font-mono text-label font-medium uppercase text-muted">
+                    First-level nodes
+                </p>
+                <ol className="mt-3 space-y-3" aria-label="Workflow first-level nodes">
+                    {detail.firstLevelNodes.map((node) => (
+                        <WorkflowNodeRow key={node.id} node={node} />
                     ))}
                 </ol>
-                {detail.visibleNodes.length < detail.nodeCount ? (
-                    <p className="mt-3 text-compact text-muted">
-                        Showing the first {detail.visibleNodes.length} stored nodes from the current
-                        root tree.
-                    </p>
-                ) : null}
             </div>
+        </div>
+    );
+}
+
+function WorkflowMetric({ label, value }: { readonly label: string; readonly value: number }) {
+    return (
+        <div className="rounded-control border border-outline-soft bg-surface px-3 py-3">
+            <p className="font-mono text-label font-medium uppercase text-muted">{label}</p>
+            <p className="mt-1 font-mono text-utility text-foreground">{value}</p>
         </div>
     );
 }
 
 function WorkflowNodeRow({ node }: { readonly node: WorkflowNodeSummary }) {
     return (
-        <li
-            className="rounded-card border border-outline-soft bg-surface px-3 py-3"
-            style={{ marginLeft: `${String(Math.min(node.depth, 3))}rem` }}
-        >
+        <li className="rounded-card border border-outline-soft bg-surface px-3 py-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <IdRefText className="max-w-64 truncate text-foreground" value={node.id} />
-                <StatusChip>{node.role}</StatusChip>
+                <StatusChip>{node.id}</StatusChip>
+                <span className="break-words font-display text-compact font-semibold text-foreground">
+                    {node.role}
+                </span>
                 {node.policy === null ? null : <StatusChip>{node.policy}</StatusChip>}
             </div>
             <p className="mt-2 break-words text-compact text-muted">{node.description}</p>
-            <p className="mt-2 font-mono text-label font-medium uppercase text-muted">
-                {node.childCount === 1 ? "1 child" : `${String(node.childCount)} children`}
-            </p>
+            {node.childCount === 0 ? null : (
+                <p className="mt-2 text-compact text-muted">
+                    {node.childCount === 1
+                        ? "1 nested node inside this branch."
+                        : `${String(node.childCount)} nested nodes inside this branch.`}
+                </p>
+            )}
+            {node.producedSlots.length === 0 ? null : (
+                <div className="mt-2 flex min-w-0 flex-wrap gap-2">
+                    {node.producedSlots.map((slot) => (
+                        <StatusChip key={slot}>{slot}</StatusChip>
+                    ))}
+                </div>
+            )}
         </li>
     );
 }
@@ -620,24 +690,6 @@ function InstructionSection({ instruction }: { readonly instruction: string | nu
             <p className="mt-3 whitespace-pre-wrap break-words text-compact text-foreground">
                 {formatOptionalInstruction(instruction)}
             </p>
-        </div>
-    );
-}
-
-function DefinitionPivots({ detail }: { readonly detail: DefinitionDetailView }) {
-    return (
-        <div className="flex flex-wrap items-center gap-2">
-            <DefinitionsNavLink to="/definitions/editor">Definition Editor</DefinitionsNavLink>
-            {detail.kind === "workflow" ? (
-                <DefinitionsNavLink to="/task-start">Task Start</DefinitionsNavLink>
-            ) : (
-                <span
-                    aria-disabled="true"
-                    className="inline-flex h-control items-center justify-center gap-2 rounded-control border border-outline-soft bg-surface-muted px-3 text-utility font-semibold text-muted"
-                >
-                    Task Start needs a workflow
-                </span>
-            )}
         </div>
     );
 }
@@ -812,6 +864,14 @@ function DefinitionsNavLink({ children, to }: { readonly children: string; reado
     );
 }
 
+function definitionEditorMaterializeRoute(kind: string, key: string): string {
+    const query = new URLSearchParams({
+        materialize_key: key,
+        materialize_kind: kind,
+    });
+    return `/definitions/editor?${query.toString()}`;
+}
+
 function formatRowUpdatedDate(value: string): string {
     const date = new Date(value);
     if (Number.isNaN(date.valueOf())) {
@@ -825,9 +885,45 @@ function formatRowUpdatedDate(value: string): string {
     }).format(date);
 }
 
+function formatRowRelativeDate(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf())) {
+        return "";
+    }
+
+    const elapsedMs = Date.now() - date.valueOf();
+    const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / 60000));
+    if (elapsedMinutes < 60) {
+        return elapsedMinutes <= 1 ? "just now" : `${String(elapsedMinutes)} min ago`;
+    }
+
+    const elapsedHours = Math.floor(elapsedMinutes / 60);
+    if (elapsedHours < 24) {
+        return elapsedHours === 1 ? "1 hour ago" : `${String(elapsedHours)} hours ago`;
+    }
+
+    const elapsedDays = Math.floor(elapsedHours / 24);
+    if (elapsedDays < 7) {
+        return elapsedDays === 1 ? "yesterday" : `${String(elapsedDays)} days ago`;
+    }
+
+    const elapsedWeeks = Math.floor(elapsedDays / 7);
+    if (elapsedWeeks < 5) {
+        return elapsedWeeks === 1 ? "1 week ago" : `${String(elapsedWeeks)} weeks ago`;
+    }
+
+    const elapsedMonths = Math.floor(elapsedDays / 30);
+    if (elapsedMonths < 12) {
+        return elapsedMonths <= 1 ? "1 month ago" : `${String(elapsedMonths)} months ago`;
+    }
+
+    const elapsedYears = Math.floor(elapsedDays / 365);
+    return elapsedYears <= 1 ? "1 year ago" : `${String(elapsedYears)} years ago`;
+}
+
 function controlClassName(extraClassName?: string): string {
     return classNames(
-        "h-control w-full rounded-control border border-outline bg-surface px-3 text-compact text-foreground shadow-hairline transition-colors placeholder:text-muted focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/15",
+        "h-control w-full rounded-control border border-outline bg-surface-low px-4 text-compact text-foreground shadow-hairline transition-colors placeholder:text-muted focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/15",
         extraClassName,
     );
 }

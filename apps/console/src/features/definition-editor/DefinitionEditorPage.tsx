@@ -1,5 +1,5 @@
 import { AlertTriangle, Plus, RotateCcw, Save, X } from "lucide-react";
-import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { PageFrame } from "../../components/layout";
 import {
@@ -25,12 +25,15 @@ import {
     validationStatusLabel,
     validationStatusTone,
     type DraftFileView,
-    type DraftSetView,
 } from "./definition-editor-model";
 
 export function DefinitionEditorPage() {
     const controller = useDefinitionEditorController();
     const dialogReturnFocusRef = useRef<HTMLElement | null>(null);
+    const [dismissedApplyMessageKey, setDismissedApplyMessageKey] = useState<string | null>(null);
+    const applyMessageKey = applyResultMessageKey(controller.applyState);
+    const applyDialogOpen =
+        applyMessageKey !== null && dismissedApplyMessageKey !== applyMessageKey;
 
     const rememberDialogTrigger = (trigger: HTMLElement) => {
         dialogReturnFocusRef.current = trigger;
@@ -58,7 +61,11 @@ export function DefinitionEditorPage() {
                 )}
                 <div className="grid min-w-0 xl:grid-cols-[19rem_minmax(0,1fr)]">
                     <DraftRail controller={controller} onDialogTrigger={rememberDialogTrigger} />
-                    <Workbench controller={controller} onDialogTrigger={rememberDialogTrigger} />
+                    <Workbench
+                        controller={controller}
+                        onApplyStart={() => setDismissedApplyMessageKey(null)}
+                        onDialogTrigger={rememberDialogTrigger}
+                    />
                 </div>
             </div>
             {controller.newDraftModalOpen ? (
@@ -67,6 +74,13 @@ export function DefinitionEditorPage() {
             {controller.confirmation === null ? null : (
                 <ConfirmationDialog controller={controller} returnFocusRef={dialogReturnFocusRef} />
             )}
+            {applyDialogOpen ? (
+                <ApplyResultDialog
+                    controller={controller}
+                    onClose={() => setDismissedApplyMessageKey(applyMessageKey)}
+                    returnFocusRef={dialogReturnFocusRef}
+                />
+            ) : null}
         </PageFrame>
     );
 }
@@ -75,6 +89,26 @@ type DialogTriggerHandler = (trigger: HTMLElement) => void;
 
 const activeModeButtonClassName =
     "border-primary/25 bg-primary-soft text-primary-foreground hover:bg-primary-soft";
+
+function applyResultMessageKey(
+    applyState: DefinitionEditorController["applyState"],
+): string | null {
+    if (applyState.result !== null) {
+        const revisions = applyState.result.published_revisions
+            .map(
+                (revision) =>
+                    `${revision.kind}:${revision.key}:${String(revision.revision_no)}:${revision.content_hash}`,
+            )
+            .join("|");
+        return `result:${applyState.result.status}:${revisions}`;
+    }
+
+    if (applyState.error !== null) {
+        return `error:${applyState.error.summary}`;
+    }
+
+    return null;
+}
 
 function DraftRail({
     controller,
@@ -100,7 +134,6 @@ function DraftRail({
             <div className="space-y-3">
                 <DraftSetSelector controller={controller} />
                 <DraftFileNavigator controller={controller} />
-                <MaterializeStoredDefinition controller={controller} />
             </div>
         </aside>
     );
@@ -222,10 +255,11 @@ function DraftFileNavigator({ controller }: { readonly controller: DefinitionEdi
                 <li key={file.id}>
                     <button
                         aria-pressed={controller.selectedFileId === file.id}
+                        data-active={controller.selectedFileId === file.id ? "true" : "false"}
                         className={classNames(
-                            "w-full rounded-card border bg-surface-low p-3 text-left transition-colors hover:border-primary/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                            "draft-button w-full rounded-card border bg-surface-low p-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                             controller.selectedFileId === file.id
-                                ? "border-primary/60 bg-primary-soft/50"
+                                ? "border-primary/45"
                                 : "border-outline-soft",
                         )}
                         onClick={() => {
@@ -237,7 +271,7 @@ function DraftFileNavigator({ controller }: { readonly controller: DefinitionEdi
                             <StatusChip>{kindLabel(file.kind)}</StatusChip>
                             <StatusChip tone={file.statusTone}>{file.statusLabel}</StatusChip>
                         </span>
-                        <span className="mt-2 block truncate text-compact font-semibold text-foreground">
+                        <span className="draft-title mt-2 block truncate text-compact font-semibold text-foreground">
                             {file.key}
                         </span>
                     </button>
@@ -247,67 +281,13 @@ function DraftFileNavigator({ controller }: { readonly controller: DefinitionEdi
     );
 }
 
-function MaterializeStoredDefinition({
-    controller,
-}: {
-    readonly controller: DefinitionEditorController;
-}) {
-    return (
-        <details className="rounded-card border border-outline-soft bg-surface-muted p-3">
-            <summary className="cursor-pointer font-mono text-label font-medium uppercase text-muted">
-                Materialize stored revision
-            </summary>
-            <div className="mt-3 grid gap-3">
-                <FormField id="definition-editor-materialize-kind" label="Kind">
-                    <select
-                        className={controlClassName()}
-                        onChange={(event) => {
-                            controller.setMaterializeForm({
-                                ...controller.materializeForm,
-                                kind: event.target.value as typeof controller.materializeForm.kind,
-                            });
-                        }}
-                        value={controller.materializeForm.kind}
-                    >
-                        {DEFINITION_KIND_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-                </FormField>
-                <FormField
-                    error={controller.materializeError ?? undefined}
-                    id="definition-editor-materialize-key"
-                    label="Stored key"
-                >
-                    <input
-                        className={controlClassName()}
-                        onChange={(event) => {
-                            controller.setMaterializeForm({
-                                ...controller.materializeForm,
-                                key: event.target.value,
-                            });
-                        }}
-                        value={controller.materializeForm.key}
-                    />
-                </FormField>
-                <Button
-                    disabled={controller.currentDraftSet === null || controller.isMutatingDraft}
-                    onClick={controller.submitMaterialize}
-                >
-                    Materialize stored revision
-                </Button>
-            </div>
-        </details>
-    );
-}
-
 function Workbench({
     controller,
+    onApplyStart,
     onDialogTrigger,
 }: {
     readonly controller: DefinitionEditorController;
+    readonly onApplyStart: () => void;
     readonly onDialogTrigger: DialogTriggerHandler;
 }) {
     const draftSet = controller.currentDraftSet;
@@ -356,8 +336,13 @@ function Workbench({
 
     return (
         <DraftWorkbenchShell
-            actions={<WorkbenchActions controller={controller} />}
-            draftSet={draftSet}
+            actions={
+                <WorkbenchActions
+                    controller={controller}
+                    onApplyStart={onApplyStart}
+                    onDialogTrigger={onDialogTrigger}
+                />
+            }
             isEditorDirty={controller.isEditorDirty}
             selectedFile={selectedFile}
             title={selectedFile.key}
@@ -373,7 +358,6 @@ function Workbench({
                     onDialogTrigger={onDialogTrigger}
                     selectedFile={selectedFile}
                 />
-                <ApplyResult controller={controller} />
             </div>
         </DraftWorkbenchShell>
     );
@@ -382,14 +366,12 @@ function Workbench({
 function DraftWorkbenchShell({
     actions,
     children,
-    draftSet,
     isEditorDirty,
     selectedFile,
     title,
 }: {
     readonly actions?: ReactNode;
     readonly children: ReactNode;
-    readonly draftSet?: DraftSetView;
     readonly isEditorDirty?: boolean;
     readonly selectedFile?: DraftFileView;
     readonly title: string;
@@ -422,14 +404,6 @@ function DraftWorkbenchShell({
                                     </StatusChip>
                                 </>
                             )}
-                            {draftSet === undefined ? null : (
-                                <StatusChip tone={draftSet.stateTone}>
-                                    draft set {draftSet.stateLabel}
-                                </StatusChip>
-                            )}
-                            {selectedFile === undefined ? null : (
-                                <StatusChip>{selectedFile.baselineLabel}</StatusChip>
-                            )}
                         </div>
                     </div>
                     {actions === undefined ? null : (
@@ -444,7 +418,15 @@ function DraftWorkbenchShell({
     );
 }
 
-function WorkbenchActions({ controller }: { readonly controller: DefinitionEditorController }) {
+function WorkbenchActions({
+    controller,
+    onApplyStart,
+    onDialogTrigger,
+}: {
+    readonly controller: DefinitionEditorController;
+    readonly onApplyStart: () => void;
+    readonly onDialogTrigger: DialogTriggerHandler;
+}) {
     const hasValidationResult =
         controller.validationView !== null || controller.validationState.error !== null;
     const handleValidationClick = () => {
@@ -479,8 +461,12 @@ function WorkbenchActions({ controller }: { readonly controller: DefinitionEdito
                 Preview
             </Button>
             <Button
-                disabled={controller.isMutatingDraft}
-                onClick={controller.runApply}
+                disabled={controller.isMutatingDraft || controller.applyState.isRunning}
+                onClick={(event) => {
+                    onDialogTrigger(event.currentTarget);
+                    onApplyStart();
+                    controller.runApply();
+                }}
                 variant="primary"
             >
                 Apply
@@ -524,38 +510,35 @@ function DraftActionFooter({
     readonly selectedFile: DraftFileView;
 }) {
     return (
-        <div className="flex flex-col gap-3 rounded-card border border-outline-soft bg-surface px-4 py-3 text-compact text-muted sm:flex-row sm:items-center sm:justify-between">
-            <p className="min-w-0">{selectedFile.resetSummary}</p>
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 rounded-card border border-outline-soft bg-surface px-4 py-3 text-compact text-muted">
+            <Button
+                disabled={controller.isMutatingDraft || !controller.isEditorDirty}
+                icon={<Save />}
+                onClick={controller.saveSelectedDraft}
+            >
+                Save draft
+            </Button>
+            <Button
+                icon={<RotateCcw />}
+                onClick={(event) => {
+                    onDialogTrigger(event.currentTarget);
+                    controller.requestConfirmation({ action: "reset" });
+                }}
+            >
+                Reset draft
+            </Button>
+            {selectedFile.hasStoredTruth ? (
                 <Button
-                    disabled={!controller.isEditorDirty || controller.isMutatingDraft}
-                    icon={<Save />}
-                    onClick={controller.saveSelectedDraft}
-                >
-                    Save draft
-                </Button>
-                <Button
-                    icon={<RotateCcw />}
+                    aria-label="Replace with current stored revision"
                     onClick={(event) => {
                         onDialogTrigger(event.currentTarget);
-                        controller.requestConfirmation({ action: "reset" });
+                        controller.requestConfirmation({ action: "rematerialize" });
                     }}
+                    variant="danger"
                 >
-                    Reset draft
+                    Replace with current stored revision
                 </Button>
-                {selectedFile.hasStoredTruth ? (
-                    <Button
-                        aria-label="Replace with current stored revision"
-                        onClick={(event) => {
-                            onDialogTrigger(event.currentTarget);
-                            controller.requestConfirmation({ action: "rematerialize" });
-                        }}
-                        variant="danger"
-                    >
-                        Replace with current stored revision
-                    </Button>
-                ) : null}
-            </div>
+            ) : null}
         </div>
     );
 }
@@ -785,7 +768,42 @@ function IssueList({
     );
 }
 
-function ApplyResult({ controller }: { readonly controller: DefinitionEditorController }) {
+function ApplyResultDialog({
+    controller,
+    onClose,
+    returnFocusRef,
+}: {
+    readonly controller: DefinitionEditorController;
+    readonly onClose: () => void;
+    readonly returnFocusRef: RefObject<HTMLElement | null>;
+}) {
+    const dialogTitle =
+        controller.applyState.result === null
+            ? controller.applyState.error === null
+                ? "Apply pending"
+                : isAuthError(controller.applyState.error)
+                  ? "Access to apply failed"
+                  : "Apply failed"
+            : applyResultTitle(controller.applyState.result);
+
+    return (
+        <Dialog
+            eyebrow="Draft action"
+            footer={
+                <Button data-dialog-initial-focus onClick={onClose}>
+                    Close
+                </Button>
+            }
+            onClose={onClose}
+            returnFocusRef={returnFocusRef}
+            title={dialogTitle}
+        >
+            <ApplyResultContent controller={controller} />
+        </Dialog>
+    );
+}
+
+function ApplyResultContent({ controller }: { readonly controller: DefinitionEditorController }) {
     if (controller.applyState.isRunning) {
         return (
             <StatePanel

@@ -55,17 +55,25 @@ test("renders Definitions browse detail, versions, focus, and accessibility at d
 
     await page.getByRole("button", { name: "Workflows" }).click();
     await expect(definitionRow(page, WORKFLOW_KEY)).toBeVisible();
-    await expect(page.getByText("implement_frontend_scope")).toBeVisible();
+    await expect(page.getByText("Structure")).toBeVisible();
+    await expect(page.getByText("First-level nodes")).toBeVisible();
+    await expect(page.getByText("implementation_loop")).toBeVisible();
+    await expect(page.getByText("Stored root role")).toHaveCount(0);
+    await expect(page.getByText("Root tree")).toHaveCount(0);
     await expect(page.getByLabel("Allowed node kind")).toHaveCount(0);
     await expect(page.getByLabel("Applies to")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Task Start" }).first()).toBeVisible();
+    const materializeLink = page.getByRole("link", { name: "Create/update draft" }).first();
+    const materializeHref = await materializeLink.getAttribute("href");
+    expect(materializeHref).toContain("materialize_kind=workflow");
+    expect(materializeHref).toContain("materialize_key=maximal-parent-first-release");
 
-    const revisionButton = page.getByRole("button", { name: "Revision 6" });
+    const revisionButton = page.getByRole("button", { name: "Revision 5" });
     await revisionButton.click();
     const versionsDialog = page.getByRole("dialog", { name: "Versions" });
     const versionsList = versionsDialog.getByRole("list", { name: "Definition versions" });
-    await expect(versionsList.getByText("Revision 6")).toBeVisible();
     await expect(versionsList.getByText("Revision 5")).toBeVisible();
+    await expect(versionsList.getByText("Revision 4")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(revisionButton).toBeFocused();
 
@@ -95,10 +103,10 @@ test("keeps Definitions kind switch, list, detail, and versions usable at mobile
 
     await page.getByRole("button", { name: "Policies" }).click();
     await expect(definitionRow(page, POLICY_KEY)).toBeVisible();
-    await expect(page.getByText(/child assignment limit not reported; 2 retries/)).toBeVisible();
+    await expect(page.getByText(/3 child assignments; retry limit not reported/)).toBeVisible();
     await expectNoDocumentOverflow(page);
 
-    const revisionButton = page.getByRole("button", { name: "Revision 5" });
+    const revisionButton = page.getByRole("button", { name: "Revision 3" });
     await revisionButton.click();
     await expect(page.getByText("Single current revision recorded.")).toBeVisible();
     await page.keyboard.press("Escape");
@@ -106,7 +114,7 @@ test("keeps Definitions kind switch, list, detail, and versions usable at mobile
 });
 
 function definitionRow(page: Page, key: string) {
-    return page.getByRole("button", { name: new RegExp(key) });
+    return page.getByRole("button", { name: new RegExp(`^${key}\\b`) });
 }
 
 async function mockDefinitions(page: Page): Promise<void> {

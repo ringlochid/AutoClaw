@@ -45,14 +45,22 @@ export async function readDraftSets({
 }
 
 export async function createDraftSet({
+    materialize = [],
     title,
 }: {
+    readonly materialize?: readonly {
+        readonly key: string;
+        readonly kind: DefinitionKind;
+    }[];
     readonly title: string | null;
 }): Promise<DraftSetDetailResponse> {
     const route = definitionDraftSetsRoute();
     return requestJson<DraftSetDetailResponse>({
         body: {
-            materialize: [],
+            materialize: materialize.map((definition) => ({
+                key: definition.key,
+                kind: definition.kind,
+            })),
             preview_task_compose: null,
             title,
         } satisfies components["schemas"]["DefinitionDraftSetCreateRequest"],

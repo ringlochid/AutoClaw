@@ -100,6 +100,97 @@ textarea {
     border-radius: var(--ac-radius-control);
 }
 
+.definition-row,
+.draft-button {
+    box-shadow: var(--ac-shadow-hairline);
+}
+
+.definition-row {
+    border-left: 0 !important;
+    box-shadow:
+        inset 3px 0 0 transparent,
+        var(--ac-shadow-hairline);
+    overflow: hidden;
+}
+
+.definition-row > div {
+    padding-bottom: 14px !important;
+    padding-top: 14px !important;
+}
+
+.definition-row:hover,
+.definition-row:focus-visible {
+    background: linear-gradient(180deg, rgb(239 246 255 / 0.72), rgb(255 255 255 / 0.98));
+    border-color: rgb(59 130 246 / 0.28);
+    box-shadow: inset 3px 0 0 rgb(59 130 246 / 0.75);
+}
+
+.definition-row[aria-pressed="true"] {
+    background: linear-gradient(180deg, rgb(239 246 255 / 0.86), rgb(255 255 255));
+    border-color: rgb(59 130 246 / 0.32);
+    box-shadow: inset 3px 0 0 var(--ac-primary);
+}
+
+.definition-row[aria-pressed="true"] .definition-title,
+.draft-button[data-active="true"] .draft-title {
+    color: var(--ac-primary-foreground);
+}
+
+.definition-title,
+.definition-summary {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.definition-title {
+    -webkit-line-clamp: 2;
+}
+
+.definition-summary {
+    -webkit-line-clamp: 1;
+}
+
+.draft-button:hover,
+.draft-button:focus-visible {
+    border-color: rgb(59 130 246 / 0.35);
+}
+
+.draft-button[data-active="true"] {
+    background: linear-gradient(180deg, rgb(239 246 255 / 0.92), rgb(255 255 255));
+    box-shadow: 0 12px 28px rgb(59 130 246 / 0.08);
+}
+
+.task-row {
+    box-shadow: var(--ac-shadow-hairline);
+    color: inherit;
+    position: relative;
+    text-decoration: none;
+}
+
+.task-row > article {
+    min-height: 89px;
+}
+
+.task-row:hover,
+.task-row:focus-visible {
+    background: linear-gradient(180deg, rgb(239 246 255 / 0.72), rgb(255 255 255 / 0.98));
+    border-color: rgb(59 130 246 / 0.28);
+    box-shadow: inset 3px 0 0 rgb(59 130 246 / 0.75);
+}
+
+.task-row:focus-visible {
+    outline: 2px solid rgb(59 130 246 / 0.45);
+    outline-offset: -2px;
+}
+
+.task-row:hover .task-open-pill,
+.task-row:focus-visible .task-open-pill {
+    background: var(--ac-primary-soft);
+    border-color: rgb(59 130 246 / 0.28);
+    color: var(--ac-primary-foreground);
+}
+
 ::-webkit-scrollbar {
     height: 10px;
     width: 10px;

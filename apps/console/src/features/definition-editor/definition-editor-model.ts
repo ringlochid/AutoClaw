@@ -136,9 +136,7 @@ export function mapDraftFileView(file: DraftFileDetail): DraftFileView {
         key: file.key,
         kind: file.kind,
         normalizedPath: file.normalized_path,
-        resetSummary: hasStoredTruth
-            ? "Reset restores the captured stored baseline."
-            : "Reset restores the saved starter baseline.",
+        resetSummary: hasStoredTruth ? "Reset to captured revision." : "Reset to starter baseline.",
         revisionNo,
         status: file.status,
         statusLabel: draftFileStatusLabel(file.status),
@@ -322,7 +320,7 @@ export function editorFingerprint({
 function draftFileStatusLabel(status: components["schemas"]["DefinitionDraftFileStatus"]): string {
     switch (status) {
         case "added":
-            return "added";
+            return "new";
         case "clean":
             return "clean";
         case "invalid":

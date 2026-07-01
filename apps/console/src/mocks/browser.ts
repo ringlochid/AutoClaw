@@ -8,7 +8,21 @@ import {
     createRuntimeFlowSummary,
     createRuntimeFlowSummaryList,
 } from "../../tests/fixtures/console-api";
-import { createDefinitionSummaryList } from "../../tests/fixtures/definitions";
+import {
+    createDefinitionDetailMap,
+    createDefinitionSummaryList,
+    createDefinitionVersionsMap,
+    createPolicyDefinitionRows,
+    createRoleDefinitionRows,
+    createWorkflowDefinitionRows,
+} from "../../tests/fixtures/definitions";
+import {
+    createDefinitionEditorApply,
+    createDefinitionEditorDraftSetList,
+    createDefinitionEditorDraftSetResponse,
+    createDefinitionEditorPreview,
+    createDefinitionEditorValidation,
+} from "../../tests/fixtures/definition-editor";
 import {
     TASK_DETAIL_TASK_ID,
     createTaskDetailMockScenario,
@@ -21,7 +35,6 @@ import {
     SECOND_TASK_START_WORKFLOW_KEY,
     TASK_START_WORKFLOW_KEY,
     createTaskStartWorkflowDetail,
-    createTaskStartWorkflowRows,
     createTaskStartWorkflowVersions,
 } from "../../tests/fixtures/task-start";
 
@@ -51,6 +64,28 @@ function createDevMockScenario() {
         .map((task, index) =>
             withRelativeUpdatedAt(task, [29, 48, 60, 120, 135, 160][index] ?? 180),
         );
+    const firstTaskListPage = [
+        createRuntimeFlowSummary({
+            active_attempt_id: taskDetailScenario.taskRead.active_attempt_id,
+            active_flow_revision_id: taskDetailScenario.taskRead.active_flow_revision_id,
+            current_node_key: "copy_update",
+            status: taskDetailScenario.taskRead.status,
+            task_id: TASK_DETAIL_TASK_ID,
+            task_summary: "Update the current task-control labels.",
+            task_title: taskDetailScenario.taskRead.task_title,
+            updated_at: relativeUpdatedAt(6),
+            workflow_key: "runtime_copy_refresh",
+            workflow_manifest_ref: taskDetailScenario.taskRead.workflow_manifest_ref,
+        }),
+        ...taskListRows.slice(0, 4),
+    ];
+    const secondTaskListPage = [
+        ...taskListRows.slice(4),
+        withRelativeUpdatedAt(createLongRuntimeTaskRow(), 190),
+    ];
+    const definitionDetails = createDefinitionDetailMap();
+    const definitionVersionsByDefinition = createDefinitionVersionsMap();
+    const definitionEditorDraftDetail = createDefinitionEditorDraftSetResponse();
     const scenario = createConsoleMockScenario({
         commandRunList: taskDetailScenario.commandRunList,
         humanRequestList,
@@ -58,35 +93,9 @@ function createDevMockScenario() {
         snapshot: taskDetailScenario.snapshot,
         taskEvents: taskDetailScenario.taskEvents,
         taskEventStream: taskDetailScenario.taskEventStream,
-        taskList: createRuntimeFlowSummaryList(
-            [
-                createRuntimeFlowSummary({
-                    active_attempt_id: taskDetailScenario.taskRead.active_attempt_id,
-                    active_flow_revision_id: taskDetailScenario.taskRead.active_flow_revision_id,
-                    current_node_key: "copy_update",
-                    status: taskDetailScenario.taskRead.status,
-                    task_id: TASK_DETAIL_TASK_ID,
-                    task_summary: "Update the current task-control labels.",
-                    task_title: taskDetailScenario.taskRead.task_title,
-                    updated_at: relativeUpdatedAt(6),
-                    workflow_key: "runtime_copy_refresh",
-                    workflow_manifest_ref: taskDetailScenario.taskRead.workflow_manifest_ref,
-                }),
-                ...taskListRows,
-                withRelativeUpdatedAt(createLongRuntimeTaskRow(), 190),
-            ],
-            "cursor-page-2",
-        ),
+        taskList: createRuntimeFlowSummaryList(firstTaskListPage, "cursor-page-2"),
         taskListPages: {
-            "cursor-page-2": createRuntimeFlowSummaryList([
-                createRuntimeFlowSummary({
-                    status: "succeeded",
-                    task_id: "task-second-page",
-                    task_summary: "Second cursor page.",
-                    task_title: "Review accepted page",
-                    updated_at: "2026-06-29T07:00:00Z",
-                }),
-            ]),
+            "cursor-page-2": createRuntimeFlowSummaryList(secondTaskListPage),
         },
         taskRead: taskDetailScenario.taskRead,
         trace: taskDetailScenario.trace,
@@ -95,7 +104,7 @@ function createDevMockScenario() {
     return {
         ...scenario,
         definitionDetails: {
-            ...scenario.definitionDetails,
+            ...definitionDetails,
             [`workflow:${TASK_START_WORKFLOW_KEY}`]:
                 createTaskStartWorkflowDetail(TASK_START_WORKFLOW_KEY),
             [`workflow:${SECOND_TASK_START_WORKFLOW_KEY}`]: createTaskStartWorkflowDetail(
@@ -103,17 +112,27 @@ function createDevMockScenario() {
             ),
         },
         definitionLists: {
-            ...scenario.definitionLists,
-            workflows: createDefinitionSummaryList("workflow", createTaskStartWorkflowRows(), null),
+            roles: createDefinitionSummaryList("role", createRoleDefinitionRows(), null),
+            policies: createDefinitionSummaryList("policy", createPolicyDefinitionRows(), null),
+            workflows: createDefinitionSummaryList(
+                "workflow",
+                createWorkflowDefinitionRows(),
+                null,
+            ),
         },
         definitionVersionsByDefinition: {
-            ...scenario.definitionVersionsByDefinition,
+            ...definitionVersionsByDefinition,
             [`workflow:${TASK_START_WORKFLOW_KEY}`]:
                 createTaskStartWorkflowVersions(TASK_START_WORKFLOW_KEY),
             [`workflow:${SECOND_TASK_START_WORKFLOW_KEY}`]: createTaskStartWorkflowVersions(
                 SECOND_TASK_START_WORKFLOW_KEY,
             ),
         },
+        draftApply: createDefinitionEditorApply(),
+        draftDetail: definitionEditorDraftDetail,
+        draftList: createDefinitionEditorDraftSetList(definitionEditorDraftDetail.draft_set),
+        draftPreview: createDefinitionEditorPreview(),
+        draftValidation: createDefinitionEditorValidation(),
     };
 }
 

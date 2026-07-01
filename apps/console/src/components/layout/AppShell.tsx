@@ -385,7 +385,7 @@ function getShellContext(pathname: string): ShellContext {
             ],
             section: "Authoring",
             status: "Draft editing",
-            statusTone: "neutral",
+            statusTone: "active",
             taskPath: null,
         };
     }
@@ -395,7 +395,7 @@ function getShellContext(pathname: string): ShellContext {
             breadcrumbs: [{ label: "Definitions" }],
             section: "Authoring",
             status: "Stored registry",
-            statusTone: "neutral",
+            statusTone: "active",
             taskPath: null,
         };
     }

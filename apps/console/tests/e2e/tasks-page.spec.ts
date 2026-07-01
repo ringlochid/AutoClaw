@@ -9,6 +9,7 @@ import {
 
 test("renders the API-backed Tasks page at desktop width", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "desktop proof is captured once");
+    await page.setViewportSize({ height: 900, width: 1440 });
 
     const seenRequests = await mockTaskList(page);
 
@@ -19,7 +20,48 @@ test("renders the API-backed Tasks page at desktop width", async ({ page }, test
     await expect(page.getByText("Fix stale navigation labels")).toBeVisible();
     await expect(page.getByRole("button", { name: "Load more" })).toBeVisible();
 
+    const activeStateRow = page.getByRole("link", {
+        name: /Open Check Definition Editor boundaries/,
+    });
+    await activeStateRow.hover();
+    const activeStateMetrics = await activeStateRow.evaluate((row) => {
+        const rowRect = row.getBoundingClientRect();
+        const titleRect = row.querySelector("h2")?.getBoundingClientRect();
+        const metaRect = row.querySelector("[data-task-meta]")?.getBoundingClientRect();
+        const styles = window.getComputedStyle(row);
+        const openPill = row.querySelector(".task-open-pill");
+        const openPillStyles = openPill === null ? null : window.getComputedStyle(openPill);
+
+        return {
+            boxShadow: styles.boxShadow,
+            openPillBackground: parseRgb(openPillStyles?.backgroundColor ?? ""),
+            rowHeight: rowRect.height,
+            titleMetaTopDelta:
+                titleRect === undefined || metaRect === undefined
+                    ? Number.POSITIVE_INFINITY
+                    : Math.abs(titleRect.top - metaRect.top),
+        };
+
+        function parseRgb(value: string): readonly number[] {
+            const match = /^rgb\((\d+), (\d+), (\d+)\)$/.exec(value);
+            if (match === null) {
+                return [];
+            }
+
+            return [Number(match[1]), Number(match[2]), Number(match[3])];
+        }
+    });
+    expect(activeStateMetrics.rowHeight).toBeLessThanOrEqual(96);
+    expect(activeStateMetrics.titleMetaTopDelta).toBeLessThanOrEqual(3);
+    expect(activeStateMetrics.boxShadow).toContain("inset");
+    expect(activeStateMetrics.openPillBackground[0]).toBeGreaterThanOrEqual(235);
+    expect(activeStateMetrics.openPillBackground[0]).toBeLessThanOrEqual(245);
+    expect(activeStateMetrics.openPillBackground[1]).toBeGreaterThanOrEqual(244);
+    expect(activeStateMetrics.openPillBackground[1]).toBeLessThanOrEqual(250);
+    expect(activeStateMetrics.openPillBackground[2]).toBe(255);
+
     await expectNoDocumentOverflow(page);
+    await expectTaskListBottomAligned(page);
 
     await page.getByLabel("Search").fill("route copy");
     await expect.poll(() => latestQueryValue(seenRequests, "q")).toBe("route copy");
@@ -78,10 +120,7 @@ async function mockTaskList(
     const seenRequests: string[] = [];
     const firstPage =
         options.firstPage ??
-        createRuntimeFlowSummaryList(
-            [...createMixedRuntimeTaskRows(), createLongRuntimeTaskRow()],
-            "cursor-page-2",
-        );
+        createRuntimeFlowSummaryList(createMixedRuntimeTaskRows().slice(0, 5), "cursor-page-2");
     const secondPage =
         options.secondPage ??
         createRuntimeFlowSummaryList([
@@ -115,6 +154,33 @@ async function expectNoDocumentOverflow(page: Page): Promise<void> {
     );
 
     expect(overflow).toBeLessThanOrEqual(1);
+}
+
+async function expectTaskListBottomAligned(page: Page): Promise<void> {
+    const metrics = await page.evaluate(() => {
+        const main = document.querySelector('main[aria-label="AutoClaw Console"]');
+        const card = document.querySelector("section[aria-labelledby]");
+        const footer = document.querySelector("footer");
+        if (main === null || card === null || footer === null) {
+            return null;
+        }
+
+        const mainRect = main.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        const footerRect = footer.getBoundingClientRect();
+        return {
+            cardBottomToMain: mainRect.bottom - cardRect.bottom,
+            footerBottomToMain: mainRect.bottom - footerRect.bottom,
+            mainOverflow: main.scrollHeight - main.clientHeight,
+        };
+    });
+
+    expect(metrics).not.toBeNull();
+    expect(metrics?.mainOverflow).toBeLessThanOrEqual(1);
+    expect(metrics?.cardBottomToMain).toBeGreaterThanOrEqual(24);
+    expect(metrics?.cardBottomToMain).toBeLessThanOrEqual(34);
+    expect(metrics?.footerBottomToMain).toBeGreaterThanOrEqual(24);
+    expect(metrics?.footerBottomToMain).toBeLessThanOrEqual(34);
 }
 
 function latestQueryValue(seenRequests: readonly string[], key: string): string | null {

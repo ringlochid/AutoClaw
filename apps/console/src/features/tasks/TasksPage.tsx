@@ -11,7 +11,7 @@ import { AlertTriangle, ArrowRight, ChevronDown, Inbox, Search, ShieldAlert } fr
 import { Link } from "react-router-dom";
 
 import { PageFrame } from "../../components/layout";
-import { Button, IdRefText, StatusChip, type StatusTone } from "../../components/ui";
+import { Button, StatusChip, type StatusTone } from "../../components/ui";
 import {
     AutoClawApiError,
     getNextCursor,
@@ -100,10 +100,10 @@ export function TasksPage() {
             eyebrow="Runtime"
             headerContent={<TaskControls controller={controller} />}
             contentClassName="!py-0"
-            headerClassName="!gap-6 !px-5 !py-5 sm:!px-6 sm:!py-6 lg:!px-6"
+            headerClassName="!gap-6 !px-5 !pb-6 !pt-5 sm:!px-6 sm:!pb-7 sm:!pt-6 lg:!px-6"
             title="Tasks"
         >
-            <div className="-mx-4 -mb-4 sm:-mx-5 sm:-mb-5 lg:-mx-6">
+            <div className="-mx-4 sm:-mx-5 lg:-mx-6">
                 <TaskListState
                     error={controller.pageState.error}
                     hasActiveNarrowing={controller.hasActiveNarrowing}
@@ -505,10 +505,10 @@ function TaskRowItem({ row }: { readonly row: TaskRow }) {
         <li>
             <Link
                 aria-label={`Open ${row.title} in Task Detail`}
-                className="group relative block overflow-hidden rounded-card border border-outline-soft bg-surface-low text-foreground no-underline shadow-hairline transition-colors before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-transparent before:content-[''] hover:border-primary/30 hover:bg-gradient-to-b hover:from-primary-soft/75 hover:to-surface-low focus-visible:border-primary/40 focus-visible:bg-gradient-to-b focus-visible:from-primary-soft/85 focus-visible:to-surface-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary/45 hover:before:bg-primary focus-visible:before:bg-primary"
+                className="task-row block overflow-hidden rounded-card border border-outline-soft bg-surface-low text-foreground transition-colors"
                 to={taskDetailPath(row.taskId)}
             >
-                <article className="grid min-w-0 gap-4 px-4 py-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_120px_120px_96px] md:items-center">
+                <article className="min-w-0 space-y-4 px-4 py-4 sm:px-6 md:grid md:grid-cols-[minmax(0,1fr)_120px_120px_96px] md:items-center md:gap-4 md:space-y-0">
                     <div className="min-w-0">
                         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
                             <h2 className="min-w-0 break-words font-display text-[18px] font-semibold leading-6 text-foreground">
@@ -533,7 +533,7 @@ function TaskRowItem({ row }: { readonly row: TaskRow }) {
                         <TaskUpdatedTime value={row.updatedAt} />
                     </div>
                     <div className="flex justify-end">
-                        <span className="inline-flex h-control items-center justify-center gap-2 rounded-control border border-outline bg-surface-low px-3 text-utility font-semibold text-foreground transition-colors group-hover:border-primary/30 group-hover:bg-primary-soft group-hover:text-primary-foreground">
+                        <span className="task-open-pill inline-flex h-control items-center justify-center gap-2 rounded-control border border-outline bg-surface-low px-3 text-utility font-semibold text-foreground transition-colors">
                             <span className="hidden lg:inline">Open</span>
                             <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
                         </span>
@@ -550,13 +550,16 @@ function TaskRowMetadata({ row }: { readonly row: TaskRow }) {
     );
 
     return (
-        <div className="flex min-w-0 flex-wrap gap-2">
+        <div
+            className="flex min-w-0 flex-wrap gap-2 font-mono text-[11px] leading-4"
+            data-task-meta
+        >
             {items.map((item, index) => (
                 <span
                     className="inline-flex min-w-0 max-w-full items-center rounded-full border border-outline-soft bg-surface-muted px-2.5 py-1"
                     key={`${item}-${index.toString()}`}
                 >
-                    <IdRefText className="block max-w-80 truncate text-label" value={item} />
+                    <span className="block min-w-0 max-w-80 truncate text-muted">{item}</span>
                 </span>
             ))}
         </div>

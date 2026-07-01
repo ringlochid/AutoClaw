@@ -35,13 +35,13 @@ export function PageFrame({
         <section
             aria-labelledby={headingId}
             className={classNames(
-                "mx-auto min-h-[calc(100vh-7rem)] max-w-[102.5rem] overflow-hidden rounded-shell border border-outline-soft bg-surface shadow-shell",
+                "mx-auto max-w-[90rem] overflow-hidden rounded-shell border border-outline-soft bg-surface shadow-shell",
                 className,
             )}
         >
             <header
                 className={classNames(
-                    "flex flex-col gap-3 border-b border-outline-soft px-5 py-3.5 sm:px-6 lg:px-7",
+                    "flex flex-col gap-5 border-b border-outline-soft p-5 sm:p-6",
                     !hasHeaderContent && "lg:flex-row lg:items-start lg:justify-between",
                     headerClassName,
                 )}
