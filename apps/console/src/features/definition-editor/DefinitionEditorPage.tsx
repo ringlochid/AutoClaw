@@ -1,6 +1,5 @@
-import { AlertTriangle, Plus, RefreshCw, RotateCcw, Save, Trash2, X } from "lucide-react";
+import { AlertTriangle, Plus, RotateCcw, Save, X } from "lucide-react";
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
-import { Link } from "react-router-dom";
 
 import { PageFrame } from "../../components/layout";
 import {
@@ -10,7 +9,6 @@ import {
     SegmentedControl,
     StatePanel,
     StatusChip,
-    Surface,
 } from "../../components/ui";
 import { classNames } from "../../lib/classNames";
 import {
@@ -21,7 +19,6 @@ import {
 } from "./definition-editor-controller";
 import {
     DEFINITION_KIND_OPTIONS,
-    EDITOR_MODE_OPTIONS,
     PREVIEW_PROVENANCE_OPTIONS,
     applyResultTone,
     kindLabel,
@@ -41,49 +38,25 @@ export function DefinitionEditorPage() {
     };
 
     return (
-        <PageFrame
-            actions={
-                <div className="flex flex-wrap items-center gap-2">
-                    <StatusChip
-                        tone={controller.currentDraftSet === null ? "neutral" : "active"}
-                        withDot
-                    >
-                        Draft workbench
-                    </StatusChip>
-                    <Button
-                        disabled={
-                            controller.listState.isLoading || controller.listState.isRefreshing
-                        }
-                        icon={
-                            <RefreshCw
-                                className={controller.listState.isRefreshing ? "animate-spin" : ""}
-                            />
-                        }
-                        onClick={controller.refresh}
-                    >
-                        Refresh
-                    </Button>
-                </div>
-            }
-            description="Edit backend-owned definition draft sets without making draft state launchable or current."
-            eyebrow="Authoring"
-            title="Definition Editor"
-        >
-            <div className="space-y-4">
-                <TruthBoundaryStrip controller={controller} />
+        <PageFrame eyebrow="Authoring" title="Definition Editor">
+            <div className="-mx-4 -mb-4 min-w-0 border-t border-outline-soft sm:-mx-5 sm:-mb-5">
                 {controller.actionError === null ? null : (
-                    <StatePanel
-                        action={<Button onClick={controller.dismissActionError}>Dismiss</Button>}
-                        summary={controller.actionError.summary}
-                        title={
-                            isAuthError(controller.actionError)
-                                ? "Access to Definition Editor failed"
-                                : "Draft action failed"
-                        }
-                        tone={isAuthError(controller.actionError) ? "auth" : "error"}
-                    />
+                    <div className="p-4 sm:p-5">
+                        <StatePanel
+                            action={
+                                <Button onClick={controller.dismissActionError}>Dismiss</Button>
+                            }
+                            summary={controller.actionError.summary}
+                            title={
+                                isAuthError(controller.actionError)
+                                    ? "Access to Definition Editor failed"
+                                    : "Draft action failed"
+                            }
+                            tone={isAuthError(controller.actionError) ? "auth" : "error"}
+                        />
+                    </div>
                 )}
-                <div className="grid min-w-0 gap-4 xl:grid-cols-[19rem_minmax(0,1fr)]">
+                <div className="grid min-w-0 xl:grid-cols-[19rem_minmax(0,1fr)]">
                     <DraftRail controller={controller} onDialogTrigger={rememberDialogTrigger} />
                     <Workbench controller={controller} onDialogTrigger={rememberDialogTrigger} />
                 </div>
@@ -100,38 +73,8 @@ export function DefinitionEditorPage() {
 
 type DialogTriggerHandler = (trigger: HTMLElement) => void;
 
-function TruthBoundaryStrip({ controller }: { readonly controller: DefinitionEditorController }) {
-    const selectedFile = controller.selectedFile;
-    return (
-        <Surface className="min-w-0" label="Truth boundaries" variant="muted">
-            <div className="grid gap-3 md:grid-cols-4">
-                <TruthBoundary
-                    label="Stored truth"
-                    value={selectedFile?.baselineLabel ?? "No selected file"}
-                />
-                <TruthBoundary label="Draft set" value={draftSetTruthLabel(controller)} />
-                <TruthBoundary
-                    label="Preview truth"
-                    value={
-                        controller.previewProvenance === "draft_truth"
-                            ? "Draft truth"
-                            : "Stored truth"
-                    }
-                />
-                <TruthBoundary label="Task Start" value="Separate stored-truth handoff" />
-            </div>
-        </Surface>
-    );
-}
-
-function TruthBoundary({ label, value }: { readonly label: string; readonly value: string }) {
-    return (
-        <div className="min-w-0 rounded-card border border-outline-soft bg-surface-low px-3 py-2">
-            <p className="font-mono text-label font-medium uppercase text-muted">{label}</p>
-            <p className="mt-1 truncate text-compact font-semibold text-foreground">{value}</p>
-        </div>
-    );
-}
+const activeModeButtonClassName =
+    "border-primary/25 bg-primary-soft text-primary-foreground hover:bg-primary-soft";
 
 function DraftRail({
     controller,
@@ -141,8 +84,9 @@ function DraftRail({
     readonly onDialogTrigger: DialogTriggerHandler;
 }) {
     return (
-        <Surface
-            actions={
+        <aside className="min-w-0 border-b border-outline-soft bg-surface px-4 py-4 sm:px-5 xl:border-b-0 xl:border-r">
+            <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="font-display text-compact font-semibold text-foreground">Draft set</p>
                 <Button
                     icon={<Plus />}
                     onClick={(event) => {
@@ -152,26 +96,17 @@ function DraftRail({
                 >
                     New draft
                 </Button>
-            }
-            className="min-w-0"
-            label="Draft set"
-        >
-            <div className="space-y-4">
-                <DraftSetSelector controller={controller} onDialogTrigger={onDialogTrigger} />
+            </div>
+            <div className="space-y-3">
+                <DraftSetSelector controller={controller} />
                 <DraftFileNavigator controller={controller} />
                 <MaterializeStoredDefinition controller={controller} />
             </div>
-        </Surface>
+        </aside>
     );
 }
 
-function DraftSetSelector({
-    controller,
-    onDialogTrigger,
-}: {
-    readonly controller: DefinitionEditorController;
-    readonly onDialogTrigger: DialogTriggerHandler;
-}) {
+function DraftSetSelector({ controller }: { readonly controller: DefinitionEditorController }) {
     if (controller.listState.isLoading) {
         return (
             <StatePanel
@@ -208,8 +143,12 @@ function DraftSetSelector({
         );
     }
 
+    if (controller.listState.rows.length <= 1) {
+        return null;
+    }
+
     return (
-        <div className="space-y-3">
+        <div className="space-y-3 rounded-card border border-outline-soft bg-surface-muted p-3">
             <FormField id="definition-editor-draft-set" label="Draft set">
                 <select
                     className={controlClassName()}
@@ -227,17 +166,6 @@ function DraftSetSelector({
             </FormField>
             <div className="flex flex-wrap gap-2">
                 <Button onClick={controller.startNewDraftSet}>New draft set</Button>
-                <Button
-                    disabled={controller.currentDraftSet === null}
-                    icon={<Trash2 />}
-                    onClick={(event) => {
-                        onDialogTrigger(event.currentTarget);
-                        controller.requestConfirmation({ action: "delete_draft_set" });
-                    }}
-                    variant="danger"
-                >
-                    Delete draft set
-                </Button>
                 {controller.listState.nextCursor === null ? null : (
                     <Button
                         disabled={controller.listState.isLoadingMore}
@@ -325,8 +253,10 @@ function MaterializeStoredDefinition({
     readonly controller: DefinitionEditorController;
 }) {
     return (
-        <div className="rounded-card border border-outline-soft bg-surface-muted p-3">
-            <p className="font-mono text-label font-medium uppercase text-muted">Stored revision</p>
+        <details className="rounded-card border border-outline-soft bg-surface-muted p-3">
+            <summary className="cursor-pointer font-mono text-label font-medium uppercase text-muted">
+                Materialize stored revision
+            </summary>
             <div className="mt-3 grid gap-3">
                 <FormField id="definition-editor-materialize-kind" label="Kind">
                     <select
@@ -369,7 +299,7 @@ function MaterializeStoredDefinition({
                     Materialize stored revision
                 </Button>
             </div>
-        </div>
+        </details>
     );
 }
 
@@ -385,19 +315,19 @@ function Workbench({
 
     if (controller.detailState.isLoading) {
         return (
-            <Surface label="Draft" title="Editor">
+            <DraftWorkbenchShell title="Editor">
                 <StatePanel
                     summary={`Reading ${controller.selectedDraftSetId ?? "the selected draft set"} before showing saved draft bodies.`}
                     title="Loading selected draft"
                     tone="loading"
                 />
-            </Surface>
+            </DraftWorkbenchShell>
         );
     }
 
     if (controller.detailState.error !== null) {
         return (
-            <Surface label="Draft" title="Editor">
+            <DraftWorkbenchShell title="Editor">
                 <StatePanel
                     action={<Button onClick={controller.refresh}>Retry</Button>}
                     summary={controller.detailState.error.summary}
@@ -408,69 +338,144 @@ function Workbench({
                     }
                     tone={isAuthError(controller.detailState.error) ? "auth" : "error"}
                 />
-            </Surface>
+            </DraftWorkbenchShell>
         );
     }
 
     if (draftSet === null || selectedFile === null) {
         return (
-            <Surface label="Draft" title="Editor">
+            <DraftWorkbenchShell title="Editor">
                 <StatePanel
                     summary="Select or create a backend-owned draft file."
                     title="No selected draft"
                     tone="empty"
                 />
-            </Surface>
+            </DraftWorkbenchShell>
         );
     }
 
     return (
-        <Surface
+        <DraftWorkbenchShell
             actions={<WorkbenchActions controller={controller} />}
-            className="min-w-0"
-            label="Draft"
+            draftSet={draftSet}
+            isEditorDirty={controller.isEditorDirty}
+            selectedFile={selectedFile}
             title={selectedFile.key}
         >
             <div className="space-y-4">
-                <DraftHeader
-                    draftSet={draftSet}
-                    isEditorDirty={controller.isEditorDirty}
-                    selectedFile={selectedFile}
-                />
-                <SegmentedControl
-                    label="Editor mode"
-                    onChange={controller.setMode}
-                    options={EDITOR_MODE_OPTIONS}
-                    value={controller.mode}
-                />
-                {controller.mode === "edit" ? (
-                    <EditMode controller={controller} onDialogTrigger={onDialogTrigger} />
-                ) : null}
+                {controller.mode === "edit" ? <EditMode controller={controller} /> : null}
                 {controller.mode === "validation" ? (
                     <ValidationMode controller={controller} />
                 ) : null}
                 {controller.mode === "preview" ? <PreviewMode controller={controller} /> : null}
+                <DraftActionFooter
+                    controller={controller}
+                    onDialogTrigger={onDialogTrigger}
+                    selectedFile={selectedFile}
+                />
                 <ApplyResult controller={controller} />
-                <TaskStartHandoff />
             </div>
-        </Surface>
+        </DraftWorkbenchShell>
+    );
+}
+
+function DraftWorkbenchShell({
+    actions,
+    children,
+    draftSet,
+    isEditorDirty,
+    selectedFile,
+    title,
+}: {
+    readonly actions?: ReactNode;
+    readonly children: ReactNode;
+    readonly draftSet?: DraftSetView;
+    readonly isEditorDirty?: boolean;
+    readonly selectedFile?: DraftFileView;
+    readonly title: string;
+}) {
+    return (
+        <section className="min-w-0 p-4 sm:p-5">
+            <article className="min-w-0 overflow-hidden rounded-card border border-outline-soft bg-surface-low shadow-panel">
+                <header className="flex flex-col gap-4 border-b border-outline-soft px-4 py-4 sm:px-5 2xl:flex-row 2xl:items-start 2xl:justify-between">
+                    <div className="min-w-0">
+                        <p className="font-mono text-label font-medium uppercase text-muted">
+                            Draft
+                        </p>
+                        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+                            <h2 className="min-w-0 break-words font-display text-compact font-semibold text-foreground">
+                                {title}
+                            </h2>
+                            {selectedFile === undefined ? null : (
+                                <>
+                                    <StatusChip>{kindLabel(selectedFile.kind)}</StatusChip>
+                                    <StatusChip
+                                        tone={
+                                            isEditorDirty === true
+                                                ? "warning"
+                                                : selectedFile.statusTone
+                                        }
+                                    >
+                                        {isEditorDirty === true
+                                            ? "local edits"
+                                            : selectedFile.statusLabel}
+                                    </StatusChip>
+                                </>
+                            )}
+                            {draftSet === undefined ? null : (
+                                <StatusChip tone={draftSet.stateTone}>
+                                    draft set {draftSet.stateLabel}
+                                </StatusChip>
+                            )}
+                            {selectedFile === undefined ? null : (
+                                <StatusChip>{selectedFile.baselineLabel}</StatusChip>
+                            )}
+                        </div>
+                    </div>
+                    {actions === undefined ? null : (
+                        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                            {actions}
+                        </div>
+                    )}
+                </header>
+                <div className="px-4 py-4 sm:px-5">{children}</div>
+            </article>
+        </section>
     );
 }
 
 function WorkbenchActions({ controller }: { readonly controller: DefinitionEditorController }) {
+    const hasValidationResult =
+        controller.validationView !== null || controller.validationState.error !== null;
+    const handleValidationClick = () => {
+        if (controller.mode === "validation" || !hasValidationResult) {
+            controller.runValidation();
+            return;
+        }
+
+        controller.setMode("validation");
+    };
+
     return (
         <>
             <Button
-                disabled={!controller.isEditorDirty || controller.isMutatingDraft}
-                icon={<Save />}
-                onClick={controller.saveSelectedDraft}
+                className={controller.mode === "edit" ? activeModeButtonClassName : undefined}
+                onClick={() => controller.setMode("edit")}
             >
-                Save draft
+                Edit
             </Button>
-            <Button disabled={controller.isMutatingDraft} onClick={controller.runValidation}>
+            <Button
+                className={controller.mode === "validation" ? activeModeButtonClassName : undefined}
+                disabled={controller.isMutatingDraft}
+                onClick={handleValidationClick}
+            >
                 Validate
             </Button>
-            <Button disabled={controller.isMutatingDraft} onClick={controller.runPreview}>
+            <Button
+                className={controller.mode === "preview" ? activeModeButtonClassName : undefined}
+                disabled={controller.isMutatingDraft}
+                onClick={controller.runPreview}
+            >
                 Preview
             </Button>
             <Button
@@ -484,34 +489,7 @@ function WorkbenchActions({ controller }: { readonly controller: DefinitionEdito
     );
 }
 
-function DraftHeader({
-    draftSet,
-    isEditorDirty,
-    selectedFile,
-}: {
-    readonly draftSet: DraftSetView;
-    readonly isEditorDirty: boolean;
-    readonly selectedFile: DraftFileView;
-}) {
-    return (
-        <div className="flex flex-wrap items-center gap-2 border-b border-outline-soft pb-4">
-            <StatusChip>{kindLabel(selectedFile.kind)}</StatusChip>
-            <StatusChip tone={isEditorDirty ? "warning" : selectedFile.statusTone}>
-                {isEditorDirty ? "local edits" : selectedFile.statusLabel}
-            </StatusChip>
-            <StatusChip tone={draftSet.stateTone}>draft set {draftSet.stateLabel}</StatusChip>
-            <StatusChip>{selectedFile.baselineLabel}</StatusChip>
-        </div>
-    );
-}
-
-function EditMode({
-    controller,
-    onDialogTrigger,
-}: {
-    readonly controller: DefinitionEditorController;
-    readonly onDialogTrigger: DialogTriggerHandler;
-}) {
+function EditMode({ controller }: { readonly controller: DefinitionEditorController }) {
     const selectedFile = controller.selectedFile;
     if (selectedFile === null) {
         return null;
@@ -519,11 +497,7 @@ function EditMode({
 
     return (
         <div className="space-y-4">
-            <FormField
-                hint="Draft edits remain local to the selected backend draft set until saved and applied."
-                id="definition-editor-body"
-                label="Editable draft body"
-            >
+            <FormField id="definition-editor-body" label="Editable draft body">
                 <textarea
                     className={classNames(
                         controlClassName(),
@@ -536,41 +510,51 @@ function EditMode({
                     value={controller.editorBody}
                 />
             </FormField>
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.45fr)]">
-                <CodeBlock title="Captured baseline">
-                    {selectedFile.baselineBody ?? "Starter baseline is held by the draft set."}
-                </CodeBlock>
-                <div className="rounded-card border border-outline-soft bg-surface-muted p-4">
-                    <p className="font-mono text-label font-medium uppercase text-muted">
-                        Comparison
-                    </p>
-                    <p className="mt-2 text-compact text-muted">{selectedFile.resetSummary}</p>
-                    <div className="mt-4 flex flex-col items-stretch gap-2">
-                        <Button
-                            className="w-full"
-                            icon={<RotateCcw />}
-                            onClick={(event) => {
-                                onDialogTrigger(event.currentTarget);
-                                controller.requestConfirmation({ action: "reset" });
-                            }}
-                        >
-                            Reset draft
-                        </Button>
-                        {selectedFile.hasStoredTruth ? (
-                            <Button
-                                aria-label="Replace with current stored revision"
-                                className="w-full"
-                                onClick={(event) => {
-                                    onDialogTrigger(event.currentTarget);
-                                    controller.requestConfirmation({ action: "rematerialize" });
-                                }}
-                                variant="danger"
-                            >
-                                Replace current revision
-                            </Button>
-                        ) : null}
-                    </div>
-                </div>
+        </div>
+    );
+}
+
+function DraftActionFooter({
+    controller,
+    onDialogTrigger,
+    selectedFile,
+}: {
+    readonly controller: DefinitionEditorController;
+    readonly onDialogTrigger: DialogTriggerHandler;
+    readonly selectedFile: DraftFileView;
+}) {
+    return (
+        <div className="flex flex-col gap-3 rounded-card border border-outline-soft bg-surface px-4 py-3 text-compact text-muted sm:flex-row sm:items-center sm:justify-between">
+            <p className="min-w-0">{selectedFile.resetSummary}</p>
+            <div className="flex flex-wrap items-center gap-2">
+                <Button
+                    disabled={!controller.isEditorDirty || controller.isMutatingDraft}
+                    icon={<Save />}
+                    onClick={controller.saveSelectedDraft}
+                >
+                    Save draft
+                </Button>
+                <Button
+                    icon={<RotateCcw />}
+                    onClick={(event) => {
+                        onDialogTrigger(event.currentTarget);
+                        controller.requestConfirmation({ action: "reset" });
+                    }}
+                >
+                    Reset draft
+                </Button>
+                {selectedFile.hasStoredTruth ? (
+                    <Button
+                        aria-label="Replace with current stored revision"
+                        onClick={(event) => {
+                            onDialogTrigger(event.currentTarget);
+                            controller.requestConfirmation({ action: "rematerialize" });
+                        }}
+                        variant="danger"
+                    >
+                        Replace with current stored revision
+                    </Button>
+                ) : null}
             </div>
         </div>
     );
@@ -859,23 +843,6 @@ function ApplyResult({ controller }: { readonly controller: DefinitionEditorCont
     );
 }
 
-function TaskStartHandoff() {
-    return (
-        <div className="rounded-card border border-outline-soft bg-surface-muted p-4">
-            <p className="font-mono text-label font-medium uppercase text-muted">Task Start</p>
-            <p className="mt-1 text-compact text-muted">
-                Launch-specific inputs stay on the stored-truth Task Start page.
-            </p>
-            <Link
-                className="mt-3 inline-flex text-utility font-semibold text-primary-foreground"
-                to="/task-start"
-            >
-                Open Task Start
-            </Link>
-        </div>
-    );
-}
-
 function NewDraftDialog({
     controller,
     returnFocusRef,
@@ -1037,20 +1004,27 @@ function ConfirmationDialog({
             onClose={() => {
                 controller.setConfirmation(null);
             }}
+            eyebrow="Draft action"
             returnFocusRef={returnFocusRef}
             title="Replace with current stored revision"
         >
-            <DialogWarning>
+            <p className="text-compact text-muted">
                 This discards draft edits, reads the current stored registry revision, and updates
                 the draft baseline. It does not apply or launch anything.
-            </DialogWarning>
-            <div className="mt-4 rounded-card border border-outline-soft bg-surface-muted p-3 font-mono text-utility">
+            </p>
+            <div className="mt-4 rounded-card border border-outline-soft bg-surface p-4 font-mono text-utility">
                 {selectedFile === null ? null : (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                        <span>
-                            {selectedFile.kind}/{selectedFile.key}
-                        </span>
-                        <span>{selectedFile.baselineLabel}</span>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="min-w-0">
+                            <p className="text-label uppercase text-muted">Selected draft</p>
+                            <p className="mt-1 break-words text-foreground">
+                                {selectedFile.kind}/{selectedFile.key}
+                            </p>
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-label uppercase text-muted">Baseline</p>
+                            <p className="mt-1 text-foreground">{selectedFile.baselineLabel}</p>
+                        </div>
                     </div>
                 )}
             </div>
@@ -1060,12 +1034,14 @@ function ConfirmationDialog({
 
 function Dialog({
     children,
+    eyebrow,
     footer,
     onClose,
     returnFocusRef,
     title,
 }: {
     readonly children: ReactNode;
+    readonly eyebrow?: string;
     readonly footer: ReactNode;
     readonly onClose: () => void;
     readonly returnFocusRef: RefObject<HTMLElement | null>;
@@ -1174,12 +1150,22 @@ function Dialog({
                 tabIndex={-1}
             >
                 <header className="flex items-start justify-between gap-4 border-b border-outline-soft p-5">
-                    <h2
-                        className="font-display text-compact font-semibold text-foreground"
-                        id="definition-editor-dialog-title"
-                    >
-                        {title}
-                    </h2>
+                    <div className="min-w-0">
+                        {eyebrow === undefined ? null : (
+                            <p className="font-mono text-label font-medium uppercase text-muted">
+                                {eyebrow}
+                            </p>
+                        )}
+                        <h2
+                            className={classNames(
+                                "font-display text-compact font-semibold text-foreground",
+                                eyebrow === undefined ? "" : "mt-1",
+                            )}
+                            id="definition-editor-dialog-title"
+                        >
+                            {title}
+                        </h2>
+                    </div>
                     <button
                         aria-label="Close dialog"
                         className="inline-flex size-9 items-center justify-center rounded-control border border-outline bg-surface-low text-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -1217,22 +1203,6 @@ function ConfirmationButtons({
             </Button>
         </>
     );
-}
-
-function draftSetTruthLabel(controller: DefinitionEditorController): string {
-    if (controller.currentDraftSet !== null) {
-        return `${controller.currentDraftSet.draftSetId} / ${controller.currentDraftSet.stateLabel}`;
-    }
-
-    if (controller.selectedDraftSetId !== null && controller.detailState.isLoading) {
-        return `${controller.selectedDraftSetId} / loading`;
-    }
-
-    if (controller.selectedDraftSetId !== null && controller.detailState.error !== null) {
-        return `${controller.selectedDraftSetId} / read failed`;
-    }
-
-    return "No draft set loaded";
 }
 
 function getDialogFocusableElements(dialog: HTMLElement | null): HTMLElement[] {

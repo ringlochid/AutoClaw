@@ -51,7 +51,7 @@ afterAll(() => {
 });
 
 describe("DefinitionEditorPage", () => {
-    it("loads a draft set, preserves mode while switching files, and keeps truth labels separate", async () => {
+    it("loads a draft set, preserves mode while switching files, and keeps draft/preview truth separate", async () => {
         installDefinitionEditorHandlers();
 
         renderDefinitionEditorPage();
@@ -60,18 +60,27 @@ describe("DefinitionEditorPage", () => {
         expect(
             await screen.findByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
         ).toBeVisible();
-        expect(screen.getByText("Stored truth")).toBeVisible();
         expect(screen.getAllByText("Draft set").length).toBeGreaterThan(0);
-        expect(screen.getByText("Preview truth")).toBeVisible();
-        expect(screen.getAllByText("Task Start").length).toBeGreaterThan(0);
+        expect(screen.getByText("draft set open")).toBeVisible();
+        expect(screen.getAllByText("workflow").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("dirty").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("rev 12").length).toBeGreaterThan(0);
         expect(screen.getByDisplayValue(new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY))).toBeVisible();
 
-        await userEvent.click(screen.getByRole("button", { name: "Validation" }));
-        expect(screen.getByText("Validation not run")).toBeVisible();
+        await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+        expect(await screen.findAllByText("Draft truth")).toHaveLength(2);
+        await userEvent.click(
+            within(screen.getByLabelText("Preview provenance")).getByRole("button", {
+                name: "Stored truth",
+            }),
+        );
+        expect(screen.getByText("Captured rev 12")).toBeVisible();
+        await userEvent.click(screen.getByRole("button", { name: "Validate" }));
+        expect(await screen.findByText("Validation Valid")).toBeVisible();
         await userEvent.click(
             screen.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_ROLE_KEY) }),
         );
-        expect(screen.getByText("Validation not run")).toBeVisible();
+        expect(screen.getByText("Validation Valid")).toBeVisible();
         await userEvent.click(screen.getByRole("button", { name: "Edit" }));
         expect(screen.getByDisplayValue(new RegExp(DEFINITION_EDITOR_ROLE_KEY))).toBeVisible();
     });
@@ -196,14 +205,10 @@ describe("DefinitionEditorPage", () => {
 
         await user.click(screen.getByRole("button", { name: "Edit" }));
         await user.type(screen.getByLabelText("Editable draft body"), "\nchanged after validation");
-        await user.click(screen.getByRole("button", { name: "Validation" }));
+        await user.click(screen.getByRole("button", { name: "Validate" }));
         expect(screen.getByText("Validation result is stale")).toBeVisible();
 
-        await user.click(
-            within(screen.getByRole("group", { name: "Editor mode" })).getByRole("button", {
-                name: "Preview",
-            }),
-        );
+        await user.click(screen.getByRole("button", { name: "Preview" }));
         await user.click(screen.getByRole("button", { name: "Run preview" }));
         expect(await screen.findByText("Preview invalid")).toBeVisible();
         expect(
@@ -295,7 +300,7 @@ describe("DefinitionEditorPage", () => {
         ).not.toBeInTheDocument();
 
         expect(await screen.findAllByText("Selected draft could not load")).toHaveLength(2);
-        expect(screen.getByText(`${failedDraftSetId} / read failed`)).toBeVisible();
+        expect(screen.getAllByText("The selected draft set could not be read.")).toHaveLength(2);
         expect(
             screen.queryByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
         ).not.toBeInTheDocument();
@@ -343,15 +348,19 @@ describe("DefinitionEditorPage", () => {
             expect(resetButton).toHaveFocus();
         });
 
-        const deleteButton = screen.getByRole("button", { name: "Delete draft set" });
-        await user.click(deleteButton);
-        const deleteDialog = await screen.findByRole("dialog", { name: "Delete draft set" });
+        const replaceButton = screen.getByRole("button", {
+            name: "Replace with current stored revision",
+        });
+        await user.click(replaceButton);
+        const deleteDialog = await screen.findByRole("dialog", {
+            name: "Replace with current stored revision",
+        });
         await waitFor(() => {
             expect(within(deleteDialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
         });
         await user.keyboard("{Escape}");
         await waitFor(() => {
-            expect(deleteButton).toHaveFocus();
+            expect(replaceButton).toHaveFocus();
         });
     });
 });

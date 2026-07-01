@@ -24,13 +24,15 @@ test("renders Definition Editor workbench, focus, accessibility, and replace mod
     test.skip(testInfo.project.name !== "chromium", "desktop proof is captured once");
 
     await mockDefinitionEditor(page);
+    await page.setViewportSize({ height: 1000, width: 1440 });
     await page.goto("/definitions/editor");
 
     await expect(page.getByRole("heading", { level: 1, name: "Definition Editor" })).toBeVisible();
     await expect(
         page.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
     ).toBeVisible();
-    await expect(page.getByText("Stored truth")).toBeVisible();
+    await expect(page.getByText("draft set open")).toBeVisible();
+    await expect(page.getByText("rev 12")).toBeVisible();
     await expect(page.getByLabel("Editable draft body")).toBeVisible();
     await expectNoDocumentOverflow(page);
 
@@ -45,6 +47,9 @@ test("renders Definition Editor workbench, focus, accessibility, and replace mod
 
     mkdirSync(DEFINITION_EDITOR_SCREENSHOT_DIR, { recursive: true });
     await page.evaluate(() => {
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
         window.scrollTo(0, 0);
     });
     await page.screenshot({
@@ -61,6 +66,15 @@ test("renders Definition Editor workbench, focus, accessibility, and replace mod
     });
     await expect(replaceDialog).toBeVisible();
     await expect(replaceDialog.getByRole("button", { name: "Cancel" })).toBeFocused();
+    await page.evaluate(() => {
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+        }
+    });
+    await page.screenshot({
+        path: `${DEFINITION_EDITOR_SCREENSHOT_DIR}/definition-editor-replace-modal.png`,
+    });
+    await replaceDialog.getByRole("button", { name: "Cancel" }).focus();
     await page.keyboard.press("Shift+Tab");
     expect(await replaceDialog.evaluate((dialog) => dialog.contains(document.activeElement))).toBe(
         true,
@@ -70,10 +84,6 @@ test("renders Definition Editor workbench, focus, accessibility, and replace mod
     expect(await replaceDialog.evaluate((dialog) => dialog.contains(document.activeElement))).toBe(
         true,
     );
-    await page.screenshot({
-        fullPage: true,
-        path: `${DEFINITION_EDITOR_SCREENSHOT_DIR}/definition-editor-replace-modal.png`,
-    });
     await page.keyboard.press("Escape");
     await expect(replaceDialog).toBeHidden();
     await expect(replaceButton).toBeFocused();
@@ -90,7 +100,7 @@ test("keeps Definition Editor draft selection and editor usable at mobile width"
     await expect(page.getByRole("heading", { level: 1, name: "Definition Editor" })).toBeVisible();
     await page.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }).click();
     await expect(page.getByLabel("Editable draft body")).toBeVisible();
-    await page.getByLabel("Editor mode").getByRole("button", { name: "Preview" }).click();
+    await page.getByRole("button", { name: "Preview" }).click();
     await expect(
         page.getByLabel("Preview provenance").getByRole("button", { name: "Draft truth" }),
     ).toBeVisible();

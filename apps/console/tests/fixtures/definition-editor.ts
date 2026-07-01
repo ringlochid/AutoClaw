@@ -1,7 +1,7 @@
 import type { components } from "../../src/api/generated/openapi";
 
 export const DEFINITION_EDITOR_SCREENSHOT_DIR =
-    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/continuation-implementation/14-definition-editor/screenshots";
+    "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity/07-definition-editor/screenshots";
 
 export const DEFINITION_EDITOR_DRAFT_SET_ID = "draft-set-definition-editor";
 export const DEFINITION_EDITOR_WORKFLOW_KEY = "definition-editor-page";
