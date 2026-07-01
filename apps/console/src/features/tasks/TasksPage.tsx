@@ -7,7 +7,7 @@ import {
     type SetStateAction,
 } from "react";
 
-import { AlertTriangle, ArrowRight, Inbox, Search, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowRight, ChevronDown, Inbox, Search, ShieldAlert } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { PageFrame } from "../../components/layout";
@@ -99,9 +99,11 @@ export function TasksPage() {
         <PageFrame
             eyebrow="Runtime"
             headerContent={<TaskControls controller={controller} />}
+            contentClassName="!py-0"
+            headerClassName="!gap-6 !px-5 !py-5 sm:!px-6 sm:!py-6 lg:!px-6"
             title="Tasks"
         >
-            <div className="-mx-4 -mb-4 sm:-mx-5 sm:-mb-5">
+            <div className="-mx-4 -mb-4 sm:-mx-5 sm:-mb-5 lg:-mx-6">
                 <TaskListState
                     error={controller.pageState.error}
                     hasActiveNarrowing={controller.hasActiveNarrowing}
@@ -270,10 +272,10 @@ function TaskSelect({
     readonly value: string;
 }) {
     return (
-        <label className="block" htmlFor={id}>
+        <label className="relative block" htmlFor={id}>
             <span className="sr-only">{label}</span>
             <select
-                className={controlClassName()}
+                className={controlClassName("appearance-none bg-none pr-10")}
                 id={id}
                 onChange={(event) => {
                     onChange(event.target.value);
@@ -286,6 +288,10 @@ function TaskSelect({
                     </option>
                 ))}
             </select>
+            <ChevronDown
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-foreground"
+            />
         </label>
     );
 }
@@ -582,7 +588,7 @@ function TaskUpdatedTime({ value }: { readonly value: string }) {
 
 function TaskStatusChip({ status }: { readonly status: components["schemas"]["FlowStatus"] }) {
     return (
-        <StatusChip className="rounded-full px-3" tone={statusTone(status)} withDot>
+        <StatusChip className="rounded-full px-3" tone={statusTone(status)}>
             {statusLabel(status)}
         </StatusChip>
     );
@@ -622,7 +628,10 @@ function formatRelativeTime(date: Date): string {
         { amount: 12, unit: "month" },
         { amount: Number.POSITIVE_INFINITY, unit: "year" },
     ];
-    const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+    const formatter = new Intl.RelativeTimeFormat(undefined, {
+        numeric: "auto",
+        style: "narrow",
+    });
     let duration = diffSeconds;
 
     for (const division of divisions) {
@@ -820,7 +829,7 @@ async function readTaskPage({
 
 function controlClassName(className?: string): string {
     return classNames(
-        "h-12 w-full min-w-0 rounded-control border border-outline bg-surface-low px-3 text-compact text-foreground shadow-hairline transition-colors placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
+        "h-[50px] w-full min-w-0 rounded-control border border-outline bg-surface-low px-4 text-compact text-foreground shadow-hairline transition-colors placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15",
         className,
     );
 }

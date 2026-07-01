@@ -10,6 +10,8 @@ export interface PageFrameProps {
     readonly eyebrow?: ReactNode;
     readonly headerContent?: ReactNode;
     readonly headerContentPlacement?: "after-description" | "title-inline";
+    readonly headerClassName?: string;
+    readonly contentClassName?: string;
     readonly title: string;
 }
 
@@ -21,6 +23,8 @@ export function PageFrame({
     eyebrow,
     headerContent,
     headerContentPlacement = "after-description",
+    headerClassName,
+    contentClassName,
     title,
 }: PageFrameProps) {
     const headingId = useId();
@@ -39,6 +43,7 @@ export function PageFrame({
                 className={classNames(
                     "flex flex-col gap-3 border-b border-outline-soft px-5 py-3.5 sm:px-6 lg:px-7",
                     !hasHeaderContent && "lg:flex-row lg:items-start lg:justify-between",
+                    headerClassName,
                 )}
             >
                 <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -65,7 +70,9 @@ export function PageFrame({
                 </div>
                 {hasHeaderContent && !hasInlineHeaderContent ? headerContent : null}
             </header>
-            <div className="px-4 py-4 sm:px-5 lg:px-6">{children}</div>
+            <div className={classNames("px-4 py-4 sm:px-5 lg:px-6", contentClassName)}>
+                {children}
+            </div>
         </section>
     );
 }

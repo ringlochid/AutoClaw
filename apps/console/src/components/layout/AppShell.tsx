@@ -63,9 +63,12 @@ export function AppShell() {
     return (
         <ShellTaskTitleContext.Provider value={shellTaskTitleContext}>
             <div className="min-h-screen bg-background text-foreground lg:grid lg:h-screen lg:grid-cols-[16rem_minmax(0,1fr)] lg:overflow-hidden">
-                <aside className="hidden border-r border-outline-soft bg-surface lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto">
+                <aside className="hidden border-r border-outline-soft bg-surface lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:p-3">
                     <ShellBrand />
-                    <nav aria-label="Primary" className="flex flex-1 flex-col gap-5 px-3 py-4">
+                    <nav
+                        aria-label="Primary"
+                        className="flex flex-1 flex-col gap-5 overflow-y-auto"
+                    >
                         <PrimaryNavGroups groups={navGroups} variant="rail" />
                     </nav>
                 </aside>
@@ -179,15 +182,15 @@ function withTaskTitle(context: ShellContext, title: string): ShellContext {
 
 function ShellBrand() {
     return (
-        <div className="flex min-h-[4.25rem] items-center gap-3 border-b border-outline-soft px-4 py-4">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary-soft font-display text-display font-semibold text-primary">
+        <div className="mb-3 flex min-h-[4.25rem] items-center gap-3 border-b border-outline-soft px-4 pb-5 pt-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft font-display text-[28px] font-bold leading-9 text-primary">
                 A
             </div>
             <div className="min-w-0">
-                <p className="truncate font-display text-compact font-semibold text-foreground">
+                <p className="truncate font-display text-[20px] font-bold leading-6 text-foreground">
                     AutoClaw
                 </p>
-                <p className="text-utility text-muted">Control Room</p>
+                <p className="text-[13px] leading-[18px] text-muted">Control Room</p>
             </div>
         </div>
     );
@@ -206,7 +209,7 @@ function PrimaryNavGroups({
     return groups.map((group) => (
         <div
             className={classNames(
-                variant === "rail" && "space-y-2",
+                variant === "rail" && "space-y-0",
                 variant === "mobile" && "contents",
             )}
             key={group.section}
@@ -214,6 +217,7 @@ function PrimaryNavGroups({
             <p
                 className={classNames(
                     "font-mono text-label font-medium text-muted",
+                    variant === "rail" && "px-4 py-2",
                     variant === "mobile" && "col-span-full px-3 pb-1 pt-3",
                 )}
             >

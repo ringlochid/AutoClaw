@@ -41,6 +41,11 @@ export async function enableMockApi(): Promise<void> {
 
 function createDevMockScenario() {
     const taskDetailScenario = createTaskDetailMockScenario();
+    const taskListRows = createMixedRuntimeTaskRows()
+        .filter((task) => task.task_id !== "task-runtime-copy-refresh")
+        .map((task, index) =>
+            withRelativeUpdatedAt(task, [29, 48, 60, 120, 135, 160][index] ?? 180),
+        );
     const scenario = createConsoleMockScenario({
         commandRunList: taskDetailScenario.commandRunList,
         humanRequestList: taskDetailScenario.humanRequestList,
@@ -52,19 +57,17 @@ function createDevMockScenario() {
                 createRuntimeFlowSummary({
                     active_attempt_id: taskDetailScenario.taskRead.active_attempt_id,
                     active_flow_revision_id: taskDetailScenario.taskRead.active_flow_revision_id,
-                    current_node_key: taskDetailScenario.taskRead.current_node_key,
+                    current_node_key: "copy_update",
                     status: taskDetailScenario.taskRead.status,
                     task_id: TASK_DETAIL_TASK_ID,
-                    task_summary: taskDetailScenario.taskRead.task_summary,
+                    task_summary: "Update the current task-control labels.",
                     task_title: taskDetailScenario.taskRead.task_title,
-                    updated_at: taskDetailScenario.taskRead.updated_at,
-                    workflow_key: taskDetailScenario.taskRead.workflow_key,
+                    updated_at: relativeUpdatedAt(6),
+                    workflow_key: "runtime_copy_refresh",
                     workflow_manifest_ref: taskDetailScenario.taskRead.workflow_manifest_ref,
                 }),
-                ...createMixedRuntimeTaskRows().filter(
-                    (task) => task.task_id !== "task-runtime-copy-refresh",
-                ),
-                createLongRuntimeTaskRow(),
+                ...taskListRows,
+                withRelativeUpdatedAt(createLongRuntimeTaskRow(), 190),
             ],
             "cursor-page-2",
         ),
@@ -105,5 +108,19 @@ function createDevMockScenario() {
                 SECOND_TASK_START_WORKFLOW_KEY,
             ),
         },
+    };
+}
+
+function relativeUpdatedAt(minutesAgo: number): string {
+    return new Date(Date.now() - minutesAgo * 60_000).toISOString();
+}
+
+function withRelativeUpdatedAt<T extends { readonly updated_at: string }>(
+    task: T,
+    minutesAgo: number,
+): T {
+    return {
+        ...task,
+        updated_at: relativeUpdatedAt(minutesAgo),
     };
 }

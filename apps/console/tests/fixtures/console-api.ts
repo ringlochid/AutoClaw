@@ -106,7 +106,7 @@ export function createRuntimeFlowSummaryList(
 export function createMixedRuntimeTaskRows(): readonly components["schemas"]["RuntimeFlowSummary"][] {
     return [
         createRuntimeFlowSummary({
-            current_node_key: "implement_frontend_scope",
+            current_node_key: "copy_update",
             status: "running",
             task_id: "task-runtime-copy-refresh",
             task_summary: "Update the current task-control labels.",
@@ -116,17 +116,27 @@ export function createMixedRuntimeTaskRows(): readonly components["schemas"]["Ru
         }),
         createRuntimeFlowSummary({
             active_attempt_id: "attempt-definition-001",
-            current_node_key: "review_frontend_scope",
+            current_node_key: "boundary_check",
             status: "pending",
             task_id: "task-definition-boundaries",
             task_summary: "Confirm draft-set apply and Task Start stay separate.",
             task_title: "Check Definition Editor boundaries",
             updated_at: "2026-06-29T13:31:00Z",
-            workflow_key: "definition_authoring_suite",
+            workflow_key: "definition-authoring-suite",
+        }),
+        createRuntimeFlowSummary({
+            active_attempt_id: "attempt-runtime-handoff-001",
+            current_node_key: "root_handoff",
+            status: "running",
+            task_id: "task-runtime-handoff",
+            task_summary: "Gather the current summary and open blockers.",
+            task_title: "Prepare runtime handoff",
+            updated_at: "2026-06-29T13:12:00Z",
+            workflow_key: "runtime_handoff",
         }),
         createRuntimeFlowSummary({
             active_attempt_id: "attempt-blocked-001",
-            current_node_key: "implementation_delivery",
+            current_node_key: "navigation_copy_patch",
             status: "blocked",
             task_id: "task-stale-navigation-labels",
             task_summary: "Replace retired runtime names.",
@@ -136,13 +146,13 @@ export function createMixedRuntimeTaskRows(): readonly components["schemas"]["Ru
         }),
         createRuntimeFlowSummary({
             active_attempt_id: "attempt-paused-001",
-            current_node_key: "review_frontend_scope",
+            current_node_key: "command_runs_overflow",
             status: "paused",
             task_id: "task-command-run-overflow",
             task_summary: "Check long rows on narrow widths.",
             task_title: "Verify command-run overflow",
             updated_at: "2026-06-29T11:42:00Z",
-            workflow_key: "command_runs_overflow",
+            workflow_key: "task_control_suite",
         }),
         createRuntimeFlowSummary({
             active_attempt_id: "attempt-succeeded-001",
