@@ -42,16 +42,16 @@ test("renders and resolves the Human Requests page at desktop width", async ({
         .analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
-    await page.getByLabel(/Use fallback/).check();
+    await page.getByLabel(/Use due fallback/).check();
     await page.getByLabel("Notes").fill("Use fallback unless a reviewer objects.");
     await page.getByRole("button", { name: "Next" }).click();
     await page.getByLabel("Freeform answer").fill("Keep this inside the page slice.");
     await page.getByRole("button", { name: "Next" }).click();
-    await page.getByLabel(/Focused review/).check();
+    await page.getByLabel(/Answer only/).check();
     await page.getByRole("button", { name: "Previous" }).click();
     await page.getByRole("button", { name: "Previous" }).click();
 
-    await expect(page.getByLabel(/Use fallback/)).toBeChecked();
+    await expect(page.getByLabel(/Use due fallback/)).toBeChecked();
     await expect(page.getByLabel("Notes")).toHaveValue("Use fallback unless a reviewer objects.");
     await page.evaluate(() => {
         window.scrollTo(0, 0);
@@ -66,28 +66,28 @@ test("renders and resolves the Human Requests page at desktop width", async ({
     await expect(page.getByText("Resolved request")).toBeVisible();
     await expect.poll(() => requestBodies.length).toBe(1);
     expect(requestBodies[0]?.item_responses.map((response) => response.item_id)).toEqual([
-        "due-handling",
-        "scope-choice",
-        "review-posture",
+        "due_handling",
+        "next_scope",
+        "next_context",
     ]);
 
     await page.getByText("Approve generated file writes").click();
-    await expect(page.getByLabel("Reject file write")).toBeVisible();
+    await expect(page.getByLabel("Reject for now")).toBeVisible();
     await page.getByText("Provide handoff fields").click();
     await page.getByRole("button", { exact: true, name: "Resolve" }).click();
-    await expect(page.getByText("Handoff title is required.")).toBeVisible();
-    await page.getByLabel("Handoff title").fill("Human request implementation");
-    await page.getByLabel("Priority").fill("2");
-    await page.getByLabel("Allow follow up").selectOption("true");
+    await expect(page.getByText("Target node is required.")).toBeVisible();
+    await page.getByLabel("Target node").fill("release_gate");
+    await page.getByLabel("Expected output").fill("validated artifact list");
+    await page.getByLabel("Constraint").fill("Use controller-owned request data only.");
     await page.getByRole("button", { exact: true, name: "Resolve" }).click();
     await expect.poll(() => requestBodies.length).toBe(2);
     expect(requestBodies[1]?.item_responses[0]?.response_payload).toEqual({
-        allow_follow_up: true,
-        handoff_title: "Human request implementation",
-        priority: 2,
+        constraint: "Use controller-owned request data only.",
+        expected_output: "validated artifact list",
+        target_node: "release_gate",
     });
-    await expect(page.getByText(/"handoff_title": "Human request implementation"/)).toBeVisible();
-    await expect(page.getByText(/"allow_follow_up": true/)).toBeVisible();
+    await expect(page.getByText(/"target_node": "release_gate"/)).toBeVisible();
+    await expect(page.getByText(/"expected_output": "validated artifact list"/)).toBeVisible();
 
     await page.getByText("Due window elapsed").click();
     await expect(page.getByText("Timed out request")).toBeVisible();
@@ -111,7 +111,7 @@ test("keeps Human Requests responsive at mobile width", async ({ page }, testInf
 
     await expect(page.getByRole("heading", { name: "Choose due handling" }).last()).toBeVisible();
     await expect(page.getByRole("button", { name: "Next" })).toBeVisible();
-    await page.getByLabel(/Use fallback/).check();
+    await page.getByLabel(/Use due fallback/).check();
     await page.getByRole("button", { name: "Next" }).focus();
     await expect(page.getByRole("button", { name: "Next" })).toBeFocused();
     await expectTopAfter(

@@ -189,6 +189,13 @@ export function labelFromKind(kind: components["schemas"]["HumanRequestKind"]): 
 }
 
 function createDraftForItem(item: HumanRequestItem): HumanRequestItemDraft {
+    const recommendedOptionId = item.recommended_option ?? null;
+    const recommendedOption =
+        recommendedOptionId !== null &&
+        item.options.some((option) => option.id === recommendedOptionId)
+            ? recommendedOptionId
+            : null;
+
     return {
         extraNotes: "",
         freeformAnswer: "",
@@ -196,7 +203,7 @@ function createDraftForItem(item: HumanRequestItem): HumanRequestItemDraft {
             (getStructuredSchemaModel(item)?.fields ?? []).map((field) => [field.name, ""]),
         ),
         responsePayloadJson: "{}",
-        selectedOption: null,
+        selectedOption: recommendedOption,
     };
 }
 

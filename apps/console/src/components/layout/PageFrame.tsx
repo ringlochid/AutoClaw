@@ -51,9 +51,9 @@ export function PageFrame({
                         {eyebrow === undefined ? null : (
                             <p className="font-mono text-label font-medium text-muted">{eyebrow}</p>
                         )}
-                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+                        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
                             <h1
-                                className="font-display text-display font-semibold text-foreground"
+                                className="font-display text-[22px] font-semibold leading-6 text-foreground sm:text-display"
                                 id={headingId}
                             >
                                 {title}

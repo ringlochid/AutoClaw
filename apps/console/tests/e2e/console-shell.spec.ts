@@ -33,7 +33,9 @@ test("keeps task-scoped breadcrumbs below Tasks", async ({ page }) => {
     await expect(breadcrumb).toContainText("runtime-copy-refresh");
     await expect(breadcrumb).toContainText("Human Requests");
     await expect(breadcrumb.getByText("\u203a")).toHaveCount(2);
-    await expect(page.getByRole("heading", { level: 1, name: "Human Requests" })).toBeVisible();
+    await expect(
+        page.getByRole("heading", { level: 1, name: "runtime-copy-refresh" }),
+    ).toBeVisible();
     await expect(page.getByRole("link", { name: "Task Detail" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Human Requests" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Command Runs" })).toBeVisible();

@@ -14,6 +14,10 @@ import {
     createTaskDetailMockScenario,
 } from "../../tests/fixtures/task-detail";
 import {
+    createHumanRequestPageList,
+    createHumanRequestResolveResponse,
+} from "../../tests/fixtures/human-requests";
+import {
     SECOND_TASK_START_WORKFLOW_KEY,
     TASK_START_WORKFLOW_KEY,
     createTaskStartWorkflowDetail,
@@ -41,6 +45,7 @@ export async function enableMockApi(): Promise<void> {
 
 function createDevMockScenario() {
     const taskDetailScenario = createTaskDetailMockScenario();
+    const humanRequestList = createHumanRequestPageList();
     const taskListRows = createMixedRuntimeTaskRows()
         .filter((task) => task.task_id !== "task-runtime-copy-refresh")
         .map((task, index) =>
@@ -48,7 +53,8 @@ function createDevMockScenario() {
         );
     const scenario = createConsoleMockScenario({
         commandRunList: taskDetailScenario.commandRunList,
-        humanRequestList: taskDetailScenario.humanRequestList,
+        humanRequestList,
+        humanRequestResolve: createHumanRequestResolveResponse(humanRequestList.items[0].request),
         snapshot: taskDetailScenario.snapshot,
         taskEvents: taskDetailScenario.taskEvents,
         taskEventStream: taskDetailScenario.taskEventStream,

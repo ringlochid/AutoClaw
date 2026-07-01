@@ -15,7 +15,7 @@ export function createHumanRequestPageList(): components["schemas"]["HumanReques
             createHumanRequestRead({
                 items: [
                     createOptionItem({
-                        itemId: "due-handling",
+                        itemId: "due_handling",
                         prompt: "If this request reaches its due time unanswered, what should the controller do?",
                         recommendedOption: "use-fallback",
                         options: [
@@ -23,7 +23,7 @@ export function createHumanRequestPageList(): components["schemas"]["HumanReques
                                 description:
                                     "Continue with the safe fallback after the due time passes.",
                                 id: "use-fallback",
-                                title: "Use fallback",
+                                title: "Use due fallback",
                             },
                             {
                                 description: "Leave the request open and wait for a direct answer.",
@@ -39,79 +39,101 @@ export function createHumanRequestPageList(): components["schemas"]["HumanReques
                         ],
                     }),
                     createOptionItem({
-                        itemId: "scope-choice",
-                        prompt: "Which scope should the worker handle next?",
+                        itemId: "next_scope",
+                        prompt: "What should the next worker handle after this answer?",
+                        recommendedOption: "current-request",
                         options: [
                             {
-                                description: "Keep the change inside the current page slice.",
-                                id: "page-only",
-                                title: "Page only",
+                                description:
+                                    "Keep the next pass limited to the human-request branch.",
+                                id: "current-request",
+                                title: "Current request only",
                             },
                             {
-                                description: "Route broader shared work to a later scope.",
-                                id: "route-later",
-                                title: "Route later",
+                                description:
+                                    "Let the worker verify the surrounding task state before continuing.",
+                                id: "whole-task",
+                                title: "Whole task check",
+                            },
+                            {
+                                description: "Record the answer but stop before the next dispatch.",
+                                id: "pause-after-answer",
+                                title: "Pause after answer",
                             },
                         ],
                     }),
                     createOptionItem({
-                        itemId: "review-posture",
-                        prompt: "What should the reviewer prioritize?",
+                        itemId: "next_context",
+                        prompt: "How much of this answer should be included for the next worker?",
+                        recommendedOption: "answer-only",
                         options: [
                             {
                                 description:
-                                    "Review the focused page behavior and validation proof.",
-                                id: "focused-review",
-                                title: "Focused review",
+                                    "Pass the selected answer and item notes without extra operator context.",
+                                id: "answer-only",
+                                title: "Answer only",
                             },
                             {
-                                description: "Block the scope and return to the parent.",
-                                id: "block-scope",
-                                title: "Block scope",
+                                description:
+                                    "Include the request summary so the next worker has local context.",
+                                id: "answer-and-summary",
+                                title: "Answer and summary",
+                            },
+                            {
+                                description:
+                                    "Include all item responses and controller timing fields.",
+                                id: "full-thread",
+                                title: "Full request thread",
                             },
                         ],
                     }),
                 ],
                 kind: "direction",
-                request_id: "hr-direction",
+                opened_at: "2026-06-20T19:12:00Z",
+                request_id: "direction-due-handling",
                 requester_node: "handoff_review",
                 summary:
                     "Decide how the controller should proceed if no one answers before the due time.",
                 timeout: {
                     default_behavior: "Use the safe fallback after the due time.",
-                    due_at: "2026-06-29T17:57:00Z",
+                    due_at: "2026-06-20T19:57:00Z",
                 },
                 title: "Choose due handling",
             }),
             createHumanRequestRead({
                 items: [
                     createOptionItem({
-                        itemId: "write-approval",
-                        prompt: "Should the worker apply the generated file writes?",
-                        recommendedOption: "approve",
+                        itemId: "file_write",
+                        prompt: "Can the worker write the generated task artifacts?",
+                        recommendedOption: "approve-limited",
                         options: [
                             {
-                                description: "Allow the generated files to be written.",
+                                description: "Allow the named writes and continue the task.",
                                 id: "approve",
-                                title: "Approve file write",
+                                title: "Approve",
                             },
                             {
                                 description:
-                                    "Reject the write and keep the request open for a safer path.",
+                                    "Permit only the listed artifacts and reject any extra file changes.",
+                                id: "approve-limited",
+                                title: "Approve named files only",
+                            },
+                            {
+                                description: "Do not write files until the request is narrowed.",
                                 id: "reject",
-                                title: "Reject file write",
+                                title: "Reject for now",
                             },
                         ],
                     }),
                 ],
                 kind: "approval",
-                opened_at: "2026-06-29T16:10:00Z",
-                request_id: "hr-approval",
-                requester_node: "implement_frontend_scope",
-                summary: "Approve or reject the proposed file write.",
+                opened_at: "2026-06-20T18:49:00Z",
+                request_id: "approval-generated-files",
+                requester_node: "release_gate",
+                summary: "Allow the worker to update the task artifacts named in the request.",
                 timeout: {
                     default_behavior: "Block the write until explicit approval arrives.",
-                    due_at: "2026-06-29T18:10:00Z",
+                    due_at: "2026-06-20T20:10:00Z",
                 },
                 title: "Approve generated file writes",
             }),
@@ -120,73 +142,81 @@ export function createHumanRequestPageList(): components["schemas"]["HumanReques
                     {
                         input_payload_schema: {
                             properties: {
-                                allow_follow_up: {
-                                    title: "Allow follow up",
-                                    type: "boolean",
-                                },
-                                handoff_title: {
-                                    title: "Handoff title",
+                                constraint: {
+                                    title: "Constraint",
                                     type: "string",
                                 },
-                                priority: {
-                                    title: "Priority",
-                                    type: "integer",
+                                expected_output: {
+                                    title: "Expected output",
+                                    type: "string",
+                                },
+                                target_node: {
+                                    title: "Target node",
+                                    type: "string",
                                 },
                             },
-                            required: ["handoff_title", "priority"],
+                            required: ["target_node", "expected_output"],
                             type: "object",
                         },
-                        item_id: "handoff-fields",
+                        item_id: "handoff_payload",
                         options: [],
-                        prompt: "Provide the structured handoff fields for the next worker.",
+                        prompt: "Enter the payload the controller should attach to the next dispatch.",
                         recommended_option: null,
                     },
                 ],
                 kind: "input",
-                opened_at: "2026-06-29T17:00:00Z",
-                request_id: "hr-input",
-                requester_node: "implementation_delivery",
-                summary: "The next assignment needs structured handoff details.",
+                opened_at: "2026-06-20T18:27:00Z",
+                request_id: "input-handoff-fields",
+                requester_node: "handoff_prepare",
+                summary: "Fill the missing values required before the next dispatch.",
                 timeout: {
                     default_behavior: "Block until the missing fields are supplied.",
-                    due_at: "2026-06-29T19:00:00Z",
+                    due_at: "2026-06-20T21:00:00Z",
                 },
                 title: "Provide handoff fields",
             }),
             createHumanRequestRead({
                 items: [
                     createOptionItem({
-                        itemId: "review-result",
-                        prompt: "How should the controller treat the validation result?",
-                        recommendedOption: "accept",
+                        itemId: "validation_result",
+                        prompt: "Is the latest validation evidence sufficient?",
+                        recommendedOption: "request-more-evidence",
                         options: [
                             {
-                                description: "Accept the validation evidence and continue.",
+                                description:
+                                    "Record the result and let the controller close the request.",
                                 id: "accept",
                                 title: "Accept evidence",
                             },
                             {
-                                description: "Request focused fixes before continuing.",
-                                id: "request-fixes",
-                                title: "Request fixes",
+                                description:
+                                    "Keep the request open and ask for another validation pass.",
+                                id: "request-more-evidence",
+                                title: "Request more evidence",
+                            },
+                            {
+                                description:
+                                    "Return the task for correction before another review.",
+                                id: "reject-evidence",
+                                title: "Reject evidence",
                             },
                         ],
                     }),
                 ],
                 kind: "review",
-                opened_at: "2026-06-29T17:30:00Z",
-                request_id: "hr-review",
-                requester_node: "review_frontend_scope",
-                summary: "Review the submitted validation result before release work continues.",
+                opened_at: "2026-06-20T17:58:00Z",
+                request_id: "review-validation",
+                requester_node: "strict_review",
+                summary: "Choose whether the latest checks are enough to close the request.",
                 timeout: {
                     default_behavior: "Return to the reviewer with no acceptance.",
-                    due_at: "2026-06-29T19:30:00Z",
+                    due_at: "2026-06-20T21:30:00Z",
                 },
                 title: "Review validation result",
             }),
             createTerminalHumanRequestRead("resolved"),
-            createTerminalHumanRequestRead("timed_out"),
             createTerminalHumanRequestRead("cancelled"),
+            createTerminalHumanRequestRead("timed_out"),
         ],
         task_id: HUMAN_REQUEST_TASK_ID,
     };
@@ -289,14 +319,25 @@ function createTerminalHumanRequestRead(
     status: Exclude<HumanRequestStatus, "open">,
 ): HumanRequestRead {
     const request = createHumanRequestRead({
-        kind: status === "cancelled" ? "approval" : "review",
+        kind: status === "cancelled" ? "approval" : status === "timed_out" ? "direction" : "review",
         opened_at:
             status === "resolved"
-                ? "2026-06-29T13:03:00Z"
+                ? "2026-06-20T16:48:00Z"
                 : status === "timed_out"
-                  ? "2026-06-29T12:55:00Z"
-                  : "2026-06-29T13:41:00Z",
-        request_id: `hr-${status}`,
+                  ? "2026-06-20T14:10:00Z"
+                  : "2026-06-20T15:30:00Z",
+        request_id:
+            status === "resolved"
+                ? "review-evidence-accepted"
+                : status === "timed_out"
+                  ? "direction-due-elapsed"
+                  : "approval-write-cancelled",
+        requester_node:
+            status === "resolved"
+                ? "strict_review"
+                : status === "timed_out"
+                  ? "handoff_review"
+                  : "release_gate",
         status,
         summary:
             status === "resolved"
@@ -328,7 +369,12 @@ function createTerminalHumanRequestRead(
                 : [],
         request_id: request.request_id,
         resolution_kind: resolutionKind,
-        resolved_at: HUMAN_REQUEST_RESOLVED_AT,
+        resolved_at:
+            status === "resolved"
+                ? "2026-06-20T17:03:00Z"
+                : status === "timed_out"
+                  ? "2026-06-20T14:55:00Z"
+                  : "2026-06-20T15:41:00Z",
         resolved_by_actor_ref: resolutionKind === "cancelled" ? "controller" : "operator:test",
         task_id: request.task_id,
     };

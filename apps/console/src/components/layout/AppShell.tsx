@@ -67,7 +67,7 @@ export function AppShell() {
                     <ShellBrand />
                     <nav
                         aria-label="Primary"
-                        className="flex flex-1 flex-col gap-5 overflow-y-auto"
+                        className="flex flex-1 flex-col gap-4 overflow-y-auto"
                     >
                         <PrimaryNavGroups groups={navGroups} variant="rail" />
                     </nav>
@@ -83,7 +83,7 @@ export function AppShell() {
                         <PrimaryNavGroups groups={navGroups} variant="mobile" />
                     </nav>
                     <header className="sticky top-0 z-10 border-b border-outline-soft bg-surface">
-                        <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 px-page-inline py-2 lg:py-0">
+                        <div className="flex min-h-11 flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-page-inline lg:py-0">
                             <div className="min-w-0">
                                 <nav
                                     aria-label="Breadcrumb"
@@ -153,7 +153,7 @@ export function AppShell() {
                     </header>
                     <main
                         aria-label="AutoClaw Console"
-                        className="min-w-0 flex-1 px-page-inline py-page-block lg:overflow-y-auto"
+                        className="min-w-0 flex-1 px-4 py-4 sm:px-page-inline sm:py-page-block lg:overflow-y-auto"
                     >
                         <Outlet />
                     </main>
@@ -182,7 +182,7 @@ function withTaskTitle(context: ShellContext, title: string): ShellContext {
 
 function ShellBrand() {
     return (
-        <div className="mb-3 flex min-h-[4.25rem] items-center gap-3 border-b border-outline-soft px-4 pb-5 pt-4">
+        <div className="mb-2 flex min-h-[4.25rem] items-center gap-3 border-b border-outline-soft px-4 pb-5 pt-4 lg:mb-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft font-display text-[28px] font-bold leading-9 text-primary">
                 A
             </div>
@@ -218,7 +218,7 @@ function PrimaryNavGroups({
                 className={classNames(
                     "font-mono text-label font-medium text-muted",
                     variant === "rail" && "px-4 py-2",
-                    variant === "mobile" && "col-span-full px-3 pb-1 pt-3",
+                    variant === "mobile" && "col-span-full px-3 py-[7px]",
                 )}
             >
                 {group.section}
@@ -250,7 +250,8 @@ function PrimaryNavLink({
                 classNames(
                     "flex h-control items-center gap-3 rounded-control border px-4 text-compact font-semibold transition-colors hover:bg-surface-muted hover:text-foreground",
                     variant === "rail" && "w-full",
-                    variant === "mobile" && "w-full border border-transparent",
+                    variant === "mobile" &&
+                        "!h-[38px] min-h-[38px] w-full border border-transparent px-3",
                     isActive
                         ? "border-indigo-300/25 bg-active text-active-foreground"
                         : "border-transparent text-muted",

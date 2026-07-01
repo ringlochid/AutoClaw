@@ -70,7 +70,7 @@ describe("HumanRequestsPage", () => {
             ),
         ).toBeVisible();
 
-        await user.click(screen.getByLabelText(/Use fallback/));
+        await user.click(screen.getByLabelText(/Use due fallback/));
         await user.type(screen.getByLabelText("Notes"), "Use fallback unless a reviewer objects.");
         await user.click(screen.getByRole("button", { name: "Next" }));
 
@@ -79,11 +79,11 @@ describe("HumanRequestsPage", () => {
             "Keep this inside the page slice.",
         );
         await user.click(screen.getByRole("button", { name: "Next" }));
-        await user.click(screen.getByLabelText(/Focused review/));
+        await user.click(screen.getByLabelText(/Answer only/));
         await user.click(screen.getByRole("button", { name: "Previous" }));
         await user.click(screen.getByRole("button", { name: "Previous" }));
 
-        expect(screen.getByLabelText(/Use fallback/)).toBeChecked();
+        expect(screen.getByLabelText(/Use due fallback/)).toBeChecked();
         expect(screen.getByLabelText("Notes")).toHaveValue(
             "Use fallback unless a reviewer objects.",
         );
@@ -99,23 +99,23 @@ describe("HumanRequestsPage", () => {
                 {
                     extra_notes: "Use fallback unless a reviewer objects.",
                     freeform_answer: null,
-                    item_id: "due-handling",
+                    item_id: "due_handling",
                     response_payload: null,
                     selected_option: "use-fallback",
                 },
                 {
                     extra_notes: null,
                     freeform_answer: "Keep this inside the page slice.",
-                    item_id: "scope-choice",
+                    item_id: "next_scope",
                     response_payload: null,
                     selected_option: null,
                 },
                 {
                     extra_notes: null,
                     freeform_answer: null,
-                    item_id: "review-posture",
+                    item_id: "next_context",
                     response_payload: null,
-                    selected_option: "focused-review",
+                    selected_option: "answer-only",
                 },
             ],
         });
@@ -135,12 +135,15 @@ describe("HumanRequestsPage", () => {
         );
         await user.click(getWorkbenchResolveButton());
 
-        expect(await screen.findByText("Handoff title is required.")).toBeVisible();
-        expect(screen.getByText("Priority is required.")).toBeVisible();
+        expect(await screen.findByText("Target node is required.")).toBeVisible();
+        expect(screen.getByText("Expected output is required.")).toBeVisible();
 
-        await user.type(screen.getByLabelText("Handoff title"), "Human request implementation");
-        await user.type(screen.getByLabelText("Priority"), "2");
-        await user.selectOptions(screen.getByLabelText("Allow follow up"), "true");
+        await user.type(screen.getByLabelText("Target node"), "release_gate");
+        await user.type(screen.getByLabelText("Expected output"), "validated artifact list");
+        await user.type(
+            screen.getByLabelText("Constraint"),
+            "Use controller-owned request data only.",
+        );
         await user.type(screen.getByLabelText("Notes"), "Use the structured handoff as written.");
         await user.click(getWorkbenchResolveButton());
 
@@ -150,19 +153,17 @@ describe("HumanRequestsPage", () => {
         expect(requestBodies[0]?.item_responses[0]).toEqual({
             extra_notes: "Use the structured handoff as written.",
             freeform_answer: null,
-            item_id: "handoff-fields",
+            item_id: "handoff_payload",
             response_payload: {
-                allow_follow_up: true,
-                handoff_title: "Human request implementation",
-                priority: 2,
+                constraint: "Use controller-owned request data only.",
+                expected_output: "validated artifact list",
+                target_node: "release_gate",
             },
             selected_option: null,
         });
         expect(await screen.findByText("Resolved request")).toBeVisible();
-        expect(
-            await screen.findByText(/"handoff_title": "Human request implementation"/),
-        ).toBeVisible();
-        expect(screen.getByText(/"allow_follow_up": true/)).toBeVisible();
+        expect(await screen.findByText(/"target_node": "release_gate"/)).toBeVisible();
+        expect(screen.getByText(/"expected_output": "validated artifact list"/)).toBeVisible();
     });
 
     it("renders terminal readback and keeps approval rejection as an answer option", async () => {
@@ -179,7 +180,7 @@ describe("HumanRequestsPage", () => {
         expect(screen.getByText("Cancelled request")).toBeVisible();
 
         await user.click(screen.getByText("Approve generated file writes"));
-        expect(screen.getByLabelText(/Reject file write/)).toBeVisible();
+        expect(screen.getByLabelText(/Reject for now/)).toBeVisible();
         expect(screen.getAllByText("approval").length).toBeGreaterThan(0);
         expect(
             within(screen.getByLabelText("Human request queue")).getByText(
@@ -205,7 +206,7 @@ describe("HumanRequestsPage", () => {
         renderHumanRequestsPage();
 
         await user.click(await screen.findByText("Approve generated file writes"));
-        await user.click(screen.getByLabelText(/Reject file write/));
+        await user.click(screen.getByLabelText(/Reject for now/));
         await user.click(getWorkbenchResolveButton());
 
         expect(await screen.findByText("Request resolved elsewhere")).toBeVisible();
@@ -215,14 +216,14 @@ describe("HumanRequestsPage", () => {
         expect(
             screen.getByText("Reread current human-request truth before retrying."),
         ).toBeVisible();
-        expect(screen.getByLabelText(/Reject file write/)).toBeChecked();
+        expect(screen.getByLabelText(/Reject for now/)).toBeChecked();
 
         await user.click(screen.getByRole("button", { name: "Reread current truth" }));
 
         await waitFor(() => {
             expect(readLog).toHaveLength(2);
         });
-        expect(screen.getByLabelText(/Reject file write/)).toBeChecked();
+        expect(screen.getByLabelText(/Reject for now/)).toBeChecked();
     });
 
     it("renders empty, auth, and task-detail navigation states", async () => {

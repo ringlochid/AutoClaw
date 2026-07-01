@@ -1,17 +1,9 @@
-import { ExternalLink, RefreshCw, Send } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ExternalLink } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { PageFrame, useShellTaskTitle } from "../../components/layout";
-import {
-    Button,
-    IdRefText,
-    PropertyGrid,
-    StatePanel,
-    StatusChip,
-    TimestampText,
-    type StatusTone,
-} from "../../components/ui";
+import { Button, IdRefText, StatePanel } from "../../components/ui";
 import type { components } from "../../api/generated/openapi";
 import { classNames } from "../../lib/classNames";
 import {
@@ -35,7 +27,9 @@ export function HumanRequestsPage() {
     return (
         <PageFrame
             actions={<HumanRequestsHeaderActions controller={controller} />}
+            contentClassName="!p-0"
             eyebrow="Human Requests"
+            headerClassName="!gap-4 !px-5 !py-5 sm:!px-6 sm:!pb-[27px] sm:!pt-6"
             title={pageTitle}
         >
             <HumanRequestsState controller={controller} />
@@ -56,20 +50,15 @@ function HumanRequestsHeaderActions({
     return (
         <>
             {controller.requestReads.length === 0 ? (
-                <StatusChip tone="neutral">{controller.statusSummary}</StatusChip>
+                <HeaderCountPill>{controller.statusSummary}</HeaderCountPill>
             ) : (
                 <>
-                    <StatusChip tone="neutral">{String(openCount)} pending</StatusChip>
-                    <StatusChip tone="neutral">{String(terminalCount)} terminal</StatusChip>
+                    <HeaderCountPill>{String(openCount)} pending</HeaderCountPill>
+                    <HeaderCountPill className="max-sm:!hidden">
+                        {String(terminalCount)} terminal
+                    </HeaderCountPill>
                 </>
             )}
-            <Button
-                disabled={controller.isLoading || controller.isRefreshing}
-                icon={<RefreshCw className={controller.isRefreshing ? "animate-spin" : ""} />}
-                onClick={controller.refresh}
-            >
-                Refresh
-            </Button>
         </>
     );
 }
@@ -112,7 +101,7 @@ function HumanRequestsState({ controller }: { readonly controller: HumanRequests
     }
 
     return (
-        <div className="grid min-w-0 overflow-hidden rounded-card border border-outline-soft bg-surface-low xl:grid-cols-[19rem_minmax(0,1fr)]">
+        <div className="grid min-w-0 gap-0 lg:h-[calc(100vh-160px)] lg:max-h-[960px] lg:min-h-[720px] lg:grid-cols-[19rem_minmax(0,1fr)]">
             <HumanRequestQueue controller={controller} />
             <SelectedHumanRequest controller={controller} />
         </div>
@@ -120,25 +109,23 @@ function HumanRequestsState({ controller }: { readonly controller: HumanRequests
 }
 
 function HumanRequestQueue({ controller }: { readonly controller: HumanRequestsController }) {
-    const { openCount, terminalCount } = getRequestCounts(controller.requestReads);
+    const openReads = controller.requestReads.filter((read) => read.request.status === "open");
+    const terminalReads = controller.requestReads.filter((read) => read.request.status !== "open");
 
     return (
         <aside
-            className="hidden min-w-0 border-b border-outline-soft bg-surface-low p-4 xl:block xl:border-b-0 xl:border-r"
-            aria-label="Task-scoped human request queue"
+            className="hidden min-h-0 min-w-0 flex-col border-b border-outline-soft bg-surface px-4 py-4 sm:px-5 lg:flex lg:border-b-0 lg:border-r"
+            aria-label="Human request queue"
         >
             <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
-                <div className="min-w-0">
-                    <p className="font-mono text-label font-medium uppercase text-muted">
-                        Requests
-                    </p>
-                    <h2 className="mt-1 font-display text-compact font-semibold text-foreground">
-                        Task queue
-                    </h2>
-                </div>
-                <StatusChip tone="neutral">{String(openCount)} open</StatusChip>
+                <h2 className="mt-1 font-display text-compact font-semibold text-foreground">
+                    Requests
+                </h2>
+                <span className="rounded-full border border-outline-soft bg-surface px-2.5 py-1 font-mono text-utility text-muted">
+                    {String(openReads.length)} open
+                </span>
             </div>
-            {openCount === 0 ? (
+            {openReads.length === 0 ? (
                 <StatePanel
                     className="mb-3"
                     summary="Closed requests remain available as terminal readback."
@@ -146,20 +133,45 @@ function HumanRequestQueue({ controller }: { readonly controller: HumanRequestsC
                     tone="empty"
                 />
             ) : null}
-            <ol aria-label="Human request queue" className="space-y-2">
-                {controller.requestReads.map((read) => (
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+                <HumanRequestQueueSection controller={controller} reads={openReads} title="Open" />
+                <HumanRequestQueueSection
+                    controller={controller}
+                    reads={terminalReads}
+                    title="Closed"
+                />
+            </div>
+        </aside>
+    );
+}
+
+function HumanRequestQueueSection({
+    controller,
+    reads,
+    title,
+}: {
+    readonly controller: HumanRequestsController;
+    readonly reads: readonly HumanRequestRead[];
+    readonly title: string;
+}) {
+    if (reads.length === 0) {
+        return null;
+    }
+
+    return (
+        <section className="space-y-2">
+            <div className="flex items-center justify-between">
+                <p className="font-mono text-label font-medium text-muted">{title}</p>
+                <span className="font-mono text-utility text-muted">{String(reads.length)}</span>
+            </div>
+            <ol aria-label={`${title} human requests`} className="space-y-2">
+                {reads.map((read) => (
                     <li key={read.request.request_id}>
                         <HumanRequestQueueButton controller={controller} read={read} />
                     </li>
                 ))}
             </ol>
-            {terminalCount > 0 ? (
-                <p className="mt-3 font-mono text-label text-muted">
-                    {String(terminalCount)} terminal request
-                    {terminalCount === 1 ? "" : "s"}
-                </p>
-            ) : null}
-        </aside>
+        </section>
     );
 }
 
@@ -177,9 +189,9 @@ function HumanRequestQueueButton({
         <button
             aria-current={isSelected ? "true" : undefined}
             className={classNames(
-                "w-full min-w-0 rounded-card border bg-surface p-3 text-left transition-colors hover:border-primary/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                "w-full min-w-0 rounded-card border bg-surface px-3 py-2.5 text-left transition-colors hover:border-primary/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                 isSelected
-                    ? "border-primary/55 bg-primary-soft shadow-panel"
+                    ? "border-[rgba(59,130,246,0.32)] bg-surface-low shadow-[inset_3px_0_0_#3b82f6]"
                     : "border-outline-soft shadow-hairline",
             )}
             onClick={() => {
@@ -188,25 +200,19 @@ function HumanRequestQueueButton({
             type="button"
         >
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                <StatusChip tone={kindTone(item.kind)}>{item.kind}</StatusChip>
+                <RequestKindPill kind={item.kind} size="compact" />
                 <span className="min-w-0 break-all font-mono text-label text-muted">
                     {queueStatusLabel(read)}
                 </span>
             </div>
             <h2
                 className={classNames(
-                    "mt-2 min-w-0 font-display text-compact font-semibold text-foreground",
+                    "mt-1.5 min-w-0 font-display text-body font-semibold text-foreground",
                     isSelected && "text-primary-foreground",
                 )}
             >
                 {item.title}
             </h2>
-            <div className="mt-2 flex min-w-0 flex-wrap gap-x-3 gap-y-1 font-mono text-label text-muted">
-                <span>
-                    {String(item.itemCount)} item{item.itemCount === 1 ? "" : "s"}
-                </span>
-                <span className="truncate">{item.requesterNode}</span>
-            </div>
         </button>
     );
 }
@@ -237,22 +243,18 @@ function SelectedHumanRequest({ controller }: { readonly controller: HumanReques
     const editable = isRequestEditable(read);
 
     return (
-        <section className="min-w-0 space-y-4 bg-surface p-4 sm:p-5">
-            <div className="border-b border-outline-soft pb-4">
-                <div className="space-y-4">
+        <section className="min-w-0 bg-surface lg:min-h-0 lg:overflow-y-auto">
+            <div className="hidden border-b border-outline-soft pb-4 lg:block">
+                <div className="space-y-4 px-5 pb-0 pt-8 sm:px-6 sm:pb-0 sm:pt-8 lg:px-5">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <StatusChip tone={kindTone(read.request.kind)}>
-                            {read.request.kind}
-                        </StatusChip>
-                        <StatusChip tone={statusTone(read.request.status)} withDot>
-                            {read.request.status}
-                        </StatusChip>
-                        <StatusChip tone="neutral">
+                        <RequestKindPill kind={read.request.kind} />
+                        <RequestStatusPill status={read.request.status} />
+                        <span className="rounded-full bg-surface-muted px-2.5 py-1 font-mono text-utility text-foreground">
                             {String(read.request.items.length)} item
                             {read.request.items.length === 1 ? "" : "s"}
-                        </StatusChip>
+                        </span>
                     </div>
-                    <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="flex min-w-0 flex-col gap-3 lg:items-stretch">
                         <div className="min-w-0 max-w-4xl">
                             <h2
                                 className="font-display text-display font-semibold text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -261,10 +263,12 @@ function SelectedHumanRequest({ controller }: { readonly controller: HumanReques
                             >
                                 {read.request.title}
                             </h2>
-                            <p className="mt-2 text-body text-muted">{read.request.summary}</p>
+                            <p className="mt-1.5 max-w-3xl text-body text-muted">
+                                {read.request.summary}
+                            </p>
                         </div>
                         <SelectedRequestActions
-                            className="hidden shrink-0 flex-wrap items-center gap-2 lg:flex"
+                            className="hidden shrink-0 flex-nowrap items-center justify-end gap-2 lg:flex"
                             controller={controller}
                             editable={editable}
                         />
@@ -273,18 +277,68 @@ function SelectedHumanRequest({ controller }: { readonly controller: HumanReques
                 </div>
             </div>
 
-            {read.resolution !== null || read.request.status !== "open" ? (
-                <TerminalReadback read={read} />
-            ) : (
-                <FocusedRequestWorkbench controller={controller} />
-            )}
-            <SelectedRequestActions
-                className="flex flex-col gap-3 sm:flex-row lg:hidden"
-                controlClassName="w-full sm:w-auto"
-                controller={controller}
-                editable={editable}
-            />
-            <MobileRequestQueueSummary controller={controller} />
+            <div className="space-y-6 px-5 py-5 sm:px-6 sm:py-6 lg:space-y-0 lg:px-5 lg:pb-5 lg:pt-4">
+                <MobileSelectedRequestSummary controller={controller} read={read} />
+                {read.resolution !== null || read.request.status !== "open" ? (
+                    <TerminalReadback read={read} />
+                ) : (
+                    <FocusedRequestWorkbench controller={controller} />
+                )}
+                <SelectedRequestActions
+                    className="flex flex-col gap-3 sm:flex-row lg:hidden"
+                    controlClassName="w-full sm:w-auto"
+                    controller={controller}
+                    editable={editable}
+                />
+                <MobileRequestQueueSummary controller={controller} />
+            </div>
+        </section>
+    );
+}
+
+function MobileSelectedRequestSummary({
+    controller,
+    read,
+}: {
+    readonly controller: HumanRequestsController;
+    readonly read: HumanRequestRead;
+}) {
+    const openCount = controller.requestReads.filter(
+        (entry) => entry.request.status === "open",
+    ).length;
+    const itemCount = read.request.items.length;
+
+    return (
+        <section className="space-y-2 rounded-card border border-outline-soft bg-surface-muted p-3 lg:hidden">
+            <div className="rounded-card border border-outline-soft bg-surface-low px-3 py-2.5">
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <RequestKindPill kind={read.request.kind} />
+                            <span className="rounded-full bg-surface-muted px-2.5 py-1 font-mono text-utility text-foreground">
+                                {String(controller.selectedItemIndex + 1)}/{String(itemCount)}
+                            </span>
+                        </div>
+                        <h2 className="mt-1.5 font-display text-compact font-semibold text-foreground">
+                            {read.request.title}
+                        </h2>
+                        <p className="mt-1 hidden text-utility text-muted sm:block">
+                            {read.request.summary}
+                        </p>
+                    </div>
+                    <div className="shrink-0 text-left sm:text-right">
+                        <p className="font-mono text-utility text-muted">
+                            {String(openCount)} open
+                        </p>
+                        <p className="mt-1 whitespace-nowrap font-mono text-utility text-muted">
+                            {read.request.timeout?.due_at === undefined ||
+                            read.request.timeout.due_at === null
+                                ? "No due time"
+                                : formatAestTime(read.request.timeout.due_at)}
+                        </p>
+                    </div>
+                </div>
+            </div>
         </section>
     );
 }
@@ -304,9 +358,11 @@ function SelectedRequestActions({
         <div className={className}>
             <OpenTaskDetailLink className={controlClassName} taskId={controller.taskId} />
             <Button
-                className={controlClassName}
+                className={classNames(
+                    "!border-[#2563eb] !bg-[#2563eb] !shadow-none hover:!bg-[#1d4ed8] lg:min-w-[86px]",
+                    controlClassName,
+                )}
                 disabled={!editable || controller.isResolving}
-                icon={<Send />}
                 onClick={controller.resolveSelectedRequest}
                 variant="primary"
             >
@@ -330,7 +386,7 @@ function MobileRequestQueueSummary({
 
     return (
         <details
-            className="rounded-card border border-outline-soft bg-surface-low px-3 py-2 shadow-hairline xl:hidden"
+            className="rounded-card border border-outline-soft bg-surface-low px-3 py-2 shadow-hairline lg:hidden"
             onToggle={(event) => {
                 setIsOpen(event.currentTarget.open);
             }}
@@ -358,28 +414,41 @@ function MobileRequestQueueSummary({
 
 function RequestMetadata({ read }: { readonly read: HumanRequestRead }) {
     return (
-        <PropertyGrid
-            items={[
-                {
-                    label: "Requester node",
-                    value: <IdRefText value={read.request.requester_node} />,
-                },
-                {
-                    label: "Opened",
-                    value: <TimestampText value={read.request.opened_at} />,
-                },
-                {
-                    label: "Due",
-                    value:
-                        read.request.timeout?.due_at === undefined ||
-                        read.request.timeout.due_at === null ? (
-                            "No due time"
-                        ) : (
-                            <TimestampText value={read.request.timeout.due_at} />
-                        ),
-                },
-            ]}
-        />
+        <dl className="grid min-w-0 overflow-hidden rounded-card border border-outline-soft bg-surface-low md:grid-cols-3">
+            <RequestMetadataItem label="Requester node">
+                <IdRefText value={read.request.requester_node} />
+            </RequestMetadataItem>
+            <RequestMetadataItem label="Opened">
+                <time dateTime={new Date(read.request.opened_at).toISOString()}>
+                    {formatAestTime(read.request.opened_at)}
+                </time>
+            </RequestMetadataItem>
+            <RequestMetadataItem label="Due">
+                {read.request.timeout?.due_at === undefined ||
+                read.request.timeout.due_at === null ? (
+                    "No due time"
+                ) : (
+                    <time dateTime={new Date(read.request.timeout.due_at).toISOString()}>
+                        {formatAestTime(read.request.timeout.due_at)}
+                    </time>
+                )}
+            </RequestMetadataItem>
+        </dl>
+    );
+}
+
+function RequestMetadataItem({
+    children,
+    label,
+}: {
+    readonly children: ReactNode;
+    readonly label: string;
+}) {
+    return (
+        <div className="min-w-0 border-b border-outline-soft px-4 py-3 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0">
+            <dt className="font-mono text-label font-medium text-muted">{label}</dt>
+            <dd className="mt-2 min-w-0 text-compact text-foreground">{children}</dd>
+        </div>
     );
 }
 
@@ -393,7 +462,7 @@ function OpenTaskDetailLink({
     return (
         <Link
             className={classNames(
-                "inline-flex h-control items-center justify-center gap-2 rounded-control border border-outline bg-surface-low px-3 text-utility font-semibold text-foreground transition-colors hover:border-primary/45 hover:text-primary-foreground",
+                "inline-flex h-control min-w-[167px] items-center justify-center gap-2 rounded-control border border-outline bg-surface-low px-4 text-utility font-semibold text-foreground transition-colors hover:border-primary/45 hover:text-primary-foreground",
                 className,
                 taskId === null && "pointer-events-none opacity-55",
             )}
@@ -405,16 +474,68 @@ function OpenTaskDetailLink({
     );
 }
 
-function kindTone(kind: components["schemas"]["HumanRequestKind"]): StatusTone {
+function HeaderCountPill({
+    children,
+    className,
+}: {
+    readonly children: ReactNode;
+    readonly className?: string;
+}) {
+    return (
+        <span
+            className={classNames(
+                "inline-flex h-[30px] items-center rounded-full bg-surface-muted px-3 font-mono text-utility text-foreground",
+                className,
+            )}
+        >
+            {children}
+        </span>
+    );
+}
+
+function RequestKindPill({
+    kind,
+    size = "default",
+}: {
+    readonly kind: components["schemas"]["HumanRequestKind"];
+    readonly size?: "compact" | "default";
+}) {
+    return (
+        <span
+            className={classNames(
+                "rounded-full font-mono",
+                size === "compact" ? "px-2 py-0.5 text-label" : "px-2.5 py-1 text-utility",
+                kindClassName(kind),
+            )}
+        >
+            {kind}
+        </span>
+    );
+}
+
+function RequestStatusPill({ status }: { readonly status: HumanRequestStatus }) {
+    return (
+        <span
+            className={classNames(
+                "rounded-full px-2.5 py-1 font-mono text-utility",
+                statusClassName(status),
+            )}
+        >
+            {status === "resolved" ? "answered" : status}
+        </span>
+    );
+}
+
+function kindClassName(kind: components["schemas"]["HumanRequestKind"]): string {
     switch (kind) {
         case "direction":
-            return "active";
+            return "bg-primary-soft text-primary-foreground";
         case "approval":
-            return "warning";
+            return "bg-amber-50 text-amber-700";
         case "input":
-            return "neutral";
+            return "bg-surface-muted text-foreground";
         case "review":
-            return "success";
+            return "bg-emerald-50 text-emerald-700";
     }
 }
 
@@ -435,33 +556,38 @@ function queueStatusLabel(read: HumanRequestRead): string {
             return "No due time";
         }
 
-        return `Due ${formatShortTimestamp(read.request.timeout.due_at)}`;
+        return `Due ${formatAestTime(read.request.timeout.due_at)}`;
     }
 
     if (read.resolution?.resolved_at !== undefined) {
-        return formatShortTimestamp(read.resolution.resolved_at);
+        return formatAestTime(read.resolution.resolved_at);
     }
 
     return read.request.status;
 }
 
-function formatShortTimestamp(value: string): string {
-    return new Intl.DateTimeFormat(undefined, {
-        day: "numeric",
+function formatAestTime(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf())) {
+        return value;
+    }
+
+    return new Intl.DateTimeFormat("en-AU", {
         hour: "numeric",
         minute: "2-digit",
-        month: "short",
-    }).format(new Date(value));
+        timeZone: "Australia/Sydney",
+        timeZoneName: "short",
+    }).format(date);
 }
 
-function statusTone(status: HumanRequestStatus): StatusTone {
+function statusClassName(status: HumanRequestStatus): string {
     switch (status) {
         case "open":
-            return "warning";
+            return "bg-surface-muted text-foreground";
         case "resolved":
-            return "success";
+            return "bg-emerald-50 text-emerald-700";
         case "cancelled":
         case "timed_out":
-            return "danger";
+            return "bg-red-50 text-red-700";
     }
 }
