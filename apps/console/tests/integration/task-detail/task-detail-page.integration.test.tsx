@@ -78,6 +78,7 @@ describe("TaskDetailPage", () => {
         renderTaskDetailPage();
 
         expect(screen.getByRole("status", { name: "Loading Task Detail" })).toBeVisible();
+        expect(screen.getByTestId("task-detail-loading-graph-canvas")).toBeEmptyDOMElement();
         expect(
             await screen.findByRole("heading", { name: "Refresh runtime route copy" }),
         ).toBeVisible();

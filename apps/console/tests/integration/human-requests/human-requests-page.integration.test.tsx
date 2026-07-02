@@ -240,7 +240,10 @@ describe("HumanRequestsPage", () => {
 
         const { unmount } = renderHumanRequestsPage();
         expect(await screen.findByText("No human requests")).toBeVisible();
-        await userEvent.click(screen.getByRole("link", { name: "Open task detail" }));
+        expect(screen.queryByText("Empty")).not.toBeInTheDocument();
+        const taskDetailLinks = screen.getAllByRole("link", { name: "Open task detail" });
+        expect(taskDetailLinks).toHaveLength(2);
+        await userEvent.click(taskDetailLinks[0]);
         expect(await screen.findByTestId("task-detail-target")).toHaveTextContent(
             HUMAN_REQUEST_TASK_ID,
         );

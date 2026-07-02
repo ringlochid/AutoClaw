@@ -602,7 +602,7 @@ function DraftListPanel({
                     New
                 </Button>
             </header>
-            <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-3">
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
                 {listState.error === null ? null : (
                     <StatePanel
                         action={<Button onClick={refreshList}>Retry</Button>}
@@ -625,7 +625,7 @@ function DraftListPanel({
                     />
                 ) : null}
                 {listState.rows.length === 0 ? null : (
-                    <ol aria-label="Saved definition drafts" className="grid gap-2">
+                    <ol aria-label="Saved definition drafts" className="flex flex-col gap-2">
                         {listState.rows.map((row) => {
                             const identity = draftIdentityFromSummary(row);
                             const isSelected = draftIdentityEquals(identity, selectedDraft);

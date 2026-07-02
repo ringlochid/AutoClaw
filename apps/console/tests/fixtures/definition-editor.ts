@@ -12,10 +12,11 @@ export const DEFINITION_EDITOR_UPDATED_BODY =
 const UPDATED_AT = "2026-06-29T20:15:00Z";
 
 export function createDefinitionEditorDraftList(
-    draft: components["schemas"]["DefinitionDraftDetail"] = createDefinitionEditorDraftDetail(),
+    ...drafts: readonly components["schemas"]["DefinitionDraftDetail"][]
 ): components["schemas"]["DefinitionDraftListResponse"] {
+    const listedDrafts = drafts.length === 0 ? [createDefinitionEditorDraftDetail()] : drafts;
     return {
-        items: [draftSummaryFromDetail(draft)],
+        items: listedDrafts.map((draft) => draftSummaryFromDetail(draft)),
         next_cursor: null,
     };
 }

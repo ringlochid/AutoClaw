@@ -47,11 +47,11 @@ test("renders the API-backed Task Detail control room at desktop width", async (
     });
 
     const initialZoom = await readGraphZoom(page);
-    expect(initialZoom).toBe(156);
+    expect(initialZoom).toBe(215);
     await expectGraphWheelZoomWithoutPageScroll(page, initialZoom);
     await page.getByRole("button", { name: "Reset graph zoom" }).click();
-    expect(await readGraphZoom(page)).toBe(156);
-    for (let index = 0; index < 8; index += 1) {
+    expect(await readGraphZoom(page)).toBe(215);
+    for (let index = 0; index < 9; index += 1) {
         await page.getByRole("button", { name: "Zoom out graph" }).click();
     }
     expect(await readGraphZoom(page)).toBeLessThan(100);
@@ -59,11 +59,14 @@ test("renders the API-backed Task Detail control room at desktop width", async (
     const graphBox = await page.getByLabel("Execution graph").boundingBox();
     expect(graphBox).not.toBeNull();
     if (graphBox !== null) {
-        await page.mouse.move(graphBox.x + graphBox.width / 2, graphBox.y + graphBox.height / 2);
+        await page.mouse.move(
+            graphBox.x + graphBox.width * 0.24,
+            graphBox.y + graphBox.height * 0.24,
+        );
         await page.mouse.down();
         await page.mouse.move(
-            graphBox.x + graphBox.width / 2 + 160,
-            graphBox.y + graphBox.height / 2 + 80,
+            graphBox.x + graphBox.width * 0.24 + 160,
+            graphBox.y + graphBox.height * 0.24 + 80,
             {
                 steps: 8,
             },
@@ -124,7 +127,7 @@ test("keeps the Task Detail graph and event lane responsive at mobile width", as
         page.getByRole("heading", { level: 1, name: "Refresh runtime route copy" }),
     ).toBeVisible();
     await expect(page.getByLabel("Zoom in graph")).toBeVisible();
-    await expect(page.getByText("worker_node_17").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /task_detail_build active/i })).toBeVisible();
     await expect(
         page.getByRole("button", { name: /Dispatch opened worker node 17/i }),
     ).toBeVisible();

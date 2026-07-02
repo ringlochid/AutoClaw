@@ -36,9 +36,9 @@ test("keeps task-scoped breadcrumbs below Tasks", async ({ page }) => {
     await expect(
         page.getByRole("heading", { level: 1, name: "runtime-copy-refresh" }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Task Detail" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Human Requests" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Command Runs" })).toBeVisible();
+    await expect(page.getByRole("link", { exact: true, name: "Task Detail" })).toBeVisible();
+    await expect(page.getByRole("link", { exact: true, name: "Human Requests" })).toBeVisible();
+    await expect(page.getByRole("link", { exact: true, name: "Command Runs" })).toBeVisible();
 });
 
 test("keeps authoring breadcrumbs separate from selected task routes", async ({ page }) => {

@@ -12,7 +12,6 @@ import { TaskDetailModal } from "./task-detail-modal";
 import { TaskActionControls, TaskDetailEyebrow, TaskSummaryHeader } from "./task-detail-summary";
 
 const TASK_DETAIL_SKELETON_EVENT_ROWS = [0, 1, 2, 3] as const;
-const TASK_DETAIL_SKELETON_CHILD_NODES = [0, 1, 2] as const;
 
 export function TaskDetailPage() {
     const { taskId } = useParams();
@@ -76,18 +75,10 @@ function TaskDetailLoadingSkeleton() {
                         </div>
                         <div className="h-control w-32 animate-pulse rounded-control bg-primary-soft" />
                     </header>
-                    <div className="h-[520px] overflow-hidden bg-gradient-to-br from-surface via-surface to-primary-soft/35 p-8">
-                        <div className="mx-auto mt-24 h-9 w-28 animate-pulse rounded-control border border-primary/25 bg-surface-low shadow-panel" />
-                        <div className="mx-auto mt-8 h-px w-[72%] bg-outline-soft" />
-                        <div className="mt-10 grid grid-cols-3 gap-8">
-                            {TASK_DETAIL_SKELETON_CHILD_NODES.map((nodeIndex) => (
-                                <div
-                                    className="h-11 animate-pulse rounded-control border border-outline-soft bg-surface-low"
-                                    key={nodeIndex}
-                                />
-                            ))}
-                        </div>
-                    </div>
+                    <div
+                        className="h-[520px] overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.96),transparent_24%),radial-gradient(circle_at_top_right,rgba(99,102,241,0.12),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(52,211,153,0.07),transparent_18%),linear-gradient(180deg,#fff,#f7f4ef)]"
+                        data-testid="task-detail-loading-graph-canvas"
+                    />
                 </section>
                 <aside className="overflow-hidden rounded-card border border-outline-soft bg-surface-low">
                     <header className="border-b border-outline-soft px-5 py-4">

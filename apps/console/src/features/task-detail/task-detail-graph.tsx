@@ -65,14 +65,16 @@ const GRAPH_LABEL_FONT_SIZE = 13;
 const GRAPH_NODE_HEIGHT = 56;
 const GRAPH_LEVEL_GAP = 156;
 const GRAPH_LEFT_PAD = 72;
+const GRAPH_BOTTOM_PAD = 92;
 const GRAPH_MIN_HEIGHT = 580;
 const GRAPH_MIN_WIDTH = 1180;
 const GRAPH_TOP_PAD = 84;
 const GRAPH_MANUAL_ZOOM_STEP = 1.1;
-const GRAPH_MAX_AUTO_SCALE = 1.56;
+const GRAPH_MAX_AUTO_SCALE = 2.45;
 const GRAPH_MAX_VISUAL_SCALE = 3;
 const GRAPH_MIN_VISUAL_SCALE = 0.7;
-const GRAPH_READABLE_LABEL_PX = 12;
+const GRAPH_READABLE_LABEL_PX = 12.5;
+const GRAPH_READABLE_LABEL_PX_MAX = 15.2;
 
 const edgePriority: Record<TaskGraphEdge["kind"], number> = {
     structural: 2,
@@ -467,7 +469,6 @@ function buildGraphLayout({
         detachedCursor += nodeWidth + 56;
     }
 
-    const width = Math.max(GRAPH_MIN_WIDTH, rootWidth + GRAPH_LEFT_PAD * 2, detachedCursor);
     const activeLineage = buildActiveLineage(selectedNodeKey, parentByNodeKey);
     const layoutNodes = orderedNodes.map((node): GraphLayoutNode => {
         const position = positionByNodeKey.get(node.nodeKey) ?? {
@@ -478,10 +479,15 @@ function buildGraphLayout({
         };
         return { ...node, ...position };
     });
+    const height = Math.max(
+        GRAPH_MIN_HEIGHT,
+        ...layoutNodes.map((node) => node.y + node.height / 2 + GRAPH_BOTTOM_PAD),
+    );
+    const width = Math.max(GRAPH_MIN_WIDTH, rootWidth + GRAPH_LEFT_PAD * 2, detachedCursor);
 
     return {
         activeLineage,
-        height: GRAPH_MIN_HEIGHT,
+        height,
         nodes: layoutNodes,
         parentByNodeKey,
         positionByNodeKey,
@@ -700,15 +706,7 @@ function buildCameraTransform(
     const bounds = graphFocusBounds(layout, selectedNodeKey);
     const centerX = (bounds.maxX + bounds.minX) / 2;
     const centerY = (bounds.maxY + bounds.minY) / 2;
-    const boundsWidth = bounds.maxX - bounds.minX;
-    const boundsHeight = bounds.maxY - bounds.minY;
-    const fitScale = Math.min(
-        layout.width / Math.max(boundsWidth, 1),
-        layout.height / Math.max(boundsHeight, 1),
-    );
-    const readableScale = readableGraphScale(layout, viewport);
-    const autoScale = clamp(Math.max(readableScale, fitScale), readableScale, GRAPH_MAX_AUTO_SCALE);
-    const scale = clamp(autoScale, GRAPH_MIN_VISUAL_SCALE, GRAPH_MAX_VISUAL_SCALE);
+    const scale = readableGraphScale(layout, viewport);
 
     return {
         scale,
@@ -768,17 +766,40 @@ function zoomCameraAroundPoint({
 
 function readableGraphScale(layout: GraphLayout, viewport: GraphViewport | null): number {
     if (viewport === null) {
-        return 1.58;
+        return 1.85;
     }
     const baseScale = Math.min(viewport.width / layout.width, viewport.height / layout.height);
     if (!Number.isFinite(baseScale) || baseScale <= 0) {
-        return 1.58;
+        return 1.85;
     }
-    return clamp(
-        GRAPH_READABLE_LABEL_PX / (GRAPH_LABEL_FONT_SIZE * baseScale),
-        1.16,
-        GRAPH_MAX_AUTO_SCALE,
+    const widthPressure = layout.width / Math.max(viewport.width, 1);
+    const heightPressure = layout.height / Math.max(viewport.height, 1);
+    const pressure = Math.max(widthPressure, heightPressure);
+    const readableLabelPx = clamp(
+        GRAPH_READABLE_LABEL_PX + Math.max(0, pressure - 1.25) * 2.8,
+        GRAPH_READABLE_LABEL_PX,
+        GRAPH_READABLE_LABEL_PX_MAX,
     );
+
+    return clamp(
+        readableLabelPx / (GRAPH_LABEL_FONT_SIZE * baseScale),
+        1.16,
+        readableGraphScaleLimit(layout),
+    );
+}
+
+function readableGraphScaleLimit(layout: GraphLayout): number {
+    const levelCounts = new Map<number, number>();
+    for (const node of layout.nodes) {
+        const level = Math.max(0, Math.round((node.y - GRAPH_TOP_PAD) / GRAPH_LEVEL_GAP));
+        levelCounts.set(level, (levelCounts.get(level) ?? 0) + 1);
+    }
+
+    const depth = Math.max(...levelCounts.keys(), 0) + 1;
+    const breadth = Math.max(...levelCounts.values(), 1);
+    const breadthBonus = clamp((breadth - 3) * 0.03, 0, 0.18);
+
+    return clamp(1.48 + depth * 0.16 + breadthBonus, 1.7, GRAPH_MAX_AUTO_SCALE);
 }
 
 function useSvgViewport(ref: RefObject<SVGSVGElement | null>): GraphViewport | null {

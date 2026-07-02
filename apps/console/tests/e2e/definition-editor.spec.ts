@@ -7,7 +7,9 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 
 import {
     DEFINITION_EDITOR_SCREENSHOT_DIR,
+    DEFINITION_EDITOR_ROLE_KEY,
     DEFINITION_EDITOR_WORKFLOW_KEY,
+    bodyForKind,
     createCleanDefinitionEditorDraft,
     createDefinitionEditorDraftDetail,
     createDefinitionEditorDraftList,
@@ -29,8 +31,12 @@ test("renders flat Definition Editor draft workflow at desktop width", async ({
     await expect(
         page.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
     ).toBeVisible();
+    await expect(
+        page.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_ROLE_KEY) }),
+    ).toBeVisible();
     await expect(page.getByLabel("Draft body")).toBeVisible();
     await expect(page.getByRole("button", { name: "Save draft" })).toBeDisabled();
+    await expectDraftRowsStayStacked(page);
 
     const validateButton = page.getByRole("button", { name: "Validate" });
     await validateButton.focus();
@@ -140,10 +146,16 @@ test("keeps the Definition Editor workbench stable with no saved drafts", async 
 
 async function mockDefinitionEditor(page: Page): Promise<void> {
     let detail = createDefinitionEditorDraftDetail();
+    const roleDraft = createDefinitionEditorDraftDetail({
+        body: bodyForKind("role", DEFINITION_EDITOR_ROLE_KEY),
+        key: DEFINITION_EDITOR_ROLE_KEY,
+        kind: "role",
+        status: "clean",
+    });
     await page.route("**/authoring/definition-drafts**", async (route) => {
         const request = route.request();
         if (request.method() === "GET") {
-            await fulfillJson(route, createDefinitionEditorDraftList(detail));
+            await fulfillJson(route, createDefinitionEditorDraftList(detail, roleDraft));
             return;
         }
         await fulfillJson(route, createDefinitionEditorDraftResponse(detail));
@@ -197,4 +209,21 @@ async function expectNoDocumentOverflow(page: Page): Promise<void> {
     );
 
     expect(overflow).toBeLessThanOrEqual(1);
+}
+
+async function expectDraftRowsStayStacked(page: Page): Promise<void> {
+    const workflowDraft = page.getByRole("button", {
+        name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY),
+    });
+    const roleDraft = page.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_ROLE_KEY) });
+    const workflowBox = await workflowDraft.boundingBox();
+    const roleBox = await roleDraft.boundingBox();
+
+    expect(workflowBox).not.toBeNull();
+    expect(roleBox).not.toBeNull();
+    if (workflowBox === null || roleBox === null) {
+        return;
+    }
+
+    expect(roleBox.y - workflowBox.y - workflowBox.height).toBeLessThanOrEqual(16);
 }

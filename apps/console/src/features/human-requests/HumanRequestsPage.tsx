@@ -22,12 +22,19 @@ export function HumanRequestsPage() {
     const { taskId } = useParams();
     const controller = useHumanRequestsController(taskId ?? null);
     const pageTitle = controller.taskTitle ?? controller.taskId ?? "Selected task";
+    const hasRequestReads = controller.requestReads.length > 0;
     useShellTaskTitle(controller.taskId, controller.taskTitle);
 
     return (
         <PageFrame
-            actions={<HumanRequestsHeaderActions controller={controller} />}
-            contentClassName="!p-0"
+            actions={
+                hasRequestReads ? (
+                    <HumanRequestsHeaderActions controller={controller} />
+                ) : (
+                    <OpenTaskDetailLink taskId={controller.taskId} />
+                )
+            }
+            contentClassName={hasRequestReads ? "!p-0" : undefined}
             eyebrow="Human Requests"
             headerClassName="!gap-4 !px-5 !py-5 sm:!px-6 sm:!pb-[27px] sm:!pt-6"
             title={pageTitle}
@@ -49,16 +56,10 @@ function HumanRequestsHeaderActions({
 
     return (
         <>
-            {controller.requestReads.length === 0 ? (
-                <HeaderCountPill>{controller.statusSummary}</HeaderCountPill>
-            ) : (
-                <>
-                    <HeaderCountPill>{String(openCount)} pending</HeaderCountPill>
-                    <HeaderCountPill className="max-sm:!hidden">
-                        {String(terminalCount)} terminal
-                    </HeaderCountPill>
-                </>
-            )}
+            <HeaderCountPill>{String(openCount)} pending</HeaderCountPill>
+            <HeaderCountPill className="max-sm:!hidden">
+                {String(terminalCount)} terminal
+            </HeaderCountPill>
         </>
     );
 }

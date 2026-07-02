@@ -126,6 +126,6 @@ describe("task detail graph", () => {
         );
 
         expect(translateX).toBeGreaterThan(250);
-        expect(transform).toContain("scale(1.56)");
+        expect(transform).toContain("scale(1.85)");
     });
 });
