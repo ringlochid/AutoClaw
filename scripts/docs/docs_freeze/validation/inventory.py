@@ -45,6 +45,7 @@ class DocsFreezeInventory:
     public_metadata_leak_issues: list[LinePatternIssue]
     formatter_violations: list[FormatterViolation]
     unreferenced_paths: list[Path]
+    public_reference_status_issues: list[Path]
     public_reference_contrast_issues: list[tuple[Path, str]]
 
 
@@ -62,6 +63,7 @@ def build_inventory() -> DocsFreezeInventory:
         public_metadata_leak_issues=public_metadata_leak_issues(),
         formatter_violations=markdown_formatter_violations(),
         unreferenced_paths=unreferenced_design_paths(),
+        public_reference_status_issues=public_reference_status_issues(),
         public_reference_contrast_issues=public_reference_contrast_issues(),
     )
 
@@ -400,10 +402,24 @@ def public_reference_contrast_issues() -> list[tuple[Path, str]]:
     return issues
 
 
+def public_reference_status_issues() -> list[Path]:
+    reference_root = ROOT / "docs" / "reference"
+    issues: list[Path] = []
+    for path in sorted(reference_root.rglob("*.md")):
+        if doc_status_value(path) == "Target":
+            issues.append(path)
+    return issues
+
+
 def print_public_reference_issues(inventory: DocsFreezeInventory) -> None:
     print("Public reference contract issues:")
-    if not inventory.public_reference_contrast_issues:
+    if (
+        not inventory.public_reference_status_issues
+        and not inventory.public_reference_contrast_issues
+    ):
         print("- none")
         return
+    for path in inventory.public_reference_status_issues:
+        print(f"- {path.relative_to(ROOT)}: uses `Status: Target`")
     for path, marker in inventory.public_reference_contrast_issues:
         print(f"- {path.relative_to(ROOT)}: contains `{marker}`")

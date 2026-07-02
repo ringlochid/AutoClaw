@@ -202,6 +202,8 @@ def _validate_inventory_doc_rule_issues(
             f"{status_issue.path.relative_to(ROOT)} uses `Status: {found_status}`; "
             f"allowed here: {allowed}"
         )
+    for path in inventory.public_reference_status_issues:
+        errors.append(f"{path.relative_to(ROOT)} must not use public-reference `Status: Target`")
     for path, marker in inventory.public_reference_contrast_issues:
         errors.append(
             f"{path.relative_to(ROOT)} still contains public-reference-only "

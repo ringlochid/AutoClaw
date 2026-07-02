@@ -14,14 +14,14 @@ const defaultConsoleEnvironment = import.meta.env as ConsoleEnvironment;
 
 export function defaultApiBaseUrl(
     env: ConsoleEnvironment = defaultConsoleEnvironment,
-    origin: string | undefined = globalThis.location?.origin,
+    origin = globalThis.location.origin,
 ): string {
     if (env.DEV === true) {
         return LOCAL_DEV_API_BASE_URL;
     }
 
-    const trimmedOrigin = origin?.trim();
-    return trimmedOrigin === undefined || trimmedOrigin === "" || trimmedOrigin === "null"
+    const trimmedOrigin = origin.trim();
+    return trimmedOrigin === "" || trimmedOrigin === "null"
         ? LOCAL_DEV_API_BASE_URL
         : trimmedOrigin;
 }
@@ -31,7 +31,8 @@ export function normalizeApiBaseUrl(
     fallbackBaseUrl = defaultApiBaseUrl(),
 ): string {
     const trimmedValue = value?.trim();
-    const rawValue = trimmedValue === undefined || trimmedValue === "" ? fallbackBaseUrl : trimmedValue;
+    const rawValue =
+        trimmedValue === undefined || trimmedValue === "" ? fallbackBaseUrl : trimmedValue;
     return rawValue.replace(/\/+$/, "");
 }
 
