@@ -4,43 +4,44 @@
  */
 
 export interface paths {
-    "/authoring/definition-draft-sets": {
+    "/authoring/definition-drafts": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get Definition Draft Sets */
-        get: operations["get_definition_draft_sets_authoring_definition_draft_sets_get"];
+        /** Get Definition Drafts */
+        get: operations["get_definition_drafts_authoring_definition_drafts_get"];
         put?: never;
-        /** Post Definition Draft Set */
-        post: operations["post_definition_draft_set_authoring_definition_draft_sets_post"];
+        /** Post Definition Draft */
+        post: operations["post_definition_draft_authoring_definition_drafts_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/authoring/definition-draft-sets/{draft_set_id}": {
+    "/authoring/definitions/{kind}/{key}/draft": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get Definition Draft Set */
-        get: operations["get_definition_draft_set_authoring_definition_draft_sets__draft_set_id__get"];
-        put?: never;
+        /** Get Definition Draft */
+        get: operations["get_definition_draft_authoring_definitions__kind___key__draft_get"];
+        /** Put Definition Draft */
+        put: operations["put_definition_draft_authoring_definitions__kind___key__draft_put"];
         post?: never;
-        /** Delete Definition Draft Set */
-        delete: operations["delete_definition_draft_set_authoring_definition_draft_sets__draft_set_id__delete"];
+        /** Delete Definition Draft Route */
+        delete: operations["delete_definition_draft_route_authoring_definitions__kind___key__draft_delete"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/authoring/definition-draft-sets/{draft_set_id}/apply": {
+    "/authoring/definitions/{kind}/{key}/draft/publish": {
         parameters: {
             query?: never;
             header?: never;
@@ -49,32 +50,15 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Post Definition Draft Set Apply */
-        post: operations["post_definition_draft_set_apply_authoring_definition_draft_sets__draft_set_id__apply_post"];
+        /** Post Definition Draft Publish */
+        post: operations["post_definition_draft_publish_authoring_definitions__kind___key__draft_publish_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Put Definition Draft File */
-        put: operations["put_definition_draft_file_authoring_definition_draft_sets__draft_set_id__files__kind___key__put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}/rematerialize-current": {
+    "/authoring/definitions/{kind}/{key}/draft/validate": {
         parameters: {
             query?: never;
             header?: never;
@@ -83,76 +67,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Post Definition Draft File Rematerialize Current */
-        post: operations["post_definition_draft_file_rematerialize_current_authoring_definition_draft_sets__draft_set_id__files__kind___key__rematerialize_current_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Post Definition Draft File Reset */
-        post: operations["post_definition_draft_file_reset_authoring_definition_draft_sets__draft_set_id__files__kind___key__reset_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/authoring/definition-draft-sets/{draft_set_id}/materialize": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Post Definition Draft Set Materialize */
-        post: operations["post_definition_draft_set_materialize_authoring_definition_draft_sets__draft_set_id__materialize_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/authoring/definition-draft-sets/{draft_set_id}/preview-task-compose": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Post Definition Draft Set Preview Task Compose */
-        post: operations["post_definition_draft_set_preview_task_compose_authoring_definition_draft_sets__draft_set_id__preview_task_compose_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/authoring/definition-draft-sets/{draft_set_id}/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Post Definition Draft Set Validate */
-        post: operations["post_definition_draft_set_validate_authoring_definition_draft_sets__draft_set_id__validate_post"];
+        /** Post Definition Draft Validate */
+        post: operations["post_definition_draft_validate_authoring_definitions__kind___key__draft_validate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1190,32 +1106,6 @@ export interface components {
         };
         "DefinitionContent-Input": components["schemas"]["RoleDefinitionInput"] | components["schemas"]["PolicyDefinitionInput-Input"] | components["schemas"]["WorkflowDefinitionInput-Input"];
         "DefinitionContent-Output": components["schemas"]["RoleDefinitionInput"] | components["schemas"]["PolicyDefinitionInput-Output"] | components["schemas"]["WorkflowDefinitionInput-Output"];
-        /** DefinitionDraftApplyRequest */
-        DefinitionDraftApplyRequest: {
-            /**
-             * Should Start Task After Apply
-             * @default false
-             */
-            should_start_task_after_apply: boolean;
-        };
-        /** DefinitionDraftApplyResponse */
-        DefinitionDraftApplyResponse: {
-            /** Draft Set Id */
-            draft_set_id: string;
-            /** Published Revisions */
-            published_revisions: components["schemas"]["DefinitionDraftPublishedRevision"][];
-            /** Started Task Id */
-            started_task_id?: string | null;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "applied" | "stale" | "invalid";
-            task_start_failure?: components["schemas"]["DefinitionDraftTaskStartFailure"] | null;
-            /** @default not_requested */
-            task_start_status: components["schemas"]["DefinitionDraftTaskStartStatus"];
-            validation: components["schemas"]["DefinitionDraftValidationResponse"];
-        };
         /** DefinitionDraftBaselineRead */
         DefinitionDraftBaselineRead: {
             /** Content Hash */
@@ -1225,8 +1115,23 @@ export interface components {
             /** Source Path */
             source_path?: string | null;
         };
-        /** DefinitionDraftFileDetail */
-        DefinitionDraftFileDetail: {
+        /** DefinitionDraftCreateRequest */
+        DefinitionDraftCreateRequest: {
+            /** Body */
+            body?: string | null;
+            /**
+             * Body Format
+             * @default yaml
+             * @constant
+             */
+            body_format: "yaml";
+            /** Key */
+            key: string;
+            kind: components["schemas"]["DefinitionKind"];
+            mode: components["schemas"]["DefinitionDraftMode"];
+        };
+        /** DefinitionDraftDetail */
+        DefinitionDraftDetail: {
             based_on: components["schemas"]["DefinitionDraftBaselineRead"];
             /** Baseline Body */
             baseline_body?: string | null;
@@ -1246,40 +1151,74 @@ export interface components {
             content_hash: string;
             /** Draft Path */
             draft_path: string;
+            /**
+             * Is Saved
+             * @default true
+             */
+            is_saved: boolean;
             /** Key */
             key: string;
             kind: components["schemas"]["DefinitionKind"];
+            mode: components["schemas"]["DefinitionDraftMode"];
             /** Normalized Content */
             normalized_content?: {
                 [key: string]: unknown;
             } | null;
             /** Normalized Path */
             normalized_path: string;
-            status: components["schemas"]["DefinitionDraftFileStatus"];
-        };
-        /** DefinitionDraftFileRematerializeCurrentRequest */
-        DefinitionDraftFileRematerializeCurrentRequest: {
+            status: components["schemas"]["DefinitionDraftStatus"];
             /**
-             * Discard Local Changes
-             * @constant
+             * Updated At
+             * Format: date-time
              */
-            discard_local_changes: true;
+            updated_at: string;
         };
-        /** DefinitionDraftFileResetRequest */
-        DefinitionDraftFileResetRequest: {
-            /**
-             * Discard Local Changes
-             * @constant
-             */
-            discard_local_changes: true;
+        /** DefinitionDraftDetailResponse */
+        DefinitionDraftDetailResponse: {
+            draft: components["schemas"]["DefinitionDraftDetail"];
+        };
+        /** DefinitionDraftListResponse */
+        DefinitionDraftListResponse: {
+            /** Items */
+            items: components["schemas"]["DefinitionDraftSummary"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
         };
         /**
-         * DefinitionDraftFileStatus
+         * DefinitionDraftMode
          * @enum {string}
          */
-        DefinitionDraftFileStatus: "clean" | "modified" | "added" | "stale" | "invalid";
-        /** DefinitionDraftFileSummary */
-        DefinitionDraftFileSummary: {
+        DefinitionDraftMode: "create" | "update";
+        /** DefinitionDraftPublishResponse */
+        DefinitionDraftPublishResponse: {
+            /** Key */
+            key: string;
+            kind: components["schemas"]["DefinitionKind"];
+            published_revision: components["schemas"]["DefinitionDraftPublishedRevision"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "published" | "invalid" | "stale" | "name_collision";
+            validation: components["schemas"]["DefinitionDraftValidationResponse"];
+        };
+        /** DefinitionDraftPublishedRevision */
+        DefinitionDraftPublishedRevision: {
+            /** Content Hash */
+            content_hash: string;
+            /** Key */
+            key: string;
+            kind: components["schemas"]["DefinitionKind"];
+            /** Revision No */
+            revision_no: number;
+        };
+        /**
+         * DefinitionDraftStatus
+         * @enum {string}
+         */
+        DefinitionDraftStatus: "clean" | "modified" | "new" | "stale" | "invalid";
+        /** DefinitionDraftSummary */
+        DefinitionDraftSummary: {
             based_on: components["schemas"]["DefinitionDraftBaselineRead"];
             /**
              * Body Format
@@ -1294,151 +1233,16 @@ export interface components {
             /** Key */
             key: string;
             kind: components["schemas"]["DefinitionKind"];
+            mode: components["schemas"]["DefinitionDraftMode"];
             /** Normalized Path */
             normalized_path: string;
-            status: components["schemas"]["DefinitionDraftFileStatus"];
-        };
-        /** DefinitionDraftFileWriteRequest */
-        DefinitionDraftFileWriteRequest: {
-            /** Body */
-            body: string;
-            /**
-             * Body Format
-             * @default yaml
-             * @constant
-             */
-            body_format: "yaml";
-        };
-        /** DefinitionDraftMaterializeRequest */
-        DefinitionDraftMaterializeRequest: {
-            /** Definitions */
-            definitions: components["schemas"]["DefinitionDraftSetCreateItem"][];
-        };
-        /** DefinitionDraftPublishedRevision */
-        DefinitionDraftPublishedRevision: {
-            /** Content Hash */
-            content_hash: string;
-            /** Key */
-            key: string;
-            kind: components["schemas"]["DefinitionKind"];
-            /** Revision No */
-            revision_no: number;
-        };
-        /** DefinitionDraftSetCreateItem */
-        DefinitionDraftSetCreateItem: {
-            /** Key */
-            key: string;
-            kind: components["schemas"]["DefinitionKind"];
-        };
-        /** DefinitionDraftSetCreateRequest */
-        DefinitionDraftSetCreateRequest: {
-            /**
-             * Materialize
-             * @default []
-             */
-            materialize: components["schemas"]["DefinitionDraftSetCreateItem"][];
-            /** Preview Task Compose */
-            preview_task_compose?: string | null;
-            /** Title */
-            title?: string | null;
-        };
-        /** DefinitionDraftSetDetail */
-        DefinitionDraftSetDetail: {
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Draft Set Id */
-            draft_set_id: string;
-            /** Files */
-            files: components["schemas"]["DefinitionDraftFileDetail"][];
-            /** Preview Task Compose Body */
-            preview_task_compose_body?: string | null;
-            /** Preview Task Compose Path */
-            preview_task_compose_path?: string | null;
-            state: components["schemas"]["DefinitionDraftSetState"];
-            /** Title */
-            title?: string | null;
+            status: components["schemas"]["DefinitionDraftStatus"];
             /**
              * Updated At
              * Format: date-time
              */
             updated_at: string;
         };
-        /** DefinitionDraftSetDetailResponse */
-        DefinitionDraftSetDetailResponse: {
-            draft_set: components["schemas"]["DefinitionDraftSetDetail"];
-        };
-        /** DefinitionDraftSetListResponse */
-        DefinitionDraftSetListResponse: {
-            /** Items */
-            items: components["schemas"]["DefinitionDraftSetSummary"][];
-            /** Next Cursor */
-            next_cursor?: string | null;
-        };
-        /**
-         * DefinitionDraftSetState
-         * @enum {string}
-         */
-        DefinitionDraftSetState: "open" | "applied" | "stale";
-        /** DefinitionDraftSetSummary */
-        DefinitionDraftSetSummary: {
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Draft Set Id */
-            draft_set_id: string;
-            /** Files */
-            files: components["schemas"]["DefinitionDraftFileSummary"][];
-            /** Preview Task Compose Path */
-            preview_task_compose_path?: string | null;
-            state: components["schemas"]["DefinitionDraftSetState"];
-            /** Title */
-            title?: string | null;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-        };
-        /** DefinitionDraftTaskComposePreviewRequest */
-        DefinitionDraftTaskComposePreviewRequest: {
-            /** Body */
-            body: string;
-            /**
-             * Body Format
-             * @default yaml
-             * @constant
-             */
-            body_format: "yaml";
-        };
-        /** DefinitionDraftTaskComposePreviewResponse */
-        DefinitionDraftTaskComposePreviewResponse: {
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "valid" | "invalid";
-            validation: components["schemas"]["DefinitionDraftValidationResponse"];
-        };
-        /** DefinitionDraftTaskStartFailure */
-        DefinitionDraftTaskStartFailure: {
-            code: components["schemas"]["OperationFailureCode"];
-            /** Is Retryable */
-            is_retryable: boolean;
-            /** Suggested Next Step */
-            suggested_next_step?: string | null;
-            /** Summary */
-            summary: string;
-        };
-        /**
-         * DefinitionDraftTaskStartStatus
-         * @enum {string}
-         */
-        DefinitionDraftTaskStartStatus: "not_requested" | "started" | "failed";
         /** DefinitionDraftValidationIssue */
         DefinitionDraftValidationIssue: {
             /** Code */
@@ -1447,7 +1251,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "schema" | "cross_reference" | "stale" | "preview";
+            kind: "schema" | "cross_reference" | "stale" | "collision";
             /** Message */
             message: string;
             /** Path */
@@ -1455,17 +1259,29 @@ export interface components {
         };
         /** DefinitionDraftValidationResponse */
         DefinitionDraftValidationResponse: {
-            /** Draft Set Id */
-            draft_set_id: string;
             /** Errors */
             errors: components["schemas"]["DefinitionDraftValidationIssue"][];
+            /** Key */
+            key: string;
+            kind: components["schemas"]["DefinitionKind"];
             /**
              * Status
              * @enum {string}
              */
-            status: "valid" | "invalid" | "stale";
+            status: "valid" | "invalid" | "stale" | "name_collision";
             /** Warnings */
             warnings: components["schemas"]["DefinitionDraftValidationIssue"][];
+        };
+        /** DefinitionDraftWriteRequest */
+        DefinitionDraftWriteRequest: {
+            /** Body */
+            body: string;
+            /**
+             * Body Format
+             * @default yaml
+             * @constant
+             */
+            body_format: "yaml";
         };
         /**
          * DefinitionHistorySort
@@ -1783,11 +1599,6 @@ export interface components {
              */
             path: string;
         };
-        /**
-         * OperationFailureCode
-         * @enum {string}
-         */
-        OperationFailureCode: "invalid_request_shape" | "illegal_caller" | "illegal_target_relation" | "illegal_state" | "stale_dispatch" | "stale_flow_revision" | "stale_assignment" | "stale_checkpoint" | "missing_resource" | "missing_required_publication" | "conflicting_continuation" | "cursor_reset_required" | "boundary_precondition_failed" | "capability_rejected" | "removed_surface" | "budget_exhausted" | "internal_error";
         OperatorCurrentPaths: components["schemas"]["OperatorSupportSurfaceRef"][];
         /** OperatorFlowSnapshotResponse */
         OperatorFlowSnapshotResponse: {
@@ -1807,8 +1618,18 @@ export interface components {
             checkpoint_history: components["schemas"]["CheckpointHistoryEntry"][];
             /** @default [] */
             current_paths: components["schemas"]["OperatorCurrentPaths"];
+            /**
+             * Dependency Edges
+             * @default []
+             */
+            dependency_edges: components["schemas"]["TaskGraphDependencyEntry"][];
             /** Dispatch History */
             dispatch_history: components["schemas"]["DispatchHistoryEntry"][];
+            /**
+             * Graph Nodes
+             * @default []
+             */
+            graph_nodes: components["schemas"]["TaskGraphNodeEntry"][];
             /** Next Cursor */
             next_cursor?: string | null;
             /**
@@ -2229,7 +2050,56 @@ export interface components {
          * TaskEventType
          * @enum {string}
          */
-        TaskEventType: "task_started" | "dispatch_opened" | "provider_resolution_recorded" | "checkpoint_recorded" | "boundary_accepted" | "child_assignment_staged" | "child_assignment_committed" | "structural_revision_adopted" | "provider_event_normalized" | "human_request_opened" | "human_request_resolved" | "human_request_timed_out" | "human_request_cancelled" | "command_run_started" | "command_run_progressed" | "command_run_cancel_requested" | "command_run_succeeded" | "command_run_failed" | "command_run_timed_out" | "command_run_cancelled" | "task_paused" | "task_resumed" | "task_cancelled";
+        TaskEventType: "task_started" | "dispatch_opened" | "checkpoint_recorded" | "boundary_accepted" | "child_assignment_staged" | "child_assignment_committed" | "structural_revision_adopted" | "human_request_opened" | "human_request_resolved" | "human_request_timed_out" | "human_request_cancelled" | "command_run_started" | "command_run_progressed" | "command_run_cancel_requested" | "command_run_succeeded" | "command_run_failed" | "command_run_timed_out" | "command_run_cancelled" | "task_paused" | "task_resumed" | "task_cancelled";
+        /** TaskGraphDependencyEntry */
+        TaskGraphDependencyEntry: {
+            /** Consumer Node Key */
+            consumer_node_key: string;
+            /** Description */
+            description: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "artifact" | "criteria";
+            /** Order Index */
+            order_index: number;
+            /** Provider Node Key */
+            provider_node_key: string;
+            /** Slot */
+            slot: string;
+        };
+        /** TaskGraphNodeEntry */
+        TaskGraphNodeEntry: {
+            /**
+             * Child Node Keys
+             * @default []
+             */
+            child_node_keys: string[];
+            /**
+             * Depended On By Node Keys
+             * @default []
+             */
+            depended_on_by_node_keys: string[];
+            /**
+             * Depends On Node Keys
+             * @default []
+             */
+            depends_on_node_keys: string[];
+            /** Description */
+            description: string;
+            /** Node Key */
+            node_key: string;
+            node_kind: components["schemas"]["NodeKind"];
+            /** Order Index */
+            order_index: number;
+            /** Parent Node Key */
+            parent_node_key?: string | null;
+            /** Policy */
+            policy?: string | null;
+            /** Role */
+            role: string;
+        };
         /** TaskRootBindingInput */
         TaskRootBindingInput: {
             /** Host Path */
@@ -2352,7 +2222,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    get_definition_draft_sets_authoring_definition_draft_sets_get: {
+    get_definition_drafts_authoring_definition_drafts_get: {
         parameters: {
             query?: {
                 cursor?: string | null;
@@ -2372,7 +2242,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DefinitionDraftSetListResponse"];
+                    "application/json": components["schemas"]["DefinitionDraftListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2386,7 +2256,7 @@ export interface operations {
             };
         };
     };
-    post_definition_draft_set_authoring_definition_draft_sets_post: {
+    post_definition_draft_authoring_definition_drafts_post: {
         parameters: {
             query?: never;
             header?: {
@@ -2397,7 +2267,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DefinitionDraftSetCreateRequest"];
+                "application/json": components["schemas"]["DefinitionDraftCreateRequest"];
             };
         };
         responses: {
@@ -2407,7 +2277,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DefinitionDraftSetDetailResponse"];
+                    "application/json": components["schemas"]["DefinitionDraftDetailResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2421,14 +2291,15 @@ export interface operations {
             };
         };
     };
-    get_definition_draft_set_authoring_definition_draft_sets__draft_set_id__get: {
+    get_definition_draft_authoring_definitions__kind___key__draft_get: {
         parameters: {
             query?: never;
             header?: {
                 "X-AutoClaw-API-Key"?: string | null;
             };
             path: {
-                draft_set_id: string;
+                kind: components["schemas"]["DefinitionKind"];
+                key: string;
             };
             cookie?: never;
         };
@@ -2440,7 +2311,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DefinitionDraftSetDetailResponse"];
+                    "application/json": components["schemas"]["DefinitionDraftDetailResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2454,14 +2325,53 @@ export interface operations {
             };
         };
     };
-    delete_definition_draft_set_authoring_definition_draft_sets__draft_set_id__delete: {
+    put_definition_draft_authoring_definitions__kind___key__draft_put: {
         parameters: {
             query?: never;
             header?: {
                 "X-AutoClaw-API-Key"?: string | null;
             };
             path: {
-                draft_set_id: string;
+                kind: components["schemas"]["DefinitionKind"];
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefinitionDraftWriteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefinitionDraftDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_definition_draft_route_authoring_definitions__kind___key__draft_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-AutoClaw-API-Key"?: string | null;
+            };
+            path: {
+                kind: components["schemas"]["DefinitionKind"];
+                key: string;
             };
             cookie?: never;
         };
@@ -2485,61 +2395,19 @@ export interface operations {
             };
         };
     };
-    post_definition_draft_set_apply_authoring_definition_draft_sets__draft_set_id__apply_post: {
+    post_definition_draft_publish_authoring_definitions__kind___key__draft_publish_post: {
         parameters: {
             query?: never;
             header?: {
                 "X-AutoClaw-API-Key"?: string | null;
             };
             path: {
-                draft_set_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DefinitionDraftApplyRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DefinitionDraftApplyResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    put_definition_draft_file_authoring_definition_draft_sets__draft_set_id__files__kind___key__put: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                draft_set_id: string;
                 kind: components["schemas"]["DefinitionKind"];
                 key: string;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DefinitionDraftFileWriteRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -2547,7 +2415,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DefinitionDraftSetDetailResponse"];
+                    "application/json": components["schemas"]["DefinitionDraftPublishResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2561,166 +2429,15 @@ export interface operations {
             };
         };
     };
-    post_definition_draft_file_rematerialize_current_authoring_definition_draft_sets__draft_set_id__files__kind___key__rematerialize_current_post: {
+    post_definition_draft_validate_authoring_definitions__kind___key__draft_validate_post: {
         parameters: {
             query?: never;
             header?: {
                 "X-AutoClaw-API-Key"?: string | null;
             };
             path: {
-                draft_set_id: string;
                 kind: components["schemas"]["DefinitionKind"];
                 key: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DefinitionDraftFileRematerializeCurrentRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DefinitionDraftSetDetailResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_definition_draft_file_reset_authoring_definition_draft_sets__draft_set_id__files__kind___key__reset_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                draft_set_id: string;
-                kind: components["schemas"]["DefinitionKind"];
-                key: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DefinitionDraftFileResetRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DefinitionDraftSetDetailResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_definition_draft_set_materialize_authoring_definition_draft_sets__draft_set_id__materialize_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                draft_set_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DefinitionDraftMaterializeRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DefinitionDraftSetDetailResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_definition_draft_set_preview_task_compose_authoring_definition_draft_sets__draft_set_id__preview_task_compose_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                draft_set_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DefinitionDraftTaskComposePreviewRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DefinitionDraftTaskComposePreviewResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_definition_draft_set_validate_authoring_definition_draft_sets__draft_set_id__validate_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                draft_set_id: string;
             };
             cookie?: never;
         };

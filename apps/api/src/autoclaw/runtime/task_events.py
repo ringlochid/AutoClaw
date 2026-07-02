@@ -9,6 +9,7 @@ from typing import Any, NamedTuple, cast
 
 from sqlalchemy import Select, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from autoclaw.persistence.models import TaskEventModel, TaskModel
 from autoclaw.runtime.clock import utc_now
@@ -22,6 +23,7 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.ids import task_event_id
 
 _CURSOR_PREFIX = "task-event-cursor."
+_HIDDEN_TASK_EVENT_TYPES = ("provider_event_normalized", "provider_resolution_recorded")
 
 
 class _TaskEventAppendHead(NamedTuple):
@@ -150,6 +152,7 @@ async def latest_task_event(
     row = await session.scalar(
         select(TaskEventModel)
         .where(TaskEventModel.task_id == task_id)
+        .where(_visible_task_event_clause())
         .order_by(TaskEventModel.event_seq.desc())
         .limit(1)
     )
@@ -210,7 +213,12 @@ async def _cursor_event_seq(
     if cursor is None:
         return 0
     event_id = decode_task_event_cursor(cursor)
-    row = await _task_event_by_id(session, task_id=task_id, event_id=event_id)
+    row = await _task_event_by_id(
+        session,
+        task_id=task_id,
+        event_id=event_id,
+        include_hidden=True,
+    )
     if row is None:
         raise TaskEventCursorResetRequiredError(cursor)
     return row.event_seq
@@ -224,7 +232,12 @@ async def _through_event_seq(
 ) -> int | None:
     if through_event_id is None:
         return None
-    row = await _task_event_by_id(session, task_id=task_id, event_id=through_event_id)
+    row = await _task_event_by_id(
+        session,
+        task_id=task_id,
+        event_id=through_event_id,
+        include_hidden=True,
+    )
     if row is None:
         raise TaskEventCursorResetRequiredError(through_event_id)
     return row.event_seq
@@ -240,6 +253,7 @@ def _task_event_page_statement(
     statement = (
         select(TaskEventModel)
         .where(TaskEventModel.task_id == task_id, TaskEventModel.event_seq > start_after_seq)
+        .where(_visible_task_event_clause())
         .order_by(TaskEventModel.event_seq.asc())
         .limit(limit)
     )
@@ -253,15 +267,17 @@ async def _task_event_by_id(
     *,
     task_id: str,
     event_id: str,
+    include_hidden: bool = False,
 ) -> TaskEventModel | None:
+    statement = select(TaskEventModel).where(
+        TaskEventModel.task_id == task_id,
+        TaskEventModel.event_id == event_id,
+    )
+    if not include_hidden:
+        statement = statement.where(_visible_task_event_clause())
     return cast(
         TaskEventModel | None,
-        await session.scalar(
-            select(TaskEventModel).where(
-                TaskEventModel.task_id == task_id,
-                TaskEventModel.event_id == event_id,
-            )
-        ),
+        await session.scalar(statement),
     )
 
 
@@ -314,6 +330,10 @@ def _task_event_source_value(event_source: TaskEventSource | str) -> TaskEventSo
 
 def _task_event_type_value(event_type: TaskEventType | str) -> TaskEventType:
     return event_type if isinstance(event_type, TaskEventType) else TaskEventType(event_type)
+
+
+def _visible_task_event_clause() -> ColumnElement[bool]:
+    return ~TaskEventModel.event_type.in_(_HIDDEN_TASK_EVENT_TYPES)
 
 
 __all__ = [

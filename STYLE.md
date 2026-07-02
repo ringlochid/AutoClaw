@@ -190,7 +190,7 @@ Source: [SQLAlchemy declarative mapping](https://docs.sqlalchemy.org/en/20/orm/d
 - extract repeated Tailwind utility clusters into primitives, variant helpers, or token-backed CSS rather than copying the cluster across features
 - keep accessibility part of the component contract: semantic elements, labels, keyboard focus, color-with-text state, and stable responsive order
 - do not invent frontend-only lifecycle states, fake metrics, progress percentages, ETA, run/request counts, or support-file-derived truth when the controller does not expose them
-- keep browser-only template generation, preview, diff, and local form state visibly separate from stored registry truth, draft-set truth, runtime truth, and task-start launch truth
+- keep browser-only template generation, diff, and local form state visibly separate from stored registry truth, flat draft truth, runtime truth, and task-start launch truth
 
 Source: [React custom hooks](https://legacy.reactjs.org/docs/hooks-custom.html) Source: [React state structure](https://react.dev/learn/choosing-the-state-structure) Source: [TypeScript ESLint naming convention](https://typescript-eslint.io/rules/naming-convention/) Source: [Tailwind reusing styles](https://tailwindcss.com/docs/reusing-styles)
 

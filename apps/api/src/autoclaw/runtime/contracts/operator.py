@@ -3,6 +3,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
+from autoclaw.definitions.contracts.workflow import NodeKind
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
 from autoclaw.runtime.contracts.flow import RuntimeFlowRead
 from autoclaw.runtime.contracts.primitives import (
@@ -111,11 +112,39 @@ class BoundaryHistoryEntry(BaseModel):
     occurred_at: datetime
 
 
+class TaskGraphNodeEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
+
+    node_key: RuntimeSchemaText
+    parent_node_key: RuntimeSchemaText | None = None
+    node_kind: NodeKind
+    role: RuntimeSchemaText
+    policy: RuntimeSchemaText | None = None
+    description: RuntimeSchemaText
+    order_index: int
+    child_node_keys: tuple[RuntimeSchemaText, ...] = ()
+    depends_on_node_keys: tuple[RuntimeSchemaText, ...] = ()
+    depended_on_by_node_keys: tuple[RuntimeSchemaText, ...] = ()
+
+
+class TaskGraphDependencyEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
+
+    provider_node_key: RuntimeSchemaText
+    consumer_node_key: RuntimeSchemaText
+    kind: Literal["artifact", "criteria"]
+    slot: RuntimeSchemaText
+    description: RuntimeSchemaText
+    order_index: int
+
+
 class OperatorFlowTraceResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
     task_id: RuntimeSchemaText
     scope: Literal["current", "whole"] = "current"
+    graph_nodes: tuple[TaskGraphNodeEntry, ...] = ()
+    dependency_edges: tuple[TaskGraphDependencyEntry, ...] = ()
     dispatch_history: tuple[DispatchHistoryEntry, ...]
     checkpoint_history: tuple[CheckpointHistoryEntry, ...]
     boundary_history: tuple[BoundaryHistoryEntry, ...]
@@ -148,5 +177,7 @@ __all__ = [
     "OperatorFlowSnapshotResponse",
     "OperatorFlowTraceQuery",
     "OperatorFlowTraceResponse",
+    "TaskGraphDependencyEntry",
+    "TaskGraphNodeEntry",
     "TopActionableItem",
 ]

@@ -64,7 +64,7 @@ Rules:
 - keep runtime task list reads on `GET /runtime/tasks` until a real `/control/tasks` list route exists
 - keep selected task, snapshot, trace, events, human requests, and command runs on `/control/tasks/{task_id}/*`
 - keep stored definition browsing on `/definitions/*`
-- keep draft-set lifecycle, file writes, validation, preview, and apply on `/authoring/definition-draft-sets/*`
+- keep flat definition draft create/read/save/delete/validate/publish on `/authoring/*`
 - keep task launch on `POST /tasks/start`
 - do not reconstruct runtime chronology from snapshot, trace, observability refs, support files, logs, screenshots, or local browser state when `task_event` is the replayable source
 - do not reconstruct human-request currentness or command-run state from support files, logs, missing buttons, or local UI memory

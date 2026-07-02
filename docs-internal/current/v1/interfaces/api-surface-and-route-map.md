@@ -87,23 +87,19 @@ Current routes are:
 
 Current authoring routes on the same trusted operator lane are:
 
-- `GET /authoring/definition-draft-sets`
-- `POST /authoring/definition-draft-sets`
-- `GET /authoring/definition-draft-sets/{draft_set_id}`
-- `DELETE /authoring/definition-draft-sets/{draft_set_id}`
-- `POST /authoring/definition-draft-sets/{draft_set_id}/materialize`
-- `PUT /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}`
-- `POST /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}/reset`
-- `POST /authoring/definition-draft-sets/{draft_set_id}/files/{kind}/{key}/rematerialize-current`
-- `POST /authoring/definition-draft-sets/{draft_set_id}/validate`
-- `POST /authoring/definition-draft-sets/{draft_set_id}/apply`
-- `POST /authoring/definition-draft-sets/{draft_set_id}/preview-task-compose`
+- `GET /authoring/definition-drafts`
+- `POST /authoring/definition-drafts`
+- `GET /authoring/definitions/{kind}/{key}/draft`
+- `PUT /authoring/definitions/{kind}/{key}/draft`
+- `DELETE /authoring/definitions/{kind}/{key}/draft`
+- `POST /authoring/definitions/{kind}/{key}/draft/validate`
+- `POST /authoring/definitions/{kind}/{key}/draft/publish`
 
 Current query-backed route details include:
 
 - `/definitions/roles|policies|workflows` support the shared definition list query contract
 - `/definitions/{kind}/{key}/versions` supports history paging and sort queries
-- `/authoring/definition-draft-sets` supports `cursor` and `limit`
+- `/authoring/definition-drafts` supports `cursor` and `limit`
 - `POST /definitions` returns `201 Created` for a new revision and `200 OK` for a no-op replay
 - `POST /tasks/start` waits for initial runtime effects before returning the task start readback
 
@@ -157,15 +153,12 @@ Current operator-MCP definition and draft inventory is:
 - `list_definition_versions`
 - `upload_definition`
 - `start_task`
-- `list_definition_draft_sets`
-- `get_definition_draft_set`
 
 Current mounted-operator facts:
 
 - `search_definitions`, `get_definition`, and `list_definition_versions` are read-only registry truth tools
 - `upload_definition` and `start_task` load local files on the AutoClaw host and mutate controller-owned state
-- `list_definition_draft_sets` and `get_definition_draft_set` are read-only draft-set inspection tools
-- mutating draft authoring remains on the trusted HTTP `/authoring/definition-draft-sets/*` workbench API rather than on operator MCP
+- definition draft authoring stays on the trusted HTTP `/authoring` API rather than on operator MCP
 
 ## Current callback routes
 
@@ -245,7 +238,7 @@ Current code does not ship the older legacy flow, approval, registry-internal, t
 ```text
 operator HTTP:
   GET  /definitions/roles
-  POST /authoring/definition-draft-sets
+  POST /authoring/definition-drafts
   POST /tasks/start
   GET  /runtime/tasks
   GET  /runtime/tasks/{task_id}

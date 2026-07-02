@@ -370,7 +370,7 @@ async def append_labeled_event(
     return await append_task_event(
         session,
         task_id=task_id,
-        event_type="provider_event_normalized",
+        event_type="checkpoint_recorded",
         event_source="controller",
         payload={"label": label},
     )

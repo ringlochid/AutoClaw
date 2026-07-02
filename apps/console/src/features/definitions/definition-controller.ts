@@ -1,11 +1,14 @@
 import {
     useCallback,
     useEffect,
+    useMemo,
     useRef,
     useState,
     type Dispatch,
     type SetStateAction,
 } from "react";
+
+import { useSearchParams } from "react-router-dom";
 
 import { getNextCursor, type ConsoleErrorView } from "../../api/client";
 import {
@@ -56,6 +59,12 @@ interface DefinitionVersionsState {
     readonly isLoadingMore: boolean;
     readonly nextCursor: string | null;
     readonly rows: readonly DefinitionVersionRow[];
+    readonly selectedKey: string | null;
+}
+
+interface DefinitionRouteSelection {
+    readonly kind: DefinitionListKind;
+    readonly query: string;
     readonly selectedKey: string | null;
 }
 
@@ -126,12 +135,17 @@ const initialVersionsState: DefinitionVersionsState = {
 };
 
 export function useDefinitionsController(): DefinitionsController {
-    const [kind, setKindState] = useState<DefinitionListKind>(initialKind);
-    const [query, setQuery] = useState("");
+    const [searchParams] = useSearchParams();
+    const routeSelection = useMemo(
+        () => readDefinitionRouteSelection(searchParams),
+        [searchParams],
+    );
+    const [kind, setKindState] = useState<DefinitionListKind>(routeSelection.kind);
+    const [query, setQuery] = useState(routeSelection.query);
     const [sort, setSort] = useState<DefinitionListSort>(initialSort);
     const [roleNodeKindFilter, setRoleNodeKindFilter] = useState<NodeKind | "any">("any");
     const [appliesToFilter, setAppliesToFilter] = useState<NodeKind | "any">("any");
-    const [selectedKey, setSelectedKey] = useState<string | null>(null);
+    const [selectedKey, setSelectedKey] = useState<string | null>(routeSelection.selectedKey);
     const [refreshToken, setRefreshToken] = useState(0);
     const [detailRefreshToken, setDetailRefreshToken] = useState(0);
     const [listState, setListState] = useState<DefinitionListState>(initialListState);
@@ -139,6 +153,7 @@ export function useDefinitionsController(): DefinitionsController {
     const [versionsState, setVersionsState] =
         useState<DefinitionVersionsState>(initialVersionsState);
     const listGenerationRef = useRef(0);
+    const appliedRouteSelectionKeyRef = useRef(routeSelectionKey(routeSelection));
     const trimmedQuery = query.trim();
     const singularKind = singularKindForListKind(kind);
     const criteriaKey = buildDefinitionListCriteriaKey({
@@ -154,6 +169,20 @@ export function useDefinitionsController(): DefinitionsController {
         (kind === "policies" && appliesToFilter !== "any");
     const isSelectedKeyInRows =
         selectedKey !== null && listState.rows.some((row) => row.key === selectedKey);
+
+    useEffect(() => {
+        const nextRouteSelectionKey = routeSelectionKey(routeSelection);
+        if (appliedRouteSelectionKeyRef.current === nextRouteSelectionKey) {
+            return;
+        }
+
+        appliedRouteSelectionKeyRef.current = nextRouteSelectionKey;
+        setKindState(routeSelection.kind);
+        setQuery(routeSelection.query);
+        setRoleNodeKindFilter("any");
+        setAppliesToFilter("any");
+        setSelectedKey(routeSelection.selectedKey);
+    }, [routeSelection]);
 
     useEffect(() => {
         const abortController = new AbortController();
@@ -377,6 +406,40 @@ export function useDefinitionsController(): DefinitionsController {
         statusSummary: getStatusSummary(listState, hasActiveNarrowing),
         versionsState,
     };
+}
+
+function readDefinitionRouteSelection(searchParams: URLSearchParams): DefinitionRouteSelection {
+    const selectedKey = trimmedSearchParam(searchParams, "key");
+    return {
+        kind: definitionListKindFromParam(searchParams.get("kind")) ?? initialKind,
+        query: selectedKey ?? "",
+        selectedKey,
+    };
+}
+
+function routeSelectionKey(selection: DefinitionRouteSelection): string {
+    return `${selection.kind}:${selection.selectedKey ?? ""}`;
+}
+
+function trimmedSearchParam(searchParams: URLSearchParams, name: string): string | null {
+    const value = searchParams.get(name)?.trim() ?? "";
+    return value.length === 0 ? null : value;
+}
+
+function definitionListKindFromParam(value: string | null): DefinitionListKind | null {
+    switch (value) {
+        case "policy":
+        case "policies":
+            return "policies";
+        case "role":
+        case "roles":
+            return "roles";
+        case "workflow":
+        case "workflows":
+            return "workflows";
+        default:
+            return null;
+    }
 }
 
 interface SelectedDefinitionReadOptions {

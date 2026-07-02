@@ -146,9 +146,36 @@ BoundaryHistoryEntry:
     requires_reopen_after_inactivity: boolean | null
     occurred_at: timestamp
 
+TaskGraphNodeEntry:
+    node_key: string
+    parent_node_key: string | null
+    node_kind: root | parent | worker
+    role: string
+    policy: string | null
+    description: string
+    order_index: integer
+    child_node_keys:
+        - string
+    depends_on_node_keys:
+        - string
+    depended_on_by_node_keys:
+        - string
+
+TaskGraphDependencyEntry:
+    provider_node_key: string
+    consumer_node_key: string
+    kind: artifact | criteria
+    slot: string
+    description: string
+    order_index: integer
+
 OperatorFlowTraceResponse:
     task_id: string
     scope: current | whole
+    graph_nodes:
+        - TaskGraphNodeEntry
+    dependency_edges:
+        - TaskGraphDependencyEntry
     dispatch_history:
         - DispatchHistoryEntry
     checkpoint_history:
@@ -173,6 +200,9 @@ Rules:
 - snapshot answers current state; trace answers nearby controller history and supporting refs
 - trace is still a read model and does not replace `task_event` chronology for replay
 - trace may duplicate bounded render facts from assignment rows and boundary task-event payloads so inspectors do not need support-file parsing for ordinary selected-node details
+- trace graph nodes come from the active flow revision's committed node tree
+- trace dependency edges are only declared producer-to-consumer relationships from controller edge rows
+- clients must not render boundary, dispatch chronology, or previous/next trace fields as task-graph edges
 - `current_paths` may expose controller-backed support refs, but clients must not reconstruct runtime truth from those refs alone
 
 ## Pause, continue, and cancel envelopes
@@ -230,9 +260,7 @@ Rules:
 - `event_hash` and `prev_event_hash` form the tamper-evident chain required by the capability, security, and audit contract
 - `event_hash` is computed over the canonical serialized event record with `event_hash` excluded and `prev_event_hash` included
 - task events are authoritative for UI replay, audit sequence, and "what changed"; they do not replace controller source rows for currentness or legality
-- task events are not a raw adapter notification archive; noisy adapter fragments must be
-  pruned or coalesced before persistence unless they become accepted controller progress,
-  terminal state, or another owned source row update
+- task events are not a raw adapter notification archive; noisy adapter fragments must be pruned or coalesced before persistence unless they become accepted controller progress, terminal state, or another owned source row update
 
 ## Event backfill envelope
 
@@ -338,13 +366,11 @@ The task event stream must include these families:
 
 - `task_started`
 - `dispatch_opened`
-- `provider_resolution_recorded`
 - `checkpoint_recorded`
 - `boundary_accepted`
 - `child_assignment_staged`
 - `child_assignment_committed`
 - `structural_revision_adopted`
-- `provider_event_normalized`
 - `human_request_opened`
 - `human_request_resolved`
 - `human_request_timed_out`
@@ -372,8 +398,8 @@ Minimum target coverage is:
 | ----------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
 | task launch                                     | `task_started`                                                     | implemented persisted task event family                                                        |
 | dispatch open                                   | `dispatch_opened`                                                  | implemented persisted task event family                                                        |
-| provider resolution                             | `provider_resolution_recorded`                                     | implemented persisted task event family                                                        |
-| provider-event record append                    | `provider_event_normalized`                                        | implemented persisted task event family through the shared provider-event append path          |
+| provider resolution                             | none                                                               | provider provenance remains dispatch or inspector context, not control task-event chronology    |
+| provider-event record append                    | none                                                               | provider telemetry remains in provider-event source rows and observability refs, not control task events |
 | checkpoint write                                | `checkpoint_recorded`                                              | implemented persisted task event family                                                        |
 | boundary accept                                 | `boundary_accepted`                                                | implemented persisted task event family                                                        |
 | parent/root assign child                        | `child_assignment_staged`                                          | implemented persisted task event family                                                        |
@@ -389,22 +415,15 @@ Rules:
 - the event payload should carry bounded renderable facts and refs; large authored bodies, logs, manifests, and raw support files stay behind refs
 - failed guarded writes return structured errors and do not emit success-family task events
 
-## Provider-resolution event payload
+## Provider-resolution provenance
 
-When the controller resolves provider preference for a dispatch attempt, it should emit `provider_resolution_recorded`.
-
-Minimum payload expectations are:
-
-- `requested_provider`
-- `resolved_provider`
-- `dispatch_id`
-- `attempt_id`
+When the controller resolves provider preference for a dispatch attempt, it may retain bounded provenance for inspectors and support diagnostics, but it must not emit a provider-resolution task-event row.
 
 Rules:
 
-- the event records the requested provider and the provider that actually accepted the attempt
-- once the attempt is accepted, later provider changes must not be represented as silent mutation of the same attempt
-- fallback detail may stay in support-state or observability lanes until a later contract proves it needs first-class task-event status
+- requested and resolved provider detail is dispatch or provider-observability context, not control chronology
+- the execution thread must not show provider-resolution timeline cards
+- fallback detail may stay in support-state or observability lanes until a later contract proves it needs first-class non-chronology inspector status
 
 ## Launch and dispatch-open event payloads
 
@@ -440,28 +459,19 @@ Rules:
 
 - `dispatch_opened` is the controller-opened dispatch truth, not a provider-side receipt or raw transport callback
 - `previous_dispatch_id` is null for task launch and otherwise points at the just-replaced dispatch lineage when the controller has one
-- later provider progress, tool activity, completion, failure, or cleanup still land as later task events; `dispatch_opened` does not absorb them
+- later provider progress, tool activity, completion, failure, or cleanup must not land as control task events; `dispatch_opened` does not absorb them
+- provider telemetry stays in provider-event source rows and observability refs rather than the control task-event stream
 
-## Provider-event-normalized payload
+## Provider-event boundary
 
-`provider_event_normalized` should be emitted whenever the controller appends a normalized provider-event record for the active task lineage, including provider-lane progress/completion records and adapter-lane acceptance or transport/cleanup records.
-
-Minimum payload expectations are:
-
-- `provider_event_record_id`
-- `event_no`
-- `event_kind`
-- `summary`
-- `detail`
-- `provider_event_name | null`
-- `provider_occurred_at | null`
+Normalized provider-event records are not a control task-event family.
 
 Rules:
 
-- the top-level task event `event_source` stays `provider` for provider-lane normalized events and `adapter` for adapter-lane transport or cleanup records
-- persisted transport metadata such as transport family, event label, stream, phase, status, event sequence, state version, normalized error detail, `gateway_run_id`, and `gateway_session_key` may be included when the controller already persisted them on the provider-event record
-- support-only file bodies still stay out of the task-event payload
-- `provider_event_normalized` exists to make the normalized provider-event timeline replayable; it does not replace provider-event source rows or support-state files as deeper observability surfaces
+- `/control/tasks/{task_id}/events` and `/control/tasks/{task_id}/events/stream` must not return provider-event rows
+- provider-lane progress, tool activity, completion, failure, adapter acceptance, transport, and cleanup records remain deeper observability data
+- provider-event source rows and generated support refs may expose provider telemetry to operator observability surfaces, but the control UI event lane must not render those rows as task chronology
+- persisted transport metadata such as transport family, event label, stream, phase, status, event sequence, state version, normalized error detail, `gateway_run_id`, and `gateway_session_key` stays out of the control task-event payload
 
 ## Runtime progression event payloads
 

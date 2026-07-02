@@ -10,28 +10,21 @@ from sqlalchemy.orm import joinedload
 
 from autoclaw.definitions.authoring.contracts import (
     DefinitionDraftBaselineRead,
-    DefinitionDraftFileDetail,
-    DefinitionDraftFileStatus,
-    DefinitionDraftFileSummary,
-    DefinitionDraftSetDetail,
-    DefinitionDraftSetState,
-    DefinitionDraftSetSummary,
+    DefinitionDraftDetail,
+    DefinitionDraftMode,
+    DefinitionDraftStatus,
+    DefinitionDraftSummary,
 )
 from autoclaw.definitions.authoring.storage import (
+    StoredDefinitionDraftMetadata,
     StoredDraftBaseline,
-    StoredDraftFileEntry,
-    StoredDraftSetManifest,
+    build_definition_draft_metadata,
     draft_body_content_hash,
-    draft_file_relative_path,
-    find_manifest_file_entry,
+    has_stored_definition_draft,
     normalize_definition_content,
-    normalized_file_relative_path,
     parse_definition_body,
-    read_definition_draft_body,
-    read_definition_draft_normalized_content,
-    read_preview_task_compose_body,
+    read_stored_definition_draft,
     serialize_definition_content,
-    write_definition_draft_files,
 )
 from autoclaw.definitions.contracts import (
     DefinitionContent,
@@ -65,173 +58,71 @@ class ParsedDraftDefinition:
     error: str | None
 
 
-async def build_draft_set_summary(
+async def build_saved_definition_draft_summary(
     session: AsyncSession,
     *,
     data_dir: Path,
-    manifest: StoredDraftSetManifest,
-) -> DefinitionDraftSetSummary:
-    current_snapshots = await load_current_definition_snapshots(session, entries=manifest.files)
-    file_summaries: list[DefinitionDraftFileSummary] = []
-    for entry in manifest.files:
-        body = read_definition_draft_body(data_dir, manifest.draft_set_id, entry)
-        parsed = parse_definition_body_for_storage(kind=entry.kind, key=entry.key, body=body)
-        file_summaries.append(
-            build_file_summary(
-                entry=entry,
-                body=body,
-                parsed=parsed,
-                current_snapshot=current_snapshots.get((entry.kind, entry.key)),
-            )
-        )
-
-    return DefinitionDraftSetSummary(
-        draft_set_id=manifest.draft_set_id,
-        title=manifest.title,
-        created_at=manifest.created_at,
-        updated_at=manifest.updated_at,
-        state=draft_set_state(manifest, tuple(file_summaries)),
-        files=tuple(file_summaries),
-        preview_task_compose_path=manifest.preview_task_compose_path,
+    metadata: StoredDefinitionDraftMetadata,
+) -> DefinitionDraftSummary:
+    draft = read_stored_definition_draft(data_dir, kind=metadata.kind, key=metadata.key)
+    current_snapshot = await load_current_definition_snapshot(
+        session,
+        kind=metadata.kind,
+        key=metadata.key,
+    )
+    parsed = parse_definition_body_for_storage(
+        kind=metadata.kind,
+        key=metadata.key,
+        body=draft.body,
+    )
+    return build_definition_draft_summary(
+        metadata=metadata,
+        body=draft.body,
+        parsed=parsed,
+        current_snapshot=current_snapshot,
     )
 
 
-async def build_draft_set_detail(
+async def build_definition_draft_detail(
     session: AsyncSession,
     *,
     data_dir: Path,
-    manifest: StoredDraftSetManifest,
-) -> DefinitionDraftSetDetail:
-    current_snapshots = await load_current_definition_snapshots(session, entries=manifest.files)
-    file_details: list[DefinitionDraftFileDetail] = []
-    for entry in manifest.files:
-        body = read_definition_draft_body(data_dir, manifest.draft_set_id, entry)
-        parsed = parse_definition_body_for_storage(kind=entry.kind, key=entry.key, body=body)
-        normalized_content = read_definition_draft_normalized_content(
-            data_dir,
-            manifest.draft_set_id,
-            entry,
-        )
-        summary = build_file_summary(
-            entry=entry,
-            body=body,
-            parsed=parsed,
-            current_snapshot=current_snapshots.get((entry.kind, entry.key)),
-        )
-        file_details.append(
-            DefinitionDraftFileDetail(
-                **summary.model_dump(mode="python"),
-                body=body,
-                normalized_content=normalized_content,
-                baseline_body=entry.baseline_body,
-                baseline_normalized_content=entry.baseline_normalized_content,
-            )
-        )
-
-    return DefinitionDraftSetDetail(
-        draft_set_id=manifest.draft_set_id,
-        title=manifest.title,
-        created_at=manifest.created_at,
-        updated_at=manifest.updated_at,
-        state=draft_set_state(manifest, tuple(file_details)),
-        files=tuple(file_details),
-        preview_task_compose_path=manifest.preview_task_compose_path,
-        preview_task_compose_body=read_preview_task_compose_body(data_dir, manifest.draft_set_id),
-    )
-
-
-def build_file_summary(
-    *,
-    entry: StoredDraftFileEntry,
-    body: str,
-    parsed: ParsedDraftDefinition,
-    current_snapshot: CurrentDefinitionSnapshot | None,
-) -> DefinitionDraftFileSummary:
-    return DefinitionDraftFileSummary(
-        kind=entry.kind,
-        key=entry.key,
-        draft_path=entry.draft_path,
-        normalized_path=entry.normalized_path,
-        body_format="yaml",
-        content_hash=entry.content_hash,
-        based_on=DefinitionDraftBaselineRead.model_validate(
-            entry.based_on.model_dump(mode="python")
-        ),
-        status=draft_file_status(
-            entry=entry,
-            body=body,
-            parsed=parsed,
-            current_snapshot=current_snapshot,
-        ),
-    )
-
-
-def draft_set_state(
-    manifest: StoredDraftSetManifest,
-    files: tuple[DefinitionDraftFileSummary, ...] | tuple[DefinitionDraftFileDetail, ...],
-) -> DefinitionDraftSetState:
-    if any(file.status == DefinitionDraftFileStatus.STALE for file in files):
-        return DefinitionDraftSetState.STALE
-    if manifest.state == DefinitionDraftSetState.APPLIED.value:
-        return DefinitionDraftSetState.APPLIED
-    return DefinitionDraftSetState.OPEN
-
-
-def draft_file_status(
-    *,
-    entry: StoredDraftFileEntry,
-    body: str,
-    parsed: ParsedDraftDefinition,
-    current_snapshot: CurrentDefinitionSnapshot | None,
-) -> DefinitionDraftFileStatus:
-    if parsed.error is not None:
-        return DefinitionDraftFileStatus.INVALID
-    if entry_is_stale(entry, current_snapshot=current_snapshot):
-        return DefinitionDraftFileStatus.STALE
-    if entry.based_on.revision_no is None:
-        return DefinitionDraftFileStatus.ADDED
-    if body == entry.baseline_body:
-        return DefinitionDraftFileStatus.CLEAN
-    return DefinitionDraftFileStatus.MODIFIED
-
-
-def entry_is_stale(
-    entry: StoredDraftFileEntry,
-    *,
-    current_snapshot: CurrentDefinitionSnapshot | None,
-) -> bool:
-    if entry.based_on.revision_no is None:
-        return current_snapshot is not None
-    if current_snapshot is None:
-        return True
-    return (
-        entry.based_on.revision_no != current_snapshot.revision_no
-        or entry.based_on.content_hash != current_snapshot.content_hash
-    )
-
-
-async def materialize_definition_entry(
-    session: AsyncSession,
-    *,
-    data_dir: Path,
-    manifest: StoredDraftSetManifest,
     kind: DefinitionKind,
     key: str,
-    should_allow_existing_entry: bool,
-) -> StoredDraftFileEntry:
-    existing_entry = find_manifest_file_entry(manifest, kind=kind, key=key)
-    if existing_entry is not None and not should_allow_existing_entry:
-        raise invalid_request_shape_error(f"draft set already materializes {kind.value} '{key}'")
-    current_snapshot = await _require_current_definition_snapshot(session, kind=kind, key=key)
-    body = serialize_definition_content(kind, current_snapshot.content)
+) -> DefinitionDraftDetail:
+    if not has_stored_definition_draft(data_dir, kind=kind, key=key):
+        current_snapshot = await require_current_definition_snapshot(session, kind=kind, key=key)
+        return build_transient_current_definition_draft(current_snapshot)
+
+    draft = read_stored_definition_draft(data_dir, kind=kind, key=key)
+    saved_current_snapshot = await load_current_definition_snapshot(session, kind=kind, key=key)
+    parsed = parse_definition_body_for_storage(kind=kind, key=key, body=draft.body)
+    summary = build_definition_draft_summary(
+        metadata=draft.metadata,
+        body=draft.body,
+        parsed=parsed,
+        current_snapshot=saved_current_snapshot,
+    )
+    return DefinitionDraftDetail(
+        **summary.model_dump(mode="python"),
+        body=draft.body,
+        normalized_content=draft.normalized_content,
+        baseline_body=draft.metadata.baseline_body,
+        baseline_normalized_content=draft.metadata.baseline_normalized_content,
+        is_saved=True,
+    )
+
+
+def build_transient_current_definition_draft(
+    current_snapshot: CurrentDefinitionSnapshot,
+) -> DefinitionDraftDetail:
+    body = serialize_definition_content(current_snapshot.kind, current_snapshot.content)
     normalized_content = normalize_definition_content(current_snapshot.content)
-    entry = StoredDraftFileEntry(
-        kind=kind,
-        key=key,
-        draft_path=draft_file_relative_path(kind, key),
-        normalized_path=normalized_file_relative_path(kind, key),
-        body_format="yaml",
-        content_hash=draft_body_content_hash(body),
+    metadata = build_definition_draft_metadata(
+        kind=current_snapshot.kind,
+        key=current_snapshot.key,
+        mode=DefinitionDraftMode.UPDATE,
+        body=body,
         based_on=StoredDraftBaseline(
             revision_no=current_snapshot.revision_no,
             content_hash=current_snapshot.content_hash,
@@ -240,28 +131,97 @@ async def materialize_definition_entry(
         baseline_body=body,
         baseline_normalized_content=normalized_content,
     )
-    write_definition_draft_files(
-        data_dir,
-        manifest.draft_set_id,
-        entry=entry,
+    summary = build_definition_draft_summary(
+        metadata=metadata,
+        body=body,
+        parsed=ParsedDraftDefinition(
+            content=current_snapshot.content,
+            normalized_content=normalized_content,
+            error=None,
+        ),
+        current_snapshot=current_snapshot,
+    )
+    return DefinitionDraftDetail(
+        **summary.model_dump(mode="python"),
         body=body,
         normalized_content=normalized_content,
+        baseline_body=body,
+        baseline_normalized_content=normalized_content,
+        is_saved=False,
     )
-    _update_manifest_file_entry(manifest, entry)
-    return entry
 
 
-async def load_current_definition_snapshots(
+def build_definition_draft_summary(
+    *,
+    metadata: StoredDefinitionDraftMetadata,
+    body: str,
+    parsed: ParsedDraftDefinition,
+    current_snapshot: CurrentDefinitionSnapshot | None,
+) -> DefinitionDraftSummary:
+    return DefinitionDraftSummary(
+        kind=metadata.kind,
+        key=metadata.key,
+        mode=metadata.mode,
+        draft_path=metadata.draft_path,
+        normalized_path=metadata.normalized_path,
+        body_format="yaml",
+        content_hash=draft_body_content_hash(body),
+        based_on=DefinitionDraftBaselineRead.model_validate(
+            metadata.based_on.model_dump(mode="python")
+        ),
+        status=definition_draft_status(
+            metadata=metadata,
+            body=body,
+            parsed=parsed,
+            current_snapshot=current_snapshot,
+        ),
+        updated_at=metadata.updated_at,
+    )
+
+
+def definition_draft_status(
+    *,
+    metadata: StoredDefinitionDraftMetadata,
+    body: str,
+    parsed: ParsedDraftDefinition,
+    current_snapshot: CurrentDefinitionSnapshot | None,
+) -> DefinitionDraftStatus:
+    if parsed.error is not None:
+        return DefinitionDraftStatus.INVALID
+    if definition_draft_is_stale(metadata, current_snapshot=current_snapshot):
+        return DefinitionDraftStatus.STALE
+    if metadata.mode == DefinitionDraftMode.CREATE:
+        return DefinitionDraftStatus.NEW
+    if metadata.baseline_body is not None and body == metadata.baseline_body:
+        return DefinitionDraftStatus.CLEAN
+    return DefinitionDraftStatus.MODIFIED
+
+
+def definition_draft_is_stale(
+    metadata: StoredDefinitionDraftMetadata,
+    *,
+    current_snapshot: CurrentDefinitionSnapshot | None,
+) -> bool:
+    if metadata.mode == DefinitionDraftMode.CREATE:
+        return current_snapshot is not None
+    if current_snapshot is None:
+        return True
+    return (
+        metadata.based_on.revision_no != current_snapshot.revision_no
+        or metadata.based_on.content_hash != current_snapshot.content_hash
+    )
+
+
+async def require_current_definition_snapshot(
     session: AsyncSession,
     *,
-    entries: list[StoredDraftFileEntry],
-) -> dict[tuple[DefinitionKind, str], CurrentDefinitionSnapshot]:
-    snapshots: dict[tuple[DefinitionKind, str], CurrentDefinitionSnapshot] = {}
-    for entry in entries:
-        snapshot = await load_current_definition_snapshot(session, kind=entry.kind, key=entry.key)
-        if snapshot is not None:
-            snapshots[(entry.kind, entry.key)] = snapshot
-    return snapshots
+    kind: DefinitionKind,
+    key: str,
+) -> CurrentDefinitionSnapshot:
+    snapshot = await load_current_definition_snapshot(session, kind=kind, key=key)
+    if snapshot is None:
+        raise FileNotFoundError(f"unknown definition key '{key}'")
+    return snapshot
 
 
 async def load_current_definition_snapshot(
@@ -338,20 +298,6 @@ def parse_definition_body_for_storage(
     )
 
 
-def require_manifest_file_entry(
-    manifest: StoredDraftSetManifest,
-    *,
-    kind: DefinitionKind,
-    key: str,
-) -> StoredDraftFileEntry:
-    entry = find_manifest_file_entry(manifest, kind=kind, key=key)
-    if entry is None:
-        raise FileNotFoundError(
-            f"draft set '{manifest.draft_set_id}' does not include {kind.value} '{key}'"
-        )
-    return entry
-
-
 def parse_cursor_offset(cursor: str | None) -> int:
     if cursor is None:
         return 0
@@ -368,44 +314,18 @@ def next_cursor(offset: int, limit: int, selected_count: int) -> str | None:
     return str(offset + limit) if selected_count > limit else None
 
 
-async def _require_current_definition_snapshot(
-    session: AsyncSession,
-    *,
-    kind: DefinitionKind,
-    key: str,
-) -> CurrentDefinitionSnapshot:
-    snapshot = await load_current_definition_snapshot(session, kind=kind, key=key)
-    if snapshot is None:
-        raise FileNotFoundError(f"unknown definition key '{key}'")
-    return snapshot
-
-
-def _update_manifest_file_entry(
-    manifest: StoredDraftSetManifest,
-    entry: StoredDraftFileEntry,
-) -> None:
-    for index, existing_entry in enumerate(manifest.files):
-        if existing_entry.kind == entry.kind and existing_entry.key == entry.key:
-            manifest.files[index] = entry
-            break
-    else:
-        manifest.files.append(entry)
-
-
 __all__ = [
     "CurrentDefinitionSnapshot",
     "ParsedDraftDefinition",
-    "build_draft_set_detail",
-    "build_draft_set_summary",
-    "build_file_summary",
-    "draft_file_status",
-    "draft_set_state",
-    "entry_is_stale",
+    "build_definition_draft_detail",
+    "build_definition_draft_summary",
+    "build_saved_definition_draft_summary",
+    "build_transient_current_definition_draft",
+    "definition_draft_is_stale",
+    "definition_draft_status",
     "load_current_definition_snapshot",
-    "load_current_definition_snapshots",
-    "materialize_definition_entry",
     "next_cursor",
     "parse_cursor_offset",
     "parse_definition_body_for_storage",
-    "require_manifest_file_entry",
+    "require_current_definition_snapshot",
 ]

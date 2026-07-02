@@ -74,7 +74,7 @@ Current grouped surfaces:
 Current operator actions on this lane include:
 
 - list, inspect, or upload definitions
-- create, inspect, save, reset, re-materialize, validate, preview, apply, or delete backend-owned definition draft sets
+- create, inspect, save, validate, publish, replace, or delete backend-owned definition drafts
 - start a task from the definition service
 - list or inspect runtime tasks
 - continue, pause, or cancel a task runtime
@@ -83,9 +83,9 @@ Current operator actions on this lane include:
 - request cancellation of the current active command run without cancelling the whole task
 - fetch task-scoped observability file refs
 
-Current operator GET routes are read-only in the shipped tree: they surface current file refs or current backend-owned draft state but do not repair or rematerialize projections inline. `POST /definitions`, `/authoring/definition-draft-sets/*`, and `POST /tasks/start` are trusted API-key write paths on the same lane.
+Current operator GET routes are read-only in the shipped tree: they surface current file refs or current backend-owned draft state but do not repair projections inline. `POST /definitions`, `/authoring/*`, and `POST /tasks/start` are trusted API-key write paths on the same lane.
 
-Mounted operator MCP is a narrower operator surface over the same trusted principal. It exposes registry reads, definition upload, task start, runtime control/readback, support refs, and read-only draft-set discovery/detail tools. It does not expose draft-set create, delete, materialize, save, reset, re-materialize, validate, apply, or preview-task-compose tools; those remain HTTP `/authoring` workbench actions.
+Mounted operator MCP is a narrower operator surface over the same trusted principal. It exposes registry reads, definition upload, task start, runtime control/readback, and support refs. Definition draft authoring remains on HTTP `/authoring`.
 
 ### 2. Callback HTTP lane
 
@@ -170,8 +170,7 @@ Current code does not ship the older flow, approval, or legacy registry route fa
 | inspect definition detail     | operator HTTP                 | read one current definition revision                                                                                                                                                                               |
 | inspect definition history    | operator HTTP                 | read historical revisions for one definition                                                                                                                                                                       |
 | upload definition             | operator HTTP                 | create or update a definition revision                                                                                                                                                                             |
-| manage definition draft sets  | operator HTTP                 | create, inspect, save, reset, re-materialize, validate, preview, apply, or delete backend-owned draft-set state under the configured data dir                                                                      |
-| inspect definition draft sets | operator HTTP or operator MCP | list draft-set refs and inspect saved draft bodies, normalized content, and preview state without mutating local draft state                                                                                       |
+| manage definition drafts      | operator HTTP                 | create, inspect, save, validate, publish, replace, or delete one backend-owned draft per `(kind, key)` under the configured data dir                                                                               |
 | start task                    | operator HTTP                 | create a task from the definition service and wait for initial runtime effects                                                                                                                                     |
 | inspect runtime list          | operator HTTP                 | read `GET /runtime/tasks`                                                                                                                                                                                          |
 | inspect one task runtime      | operator HTTP                 | read `GET /runtime/tasks/{task_id}`                                                                                                                                                                                |
@@ -192,7 +191,7 @@ Current code does not ship the older flow, approval, or legacy registry route fa
 
 ## Mutation timing
 
-- runtime writes, checkpoint writes, boundary writes, callback writes, node-tool writes, definition uploads, definition draft-set apply writes, and task-start writes commit controller-owned rows first
+- runtime writes, checkpoint writes, boundary writes, callback writes, node-tool writes, definition uploads, definition draft publish writes, and task-start writes commit controller-owned rows first
 - the same request then applies the owned task-root file writes synchronously before returning when that route family owns those projections
 - launch returns only after the stable root workflow-manifest, root attempt files, and opened-dispatch projections are readable
 - structural callback and node-tool writes return only after the stable manifest reread path is current

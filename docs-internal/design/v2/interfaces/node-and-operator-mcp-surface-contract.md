@@ -48,7 +48,7 @@ The shared logical surfaces are:
 `operator` owns provider-neutral task-control tools such as:
 
 - definition upload or start-task writes
-- read-only definition draft-set discovery and detail inspection
+- definition registry reads, definition uploads, and task start
 - runtime read and control
 - human-request inspection and resolution
 - running command-run cancellation
@@ -61,7 +61,7 @@ Rules:
 - the owner contracts for their input and output envelopes remain the human-request and command-run pages rather than this index page
 - operator-side command-run cancel is a dedicated control action over an already-open run; it is not the same thing as whole-task pause or whole-task cancel
 - mutating definition draft authoring belongs to the `/authoring` workbench API, not to the shared operator MCP tool vocabulary
-- operator MCP may expose read-only draft-set discovery, for example `list_definition_draft_sets` and `get_definition_draft_set`, so automation can find current draft refs and inspect saved draft readbacks without becoming a second editor lane
+- operator MCP must not expose definition draft authoring or draft inspection tools; flat draft authoring stays on the trusted HTTP `/authoring` API
 
 ## Compatibility boundary
 

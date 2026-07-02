@@ -11,6 +11,9 @@ import { TaskGraph } from "./task-detail-graph";
 import { TaskDetailModal } from "./task-detail-modal";
 import { TaskActionControls, TaskDetailEyebrow, TaskSummaryHeader } from "./task-detail-summary";
 
+const TASK_DETAIL_SKELETON_EVENT_ROWS = [0, 1, 2, 3] as const;
+const TASK_DETAIL_SKELETON_CHILD_NODES = [0, 1, 2] as const;
+
 export function TaskDetailPage() {
     const { taskId } = useParams();
     const controller = useTaskDetailController(taskId ?? null);
@@ -38,16 +41,13 @@ function TaskDetailUnavailableState({
                     Retry
                 </Button>
             }
+            className="w-full"
             description="Read current task state, event history, and task controls."
             eyebrow={taskId ?? "Runtime"}
             title="Task Detail"
         >
             {controller.isLoading ? (
-                <StatePanel
-                    summary="Reading task, snapshot, trace, and event history."
-                    title="Loading Task Detail"
-                    tone="loading"
-                />
+                <TaskDetailLoadingSkeleton />
             ) : (
                 <StatePanel
                     action={<Button onClick={controller.refresh}>Retry</Button>}
@@ -61,6 +61,49 @@ function TaskDetailUnavailableState({
                 />
             )}
         </PageFrame>
+    );
+}
+
+function TaskDetailLoadingSkeleton() {
+    return (
+        <div aria-busy="true" aria-label="Loading Task Detail" className="space-y-4" role="status">
+            <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_348px] xl:grid-cols-[minmax(0,1fr)_392px]">
+                <section className="overflow-hidden rounded-card border border-outline-soft bg-surface-low">
+                    <header className="flex items-center justify-between gap-3 border-b border-outline-soft px-5 py-4">
+                        <div>
+                            <div className="h-4 w-36 animate-pulse rounded-full bg-surface-muted" />
+                            <div className="mt-2 h-3 w-52 animate-pulse rounded-full bg-surface-muted" />
+                        </div>
+                        <div className="h-control w-32 animate-pulse rounded-control bg-primary-soft" />
+                    </header>
+                    <div className="h-[520px] overflow-hidden bg-gradient-to-br from-surface via-surface to-primary-soft/35 p-8">
+                        <div className="mx-auto mt-24 h-9 w-28 animate-pulse rounded-control border border-primary/25 bg-surface-low shadow-panel" />
+                        <div className="mx-auto mt-8 h-px w-[72%] bg-outline-soft" />
+                        <div className="mt-10 grid grid-cols-3 gap-8">
+                            {TASK_DETAIL_SKELETON_CHILD_NODES.map((nodeIndex) => (
+                                <div
+                                    className="h-11 animate-pulse rounded-control border border-outline-soft bg-surface-low"
+                                    key={nodeIndex}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </section>
+                <aside className="overflow-hidden rounded-card border border-outline-soft bg-surface-low">
+                    <header className="border-b border-outline-soft px-5 py-4">
+                        <div className="h-4 w-16 animate-pulse rounded-full bg-surface-muted" />
+                    </header>
+                    <div className="grid gap-3 p-3">
+                        {TASK_DETAIL_SKELETON_EVENT_ROWS.map((rowIndex) => (
+                            <div
+                                className="h-24 animate-pulse rounded-card border border-outline-soft bg-surface"
+                                key={rowIndex}
+                            />
+                        ))}
+                    </div>
+                </aside>
+            </div>
+        </div>
     );
 }
 

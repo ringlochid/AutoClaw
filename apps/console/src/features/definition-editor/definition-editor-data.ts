@@ -1,207 +1,121 @@
 import { AutoClawApiError, requestJson, type ConsoleErrorView } from "../../api/client";
 import type { components } from "../../api/generated/openapi";
 import {
-    definitionDraftFileRematerializeCurrentRoute,
-    definitionDraftFileResetRoute,
-    definitionDraftFileRoute,
-    definitionDraftSetApplyRoute,
-    definitionDraftSetMaterializeRoute,
-    definitionDraftSetPreviewTaskComposeRoute,
-    definitionDraftSetRoute,
-    definitionDraftSetValidateRoute,
-    definitionDraftSetsRoute,
-    type DefinitionDraftSetsQuery,
+    definitionDraftPublishRoute,
+    definitionDraftRoute,
+    definitionDraftsRoute,
+    definitionDraftValidateRoute,
+    type DefinitionDraftsQuery,
 } from "../../api/routes";
 
-export type DefinitionKind = components["schemas"]["DefinitionKind"];
-export type DraftSetListResponse = components["schemas"]["DefinitionDraftSetListResponse"];
-export type DraftSetDetailResponse = components["schemas"]["DefinitionDraftSetDetailResponse"];
-export type DraftSetDetail = components["schemas"]["DefinitionDraftSetDetail"];
-export type DraftFileDetail = components["schemas"]["DefinitionDraftFileDetail"];
+export type DefinitionDraftKind = components["schemas"]["DefinitionKind"];
+export type DefinitionDraftMode = components["schemas"]["DefinitionDraftMode"];
+export type DefinitionDraftStatus = components["schemas"]["DefinitionDraftStatus"];
+export type DraftListResponse = components["schemas"]["DefinitionDraftListResponse"];
+export type DraftDetail = components["schemas"]["DefinitionDraftDetail"];
+export type DraftDetailResponse = components["schemas"]["DefinitionDraftDetailResponse"];
+export type DraftSummary = components["schemas"]["DefinitionDraftSummary"];
 export type DraftValidationResponse = components["schemas"]["DefinitionDraftValidationResponse"];
-export type DraftPreviewResponse =
-    components["schemas"]["DefinitionDraftTaskComposePreviewResponse"];
-export type DraftApplyResponse = components["schemas"]["DefinitionDraftApplyResponse"];
+export type DraftPublishResponse = components["schemas"]["DefinitionDraftPublishResponse"];
 
-const DRAFT_SET_PAGE_SIZE = 12;
+export interface DraftIdentity {
+    readonly key: string;
+    readonly kind: DefinitionDraftKind;
+}
 
-export async function readDraftSets({
-    cursor,
+export async function readDrafts({
+    cursor = null,
+    limit = 50,
     signal,
 }: {
-    readonly cursor: string | null;
-    readonly signal: AbortSignal | undefined;
-}): Promise<DraftSetListResponse> {
-    const query: DefinitionDraftSetsQuery = {
-        cursor,
-        limit: DRAFT_SET_PAGE_SIZE,
-    };
-    const route = definitionDraftSetsRoute(query);
-    return requestJson<DraftSetListResponse>({
+    readonly cursor?: string | null;
+    readonly limit?: number;
+    readonly signal?: AbortSignal;
+} = {}): Promise<DraftListResponse> {
+    const query: DefinitionDraftsQuery = { cursor, limit };
+    const route = definitionDraftsRoute(query);
+    return requestJson<DraftListResponse>({
         path: route.path,
         query: route.query,
         signal,
     });
 }
 
-export async function createDraftSet({
-    materialize = [],
-    title,
+export async function createDraft({
+    body,
+    key,
+    kind,
+    mode,
 }: {
-    readonly materialize?: readonly {
-        readonly key: string;
-        readonly kind: DefinitionKind;
-    }[];
-    readonly title: string | null;
-}): Promise<DraftSetDetailResponse> {
-    const route = definitionDraftSetsRoute();
-    return requestJson<DraftSetDetailResponse>({
+    readonly body?: string;
+    readonly key: string;
+    readonly kind: DefinitionDraftKind;
+    readonly mode: DefinitionDraftMode;
+}): Promise<DraftDetailResponse> {
+    const route = definitionDraftsRoute();
+    return requestJson<DraftDetailResponse>({
         body: {
-            materialize: materialize.map((definition) => ({
-                key: definition.key,
-                kind: definition.kind,
-            })),
-            preview_task_compose: null,
-            title,
-        } satisfies components["schemas"]["DefinitionDraftSetCreateRequest"],
+            body: body ?? null,
+            body_format: "yaml",
+            key,
+            kind,
+            mode,
+        } satisfies components["schemas"]["DefinitionDraftCreateRequest"],
         method: "POST",
         path: route.path,
     });
 }
 
-export async function readDraftSet({
-    draftSetId,
+export async function readDraft({
+    key,
+    kind,
     signal,
-}: {
-    readonly draftSetId: string;
-    readonly signal: AbortSignal | undefined;
-}): Promise<DraftSetDetailResponse> {
-    const route = definitionDraftSetRoute(draftSetId);
-    return requestJson<DraftSetDetailResponse>({
+}: DraftIdentity & { readonly signal?: AbortSignal }): Promise<DraftDetailResponse> {
+    const route = definitionDraftRoute(kind, key);
+    return requestJson<DraftDetailResponse>({
         path: route.path,
         signal,
     });
 }
 
-export async function deleteDraftSet(draftSetId: string): Promise<void> {
-    const route = definitionDraftSetRoute(draftSetId);
+export async function saveDraft({
+    body,
+    key,
+    kind,
+}: DraftIdentity & { readonly body: string }): Promise<DraftDetailResponse> {
+    const route = definitionDraftRoute(kind, key);
+    return requestJson<DraftDetailResponse>({
+        body: {
+            body,
+            body_format: "yaml",
+        } satisfies components["schemas"]["DefinitionDraftWriteRequest"],
+        method: "PUT",
+        path: route.path,
+    });
+}
+
+export async function deleteDraft({ key, kind }: DraftIdentity): Promise<void> {
+    const route = definitionDraftRoute(kind, key);
     await requestJson<undefined>({
         method: "DELETE",
         path: route.path,
     });
 }
 
-export async function materializeDraftFile({
-    draftSetId,
+export async function validateDraft({
     key,
     kind,
-}: {
-    readonly draftSetId: string;
-    readonly key: string;
-    readonly kind: DefinitionKind;
-}): Promise<DraftSetDetailResponse> {
-    const route = definitionDraftSetMaterializeRoute(draftSetId);
-    return requestJson<DraftSetDetailResponse>({
-        body: {
-            definitions: [{ key, kind }],
-        } satisfies components["schemas"]["DefinitionDraftMaterializeRequest"],
-        method: "POST",
-        path: route.path,
-    });
-}
-
-export async function writeDraftFile({
-    body,
-    draftSetId,
-    key,
-    kind,
-}: {
-    readonly body: string;
-    readonly draftSetId: string;
-    readonly key: string;
-    readonly kind: DefinitionKind;
-}): Promise<DraftSetDetailResponse> {
-    const route = definitionDraftFileRoute(draftSetId, kind, key);
-    return requestJson<DraftSetDetailResponse>({
-        body: {
-            body,
-            body_format: "yaml",
-        } satisfies components["schemas"]["DefinitionDraftFileWriteRequest"],
-        method: "PUT",
-        path: route.path,
-    });
-}
-
-export async function resetDraftFile({
-    draftSetId,
-    key,
-    kind,
-}: {
-    readonly draftSetId: string;
-    readonly key: string;
-    readonly kind: DefinitionKind;
-}): Promise<DraftSetDetailResponse> {
-    const route = definitionDraftFileResetRoute(draftSetId, kind, key);
-    return requestJson<DraftSetDetailResponse>({
-        body: {
-            discard_local_changes: true,
-        } satisfies components["schemas"]["DefinitionDraftFileResetRequest"],
-        method: "POST",
-        path: route.path,
-    });
-}
-
-export async function rematerializeDraftFile({
-    draftSetId,
-    key,
-    kind,
-}: {
-    readonly draftSetId: string;
-    readonly key: string;
-    readonly kind: DefinitionKind;
-}): Promise<DraftSetDetailResponse> {
-    const route = definitionDraftFileRematerializeCurrentRoute(draftSetId, kind, key);
-    return requestJson<DraftSetDetailResponse>({
-        body: {
-            discard_local_changes: true,
-        } satisfies components["schemas"]["DefinitionDraftFileRematerializeCurrentRequest"],
-        method: "POST",
-        path: route.path,
-    });
-}
-
-export async function validateDraftSet(draftSetId: string): Promise<DraftValidationResponse> {
-    const route = definitionDraftSetValidateRoute(draftSetId);
+}: DraftIdentity): Promise<DraftValidationResponse> {
+    const route = definitionDraftValidateRoute(kind, key);
     return requestJson<DraftValidationResponse>({
         method: "POST",
         path: route.path,
     });
 }
 
-export async function previewTaskCompose({
-    body,
-    draftSetId,
-}: {
-    readonly body: string;
-    readonly draftSetId: string;
-}): Promise<DraftPreviewResponse> {
-    const route = definitionDraftSetPreviewTaskComposeRoute(draftSetId);
-    return requestJson<DraftPreviewResponse>({
-        body: {
-            body,
-            body_format: "yaml",
-        } satisfies components["schemas"]["DefinitionDraftTaskComposePreviewRequest"],
-        method: "POST",
-        path: route.path,
-    });
-}
-
-export async function applyDraftSet(draftSetId: string): Promise<DraftApplyResponse> {
-    const route = definitionDraftSetApplyRoute(draftSetId);
-    return requestJson<DraftApplyResponse>({
-        body: {
-            should_start_task_after_apply: false,
-        } satisfies components["schemas"]["DefinitionDraftApplyRequest"],
+export async function publishDraft({ key, kind }: DraftIdentity): Promise<DraftPublishResponse> {
+    const route = definitionDraftPublishRoute(kind, key);
+    return requestJson<DraftPublishResponse>({
         method: "POST",
         path: route.path,
     });
@@ -216,18 +130,21 @@ export function toErrorView(error: unknown): ConsoleErrorView {
         code: "unknown_error",
         fieldErrors: [],
         isRetryable: false,
-        source: "network",
+        source: "http",
         status: null,
         suggestedNextStep: null,
-        summary: error instanceof Error ? error.message : "An unknown console error occurred.",
+        summary: error instanceof Error ? error.message : "The definition draft request failed.",
         title: "Unknown Error",
     };
 }
 
-export function isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === "AbortError";
-}
-
 export function isAuthError(error: ConsoleErrorView): boolean {
-    return error.status === 401 || error.status === 403 || error.code === "illegal_caller";
+    return (
+        error.status === 401 ||
+        error.status === 403 ||
+        error.code === "illegal_caller" ||
+        error.code === "capability_rejected" ||
+        error.code === "auth_required" ||
+        error.code === "permission_denied"
+    );
 }

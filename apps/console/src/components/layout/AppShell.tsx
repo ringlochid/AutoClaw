@@ -62,8 +62,8 @@ export function AppShell() {
 
     return (
         <ShellTaskTitleContext.Provider value={shellTaskTitleContext}>
-            <div className="min-h-screen bg-background text-foreground lg:grid lg:h-screen lg:grid-cols-[16rem_minmax(0,1fr)] lg:overflow-hidden">
-                <aside className="hidden border-r border-outline-soft bg-surface lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:p-3">
+            <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
+                <aside className="hidden border-r border-outline-soft bg-surface lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:p-3">
                     <ShellBrand />
                     <nav
                         aria-label="Primary"
@@ -72,7 +72,7 @@ export function AppShell() {
                         <PrimaryNavGroups groups={navGroups} variant="rail" />
                     </nav>
                 </aside>
-                <div className="min-w-0 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden">
+                <div className="min-w-0">
                     <nav
                         aria-label="Primary"
                         className="grid grid-cols-2 gap-1 border-b border-outline-soft bg-surface px-3 py-3 lg:hidden"
@@ -153,7 +153,7 @@ export function AppShell() {
                     </header>
                     <main
                         aria-label="AutoClaw Console"
-                        className="min-w-0 flex-1 px-4 py-4 sm:px-page-inline sm:py-page-block lg:overflow-y-auto"
+                        className="min-w-0 px-4 py-4 sm:px-page-inline sm:py-page-block"
                     >
                         <Outlet />
                     </main>
@@ -246,7 +246,7 @@ function PrimaryNavLink({
         <NavLink
             className={({ isActive }) =>
                 classNames(
-                    "flex h-control items-center gap-3 rounded-control border px-4 text-compact font-semibold transition-colors hover:bg-surface-muted hover:text-foreground",
+                    "flex h-control items-center gap-3 rounded-control border px-4 text-compact font-semibold transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:!outline-offset-[-2px] focus-visible:outline-primary",
                     variant === "rail" && "w-full",
                     variant === "mobile" &&
                         "!h-[38px] min-h-[38px] w-full border border-transparent px-3",

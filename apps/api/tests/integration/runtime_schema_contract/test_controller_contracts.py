@@ -225,13 +225,11 @@ def test_runtime_contracts_expose_waiting_and_event_vocabulary() -> None:
     assert [event_type.value for event_type in TaskEventType] == [
         "task_started",
         "dispatch_opened",
-        "provider_resolution_recorded",
         "checkpoint_recorded",
         "boundary_accepted",
         "child_assignment_staged",
         "child_assignment_committed",
         "structural_revision_adopted",
-        "provider_event_normalized",
         "human_request_opened",
         "human_request_resolved",
         "human_request_timed_out",

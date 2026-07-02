@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import DispatchTurnModel, ProviderEventRecordModel
 from autoclaw.runtime.clock import utc_now
-from autoclaw.runtime.contracts import TaskEventSource, TaskEventType
 from autoclaw.runtime.ids import provider_event_record_id
-from autoclaw.runtime.task_events import append_task_event
 
 _LOCKS_BY_LOOP: dict[int, dict[str, asyncio.Lock]] = {}
 _ALLOCATED_EVENT_NOS_BY_LOOP: dict[int, dict[str, int]] = {}
@@ -54,18 +51,6 @@ async def append_provider_event(
     )
     session.add(row)
     await session.flush((row,))
-    await append_task_event(
-        session,
-        task_id=dispatch.task_id,
-        event_type=TaskEventType.PROVIDER_EVENT_NORMALIZED,
-        event_source=TaskEventSource(event_source),
-        occurred_at=row.occurred_at,
-        flow_revision_id=dispatch.flow_revision_id,
-        dispatch_id=dispatch.dispatch_id,
-        attempt_id=attempt_id,
-        node_key=dispatch.node_key,
-        payload=_provider_task_event_payload(row),
-    )
     return row
 
 
@@ -106,24 +91,6 @@ def _provider_event_lock(dispatch_id: str) -> asyncio.Lock:
         lock = asyncio.Lock()
         locks[dispatch_id] = lock
     return lock
-
-
-def _provider_task_event_payload(row: ProviderEventRecordModel) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "provider_event_record_id": row.provider_event_record_id,
-        "event_no": row.event_no,
-        "event_kind": row.event_kind,
-        "summary": row.summary,
-        "detail": row.detail,
-        "provider_event_name": row.provider_event_name,
-        "provider_occurred_at": (
-            row.provider_occurred_at.isoformat() if row.provider_occurred_at is not None else None
-        ),
-    }
-    if row.event_payload_json is None:
-        return payload
-    payload.update(row.event_payload_json)
-    return payload
 
 
 __all__ = ["append_provider_event", "clear_provider_event_allocator_state"]

@@ -36,6 +36,7 @@ test("starts a task from stored workflow truth at desktop width", async ({ page 
     await expectWorkflowActionClusterStacked(selectedWorkflowSummary);
     await expect(selectedWorkflowSummary.getByText(/Revision/)).toHaveCount(0);
     await expectNoDocumentOverflow(page);
+    await expectTaskStartLaunchSectionReachable(page);
 
     await page.getByLabel("Search workflow").fill("normal");
     const workflowChoices = page.getByRole("list", { name: "Workflow choices" });
@@ -99,6 +100,39 @@ test("starts a task from stored workflow truth at desktop width", async ({ page 
         fullPage: true,
         path: `${TASK_START_SCREENSHOT_DIR}/task-start-desktop.png`,
     });
+});
+
+test("opens the selected workflow detail from Task Start", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "desktop proof is captured once");
+
+    await mockTaskStart(page);
+    await page.goto("/task-start");
+
+    const selectedWorkflowSummary = page.getByRole("group", {
+        name: "Selected workflow",
+    });
+    const definitionDetailsLink = selectedWorkflowSummary.getByRole("link", {
+        name: "Open definition details",
+    });
+    await expect(definitionDetailsLink).toHaveAttribute(
+        "href",
+        `/definitions?key=${TASK_START_WORKFLOW_KEY}&kind=workflow`,
+    );
+
+    await definitionDetailsLink.click();
+
+    await expect(page).toHaveURL(
+        new RegExp(`/definitions\\?key=${TASK_START_WORKFLOW_KEY}&kind=workflow`),
+    );
+    await expect(page.getByRole("heading", { level: 1, name: "Definitions" })).toBeVisible();
+    await expect(definitionRow(page, TASK_START_WORKFLOW_KEY)).toHaveAttribute(
+        "aria-pressed",
+        "true",
+    );
+    await expect(
+        page.getByRole("heading", { level: 2, name: TASK_START_WORKFLOW_KEY }),
+    ).toBeVisible();
+    await expect(page.getByText("Structure")).toBeVisible();
 });
 
 test("keeps Task Start root modes, validation, and layout usable at mobile width", async ({
@@ -243,6 +277,34 @@ async function expectWorkflowActionClusterStacked(selectedWorkflowSummary: Locat
         ),
     ).toBeLessThanOrEqual(1);
     expect(definitionDetailsLinkBox.width).toBeLessThan(updatedPillBox.width);
+}
+
+function definitionRow(page: Page, key: string): Locator {
+    return page.getByRole("button", { name: new RegExp(`^${key}\\b`) });
+}
+
+async function expectTaskStartLaunchSectionReachable(page: Page): Promise<void> {
+    const metrics = await page.evaluate(() => {
+        window.scrollTo(0, document.documentElement.scrollHeight);
+        const shell = document.querySelector("main");
+        if (shell !== null) {
+            shell.scrollTop = shell.scrollHeight;
+        }
+        return {
+            clientHeight: document.documentElement.clientHeight,
+            scrollHeight: document.documentElement.scrollHeight,
+            shellScrollTop: shell === null ? 0 : shell.scrollTop,
+            scrollY: window.scrollY,
+        };
+    });
+
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+    expect(metrics.scrollY).toBeGreaterThan(0);
+    expect(metrics.shellScrollTop).toBe(0);
+    await expect(page.getByRole("button", { name: "Start Task" })).toBeVisible();
+    await page.evaluate(() => {
+        window.scrollTo(0, 0);
+    });
 }
 
 function taskStartWorkflowMatchesQuery(

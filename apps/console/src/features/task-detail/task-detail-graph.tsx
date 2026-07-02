@@ -75,8 +75,7 @@ const GRAPH_MIN_VISUAL_SCALE = 0.7;
 const GRAPH_READABLE_LABEL_PX = 12;
 
 const edgePriority: Record<TaskGraphEdge["kind"], number> = {
-    boundary: 1,
-    chronology: 2,
+    structural: 2,
     staged: 3,
 };
 
@@ -275,7 +274,7 @@ function GraphEdges({
                     return null;
                 }
 
-                const edgeKey = `${edge.fromNodeKey}\u0000${edge.toNodeKey}`;
+                const edgeKey = `${edge.fromNodeKey}\u0000${edge.toNodeKey}\u0000${edge.kind}`;
                 if (edgeKeys.has(edgeKey)) {
                     return null;
                 }
@@ -287,12 +286,12 @@ function GraphEdges({
                     layout.activeLineage.has(edge.fromNodeKey) &&
                     layout.activeLineage.has(edge.toNodeKey);
                 const isEmphasized = isLinked || isActiveLineage;
-                const geometry = buildEdgeGeometry(from, to, edge.kind);
+                const geometry = buildEdgeGeometry(from, to);
                 const color = edgeColor(edge.kind, isActiveLineage);
                 const opacity = isLinked ? 1 : isEmphasized ? 0.7 : 0.56;
 
                 return (
-                    <g key={`${edge.fromNodeKey}-${edge.toNodeKey}`}>
+                    <g key={`${edge.fromNodeKey}-${edge.toNodeKey}-${edge.kind}`}>
                         <path
                             className={classNames(
                                 "fill-none transition-opacity",
@@ -495,11 +494,18 @@ function buildParentMap(
     orderedNodes: readonly TaskGraphNode[],
 ): ReadonlyMap<string, string> {
     const nodeKeys = new Set(orderedNodes.map((node) => node.nodeKey));
+    const hasRootNode = nodeKeys.has("root");
     const parentByNodeKey = new Map<string, string>();
     const priorityByNodeKey = new Map<string, number>();
 
     for (const edge of edges) {
         if (!nodeKeys.has(edge.fromNodeKey) || !nodeKeys.has(edge.toNodeKey)) {
+            continue;
+        }
+        if (hasRootNode && edge.toNodeKey === "root") {
+            continue;
+        }
+        if (wouldCreateParentCycle(parentByNodeKey, edge.fromNodeKey, edge.toNodeKey)) {
             continue;
         }
         const currentPriority = priorityByNodeKey.get(edge.toNodeKey) ?? -1;
@@ -512,6 +518,26 @@ function buildParentMap(
     }
 
     return parentByNodeKey;
+}
+
+function wouldCreateParentCycle(
+    parentByNodeKey: ReadonlyMap<string, string>,
+    parentNodeKey: string,
+    childNodeKey: string,
+): boolean {
+    let cursor: string | undefined = parentNodeKey;
+    const seen = new Set<string>();
+    while (cursor !== undefined) {
+        if (cursor === childNodeKey) {
+            return true;
+        }
+        if (seen.has(cursor)) {
+            return true;
+        }
+        seen.add(cursor);
+        cursor = parentByNodeKey.get(cursor);
+    }
+    return false;
 }
 
 function buildChildrenMap(
@@ -555,22 +581,29 @@ function computeSubtreeWidth({
     memo,
     nodeByKey,
     nodeKey,
+    visiting = new Set<string>(),
 }: {
     readonly childrenByNodeKey: ReadonlyMap<string, readonly string[]>;
     readonly memo: Map<string, number>;
     readonly nodeByKey: ReadonlyMap<string, TaskGraphNode>;
     readonly nodeKey: string;
+    readonly visiting?: Set<string>;
 }): number {
     const existingWidth = memo.get(nodeKey);
     if (existingWidth !== undefined) {
         return existingWidth;
     }
+    if (visiting.has(nodeKey)) {
+        return 0;
+    }
 
+    visiting.add(nodeKey);
     const node = nodeByKey.get(nodeKey);
     const ownWidth = measureNodeWidth(node) + 56;
     const childNodeKeys = childrenByNodeKey.get(nodeKey) ?? [];
     if (childNodeKeys.length === 0) {
         memo.set(nodeKey, ownWidth);
+        visiting.delete(nodeKey);
         return ownWidth;
     }
 
@@ -582,11 +615,13 @@ function computeSubtreeWidth({
                 memo,
                 nodeByKey,
                 nodeKey: childNodeKey,
+                visiting,
             }),
         0,
     );
     const width = Math.max(ownWidth, childWidth);
     memo.set(nodeKey, width);
+    visiting.delete(nodeKey);
     return width;
 }
 
@@ -609,6 +644,10 @@ function placeNode({
     readonly positions: Map<string, GraphNodePosition>;
     readonly visited: Set<string>;
 }) {
+    if (visited.has(nodeKey)) {
+        return;
+    }
+
     const totalWidth = memo.get(nodeKey) ?? measureNodeWidth(nodeByKey.get(nodeKey)) + 56;
     const nodeWidth = measureNodeWidth(nodeByKey.get(nodeKey));
     positions.set(nodeKey, {
@@ -977,28 +1016,8 @@ function graphFocusBounds(
     readonly minX: number;
     readonly minY: number;
 } {
-    const focusNodeKeys = new Set(layout.activeLineage);
-    const selectedParentNodeKey = layout.parentByNodeKey.get(selectedNodeKey);
-
-    if (selectedParentNodeKey !== undefined) {
-        for (const node of layout.nodes) {
-            if (layout.parentByNodeKey.get(node.nodeKey) === selectedParentNodeKey) {
-                focusNodeKeys.add(node.nodeKey);
-            }
-        }
-    }
-
-    for (const node of layout.nodes) {
-        if (layout.parentByNodeKey.get(node.nodeKey) === selectedNodeKey) {
-            focusNodeKeys.add(node.nodeKey);
-        }
-    }
-
-    const positions = [...focusNodeKeys]
-        .map((nodeKey) => layout.positionByNodeKey.get(nodeKey))
-        .filter((position): position is GraphNodePosition => position !== undefined);
-
-    if (positions.length === 0) {
+    const selectedPosition = layout.positionByNodeKey.get(selectedNodeKey);
+    if (selectedPosition === undefined) {
         return {
             maxX: layout.width,
             maxY: layout.height,
@@ -1007,27 +1026,15 @@ function graphFocusBounds(
         };
     }
 
-    return positions.reduce(
-        (bounds, position) => ({
-            maxX: Math.max(bounds.maxX, position.x + position.width / 2 + 104),
-            maxY: Math.max(bounds.maxY, position.y + position.height / 2 + 88),
-            minX: Math.min(bounds.minX, position.x - position.width / 2 - 104),
-            minY: Math.min(bounds.minY, position.y - position.height / 2 - 88),
-        }),
-        {
-            maxX: -Infinity,
-            maxY: -Infinity,
-            minX: Infinity,
-            minY: Infinity,
-        },
-    );
+    return {
+        maxX: selectedPosition.x + selectedPosition.width / 2 + 104,
+        maxY: selectedPosition.y + selectedPosition.height / 2 + 88,
+        minX: selectedPosition.x - selectedPosition.width / 2 - 104,
+        minY: selectedPosition.y - selectedPosition.height / 2 - 88,
+    };
 }
 
-function buildEdgeGeometry(
-    from: GraphNodePosition,
-    to: GraphNodePosition,
-    kind: TaskGraphEdge["kind"],
-): EdgeGeometry {
+function buildEdgeGeometry(from: GraphNodePosition, to: GraphNodePosition): EdgeGeometry {
     const startX = from.x;
     const startY = from.y + from.height / 2;
     const tipX = to.x;
@@ -1036,18 +1043,12 @@ function buildEdgeGeometry(
     const bend = Math.max(72, (endY - startY) * 0.48);
 
     return {
-        arrow: buildArrowPolygon(tipX, tipY, tipX, endY - 2, kind),
+        arrow: buildArrowPolygon(tipX, tipY, tipX, endY - 2),
         d: `M ${String(startX)} ${String(startY)} C ${String(startX)} ${String(startY + bend)}, ${String(tipX)} ${String(endY - bend)}, ${String(tipX)} ${String(endY)}`,
     };
 }
 
-function buildArrowPolygon(
-    tipX: number,
-    tipY: number,
-    tailX: number,
-    tailY: number,
-    kind: TaskGraphEdge["kind"],
-): string {
+function buildArrowPolygon(tipX: number, tipY: number, tailX: number, tailY: number): string {
     const dx = tipX - tailX;
     const dy = tipY - tailY;
     const length = Math.hypot(dx, dy) || 1;
@@ -1055,7 +1056,7 @@ function buildArrowPolygon(
     const uy = dy / length;
     const px = -uy;
     const py = ux;
-    const size = kind === "chronology" ? 11 : 10;
+    const size = 10;
     const wing = size * 0.62;
     const baseX = tipX - ux * size;
     const baseY = tipY - uy * size;

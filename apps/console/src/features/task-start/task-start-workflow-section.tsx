@@ -271,7 +271,7 @@ function SelectedWorkflow({ controller }: { readonly controller: TaskStartContro
                     </span>
                     <Link
                         className="inline-flex h-control w-full items-center justify-center gap-2 rounded-control border border-outline bg-surface-low px-4 text-utility font-semibold text-foreground transition-colors hover:border-primary/45 hover:text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto"
-                        to="/definitions"
+                        to={workflowDefinitionRoute(controller.selectedWorkflow.key)}
                     >
                         Open definition details
                         <ArrowUpRight aria-hidden="true" className="size-4 shrink-0" />
@@ -280,6 +280,14 @@ function SelectedWorkflow({ controller }: { readonly controller: TaskStartContro
             </div>
         </div>
     );
+}
+
+function workflowDefinitionRoute(key: string): string {
+    const query = new URLSearchParams({
+        key,
+        kind: "workflow",
+    });
+    return `/definitions?${query.toString()}`;
 }
 
 function formatTaskStartTimestamp(value: string): string {

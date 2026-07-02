@@ -33,10 +33,10 @@ _OPERATOR_DEFINITION_EXTENSION_TOOLS = {
     "list_definition_versions",
     "upload_definition",
     "start_task",
-    "list_definition_draft_sets",
-    "get_definition_draft_set",
 }
 _REMOVED_OPERATOR_DRAFT_MUTATION_TOOLS = {
+    "list_definition_draft_sets",
+    "get_definition_draft_set",
     "create_definition_draft_set",
     "delete_definition_draft_set",
     "materialize_definition_draft_set",

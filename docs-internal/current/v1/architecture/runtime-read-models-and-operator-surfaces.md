@@ -73,6 +73,8 @@ Current operator snapshot returns:
 
 Current operator trace returns:
 
+- active-flow graph nodes from the committed node tree
+- dependency edges from declared producer-to-consumer flow edge rows only
 - dispatch history, including assignment key and assignment summary when the dispatch is assignment-backed
 - checkpoint history
 - boundary history, including previous node, next node, next attempt, resulting flow status, and reopen-after-inactivity flag when the matching boundary event exists
@@ -103,8 +105,7 @@ Current `/control/tasks/{task_id}/events` and `/control/tasks/{task_id}/events/s
 
 Current implemented append coverage includes:
 
-- task-started, dispatch-opened, and provider-resolution-recorded events
-- provider-event-normalized events for shared provider-event record appends, including adapter-lane acceptance or transport records and provider-lane normalized progress or completion records
+- task-started and dispatch-opened events
 - checkpoint recorded, boundary accepted, child-assignment staged or committed, and structural-revision adopted events
 - human-request opened and terminal events
 - command-run started, progress, cancel-requested, and terminal events
@@ -112,8 +113,9 @@ Current implemented append coverage includes:
 
 Rules:
 
-- UI timelines may treat task-start, dispatch-open, provider-resolution, provider-event-normalized, checkpoint, boundary, child-assignment, and structural-revision cards as stream-backed because persisted task events now exist for those families
-- provider-event-normalized task-event payloads carry normalized event identity, summary/detail, provider-event name, provider occurred-at time, persisted transport metadata, and the persisted `gateway_run_id` / `gateway_session_key` fields when present, but they still do not carry support-file bodies
+- UI timelines may treat task-start, dispatch-open, checkpoint, boundary, child-assignment, and structural-revision cards as stream-backed because persisted task events now exist for those families
+- provider-event source rows remain observability data; they are not emitted by the control task-event API and must not be rendered as UI timeline rows
+- provider-resolution provenance is not emitted by the control task-event API and must not be rendered as a UI timeline row
 - support files and generated projections must not be parsed to synthesize missing task-event stream rows
 - provider-event source rows and support-state files still remain the deeper observability surfaces when the operator needs more than the task-event payload
 
@@ -143,6 +145,9 @@ That means:
 - runtime list/read is a convenience surface, not the authority
 - operator snapshot is a summary surface, not the authority
 - operator trace is a drilldown surface, not the authority
+- operator trace graph rows are a read-model projection of controller-owned flow-node and flow-edge rows
+- console graph rendering uses structural flow-node parentage; dependency rows stay out of the main canvas by default
+- boundary history, previous/next node fields, and dispatch order are chronology facts and must not be reinterpreted as graph edges
 - control event, human-request, and command-run reads are convenience surfaces over controller-owned task events and source rows
 - observability file refs point at generated projections, not the authority
 - current pre-UI human-request and command-run surfaces do not apply structural or heuristic redaction or reduction; surface splits here are about controller ownership, not suppression

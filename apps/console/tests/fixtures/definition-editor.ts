@@ -3,200 +3,99 @@ import type { components } from "../../src/api/generated/openapi";
 export const DEFINITION_EDITOR_SCREENSHOT_DIR =
     "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity/07-definition-editor/screenshots";
 
-export const DEFINITION_EDITOR_DRAFT_SET_ID = "draft-set-definition-editor";
 export const DEFINITION_EDITOR_WORKFLOW_KEY = "definition-editor-page";
 export const DEFINITION_EDITOR_ROLE_KEY = "definition-editor-review";
-export const DEFINITION_EDITOR_POLICY_KEY = "definition-editor-launch-guard";
 export const DEFINITION_EDITOR_NEW_DRAFT_KEY = "definition-editor-new-role";
-export const DEFINITION_EDITOR_MATERIALIZED_KEY = "definition-editor-materialized";
 export const DEFINITION_EDITOR_UPDATED_BODY =
-    "id: definition-editor-page\ndescription: Saved clean draft body.\n";
+    "kind: workflow\nid: definition-editor-page\ndescription: Saved clean draft body.\n";
 
 const UPDATED_AT = "2026-06-29T20:15:00Z";
 
-export function createDefinitionEditorDraftSetList(
-    detail: components["schemas"]["DefinitionDraftSetDetail"] = createDefinitionEditorDraftSetDetail(),
-): components["schemas"]["DefinitionDraftSetListResponse"] {
+export function createDefinitionEditorDraftList(
+    draft: components["schemas"]["DefinitionDraftDetail"] = createDefinitionEditorDraftDetail(),
+): components["schemas"]["DefinitionDraftListResponse"] {
     return {
-        items: [draftSetSummaryFromDetail(detail)],
+        items: [draftSummaryFromDetail(draft)],
         next_cursor: null,
     };
 }
 
-export function createDefinitionEditorDraftSetDetail(
-    overrides: Partial<components["schemas"]["DefinitionDraftSetDetail"]> = {},
-): components["schemas"]["DefinitionDraftSetDetail"] {
+export function createDefinitionEditorDraftResponse(
+    draft: components["schemas"]["DefinitionDraftDetail"] = createDefinitionEditorDraftDetail(),
+): components["schemas"]["DefinitionDraftDetailResponse"] {
+    return { draft };
+}
+
+export function createDefinitionEditorDraftDetail(
+    overrides: Partial<components["schemas"]["DefinitionDraftDetail"]> = {},
+): components["schemas"]["DefinitionDraftDetail"] {
+    const kind = overrides.kind ?? "workflow";
+    const key = overrides.key ?? DEFINITION_EDITOR_WORKFLOW_KEY;
+    const body = overrides.body ?? bodyForKind(kind, key);
     return {
-        created_at: "2026-06-29T19:40:00Z",
-        draft_set_id: DEFINITION_EDITOR_DRAFT_SET_ID,
-        files: [
-            createDefinitionEditorDraftFile({
-                key: DEFINITION_EDITOR_WORKFLOW_KEY,
-                kind: "workflow",
-                status: "modified",
-            }),
-            createDefinitionEditorDraftFile({
-                key: DEFINITION_EDITOR_ROLE_KEY,
-                kind: "role",
-                status: "clean",
-            }),
-            createDefinitionEditorDraftFile({
-                basedOn: null,
-                key: DEFINITION_EDITOR_POLICY_KEY,
-                kind: "policy",
-                status: "added",
-            }),
-        ],
-        preview_task_compose_body:
-            "task:\n  key: definition-editor-preview\nworkflow:\n  key: definition-editor-page\n",
-        preview_task_compose_path: "drafts/task-compose.preview.yaml",
-        state: "open",
-        title: "Definition Editor draft set",
+        based_on: {
+            content_hash: "sha256:stored-baseline",
+            revision_no: 12,
+            source_path: null,
+        },
+        baseline_body: storedBodyForKind(kind, key),
+        baseline_normalized_content: null,
+        body,
+        body_format: "yaml",
+        content_hash: `sha256:${kind}-${key}-${overrides.status ?? "modified"}`,
+        draft_path: `drafts/definitions/${kind}s/${key}.yaml`,
+        is_saved: true,
+        key,
+        kind,
+        mode: "update",
+        normalized_content: null,
+        normalized_path: `drafts/definitions/_normalized/${kind}s/${key}.json`,
+        status: "modified",
         updated_at: UPDATED_AT,
         ...overrides,
     };
 }
 
-export function createDefinitionEditorDraftSetResponse(
-    detail: components["schemas"]["DefinitionDraftSetDetail"] = createDefinitionEditorDraftSetDetail(),
-): components["schemas"]["DefinitionDraftSetDetailResponse"] {
-    return {
-        draft_set: detail,
-    };
+export function createUnsavedCurrentDefinitionDraft(
+    key = DEFINITION_EDITOR_WORKFLOW_KEY,
+): components["schemas"]["DefinitionDraftDetail"] {
+    return createDefinitionEditorDraftDetail({
+        body: storedBodyForKind("workflow", key),
+        is_saved: false,
+        key,
+        mode: "update",
+        status: "clean",
+    });
 }
 
-export function createDefinitionEditorDraftFile({
-    basedOn = {
-        content_hash: "sha256:stored-baseline",
-        revision_no: 12,
-        source_path: null,
-    },
-    body,
-    key,
-    kind,
-    status,
-}: {
-    readonly basedOn?: components["schemas"]["DefinitionDraftBaselineRead"] | null;
-    readonly body?: string;
-    readonly key: string;
-    readonly kind: components["schemas"]["DefinitionKind"];
-    readonly status: components["schemas"]["DefinitionDraftFileStatus"];
-}): components["schemas"]["DefinitionDraftFileDetail"] {
-    const draftBody = body ?? starterBodyForKind(kind, key);
-    return {
-        based_on: basedOn ?? {
+export function createCleanDefinitionEditorDraft(
+    body = DEFINITION_EDITOR_UPDATED_BODY,
+): components["schemas"]["DefinitionDraftDetail"] {
+    return createDefinitionEditorDraftDetail({
+        body,
+        content_hash: "sha256:clean-workflow",
+        status: "clean",
+    });
+}
+
+export function createNewRoleDraft(
+    body = bodyForKind("role", DEFINITION_EDITOR_NEW_DRAFT_KEY),
+): components["schemas"]["DefinitionDraftDetail"] {
+    return createDefinitionEditorDraftDetail({
+        based_on: {
             content_hash: null,
             revision_no: null,
             source_path: null,
         },
-        baseline_body:
-            basedOn === null ? starterBodyForKind(kind, key) : storedBodyForKind(kind, key),
-        baseline_normalized_content: null,
-        body: draftBody,
-        body_format: "yaml",
-        content_hash: `sha256:${kind}-${key}-${status}`,
-        draft_path: `drafts/${kind}s/${key}.yaml`,
-        key,
-        kind,
-        normalized_content: null,
-        normalized_path: `drafts/${kind}s/${key}.json`,
-        status,
-    };
-}
-
-export function createCleanSavedDefinitionEditorDraftSet(
-    body = DEFINITION_EDITOR_UPDATED_BODY,
-): components["schemas"]["DefinitionDraftSetDetail"] {
-    return createDefinitionEditorDraftSetDetail({
-        files: [
-            createDefinitionEditorDraftFile({
-                body,
-                key: DEFINITION_EDITOR_WORKFLOW_KEY,
-                kind: "workflow",
-                status: "clean",
-            }),
-            createDefinitionEditorDraftFile({
-                key: DEFINITION_EDITOR_ROLE_KEY,
-                kind: "role",
-                status: "clean",
-            }),
-            createDefinitionEditorDraftFile({
-                basedOn: null,
-                key: DEFINITION_EDITOR_POLICY_KEY,
-                kind: "policy",
-                status: "added",
-            }),
-        ],
+        baseline_body: body,
+        body,
+        content_hash: "sha256:new-role",
+        is_saved: true,
+        key: DEFINITION_EDITOR_NEW_DRAFT_KEY,
+        kind: "role",
+        mode: "create",
+        status: "new",
     });
-}
-
-export function createResetDefinitionEditorDraftSet(): components["schemas"]["DefinitionDraftSetDetail"] {
-    return createCleanSavedDefinitionEditorDraftSet(
-        storedBodyForKind("workflow", DEFINITION_EDITOR_WORKFLOW_KEY),
-    );
-}
-
-export function createRematerializedDefinitionEditorDraftSet(): components["schemas"]["DefinitionDraftSetDetail"] {
-    return createDefinitionEditorDraftSetDetail({
-        files: [
-            createDefinitionEditorDraftFile({
-                basedOn: {
-                    content_hash: "sha256:current-stored",
-                    revision_no: 13,
-                    source_path: null,
-                },
-                body: "id: definition-editor-page\ndescription: Current stored revision body.\n",
-                key: DEFINITION_EDITOR_WORKFLOW_KEY,
-                kind: "workflow",
-                status: "clean",
-            }),
-            createDefinitionEditorDraftFile({
-                key: DEFINITION_EDITOR_ROLE_KEY,
-                kind: "role",
-                status: "clean",
-            }),
-            createDefinitionEditorDraftFile({
-                basedOn: null,
-                key: DEFINITION_EDITOR_POLICY_KEY,
-                kind: "policy",
-                status: "added",
-            }),
-        ],
-    });
-}
-
-export function createNewDraftAddedSet(
-    body: string,
-): components["schemas"]["DefinitionDraftSetDetail"] {
-    const current = createDefinitionEditorDraftSetDetail();
-    return {
-        ...current,
-        files: [
-            ...current.files,
-            createDefinitionEditorDraftFile({
-                basedOn: null,
-                body,
-                key: DEFINITION_EDITOR_NEW_DRAFT_KEY,
-                kind: "role",
-                status: "added",
-            }),
-        ],
-    };
-}
-
-export function createMaterializedDraftSet(): components["schemas"]["DefinitionDraftSetDetail"] {
-    const current = createDefinitionEditorDraftSetDetail();
-    return {
-        ...current,
-        files: [
-            ...current.files,
-            createDefinitionEditorDraftFile({
-                key: DEFINITION_EDITOR_MATERIALIZED_KEY,
-                kind: "workflow",
-                status: "clean",
-            }),
-        ],
-    };
 }
 
 export function createDefinitionEditorValidation(
@@ -204,110 +103,84 @@ export function createDefinitionEditorValidation(
 ): components["schemas"]["DefinitionDraftValidationResponse"] {
     if (status === "invalid") {
         return {
-            draft_set_id: DEFINITION_EDITOR_DRAFT_SET_ID,
             errors: [
                 {
                     code: "missing_required_field",
                     kind: "schema",
                     message: "Workflow root.role is required.",
-                    path: "workflows.definition-editor-page.root.role",
-                },
-                {
-                    code: "missing_role_reference",
-                    kind: "cross_reference",
-                    message:
-                        "Workflow references role ui_designer_browser_first that is not present.",
-                    path: "workflows.definition-editor-page.root.children.0.role",
+                    path: "root.role",
                 },
             ],
+            key: DEFINITION_EDITOR_WORKFLOW_KEY,
+            kind: "workflow",
             status: "invalid",
-            warnings: [
-                {
-                    code: "preview_review_recommended",
-                    kind: "preview",
-                    message: "Preview output should be reviewed before task-start handoff.",
-                    path: "task-compose.preview.yaml",
-                },
-            ],
+            warnings: [],
         };
     }
 
     if (status === "stale") {
         return {
-            draft_set_id: DEFINITION_EDITOR_DRAFT_SET_ID,
             errors: [
                 {
                     code: "stale_baseline",
                     kind: "stale",
-                    message: "Stored workflow revision moved after this draft was materialized.",
-                    path: "workflows.definition-editor-page",
+                    message: "Stored workflow revision moved after this draft was opened.",
+                    path: "workflow.definition-editor-page",
                 },
             ],
+            key: DEFINITION_EDITOR_WORKFLOW_KEY,
+            kind: "workflow",
             status: "stale",
             warnings: [],
         };
     }
 
+    if (status === "name_collision") {
+        return {
+            errors: [
+                {
+                    code: "name_collision",
+                    kind: "collision",
+                    message: "A stored definition already owns this key.",
+                    path: "id",
+                },
+            ],
+            key: DEFINITION_EDITOR_WORKFLOW_KEY,
+            kind: "workflow",
+            status,
+            warnings: [],
+        };
+    }
+
     return {
-        draft_set_id: DEFINITION_EDITOR_DRAFT_SET_ID,
         errors: [],
+        key: DEFINITION_EDITOR_WORKFLOW_KEY,
+        kind: "workflow",
         status: "valid",
-        warnings: [
-            {
-                code: "preview_only_warning",
-                kind: "preview",
-                message: "Preview task-compose input is valid but still optional for apply.",
-                path: "task-compose.preview.yaml",
-            },
-        ],
+        warnings: [],
     };
 }
 
-export function createDefinitionEditorPreview(
-    status: components["schemas"]["DefinitionDraftTaskComposePreviewResponse"]["status"] = "valid",
-): components["schemas"]["DefinitionDraftTaskComposePreviewResponse"] {
+export function createDefinitionEditorPublish(
+    status: components["schemas"]["DefinitionDraftPublishResponse"]["status"] = "published",
+): components["schemas"]["DefinitionDraftPublishResponse"] {
     return {
+        key: DEFINITION_EDITOR_WORKFLOW_KEY,
+        kind: "workflow",
+        published_revision:
+            status === "published"
+                ? {
+                      content_hash: "sha256:published-workflow",
+                      key: DEFINITION_EDITOR_WORKFLOW_KEY,
+                      kind: "workflow",
+                      revision_no: 14,
+                  }
+                : null,
         status,
         validation:
-            status === "valid"
+            status === "published"
                 ? createDefinitionEditorValidation("valid")
-                : {
-                      draft_set_id: DEFINITION_EDITOR_DRAFT_SET_ID,
-                      errors: [
-                          {
-                              code: "invalid_task_compose",
-                              kind: "preview",
-                              message: "Preview task-compose input does not match the draft set.",
-                              path: "task.workflow.key",
-                          },
-                      ],
-                      status: "invalid",
-                      warnings: [],
-                  },
-    };
-}
-
-export function createDefinitionEditorApply(
-    outcome: "no_op" | "published" = "published",
-): components["schemas"]["DefinitionDraftApplyResponse"] {
-    return {
-        draft_set_id: DEFINITION_EDITOR_DRAFT_SET_ID,
-        published_revisions:
-            outcome === "no_op"
-                ? []
-                : [
-                      {
-                          content_hash: "sha256:published-workflow",
-                          key: DEFINITION_EDITOR_WORKFLOW_KEY,
-                          kind: "workflow",
-                          revision_no: 14,
-                      },
-                  ],
-        started_task_id: null,
-        status: "applied",
-        task_start_failure: null,
-        task_start_status: "not_requested",
-        validation: createDefinitionEditorValidation("valid"),
+                : createDefinitionEditorValidation(status),
     };
 }
 
@@ -324,70 +197,17 @@ export function createDefinitionEditorAuthFailure() {
     };
 }
 
-function draftSetSummaryFromDetail(
-    detail: components["schemas"]["DefinitionDraftSetDetail"],
-): components["schemas"]["DefinitionDraftSetSummary"] {
-    return {
-        created_at: detail.created_at,
-        draft_set_id: detail.draft_set_id,
-        files: detail.files.map((file) => ({
-            based_on: file.based_on,
-            body_format: file.body_format,
-            content_hash: file.content_hash,
-            draft_path: file.draft_path,
-            key: file.key,
-            kind: file.kind,
-            normalized_path: file.normalized_path,
-            status: file.status,
-        })),
-        preview_task_compose_path: detail.preview_task_compose_path,
-        state: detail.state,
-        title: detail.title,
-        updated_at: detail.updated_at,
-    };
-}
-
-function starterBodyForKind(kind: components["schemas"]["DefinitionKind"], key: string): string {
-    if (kind === "workflow") {
-        return [
-            "kind: workflow",
-            `id: ${key}`,
-            "description: Deliver the Definition Editor authoring surface with preview-aware validation.",
-            "root:",
-            "  id: root",
-            "  role: planning_lead",
-            "  description: Coordinate the authoring workbench.",
-            "  children:",
-            "    - id: definition_editor_build",
-            "      role: ui_designer_browser_first",
-            "      policy: browser_first_worker",
-            "      description: Build the Definition Editor page.",
-            "      consumes:",
-            "        artifacts:",
-            "          - slot: page_charter_patch",
-            "            required: true",
-            "      produces:",
-            "        artifacts:",
-            "          - slot: page_html",
-            "            file_hint: definition-editor.html",
-            "            description: Final Definition Editor artifact.",
-            "          - slot: page_self_review",
-            "            file_hint: work/self_review.md",
-            "            description: Local review notes.",
-            "    - id: definition_editor_review",
-            "      role: delivery_reviewer_browser_first",
-            "      policy: browser_first_review",
-            "      description: Confirm provenance, validation, and responsive states before release.",
-            "",
-        ].join("\n");
-    }
-
+export function bodyForKind(
+    kind: components["schemas"]["DefinitionKind"],
+    key: string,
+    description = "Review the Definition Editor authoring scope.",
+): string {
     if (kind === "policy") {
         return [
             "kind: policy",
             `id: ${key}`,
-            "description: Guard launch from unsaved draft state.",
-            "instruction: Keep Task Start separate from draft editing.",
+            `description: ${description}`,
+            "instruction: Guard launch from incomplete draft state.",
             "applies_to:",
             "  - worker",
             "capabilities:",
@@ -399,11 +219,25 @@ function starterBodyForKind(kind: components["schemas"]["DefinitionKind"], key: 
         ].join("\n");
     }
 
+    if (kind === "workflow") {
+        return [
+            "kind: workflow",
+            `id: ${key}`,
+            "description: Deliver the Definition Editor authoring surface.",
+            "root:",
+            "  id: root",
+            "  role: root_planning_lead",
+            "  policy: standard-root",
+            "  description: Coordinate the authoring workbench.",
+            "",
+        ].join("\n");
+    }
+
     return [
         "kind: role",
         `id: ${key}`,
-        "description: Review the Definition Editor authoring scope.",
-        "instruction: Verify reset and rematerialize-current remain separate actions.",
+        `description: ${description}`,
+        "instruction: Verify the selected definition draft.",
         "allowed_node_kinds:",
         "  - worker",
         "",
@@ -411,8 +245,25 @@ function starterBodyForKind(kind: components["schemas"]["DefinitionKind"], key: 
 }
 
 function storedBodyForKind(kind: components["schemas"]["DefinitionKind"], key: string): string {
-    return starterBodyForKind(kind, key).replace(
-        "Deliver the Definition Editor authoring surface with preview-aware validation.",
+    return bodyForKind(kind, key).replace(
+        "Deliver the Definition Editor authoring surface.",
         "Captured stored baseline for the Definition Editor authoring surface.",
     );
+}
+
+function draftSummaryFromDetail(
+    detail: components["schemas"]["DefinitionDraftDetail"],
+): components["schemas"]["DefinitionDraftSummary"] {
+    return {
+        based_on: detail.based_on,
+        body_format: detail.body_format,
+        content_hash: detail.content_hash,
+        draft_path: detail.draft_path,
+        key: detail.key,
+        kind: detail.kind,
+        mode: detail.mode,
+        normalized_path: detail.normalized_path,
+        status: detail.status,
+        updated_at: detail.updated_at,
+    };
 }

@@ -59,7 +59,7 @@ export function DefinitionsPage() {
                 </section>
                 <section
                     aria-labelledby="definitions-detail-heading"
-                    className="min-w-0 overflow-hidden rounded-card border border-outline-soft bg-surface-low"
+                    className="min-w-0 rounded-card border border-outline-soft bg-surface-low"
                 >
                     <DefinitionDetailPanel controller={controller} />
                 </section>
@@ -281,12 +281,12 @@ function DefinitionList({ controller }: { readonly controller: DefinitionsContro
     }
 
     return (
-        <div>
+        <div className="definition-list-shell">
             <div className="hidden border-b border-outline-soft bg-surface-muted px-5 py-3 font-mono text-label font-medium uppercase text-muted lg:grid lg:grid-cols-[minmax(0,1fr)_8rem] lg:items-center lg:gap-4">
                 <span id="definitions-list-heading">{kindLabel(controller.singularKind)}s</span>
                 <span>Updated</span>
             </div>
-            <ol aria-label="Definition rows" className="space-y-2 px-3 py-3">
+            <ol aria-label="Definition rows" className="definition-list-body space-y-2 px-3 py-3">
                 {listState.rows.map((row) => (
                     <li key={row.key}>
                         <DefinitionRowButton
@@ -369,21 +369,18 @@ function DefinitionListFooter({ controller }: { readonly controller: Definitions
     return (
         <footer className="flex flex-col gap-3 border-t border-outline-soft bg-surface px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-compact text-muted">
-                {listState.nextCursor === null
-                    ? `${String(listState.rows.length)} ${listLabelForKind(controller.kind)} loaded.`
-                    : `More ${listLabelForKind(controller.kind)} are available.`}
+                {String(listState.rows.length)} {listLabelForKind(controller.kind)} loaded.
             </p>
-            <Button
-                disabled={
-                    listState.nextCursor === null ||
-                    listState.isLoading ||
-                    listState.isLoadingMore ||
-                    listState.isRefreshing
-                }
-                onClick={controller.loadMore}
-            >
-                {listState.isLoadingMore ? "Loading" : "Load more"}
-            </Button>
+            {listState.nextCursor === null ? null : (
+                <Button
+                    disabled={
+                        listState.isLoading || listState.isLoadingMore || listState.isRefreshing
+                    }
+                    onClick={controller.loadMore}
+                >
+                    {listState.isLoadingMore ? "Loading" : "Load more"}
+                </Button>
+            )}
         </footer>
     );
 }
@@ -493,7 +490,7 @@ function DefinitionDetailHeader({
         <div className="flex min-h-control flex-wrap items-center justify-end gap-2">
             <Link
                 className="inline-flex h-8 items-center justify-center gap-2 rounded-control border border-outline bg-surface px-3 font-body text-compact font-semibold text-foreground transition-colors hover:border-primary/45 hover:text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                to={definitionEditorMaterializeRoute(detail.kind, detail.key)}
+                to={definitionEditorRoute(detail.kind, detail.key)}
             >
                 <span>Edit in draft</span>
                 <ExternalLink aria-hidden="true" className="size-3.5 shrink-0" />
@@ -511,10 +508,10 @@ function DefinitionDetailHeader({
     );
 }
 
-function definitionEditorMaterializeRoute(kind: string, key: string): string {
+function definitionEditorRoute(kind: string, key: string): string {
     const query = new URLSearchParams({
-        materialize_key: key,
-        materialize_kind: kind,
+        key,
+        kind,
     });
     return `/definitions/editor?${query.toString()}`;
 }

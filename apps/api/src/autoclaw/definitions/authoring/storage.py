@@ -5,11 +5,12 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
+from autoclaw.definitions.authoring.contracts import DefinitionDraftMode
 from autoclaw.definitions.contracts import (
     DefinitionContent,
     DefinitionKind,
@@ -22,6 +23,12 @@ from autoclaw.definitions.contracts import (
 )
 from autoclaw.runtime.errors import missing_resource_error
 
+DEFINITION_DRAFT_DIRECTORY_NAMES: dict[DefinitionKind, str] = {
+    DefinitionKind.ROLE: "roles",
+    DefinitionKind.POLICY: "policies",
+    DefinitionKind.WORKFLOW: "workflows",
+}
+
 
 class StoredDraftBaseline(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -31,172 +38,182 @@ class StoredDraftBaseline(BaseModel):
     source_path: str | None = None
 
 
-class StoredDraftFileEntry(BaseModel):
+class StoredDefinitionDraftMetadata(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: DefinitionKind
     key: str
+    mode: DefinitionDraftMode
+    created_at: datetime
+    updated_at: datetime
     draft_path: str
     normalized_path: str
     body_format: str = "yaml"
     content_hash: str
     based_on: StoredDraftBaseline = Field(default_factory=StoredDraftBaseline)
-    baseline_body: str
+    baseline_body: str | None = None
     baseline_normalized_content: dict[str, Any] | None = None
 
 
-class StoredDraftSetManifest(BaseModel):
+class StoredDefinitionDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    draft_set_id: str
-    title: str | None = None
-    created_at: datetime
-    updated_at: datetime
-    state: str = "open"
-    files: list[StoredDraftFileEntry] = Field(default_factory=list)
-    preview_task_compose_path: str | None = None
+    metadata: StoredDefinitionDraftMetadata
+    body: str
+    normalized_content: dict[str, Any] | None = None
 
 
-PREVIEW_TASK_COMPOSE_RELATIVE_PATH = "task-compose.preview.yaml"
-
-
-def read_stored_draft_set(data_dir: Path, draft_set_id: str) -> StoredDraftSetManifest:
-    manifest_path = _draft_set_directory(data_dir, draft_set_id) / "draft-set.json"
-    if not manifest_path.is_file():
-        raise missing_resource_error(f"unknown draft set '{draft_set_id}'")
-    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-    return StoredDraftSetManifest.model_validate(payload)
-
-
-def list_stored_draft_sets(data_dir: Path) -> list[StoredDraftSetManifest]:
-    root = _draft_sets_root(data_dir)
-    if not root.is_dir():
-        return []
-
-    manifests: list[StoredDraftSetManifest] = []
-    for draft_dir in sorted(root.iterdir()):
-        manifest_path = draft_dir / "draft-set.json"
-        if not manifest_path.is_file():
-            continue
-        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-        manifests.append(StoredDraftSetManifest.model_validate(payload))
-    return manifests
-
-
-def write_stored_draft_set(data_dir: Path, manifest: StoredDraftSetManifest) -> None:
-    draft_dir = _draft_set_directory(data_dir, manifest.draft_set_id)
-    draft_dir.mkdir(parents=True, exist_ok=True)
-    manifest_path = draft_dir / "draft-set.json"
-    manifest_path.write_text(
-        json.dumps(manifest.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-
-
-def delete_stored_draft_set(data_dir: Path, draft_set_id: str) -> None:
-    draft_dir = _draft_set_directory(data_dir, draft_set_id)
-    if not draft_dir.is_dir():
-        raise missing_resource_error(f"unknown draft set '{draft_set_id}'")
-    for path in sorted(draft_dir.rglob("*"), reverse=True):
+def delete_stored_definition_draft(data_dir: Path, *, kind: DefinitionKind, key: str) -> None:
+    if not has_stored_definition_draft(data_dir, kind=kind, key=key):
+        raise missing_resource_error(f"unknown definition draft '{kind.value}:{key}'")
+    root = _draft_root(data_dir)
+    for relative_path in _definition_draft_relative_paths(kind, key):
+        path = root / relative_path
         if path.is_file():
             path.unlink()
-        elif path.is_dir():
-            path.rmdir()
-    draft_dir.rmdir()
+        _prune_empty_draft_directories(path.parent, stop_at=root)
 
 
-def find_manifest_file_entry(
-    manifest: StoredDraftSetManifest,
+def has_stored_definition_draft(data_dir: Path, *, kind: DefinitionKind, key: str) -> bool:
+    return any(path.is_file() for path in _stored_definition_draft_paths(data_dir, kind, key))
+
+
+def read_stored_definition_draft(
+    data_dir: Path,
     *,
     kind: DefinitionKind,
     key: str,
-) -> StoredDraftFileEntry | None:
-    for entry in manifest.files:
-        if entry.kind == kind and entry.key == key:
-            return entry
-    return None
+) -> StoredDefinitionDraft:
+    metadata_path = _existing_metadata_path(data_dir, kind, key)
+    if metadata_path is None:
+        body_path = _existing_body_path(data_dir, kind, key)
+        if body_path is None:
+            raise missing_resource_error(f"unknown definition draft '{kind.value}:{key}'")
+        return _read_body_backed_definition_draft(data_dir, kind=kind, key=key, body_path=body_path)
+
+    metadata = StoredDefinitionDraftMetadata.model_validate(
+        json.loads(metadata_path.read_text(encoding="utf-8"))
+    )
+    body_path = _draft_root(data_dir) / metadata.draft_path
+    if not body_path.is_file():
+        raise missing_resource_error(f"unknown definition draft '{kind.value}:{key}'")
+    return StoredDefinitionDraft(
+        metadata=metadata,
+        body=body_path.read_text(encoding="utf-8"),
+        normalized_content=read_definition_draft_normalized_content(
+            data_dir,
+            kind=kind,
+            key=key,
+        ),
+    )
 
 
-def write_definition_draft_files(
+def list_stored_definition_drafts(data_dir: Path) -> list[StoredDefinitionDraftMetadata]:
+    metadata_root = _draft_root(data_dir) / "_metadata"
+    metadata_by_identity: dict[tuple[DefinitionKind, str], StoredDefinitionDraftMetadata] = {}
+    if metadata_root.is_dir():
+        for metadata_path in sorted(metadata_root.glob("*/*.json")):
+            metadata = StoredDefinitionDraftMetadata.model_validate(
+                json.loads(metadata_path.read_text(encoding="utf-8"))
+            )
+            metadata_by_identity[(metadata.kind, metadata.key)] = metadata
+
+    for kind, body_path in _iter_definition_draft_body_paths(data_dir):
+        key = unquote(body_path.stem)
+        identity = (kind, key)
+        if identity in metadata_by_identity:
+            continue
+        metadata_by_identity[identity] = _build_body_backed_definition_draft_metadata(
+            kind=kind,
+            key=key,
+            body_path=body_path,
+            body=body_path.read_text(encoding="utf-8"),
+        )
+
+    return list(metadata_by_identity.values())
+
+
+def write_stored_definition_draft(
     data_dir: Path,
-    draft_set_id: str,
     *,
-    entry: StoredDraftFileEntry,
+    metadata: StoredDefinitionDraftMetadata,
     body: str,
     normalized_content: dict[str, Any] | None,
 ) -> None:
-    draft_path = _draft_set_directory(data_dir, draft_set_id) / entry.draft_path
-    draft_path.parent.mkdir(parents=True, exist_ok=True)
-    draft_path.write_text(body, encoding="utf-8")
+    root = _draft_root(data_dir)
+    body_path = root / metadata.draft_path
+    body_path.parent.mkdir(parents=True, exist_ok=True)
+    body_path.write_text(body, encoding="utf-8")
 
-    normalized_path = _draft_set_directory(data_dir, draft_set_id) / entry.normalized_path
+    normalized_path = root / metadata.normalized_path
     normalized_path.parent.mkdir(parents=True, exist_ok=True)
     if normalized_content is None:
         if normalized_path.exists():
             normalized_path.unlink()
-        return
-    normalized_path.write_text(
-        json.dumps(normalized_content, indent=2, sort_keys=True) + "\n",
+    else:
+        normalized_path.write_text(
+            json.dumps(normalized_content, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    metadata_path = _metadata_path(data_dir, metadata.kind, metadata.key)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(
+        json.dumps(metadata.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
 
-def delete_definition_draft_files(
-    data_dir: Path,
-    draft_set_id: str,
-    *,
-    entry: StoredDraftFileEntry,
-) -> None:
-    draft_dir = _draft_set_directory(data_dir, draft_set_id)
-    for relative_path in (entry.draft_path, entry.normalized_path):
-        path = draft_dir / relative_path
-        if path.is_file():
-            path.unlink()
-        _prune_empty_draft_directories(path.parent, stop_at=draft_dir)
-
-
-def write_preview_task_compose_body(data_dir: Path, draft_set_id: str, body: str) -> None:
-    preview_path = _preview_task_compose_path(data_dir, draft_set_id)
-    preview_path.parent.mkdir(parents=True, exist_ok=True)
-    preview_path.write_text(body, encoding="utf-8")
-
-
-def read_preview_task_compose_body(data_dir: Path, draft_set_id: str) -> str | None:
-    preview_path = _preview_task_compose_path(data_dir, draft_set_id)
-    if not preview_path.is_file():
-        return None
-    return preview_path.read_text(encoding="utf-8")
-
-
-def read_definition_draft_body(
-    data_dir: Path,
-    draft_set_id: str,
-    entry: StoredDraftFileEntry,
-) -> str:
-    draft_path = _draft_set_directory(data_dir, draft_set_id) / entry.draft_path
-    return draft_path.read_text(encoding="utf-8")
-
-
 def read_definition_draft_normalized_content(
     data_dir: Path,
-    draft_set_id: str,
-    entry: StoredDraftFileEntry,
+    *,
+    kind: DefinitionKind,
+    key: str,
 ) -> dict[str, Any] | None:
-    normalized_path = _draft_set_directory(data_dir, draft_set_id) / entry.normalized_path
-    if not normalized_path.is_file():
-        return None
-    return cast(
-        dict[str, Any],
-        json.loads(normalized_path.read_text(encoding="utf-8")),
+    for normalized_path in _normalized_paths(data_dir, kind, key):
+        if normalized_path.is_file():
+            return cast(dict[str, Any], json.loads(normalized_path.read_text(encoding="utf-8")))
+    return None
+
+
+def build_definition_draft_metadata(
+    *,
+    kind: DefinitionKind,
+    key: str,
+    mode: DefinitionDraftMode,
+    body: str,
+    based_on: StoredDraftBaseline,
+    baseline_body: str | None,
+    baseline_normalized_content: dict[str, Any] | None,
+    created_at: datetime | None = None,
+) -> StoredDefinitionDraftMetadata:
+    now = utc_now()
+    return StoredDefinitionDraftMetadata(
+        kind=kind,
+        key=key,
+        mode=mode,
+        created_at=created_at or now,
+        updated_at=now,
+        draft_path=definition_draft_relative_path(kind, key),
+        normalized_path=definition_draft_normalized_relative_path(kind, key),
+        body_format="yaml",
+        content_hash=draft_body_content_hash(body),
+        based_on=based_on,
+        baseline_body=baseline_body,
+        baseline_normalized_content=baseline_normalized_content,
     )
 
 
-def draft_file_relative_path(kind: DefinitionKind, key: str) -> str:
-    return f"{kind.value}s/{_quoted_key_filename(key)}.yaml"
+def definition_draft_relative_path(kind: DefinitionKind, key: str) -> str:
+    return f"{_definition_draft_directory_name(kind)}/{_quoted_key_filename(key)}.yaml"
 
 
-def normalized_file_relative_path(kind: DefinitionKind, key: str) -> str:
-    return f"_normalized/{kind.value}s/{_quoted_key_filename(key)}.json"
+def definition_draft_normalized_relative_path(kind: DefinitionKind, key: str) -> str:
+    return f"_normalized/{_definition_draft_directory_name(kind)}/{_quoted_key_filename(key)}.json"
+
+
+def definition_draft_metadata_relative_path(kind: DefinitionKind, key: str) -> str:
+    return f"_metadata/{_definition_draft_directory_name(kind)}/{_quoted_key_filename(key)}.json"
 
 
 def draft_body_content_hash(body: str) -> str:
@@ -212,11 +229,7 @@ def normalize_definition_content(content: DefinitionContent) -> dict[str, Any]:
     return content.model_dump(mode="json")
 
 
-def parse_definition_body(
-    kind: DefinitionKind,
-    key: str,
-    body: str,
-) -> DefinitionContent:
+def parse_definition_body(kind: DefinitionKind, key: str, body: str) -> DefinitionContent:
     try:
         payload = yaml.safe_load(body)
     except yaml.YAMLError as exc:  # pragma: no cover - exercised through invalid YAML tests
@@ -229,9 +242,8 @@ def parse_definition_body(
             f"draft body kind '{payload_kind}' does not match requested kind '{kind.value}'"
         )
 
-    content: DefinitionContent
     if kind == DefinitionKind.ROLE:
-        content = RoleDefinitionInput.model_validate(
+        content: DefinitionContent = RoleDefinitionInput.model_validate(
             RoleDefinitionFile.model_validate(payload).model_dump(exclude={"kind"})
         )
     elif kind == DefinitionKind.POLICY:
@@ -251,20 +263,160 @@ def utc_now() -> datetime:
     return datetime.now(tz=UTC)
 
 
+def _metadata_path(data_dir: Path, kind: DefinitionKind, key: str) -> Path:
+    return _draft_root(data_dir) / definition_draft_metadata_relative_path(kind, key)
+
+
+def _draft_root(data_dir: Path) -> Path:
+    return data_dir / "drafts" / "definitions"
+
+
 def _quoted_key_filename(key: str) -> str:
     return quote(key, safe="._-")
 
 
-def _draft_sets_root(data_dir: Path) -> Path:
-    return data_dir / "drafts" / "definitions"
+def _read_body_backed_definition_draft(
+    data_dir: Path,
+    *,
+    kind: DefinitionKind,
+    key: str,
+    body_path: Path,
+) -> StoredDefinitionDraft:
+    body = body_path.read_text(encoding="utf-8")
+    return StoredDefinitionDraft(
+        metadata=_build_body_backed_definition_draft_metadata(
+            kind=kind,
+            key=key,
+            body_path=body_path,
+            body=body,
+        ),
+        body=body,
+        normalized_content=read_definition_draft_normalized_content(
+            data_dir,
+            kind=kind,
+            key=key,
+        )
+        or _try_normalize_definition_body(kind=kind, key=key, body=body),
+    )
 
 
-def _draft_set_directory(data_dir: Path, draft_set_id: str) -> Path:
-    return _draft_sets_root(data_dir) / draft_set_id
+def _build_body_backed_definition_draft_metadata(
+    *,
+    kind: DefinitionKind,
+    key: str,
+    body_path: Path,
+    body: str,
+) -> StoredDefinitionDraftMetadata:
+    updated_at = datetime.fromtimestamp(body_path.stat().st_mtime, tz=UTC)
+    normalized_content = _try_normalize_definition_body(kind=kind, key=key, body=body)
+    return StoredDefinitionDraftMetadata(
+        kind=kind,
+        key=key,
+        mode=DefinitionDraftMode.CREATE,
+        created_at=updated_at,
+        updated_at=updated_at,
+        draft_path=definition_draft_relative_path(kind, key),
+        normalized_path=definition_draft_normalized_relative_path(kind, key),
+        body_format="yaml",
+        content_hash=draft_body_content_hash(body),
+        based_on=StoredDraftBaseline(),
+        baseline_body=body,
+        baseline_normalized_content=normalized_content,
+    )
 
 
-def _preview_task_compose_path(data_dir: Path, draft_set_id: str) -> Path:
-    return _draft_set_directory(data_dir, draft_set_id) / PREVIEW_TASK_COMPOSE_RELATIVE_PATH
+def _try_normalize_definition_body(
+    *,
+    kind: DefinitionKind,
+    key: str,
+    body: str,
+) -> dict[str, Any] | None:
+    try:
+        content = parse_definition_body(kind, key, body)
+    except ValueError:
+        return None
+    return normalize_definition_content(content)
+
+
+def _definition_draft_directory_name(kind: DefinitionKind) -> str:
+    return DEFINITION_DRAFT_DIRECTORY_NAMES[kind]
+
+
+def _definition_draft_relative_paths(kind: DefinitionKind, key: str) -> tuple[str, ...]:
+    quoted_key = _quoted_key_filename(key)
+    legacy_directory = f"{kind.value}s"
+    canonical_directory = _definition_draft_directory_name(kind)
+    directories = _unique_strings((canonical_directory, legacy_directory))
+    relative_paths: list[str] = []
+    for directory in directories:
+        relative_paths.append(f"{directory}/{quoted_key}.yaml")
+        relative_paths.append(f"_normalized/{directory}/{quoted_key}.json")
+        relative_paths.append(f"_metadata/{directory}/{quoted_key}.json")
+    return tuple(relative_paths)
+
+
+def _stored_definition_draft_paths(
+    data_dir: Path, kind: DefinitionKind, key: str
+) -> tuple[Path, ...]:
+    root = _draft_root(data_dir)
+    return tuple(
+        root / relative_path for relative_path in _definition_draft_relative_paths(kind, key)
+    )
+
+
+def _body_paths(data_dir: Path, kind: DefinitionKind, key: str) -> tuple[Path, ...]:
+    root = _draft_root(data_dir)
+    quoted_key = _quoted_key_filename(key)
+    directories = _unique_strings((_definition_draft_directory_name(kind), f"{kind.value}s"))
+    return tuple(root / directory / f"{quoted_key}.yaml" for directory in directories)
+
+
+def _metadata_paths(data_dir: Path, kind: DefinitionKind, key: str) -> tuple[Path, ...]:
+    root = _draft_root(data_dir)
+    quoted_key = _quoted_key_filename(key)
+    directories = _unique_strings((_definition_draft_directory_name(kind), f"{kind.value}s"))
+    return tuple(root / "_metadata" / directory / f"{quoted_key}.json" for directory in directories)
+
+
+def _normalized_paths(data_dir: Path, kind: DefinitionKind, key: str) -> tuple[Path, ...]:
+    root = _draft_root(data_dir)
+    quoted_key = _quoted_key_filename(key)
+    directories = _unique_strings((_definition_draft_directory_name(kind), f"{kind.value}s"))
+    return tuple(
+        root / "_normalized" / directory / f"{quoted_key}.json" for directory in directories
+    )
+
+
+def _existing_metadata_path(data_dir: Path, kind: DefinitionKind, key: str) -> Path | None:
+    return _first_existing_path(_metadata_paths(data_dir, kind, key))
+
+
+def _existing_body_path(data_dir: Path, kind: DefinitionKind, key: str) -> Path | None:
+    return _first_existing_path(_body_paths(data_dir, kind, key))
+
+
+def _first_existing_path(paths: tuple[Path, ...]) -> Path | None:
+    for path in paths:
+        if path.is_file():
+            return path
+    return None
+
+
+def _iter_definition_draft_body_paths(data_dir: Path) -> list[tuple[DefinitionKind, Path]]:
+    root = _draft_root(data_dir)
+    paths: list[tuple[DefinitionKind, Path]] = []
+    for kind in DefinitionKind:
+        directories = _unique_strings((_definition_draft_directory_name(kind), f"{kind.value}s"))
+        for directory in directories:
+            draft_directory = root / directory
+            if not draft_directory.is_dir():
+                continue
+            paths.extend((kind, path) for path in sorted(draft_directory.glob("*.yaml")))
+    return paths
+
+
+def _unique_strings(values: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(values))
 
 
 def _prune_empty_draft_directories(path: Path, *, stop_at: Path) -> None:
@@ -278,26 +430,22 @@ def _prune_empty_draft_directories(path: Path, *, stop_at: Path) -> None:
 
 
 __all__ = [
-    "PREVIEW_TASK_COMPOSE_RELATIVE_PATH",
+    "StoredDefinitionDraft",
+    "StoredDefinitionDraftMetadata",
     "StoredDraftBaseline",
-    "StoredDraftFileEntry",
-    "StoredDraftSetManifest",
-    "delete_definition_draft_files",
-    "delete_stored_draft_set",
+    "build_definition_draft_metadata",
+    "definition_draft_metadata_relative_path",
+    "definition_draft_normalized_relative_path",
+    "definition_draft_relative_path",
+    "delete_stored_definition_draft",
     "draft_body_content_hash",
-    "draft_file_relative_path",
-    "find_manifest_file_entry",
-    "list_stored_draft_sets",
+    "has_stored_definition_draft",
+    "list_stored_definition_drafts",
     "normalize_definition_content",
-    "normalized_file_relative_path",
     "parse_definition_body",
-    "read_definition_draft_body",
     "read_definition_draft_normalized_content",
-    "read_preview_task_compose_body",
-    "read_stored_draft_set",
+    "read_stored_definition_draft",
     "serialize_definition_content",
     "utc_now",
-    "write_definition_draft_files",
-    "write_preview_task_compose_body",
-    "write_stored_draft_set",
+    "write_stored_definition_draft",
 ]

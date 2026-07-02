@@ -43,7 +43,9 @@ export interface TaskSnapshotSummary {
 export interface TaskTraceSummary {
     readonly boundaries: readonly components["schemas"]["BoundaryHistoryEntry"][];
     readonly checkpoints: readonly components["schemas"]["CheckpointHistoryEntry"][];
+    readonly dependencyEdges: readonly components["schemas"]["TaskGraphDependencyEntry"][];
     readonly dispatches: readonly components["schemas"]["DispatchHistoryEntry"][];
+    readonly graphNodes: readonly components["schemas"]["TaskGraphNodeEntry"][];
 }
 
 export interface TaskGraphNode {
@@ -60,7 +62,7 @@ export interface TaskGraphNode {
 
 export interface TaskGraphEdge {
     readonly fromNodeKey: string;
-    readonly kind: "boundary" | "chronology" | "staged";
+    readonly kind: "staged" | "structural";
     readonly toNodeKey: string;
 }
 
@@ -138,13 +140,11 @@ export const TASK_DETAIL_TABS: readonly TaskDetailTabOption[] = [
 export const TASK_EVENT_TYPES: readonly components["schemas"]["TaskEventType"][] = [
     "task_started",
     "dispatch_opened",
-    "provider_resolution_recorded",
     "checkpoint_recorded",
     "boundary_accepted",
     "child_assignment_staged",
     "child_assignment_committed",
     "structural_revision_adopted",
-    "provider_event_normalized",
     "human_request_opened",
     "human_request_resolved",
     "human_request_timed_out",

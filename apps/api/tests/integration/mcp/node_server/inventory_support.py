@@ -35,8 +35,6 @@ OPERATOR_DEFINITION_ONLY_TOOLS = {
     "list_definition_versions",
     "upload_definition",
     "start_task",
-    "list_definition_draft_sets",
-    "get_definition_draft_set",
 }
 
 

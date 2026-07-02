@@ -67,6 +67,8 @@ Current operator snapshot returns:
 
 Current operator trace returns:
 
+- active-flow graph nodes from the committed node tree
+- dependency edges from declared producer-to-consumer flow edge rows only
 - dispatch history
 - checkpoint history
 - boundary history
@@ -95,7 +97,9 @@ Current implemented append coverage is limited to:
 - command-run started, progress, cancel-requested, and terminal events
 - task pause, resume, and cancel events
 
-The current enum vocabulary also includes `task_started`, `dispatch_opened`, `provider_resolution_recorded`, `checkpoint_recorded`, `boundary_accepted`, `child_assignment_staged`, `child_assignment_committed`, and `provider_event_normalized`. Those names are not enough to make the current stream carry those runtime facts.
+The current enum vocabulary also includes `task_started`, `dispatch_opened`, `checkpoint_recorded`, `boundary_accepted`, `child_assignment_staged`, and `child_assignment_committed`. Those names are not enough to make the current stream carry those runtime facts.
+
+Provider-event source rows and provider-resolution provenance are observability or dispatch context, not control task-event rows. The control event API and UI timeline must not expose provider-event-normalized or provider-resolution rows.
 
 Current `record_checkpoint`, `accept_boundary`, `assign_child`, and structural replan or adoption paths persist controller-owned rows and projections, but they do not append task-event rows today.
 
@@ -131,6 +135,9 @@ That means:
 - runtime list/read is a convenience surface, not the authority
 - operator snapshot is a summary surface, not the authority
 - operator trace is a drilldown surface, not the authority
+- operator trace graph rows are a read-model projection of controller-owned flow-node and flow-edge rows
+- console graph rendering uses structural flow-node parentage; dependency rows stay out of the main canvas by default
+- boundary history, previous/next node fields, and dispatch order are chronology facts and must not be reinterpreted as graph edges
 - control event, human-request, and command-run reads are convenience surfaces over controller-owned task events and source rows
 - observability file refs point at generated projections, not the authority
 

@@ -17,8 +17,6 @@ OPERATOR_READ_ONLY_TOOLS = {
     "get_continuity_state_ref",
     "get_watchdog_state_ref",
     "get_provider_events_ref",
-    "list_definition_draft_sets",
-    "get_definition_draft_set",
 }
 OPERATOR_MUTATING_TOOLS = {
     "pause_task",
@@ -83,8 +81,6 @@ def assert_operator_tool_teaching(tools_result: Any) -> None:
         assert "support-only reread surface" in description.lower()
         assert "support file ref/path" in description
         assert "controller/runtime truth wins" in description.lower()
-    for tool_name in {"list_definition_draft_sets", "get_definition_draft_set"}:
-        assert "HTTP /authoring workbench API" in tool_description(tools_result, tool_name)
 
 
 def assert_node_tool_teaching(tools_result: Any) -> None:

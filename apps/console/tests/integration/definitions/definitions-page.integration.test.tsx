@@ -66,8 +66,9 @@ describe("DefinitionsPage", () => {
             screen.getAllByText("Parent/root coordinator for one owned subtree.").length,
         ).toBeGreaterThan(0);
         expect(seenRequests[0]?.pathname).toBe("/definitions/roles");
-        expect(seenRequests[0]?.searchParams.get("limit")).toBe("25");
+        expect(seenRequests[0]?.searchParams.get("limit")).toBe("4");
         expect(seenRequests[0]?.searchParams.get("sort")).toBe("updated_at_desc");
+        expect(screen.getByText("4 roles loaded.")).toBeVisible();
 
         await user.selectOptions(screen.getByLabelText("Allowed node kind"), "worker");
         await waitFor(() => {
@@ -92,6 +93,7 @@ describe("DefinitionsPage", () => {
 
         await user.click(screen.getByRole("button", { name: "Load more" }));
         expect((await screen.findAllByText("release_operator")).length).toBeGreaterThan(0);
+        expect(screen.getByText("5 roles loaded.")).toBeVisible();
         expect(
             lastPathRequest(seenRequests, "/definitions/roles")?.searchParams.get("cursor"),
         ).toBe("roles-page-2");
@@ -140,7 +142,7 @@ describe("DefinitionsPage", () => {
         expect(screen.queryByRole("link", { name: "Create/update draft" })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Edit in draft" })).toHaveAttribute(
             "href",
-            "/definitions/editor?materialize_key=maximal-parent-first-release&materialize_kind=workflow",
+            "/definitions/editor?key=maximal-parent-first-release&kind=workflow",
         );
         const taskStartLinks = screen.getAllByRole("link", { name: "Task Start" });
         expect(taskStartLinks[taskStartLinks.length - 1]).toHaveAttribute("href", "/task-start");

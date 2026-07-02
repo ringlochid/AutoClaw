@@ -40,12 +40,10 @@ async def test_control_task_events_include_launch_event_families_on_task_launch(
         launch_events = [
             event
             for event in await control_task_events(context, task_id=task.task_id)
-            if event["event_type"]
-            in {"task_started", "provider_resolution_recorded", "dispatch_opened"}
+            if event["event_type"] in {"task_started", "dispatch_opened"}
         ]
         assert [event["event_type"] for event in launch_events] == [
             "task_started",
-            "provider_resolution_recorded",
             "dispatch_opened",
         ]
 
@@ -59,17 +57,7 @@ async def test_control_task_events_include_launch_event_families_on_task_launch(
         assert task_started_payload["initial_node_key"] == "root"
         assert workflow_manifest_name(task_started_payload) == "workflow-manifest.md"
 
-        provider_resolution = launch_events[1]
-        assert provider_resolution["event_source"] == "controller"
-        assert provider_resolution["dispatch_id"] == task.current_open_dispatch_id
-        assert event_payload(provider_resolution) == {
-            "requested_provider": "openclaw",
-            "resolved_provider": "openclaw",
-            "dispatch_id": task.current_open_dispatch_id,
-            "attempt_id": provider_resolution["attempt_id"],
-        }
-
-        dispatch_opened = launch_events[2]
+        dispatch_opened = launch_events[1]
         dispatch_opened_payload = event_payload(dispatch_opened)
         assert dispatch_opened["event_source"] == "controller"
         assert dispatch_opened["dispatch_id"] == task.current_open_dispatch_id

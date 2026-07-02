@@ -11,7 +11,9 @@ from autoclaw.persistence.models import (
     AttemptCheckpointModel,
     AttemptModel,
     DispatchTurnModel,
+    FlowEdgeModel,
     FlowModel,
+    FlowNodeModel,
     TaskEventModel,
 )
 from autoclaw.runtime.contracts import (
@@ -20,6 +22,8 @@ from autoclaw.runtime.contracts import (
     DispatchHistoryEntry,
     OperatorFlowTraceResponse,
     TaskEventType,
+    TaskGraphDependencyEntry,
+    TaskGraphNodeEntry,
 )
 from autoclaw.runtime.errors import invalid_request_shape_error
 from autoclaw.runtime.flow.queries import require_flow_for_task
@@ -77,12 +81,15 @@ async def operator_trace(
         offset=offset,
         limit=limit,
     )
+    graph_nodes, dependency_edges = await _trace_graph(session, flow)
     current_paths = await operator_current_paths(session, task_id)
     return _build_operator_trace_response(
         task_id=task_id,
         scope=scope,
         limit=limit,
         offset=offset,
+        graph_nodes=graph_nodes,
+        dependency_edges=dependency_edges,
         dispatches=dispatches,
         checkpoints=checkpoints,
         boundary_rows=boundary_rows,
@@ -286,12 +293,114 @@ async def _trace_history(
     return dispatches, checkpoints, boundary_rows
 
 
+async def _trace_graph(
+    session: AsyncSession,
+    flow: FlowModel,
+) -> tuple[tuple[TaskGraphNodeEntry, ...], tuple[TaskGraphDependencyEntry, ...]]:
+    if flow.active_flow_revision_id is None:
+        return (), ()
+
+    node_rows = list(
+        await session.scalars(
+            select(FlowNodeModel)
+            .options(raiseload("*"))
+            .where(FlowNodeModel.flow_revision_id == flow.active_flow_revision_id)
+            .order_by(FlowNodeModel.order_index.asc(), FlowNodeModel.node_key.asc())
+        )
+    )
+    edge_rows = list(
+        await session.scalars(
+            select(FlowEdgeModel)
+            .options(raiseload("*"))
+            .where(FlowEdgeModel.flow_revision_id == flow.active_flow_revision_id)
+            .order_by(FlowEdgeModel.order_index.asc(), FlowEdgeModel.flow_edge_id.asc())
+        )
+    )
+    return _graph_node_entries(node_rows, edge_rows), _graph_dependency_entries(edge_rows)
+
+
+def _graph_node_entries(
+    node_rows: list[FlowNodeModel],
+    edge_rows: list[FlowEdgeModel],
+) -> tuple[TaskGraphNodeEntry, ...]:
+    child_node_keys_by_parent: dict[str, list[str]] = {}
+    depends_on_node_keys_by_consumer: dict[str, list[str]] = {}
+    depended_on_by_provider: dict[str, list[str]] = {}
+
+    for node in node_rows:
+        if node.parent_node_key is not None:
+            child_node_keys_by_parent.setdefault(node.parent_node_key, []).append(node.node_key)
+
+    for edge in edge_rows:
+        depends_on_node_keys_by_consumer.setdefault(edge.consumer_node_key, []).append(
+            edge.provider_node_key
+        )
+        depended_on_by_provider.setdefault(edge.provider_node_key, []).append(
+            edge.consumer_node_key
+        )
+
+    return tuple(
+        TaskGraphNodeEntry.model_validate(
+            {
+                "node_key": node.node_key,
+                "parent_node_key": node.parent_node_key,
+                "node_kind": node.structural_kind,
+                "role": node.role_key,
+                "policy": node.policy_key,
+                "description": node.description,
+                "order_index": node.order_index,
+                "child_node_keys": _ordered_unique(
+                    child_node_keys_by_parent.get(node.node_key, [])
+                ),
+                "depends_on_node_keys": _ordered_unique(
+                    depends_on_node_keys_by_consumer.get(node.node_key, [])
+                ),
+                "depended_on_by_node_keys": _ordered_unique(
+                    depended_on_by_provider.get(node.node_key, [])
+                ),
+            }
+        )
+        for node in node_rows
+    )
+
+
+def _graph_dependency_entries(
+    edge_rows: list[FlowEdgeModel],
+) -> tuple[TaskGraphDependencyEntry, ...]:
+    return tuple(
+        TaskGraphDependencyEntry.model_validate(
+            {
+                "provider_node_key": edge.provider_node_key,
+                "consumer_node_key": edge.consumer_node_key,
+                "kind": edge.kind,
+                "slot": edge.slot,
+                "description": edge.description,
+                "order_index": edge.order_index,
+            }
+        )
+        for edge in edge_rows
+    )
+
+
+def _ordered_unique(values: list[str]) -> tuple[str, ...]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        ordered.append(value)
+    return tuple(ordered)
+
+
 def _build_operator_trace_response(
     *,
     task_id: str,
     scope: str,
     limit: int,
     offset: int,
+    graph_nodes: tuple[TaskGraphNodeEntry, ...],
+    dependency_edges: tuple[TaskGraphDependencyEntry, ...],
     dispatches: list[DispatchTurnModel],
     checkpoints: list[AttemptCheckpointModel],
     boundary_rows: list[BoundaryTraceRow],
@@ -300,6 +409,8 @@ def _build_operator_trace_response(
     return OperatorFlowTraceResponse(
         task_id=task_id,
         scope="whole" if scope == "whole" else "current",
+        graph_nodes=graph_nodes,
+        dependency_edges=dependency_edges,
         dispatch_history=tuple(
             DispatchHistoryEntry.model_validate(
                 {

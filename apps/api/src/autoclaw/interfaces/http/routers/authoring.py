@@ -7,30 +7,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.config import get_settings
 from autoclaw.definitions.authoring import (
-    DefinitionDraftApplyRequest,
-    DefinitionDraftApplyResponse,
-    DefinitionDraftFileRematerializeCurrentRequest,
-    DefinitionDraftFileResetRequest,
-    DefinitionDraftFileWriteRequest,
-    DefinitionDraftMaterializeRequest,
-    DefinitionDraftSetCreateRequest,
-    DefinitionDraftSetDetailResponse,
-    DefinitionDraftSetListQuery,
-    DefinitionDraftSetListResponse,
-    DefinitionDraftTaskComposePreviewRequest,
-    DefinitionDraftTaskComposePreviewResponse,
+    DefinitionDraftCreateRequest,
+    DefinitionDraftDetailResponse,
+    DefinitionDraftListQuery,
+    DefinitionDraftListResponse,
+    DefinitionDraftPublishResponse,
     DefinitionDraftValidationResponse,
-    create_definition_draft_set,
-    delete_definition_draft_set_by_id,
-    list_definition_draft_sets,
-    materialize_definition_draft_set,
-    preview_definition_draft_set_task_compose,
-    publish_definition_draft_set,
-    read_definition_draft_set,
-    rematerialize_current_definition_draft_file,
-    reset_definition_draft_file,
-    validate_definition_draft_set,
-    write_definition_draft_file,
+    DefinitionDraftWriteRequest,
+    create_definition_draft,
+    delete_definition_draft,
+    list_definition_drafts,
+    publish_definition_draft,
+    read_definition_draft,
+    validate_saved_definition_draft,
+    write_definition_draft,
 )
 from autoclaw.definitions.contracts import DefinitionKind
 from autoclaw.interfaces.http.dependencies import require_api_key
@@ -43,16 +33,16 @@ router = APIRouter(
     dependencies=[Depends(require_api_key)],
 )
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
-type DefinitionDraftSetListParams = Annotated[DefinitionDraftSetListQuery, Query()]
+type DefinitionDraftListParams = Annotated[DefinitionDraftListQuery, Query()]
 
 
-@router.get("/definition-draft-sets", response_model=DefinitionDraftSetListResponse)
-async def get_definition_draft_sets(
+@router.get("/definition-drafts", response_model=DefinitionDraftListResponse)
+async def get_definition_drafts(
     session: DBSession,
-    query: DefinitionDraftSetListParams,
-) -> DefinitionDraftSetListResponse:
+    query: DefinitionDraftListParams,
+) -> DefinitionDraftListResponse:
     try:
-        return await list_definition_draft_sets(
+        return await list_definition_drafts(
             session,
             data_dir=get_settings().data_dir,
             query=query,
@@ -61,13 +51,13 @@ async def get_definition_draft_sets(
         raise_runtime_exception(exc)
 
 
-@router.post("/definition-draft-sets", response_model=DefinitionDraftSetDetailResponse)
-async def post_definition_draft_set(
-    request: DefinitionDraftSetCreateRequest,
+@router.post("/definition-drafts", response_model=DefinitionDraftDetailResponse)
+async def post_definition_draft(
+    request: DefinitionDraftCreateRequest,
     session: DBSession,
-) -> DefinitionDraftSetDetailResponse:
+) -> DefinitionDraftDetailResponse:
     try:
-        return await create_definition_draft_set(
+        return await create_definition_draft(
             session,
             data_dir=get_settings().data_dir,
             request=request,
@@ -77,73 +67,39 @@ async def post_definition_draft_set(
 
 
 @router.get(
-    "/definition-draft-sets/{draft_set_id}",
-    response_model=DefinitionDraftSetDetailResponse,
+    "/definitions/{kind}/{key}/draft",
+    response_model=DefinitionDraftDetailResponse,
 )
-async def get_definition_draft_set(
-    draft_set_id: str,
+async def get_definition_draft(
+    kind: DefinitionKind,
+    key: str,
     session: DBSession,
-) -> DefinitionDraftSetDetailResponse:
+) -> DefinitionDraftDetailResponse:
     try:
-        return await read_definition_draft_set(
+        return await read_definition_draft(
             session,
             data_dir=get_settings().data_dir,
-            draft_set_id=draft_set_id,
-        )
-    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        raise_runtime_exception(exc)
-
-
-@router.delete("/definition-draft-sets/{draft_set_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_definition_draft_set(
-    draft_set_id: str,
-) -> Response:
-    try:
-        delete_definition_draft_set_by_id(
-            data_dir=get_settings().data_dir,
-            draft_set_id=draft_set_id,
-        )
-    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        raise_runtime_exception(exc)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.post(
-    "/definition-draft-sets/{draft_set_id}/materialize",
-    response_model=DefinitionDraftSetDetailResponse,
-)
-async def post_definition_draft_set_materialize(
-    draft_set_id: str,
-    request: DefinitionDraftMaterializeRequest,
-    session: DBSession,
-) -> DefinitionDraftSetDetailResponse:
-    try:
-        return await materialize_definition_draft_set(
-            session,
-            data_dir=get_settings().data_dir,
-            draft_set_id=draft_set_id,
-            request=request,
+            kind=kind,
+            key=key,
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
 
 
 @router.put(
-    "/definition-draft-sets/{draft_set_id}/files/{kind}/{key}",
-    response_model=DefinitionDraftSetDetailResponse,
+    "/definitions/{kind}/{key}/draft",
+    response_model=DefinitionDraftDetailResponse,
 )
-async def put_definition_draft_file(
-    draft_set_id: str,
+async def put_definition_draft(
     kind: DefinitionKind,
     key: str,
-    request: DefinitionDraftFileWriteRequest,
+    request: DefinitionDraftWriteRequest,
     session: DBSession,
-) -> DefinitionDraftSetDetailResponse:
+) -> DefinitionDraftDetailResponse:
     try:
-        return await write_definition_draft_file(
+        return await write_definition_draft(
             session,
             data_dir=get_settings().data_dir,
-            draft_set_id=draft_set_id,
             kind=kind,
             key=key,
             request=request,
@@ -152,107 +108,53 @@ async def put_definition_draft_file(
         raise_runtime_exception(exc)
 
 
-@router.post(
-    "/definition-draft-sets/{draft_set_id}/files/{kind}/{key}/reset",
-    response_model=DefinitionDraftSetDetailResponse,
-)
-async def post_definition_draft_file_reset(
-    draft_set_id: str,
+@router.delete("/definitions/{kind}/{key}/draft", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_definition_draft_route(
     kind: DefinitionKind,
     key: str,
-    request: DefinitionDraftFileResetRequest,
-    session: DBSession,
-) -> DefinitionDraftSetDetailResponse:
+) -> Response:
     try:
-        return await reset_definition_draft_file(
-            session,
-            data_dir=get_settings().data_dir,
-            draft_set_id=draft_set_id,
-            kind=kind,
-            key=key,
-            request=request,
-        )
+        delete_definition_draft(data_dir=get_settings().data_dir, kind=kind, key=key)
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
-    "/definition-draft-sets/{draft_set_id}/files/{kind}/{key}/rematerialize-current",
-    response_model=DefinitionDraftSetDetailResponse,
-)
-async def post_definition_draft_file_rematerialize_current(
-    draft_set_id: str,
-    kind: DefinitionKind,
-    key: str,
-    request: DefinitionDraftFileRematerializeCurrentRequest,
-    session: DBSession,
-) -> DefinitionDraftSetDetailResponse:
-    try:
-        return await rematerialize_current_definition_draft_file(
-            session,
-            data_dir=get_settings().data_dir,
-            draft_set_id=draft_set_id,
-            kind=kind,
-            key=key,
-            request=request,
-        )
-    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        raise_runtime_exception(exc)
-
-
-@router.post(
-    "/definition-draft-sets/{draft_set_id}/validate",
+    "/definitions/{kind}/{key}/draft/validate",
     response_model=DefinitionDraftValidationResponse,
 )
-async def post_definition_draft_set_validate(
-    draft_set_id: str,
+async def post_definition_draft_validate(
+    kind: DefinitionKind,
+    key: str,
     session: DBSession,
 ) -> DefinitionDraftValidationResponse:
     try:
-        return await validate_definition_draft_set(
+        return await validate_saved_definition_draft(
             session,
             data_dir=get_settings().data_dir,
-            draft_set_id=draft_set_id,
+            kind=kind,
+            key=key,
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
 
 
 @router.post(
-    "/definition-draft-sets/{draft_set_id}/apply",
-    response_model=DefinitionDraftApplyResponse,
+    "/definitions/{kind}/{key}/draft/publish",
+    response_model=DefinitionDraftPublishResponse,
 )
-async def post_definition_draft_set_apply(
-    draft_set_id: str,
-    request: DefinitionDraftApplyRequest,
+async def post_definition_draft_publish(
+    kind: DefinitionKind,
+    key: str,
     session: DBSession,
-) -> DefinitionDraftApplyResponse:
+) -> DefinitionDraftPublishResponse:
     try:
-        return await publish_definition_draft_set(
+        return await publish_definition_draft(
             session,
             data_dir=get_settings().data_dir,
-            draft_set_id=draft_set_id,
-            request=request,
-        )
-    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
-        raise_runtime_exception(exc)
-
-
-@router.post(
-    "/definition-draft-sets/{draft_set_id}/preview-task-compose",
-    response_model=DefinitionDraftTaskComposePreviewResponse,
-)
-async def post_definition_draft_set_preview_task_compose(
-    draft_set_id: str,
-    request: DefinitionDraftTaskComposePreviewRequest,
-    session: DBSession,
-) -> DefinitionDraftTaskComposePreviewResponse:
-    try:
-        return await preview_definition_draft_set_task_compose(
-            session,
-            data_dir=get_settings().data_dir,
-            draft_set_id=draft_set_id,
-            request=request,
+            kind=kind,
+            key=key,
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)

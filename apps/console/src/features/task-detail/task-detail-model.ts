@@ -39,6 +39,8 @@ export type {
 } from "./task-detail-types";
 
 type BoundaryHistoryEntry = components["schemas"]["BoundaryHistoryEntry"];
+type TaskGraphDependencyEntry = components["schemas"]["TaskGraphDependencyEntry"];
+type TaskGraphNodeEntry = components["schemas"]["TaskGraphNodeEntry"];
 
 export function buildTaskDetailView({
     bootstrap,
@@ -47,7 +49,7 @@ export function buildTaskDetailView({
     readonly bootstrap: TaskDetailBootstrap;
     readonly events: readonly components["schemas"]["TaskEventRecord"][];
 }): TaskDetailView {
-    const eventRows = events.map(mapTaskEventRow);
+    const eventRows = events.filter(isVisibleTaskEventRecord).map(mapTaskEventRow);
     const graphNodes = buildGraphNodes(bootstrap, eventRows);
     const graphEdges = buildGraphEdges(bootstrap, eventRows, graphNodes);
 
@@ -96,7 +98,9 @@ export function buildTaskDetailView({
         trace: {
             boundaries: bootstrap.trace.boundary_history,
             checkpoints: bootstrap.trace.checkpoint_history,
+            dependencyEdges: readTraceDependencyEdges(bootstrap.trace),
             dispatches: bootstrap.trace.dispatch_history,
+            graphNodes: readTraceGraphNodes(bootstrap.trace),
         },
     };
 }
@@ -153,6 +157,13 @@ export function buildSelectedContext({
     };
 }
 
+function isVisibleTaskEventRecord(event: components["schemas"]["TaskEventRecord"]): boolean {
+    const eventType: string = event.event_type;
+    return (
+        eventType !== "provider_event_normalized" && eventType !== "provider_resolution_recorded"
+    );
+}
+
 function mapTaskEventRow(event: components["schemas"]["TaskEventRecord"]): TaskEventRow {
     return {
         actorRef: event.actor_ref ?? null,
@@ -176,15 +187,27 @@ function buildGraphNodes(
 ): readonly TaskGraphNode[] {
     const nodeKeys = new Set<string>();
     const currentNodeKey = bootstrap.task.current_node_key ?? null;
+    const graphNodeEntries = readTraceGraphNodes(bootstrap.trace);
+    const traceGraphNodeByKey = new Map(
+        graphNodeEntries.map((graphNode) => [graphNode.node_key, graphNode]),
+    );
 
-    for (const dispatch of bootstrap.trace.dispatch_history) {
-        nodeKeys.add(dispatch.node_key);
-    }
-    for (const event of eventRows) {
-        if (event.nodeKey !== null) {
-            nodeKeys.add(event.nodeKey);
+    if (graphNodeEntries.length > 0) {
+        for (const graphNode of graphNodeEntries) {
+            nodeKeys.add(graphNode.node_key);
         }
-        collectPayloadNodeKeys(event.record.payload).forEach((nodeKey) => nodeKeys.add(nodeKey));
+    } else {
+        for (const dispatch of bootstrap.trace.dispatch_history) {
+            nodeKeys.add(dispatch.node_key);
+        }
+        for (const event of eventRows) {
+            if (event.nodeKey !== null) {
+                nodeKeys.add(event.nodeKey);
+            }
+            collectPayloadNodeKeys(event.eventType, event.record.payload).forEach((nodeKey) =>
+                nodeKeys.add(nodeKey),
+            );
+        }
     }
     if (currentNodeKey !== null) {
         nodeKeys.add(currentNodeKey);
@@ -201,6 +224,7 @@ function buildGraphNodes(
             .reverse()
             .find((candidate) => candidate.attempt_id === dispatch?.attempt_id);
         const eventsForNode = eventRows.filter((event) => event.nodeKey === nodeKey);
+        const graphNode = traceGraphNodeByKey.get(nodeKey);
         const isCurrent = nodeKey === currentNodeKey;
 
         return {
@@ -213,11 +237,12 @@ function buildGraphNodes(
                 dispatch?.delivery_status === "provider_signal_seen",
             isCurrent,
             nodeKey,
-            order: index,
+            order: graphNode?.order_index ?? index + graphNodeEntries.length,
             status: resolveNodeStatus(isCurrent, dispatch, checkpoint),
             summary:
                 checkpoint?.summary ??
                 dispatch?.assignment_summary ??
+                graphNode?.description ??
                 dispatch?.delivery_status ??
                 eventsForNode.at(-1)?.payloadSummary ??
                 "Controller-backed task context.",
@@ -233,6 +258,7 @@ function buildGraphEdges(
     const nodeKeys = new Set(nodes.map((node) => node.nodeKey));
     const edgeKeys = new Set<string>();
     const edges: TaskGraphEdge[] = [];
+    const graphNodeEntries = readTraceGraphNodes(bootstrap.trace);
 
     const addEdge = (
         fromNodeKey: string | null,
@@ -240,6 +266,9 @@ function buildGraphEdges(
         kind: TaskGraphEdge["kind"],
     ) => {
         if (fromNodeKey === null || toNodeKey === null || fromNodeKey === toNodeKey) {
+            return;
+        }
+        if (!nodeKeys.has(fromNodeKey) || !nodeKeys.has(toNodeKey)) {
             return;
         }
         const edgeKey = `${fromNodeKey}\u0000${toNodeKey}\u0000${kind}`;
@@ -250,32 +279,25 @@ function buildGraphEdges(
         edges.push({ fromNodeKey, kind, toNodeKey });
     };
 
-    for (const event of eventRows) {
-        const payload = event.record.payload;
-        addEdge(
-            readString(payload, "parent_node_key"),
-            readString(payload, "target_node_key"),
-            "staged",
-        );
-        addEdge(
-            readString(payload, "previous_node_key"),
-            readString(payload, "next_node_key"),
-            "boundary",
-        );
-        addEdge(
-            readString(payload, "source_node_key"),
-            readString(payload, "target_node_key"),
-            "boundary",
-        );
+    if (graphNodeEntries.length > 0) {
+        for (const graphNode of graphNodeEntries) {
+            addEdge(graphNode.parent_node_key ?? null, graphNode.node_key, "structural");
+        }
+        return edges;
     }
 
-    for (let index = 1; index < bootstrap.trace.dispatch_history.length; index += 1) {
-        const previous = bootstrap.trace.dispatch_history[index - 1];
-        const current = bootstrap.trace.dispatch_history[index];
-        if (inferParentNodeKey(current.node_key, nodeKeys) !== null) {
-            continue;
+    for (const event of eventRows) {
+        const payload = event.record.payload;
+        if (
+            event.eventType === "child_assignment_committed" ||
+            event.eventType === "child_assignment_staged"
+        ) {
+            addEdge(
+                readString(payload, "parent_node_key"),
+                readString(payload, "target_node_key"),
+                "staged",
+            );
         }
-        addEdge(previous.node_key, current.node_key, "chronology");
     }
 
     for (const node of nodes) {
@@ -286,13 +308,19 @@ function buildGraphEdges(
         );
     }
 
-    if (edges.length === 0) {
-        for (let index = 1; index < nodes.length; index += 1) {
-            addEdge(nodes[index - 1]?.nodeKey ?? null, nodes[index]?.nodeKey ?? null, "chronology");
-        }
-    }
-
     return edges;
+}
+
+function readTraceGraphNodes(
+    trace: components["schemas"]["OperatorFlowTraceResponse"],
+): readonly TaskGraphNodeEntry[] {
+    return Array.isArray(trace.graph_nodes) ? trace.graph_nodes : [];
+}
+
+function readTraceDependencyEdges(
+    trace: components["schemas"]["OperatorFlowTraceResponse"],
+): readonly TaskGraphDependencyEntry[] {
+    return Array.isArray(trace.dependency_edges) ? trace.dependency_edges : [];
 }
 
 function inferParentNodeKey(nodeKey: string, nodeKeys: ReadonlySet<string>): string | null {
@@ -323,7 +351,7 @@ function inferParentNodeKey(nodeKey: string, nodeKeys: ReadonlySet<string>): str
 }
 
 function inferredEdgeKind(nodeKey: string): TaskGraphEdge["kind"] {
-    return nodeKey === "task_detail_review" ? "staged" : "chronology";
+    return nodeKey === "task_detail_review" ? "staged" : "structural";
 }
 
 function collectArtifactRefs(
@@ -590,20 +618,33 @@ function summarizePayload(
     );
 }
 
-function collectPayloadNodeKeys(payload: unknown): readonly string[] {
+function collectPayloadNodeKeys(
+    eventType: components["schemas"]["TaskEventType"],
+    payload: unknown,
+): readonly string[] {
     if (!isRecord(payload)) {
         return [];
     }
 
-    return [
+    const nodeKeys = [
         readString(payload, "initial_node_key"),
         readString(payload, "node_key"),
         readString(payload, "parent_node_key"),
-        readString(payload, "previous_node_key"),
-        readString(payload, "next_node_key"),
-        readString(payload, "source_node_key"),
-        readString(payload, "target_node_key"),
     ].filter((value): value is string => value !== null);
+
+    if (
+        eventType === "child_assignment_committed" ||
+        eventType === "child_assignment_staged" ||
+        eventType === "structural_revision_adopted"
+    ) {
+        const targetNodeKey = readString(payload, "target_node_key");
+        if (targetNodeKey !== null) {
+            nodeKeys.push(targetNodeKey);
+        }
+    }
+
+    nodeKeys.push(...readStringArray(payload, "affected_node_keys"));
+    return nodeKeys;
 }
 
 function refFromWorkflowManifest(ref: components["schemas"]["WorkflowManifestRef"]): TaskDetailRef {
@@ -686,6 +727,14 @@ function readRecordArray(value: unknown, key: string): readonly Record<string, u
     }
 
     return value[key].filter((item): item is Record<string, unknown> => isRecord(item));
+}
+
+function readStringArray(value: unknown, key: string): readonly string[] {
+    if (!isRecord(value) || !Array.isArray(value[key])) {
+        return [];
+    }
+
+    return value[key].filter((item): item is string => typeof item === "string");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

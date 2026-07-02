@@ -12,6 +12,7 @@ class OperationFailureCode(StrEnum):
     STALE_FLOW_REVISION = "stale_flow_revision"
     STALE_ASSIGNMENT = "stale_assignment"
     STALE_CHECKPOINT = "stale_checkpoint"
+    NAME_COLLISION = "name_collision"
     MISSING_RESOURCE = "missing_resource"
     MISSING_REQUIRED_PUBLICATION = "missing_required_publication"
     CONFLICTING_CONTINUATION = "conflicting_continuation"

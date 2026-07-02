@@ -16,7 +16,7 @@ Protected console requests use `X-AutoClaw-API-Key`. Backend schema wins over vi
 - `apps/console/src/api/client.ts`: JSON request helper, API-key header, route resolution, cursor helpers, and normalized errors.
 - `apps/console/src/api/routes.ts`: typed route helpers for runtime, control, definition, authoring, and task-start routes.
 - `apps/console/src/api/sse.ts`: fetch-based SSE/event stream handling with API-key header, frame parsing, ordering/deduplication, cursor reset, reconnect, abort, and invalid-event behavior.
-- `apps/console/src/api/view-models.ts`: page-facing models for tasks, task events, human requests, command runs, definitions, draft sets, and task-start results.
+- `apps/console/src/api/view-models.ts`: page-facing models for tasks, task events, human requests, command runs, definitions, flat definition drafts, and task-start results.
 - `apps/console/src/mocks/handlers.ts` and `apps/console/tests/fixtures/`: local fixture and MSW contract surfaces.
 - `apps/console/tests/integration/`: API and page integration contract tests.
 
@@ -44,7 +44,7 @@ Pages should render mapped error views and recovery actions rather than parsing 
 - Command Runs: task-scoped list, detail, log, and cancel routes.
 - Definitions: per-kind definition list, detail, and version-history routes.
 - Task Start: workflow definition read routes plus `POST /tasks/start`.
-- Definition Editor: authoring draft-set routes.
+- Definition Editor: flat authoring draft routes.
 
 The packaged console loads `GET /console/config` before React mounts. That route is documented in the route map, intentionally excluded from generated OpenAPI, and returns only `apiBaseUrl` plus `apiKey` with `Cache-Control: no-store`.
 

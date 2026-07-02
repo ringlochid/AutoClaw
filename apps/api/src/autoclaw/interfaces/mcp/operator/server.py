@@ -9,7 +9,6 @@ from autoclaw.config import get_settings
 from ..mcp_operation_failures import ContractFastMCP
 from ..transport import default_transport_security
 from .auth import add_operator_auth_middleware
-from .authoring_tools import register_authoring_tools
 from .definition_tools import (
     register_definition_tools,
     register_task_start_tool,
@@ -28,8 +27,6 @@ OPERATOR_TOOL_NAMES: tuple[str, ...] = (
     "list_definition_versions",
     "upload_definition",
     "start_task",
-    "list_definition_draft_sets",
-    "get_definition_draft_set",
     "list_runtime_tasks",
     "get_runtime_task",
     "get_operator_snapshot",
@@ -95,15 +92,13 @@ def create_operator_mcp_server(
             "support file refs/paths, not parsed status answers.\n"
             "- if a support reread disagrees with controller/runtime truth, "
             "controller/runtime truth wins.\n\n"
-            "Definitions, task start, and draft inspection:\n"
+            "Definitions and task start:\n"
             "- search_definitions, get_definition, and list_definition_versions "
             "are read-only.\n"
             "- upload_definition and start_task load local files on the "
             "AutoClaw host and mutate controller-owned state.\n"
-            "- list_definition_draft_sets and get_definition_draft_set are "
-            "read-only inspection tools for backend-owned draft refs and "
-            "saved draft readbacks; mutating draft authoring stays on the "
-            "HTTP /authoring workbench API.\n\n"
+            "- definition draft authoring stays on the trusted HTTP "
+            "/authoring workbench API.\n\n"
             "Surface continuity:\n"
             "- runtime, operator, and support reads stay on this same operator "
             "MCP surface.\n"
@@ -116,7 +111,6 @@ def create_operator_mcp_server(
     )
     register_definition_tools(server)
     register_task_start_tool(server)
-    register_authoring_tools(server)
     register_runtime_task_tools(server)
     register_operator_read_tools(server)
     register_runtime_wait_tools(server)

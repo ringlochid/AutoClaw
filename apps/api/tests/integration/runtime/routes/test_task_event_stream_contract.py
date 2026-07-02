@@ -5,15 +5,18 @@ import json
 import socket
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
 import uvicorn
+from autoclaw.persistence import TaskEventModel
 from autoclaw.persistence.session import _OPEN_SESSIONS_BY_LOOP
 from autoclaw.runtime.contracts import TaskEventRecord
 from autoclaw.runtime.task_events import append_task_event, encode_task_event_cursor
+from sqlalchemy import func, select
 from tests.integration.runtime.routes.support import (
     RuntimeRouteContext,
     SeededRouteTask,
@@ -93,6 +96,56 @@ async def test_control_task_events_require_reset_for_stale_cursor(
 
         assert response.status_code == 410
         assert response.json()["detail"]["code"] == "cursor_reset_required"
+
+
+async def test_control_task_events_hide_legacy_provider_rows_but_accept_their_cursor(
+    tmp_path: Path,
+) -> None:
+    async with runtime_route_context(tmp_path) as context:
+        task = await launch_route_task(
+            context,
+            task_id="task_control_event_hide_provider",
+            task_root_name="task-root",
+        )
+        launch_snapshot = await context.client.get(
+            f"/control/tasks/{task.task_id}/snapshot",
+            headers=context.operator_headers,
+        )
+        assert launch_snapshot.status_code == 200
+        launch_head_event_id = launch_snapshot.json()["stream_head_event_id"]
+        assert isinstance(launch_head_event_id, str)
+        hidden_provider_event = await append_legacy_provider_task_event(
+            context,
+            task,
+            event_type="provider_event_normalized",
+            label="provider-hidden",
+        )
+        hidden_provider_resolution = await append_legacy_provider_task_event(
+            context,
+            task,
+            event_type="provider_resolution_recorded",
+            label="provider-resolution-hidden",
+        )
+        visible = await append_route_task_event(context, task, label="visible")
+
+        response = await context.client.get(
+            f"/control/tasks/{task.task_id}/events",
+            headers=context.operator_headers,
+            params={"cursor": launch_head_event_id},
+        )
+        assert response.status_code == 200
+        item_ids = [event["event_id"] for event in response.json()["items"]]
+        assert hidden_provider_event.event_id not in item_ids
+        assert hidden_provider_resolution.event_id not in item_ids
+        assert visible.event_id in item_ids
+
+        resumed = await context.client.get(
+            f"/control/tasks/{task.task_id}/events",
+            headers=context.operator_headers,
+            params={"cursor": hidden_provider_resolution.event_id},
+        )
+        assert resumed.status_code == 200
+        assert [event["event_id"] for event in resumed.json()["items"]] == [visible.event_id]
 
 
 async def test_control_task_events_require_operator_auth_and_existing_task(
@@ -213,7 +266,7 @@ async def test_control_task_event_stream_delivers_live_multiple_event_families(
                 )
             )
             await asyncio.sleep(0.2)
-            first = await append_route_task_event(context, task, label="provider-live")
+            first = await append_route_task_event(context, task, label="checkpoint-live")
             second = await append_route_task_event(
                 context,
                 task,
@@ -225,11 +278,11 @@ async def test_control_task_event_stream_delivers_live_multiple_event_families(
             frames = await asyncio.wait_for(reader, timeout=8)
 
         assert [frame["event"] for frame in frames] == [
-            "provider_event_normalized",
+            "checkpoint_recorded",
             "human_request_opened",
         ]
         assert [frame["id"] for frame in frames] == [first.event_id, second.event_id]
-        assert frames[0]["data"]["payload"]["label"] == "provider-live"
+        assert frames[0]["data"]["payload"]["label"] == "checkpoint-live"
         assert frames[1]["data"]["payload"] == {"request_id": "human-request.live"}
 
 
@@ -266,9 +319,9 @@ async def test_control_task_event_stream_replays_after_cursor_then_tails_live_ev
             fourth.event_id,
         ]
         assert [frame["event"] for frame in frames] == [
-            "provider_event_normalized",
-            "provider_event_normalized",
-            "provider_event_normalized",
+            "checkpoint_recorded",
+            "checkpoint_recorded",
+            "checkpoint_recorded",
         ]
         assert [frame["data"]["payload"]["label"] for frame in frames] == [
             "second",
@@ -401,7 +454,7 @@ async def append_route_task_event(
     task: SeededRouteTask,
     *,
     label: str,
-    event_type: str = "provider_event_normalized",
+    event_type: str = "checkpoint_recorded",
     event_source: str = "controller",
     payload: dict[str, Any] | None = None,
 ) -> TaskEventRecord:
@@ -415,6 +468,43 @@ async def append_route_task_event(
         )
         await session.commit()
         return event
+
+
+async def append_legacy_provider_task_event(
+    context: RuntimeRouteContext,
+    task: SeededRouteTask,
+    *,
+    event_type: str,
+    label: str,
+) -> TaskEventModel:
+    async with context.session_factory() as session:
+        event_seq = int(
+            await session.scalar(
+                select(func.max(TaskEventModel.event_seq)).where(
+                    TaskEventModel.task_id == task.task_id
+                )
+            )
+            or 0
+        ) + 1
+        row = TaskEventModel(
+            event_id=f"task-event.{task.task_id}.legacy-provider.{event_seq:08d}",
+            event_seq=event_seq,
+            task_id=task.task_id,
+            event_type=event_type,
+            event_source="provider",
+            occurred_at=datetime(2026, 6, 24, 17, 0, tzinfo=UTC),
+            flow_revision_id=task.active_flow_revision_id,
+            dispatch_id=task.current_open_dispatch_id,
+            attempt_id=None,
+            node_key=None,
+            actor_ref=None,
+            payload={"label": label},
+            prev_event_hash=None,
+            event_hash=f"sha256:legacy-provider-{event_seq}",
+        )
+        session.add(row)
+        await session.commit()
+        return row
 
 
 @asynccontextmanager

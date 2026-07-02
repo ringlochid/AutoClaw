@@ -6,7 +6,6 @@ WORKDIR /app
 
 COPY README.md /app/README.md
 COPY pyproject.toml /app/pyproject.toml
-COPY definitions /app/definitions
 COPY apps/api/src /app/apps/api/src
 COPY apps/api/tests /app/apps/api/tests
 COPY scripts/testing /app/scripts/testing

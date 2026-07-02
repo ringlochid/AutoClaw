@@ -104,7 +104,7 @@ For non-trivial `apps/console/**` frontend implementation, also read the relevan
 2. `docs-internal/design/v2/interfaces/control-api-and-task-event-stream.md` for task-detail, SSE, and task-control surfaces
 3. `docs-internal/design/v2/interfaces/human-request-and-approval-contract.md` for human-request surfaces
 4. `docs-internal/design/v2/architecture/command-run-and-long-running-boundary.md` for command-run surfaces
-5. `docs-internal/design/v2/interfaces/definition-authoring-api-and-draft-set-contract.md` for authoring surfaces
+5. `docs-internal/design/v2/interfaces/definition-authoring-api-and-flat-draft-contract.md` for authoring surfaces
 6. `docs/reference/api/api-surface-and-route-map.md` for current shipped route families
 7. the relevant design-repo product brief, navigation contract, page charter, static HTML, screenshot, and shared CSS handoff
 

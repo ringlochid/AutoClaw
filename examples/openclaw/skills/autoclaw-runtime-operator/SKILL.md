@@ -33,7 +33,7 @@ Use operator MCP for:
 - task controls: `pause_task`, `continue_task`, `cancel_task`
 - definition registry reads: `search_definitions`, `get_definition`, `list_definition_versions`
 - trusted writes when explicitly authorized: `upload_definition`, `start_task`
-- draft-set inspection only: `list_definition_draft_sets`, `get_definition_draft_set`
+- definition draft authoring stays on the trusted HTTP `/authoring` API, not operator MCP
 - support refs for deep diagnosis: `get_delivery_state_ref`, `get_continuity_state_ref`, `get_watchdog_state_ref`, `get_provider_events_ref`
 
 Do not use node MCP. Node MCP tools such as `record_checkpoint`, `return_boundary`, `assign_child`, `release_green`, and `release_blocked` belong to the current node dispatch, require dispatch-local `session_key` plus `task_id`, and are not operator control.

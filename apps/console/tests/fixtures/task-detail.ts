@@ -12,7 +12,7 @@ import {
 } from "./console-api";
 
 export const TASK_DETAIL_TASK_ID = "task-runtime-route-copy";
-export const TASK_DETAIL_STREAM_HEAD = "evt-008-structural-revision-adopted";
+export const TASK_DETAIL_STREAM_HEAD = "evt-006-structural-revision-adopted";
 export const TASK_DETAIL_EVENT_BASE_AT = "2026-06-21T15:03:00Z";
 export const TASK_DETAIL_UPDATED_AT = "2026-06-21T15:24:00Z";
 
@@ -24,17 +24,13 @@ const TASK_DETAIL_VISUAL_EVENT_TIMES: Partial<
     child_assignment_committed: "2026-06-21T15:12:00Z",
     child_assignment_staged: "2026-06-21T15:11:00Z",
     dispatch_opened: "2026-06-21T15:08:00Z",
-    provider_event_normalized: "2026-06-21T15:08:00Z",
-    provider_resolution_recorded: "2026-06-21T15:04:00Z",
     structural_revision_adopted: "2026-06-21T15:13:00Z",
     task_started: "2026-06-21T15:03:00Z",
 };
 
 const TASK_DETAIL_VISUAL_EVENT_TYPES: readonly components["schemas"]["TaskEventType"][] = [
     "task_started",
-    "provider_resolution_recorded",
     "dispatch_opened",
-    "provider_event_normalized",
     "checkpoint_recorded",
     "boundary_accepted",
     "child_assignment_staged",
@@ -212,8 +208,6 @@ function nodeKeyForEvent(
         human_request_opened: "task_detail_build",
         human_request_resolved: "task_detail_build",
         human_request_timed_out: "task_detail_build",
-        provider_event_normalized: "task_detail_build",
-        provider_resolution_recorded: "root",
         structural_revision_adopted: "task_detail_page",
         task_started: "root",
     };
@@ -306,6 +300,24 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
                 version: null,
             },
         ],
+        dependency_edges: [
+            {
+                consumer_node_key: "task_detail_build",
+                description: "The build consumes the Task Detail source contract.",
+                kind: "artifact",
+                order_index: 0,
+                provider_node_key: "task_detail_source_contract",
+                slot: "task_detail_contract",
+            },
+            {
+                consumer_node_key: "task_detail_review",
+                description: "The review consumes the Task Detail implementation.",
+                kind: "artifact",
+                order_index: 1,
+                provider_node_key: "task_detail_build",
+                slot: "task_detail_patch",
+            },
+        ],
         dispatch_history: [
             {
                 assignment_key: "assignment-root",
@@ -388,6 +400,137 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
                 rendered_at: "2026-06-29T14:05:00Z",
             },
         ],
+        graph_nodes: [
+            {
+                child_node_keys: ["source_contract", "task_control_suite"],
+                depended_on_by_node_keys: [],
+                depends_on_node_keys: [],
+                description: "Coordinate the runtime route refresh.",
+                node_key: "root",
+                node_kind: "root",
+                order_index: 0,
+                parent_node_key: null,
+                policy: null,
+                role: "planning_lead",
+            },
+            {
+                child_node_keys: [],
+                depended_on_by_node_keys: [],
+                depends_on_node_keys: [],
+                description: "Capture the runtime route source contract.",
+                node_key: "source_contract",
+                node_kind: "worker",
+                order_index: 1,
+                parent_node_key: "root",
+                policy: "browser_first_review",
+                role: "source_reviewer",
+            },
+            {
+                child_node_keys: [
+                    "tasks_page",
+                    "task_detail_page",
+                    "human_request_page",
+                    "command_runs_page",
+                ],
+                depended_on_by_node_keys: [],
+                depends_on_node_keys: [],
+                description: "Build the task control suite surface.",
+                node_key: "task_control_suite",
+                node_kind: "parent",
+                order_index: 2,
+                parent_node_key: "root",
+                policy: "browser_first_worker",
+                role: "ui_delivery_lead",
+            },
+            {
+                child_node_keys: [],
+                depended_on_by_node_keys: [],
+                depends_on_node_keys: [],
+                description: "Refresh the runtime task list page.",
+                node_key: "tasks_page",
+                node_kind: "worker",
+                order_index: 3,
+                parent_node_key: "task_control_suite",
+                policy: "browser_first_worker",
+                role: "ui_engineer",
+            },
+            {
+                child_node_keys: [
+                    "task_detail_source_contract",
+                    "task_detail_build",
+                    "task_detail_review",
+                ],
+                depended_on_by_node_keys: [],
+                depends_on_node_keys: [],
+                description: "Coordinate the Task Detail page work.",
+                node_key: "task_detail_page",
+                node_kind: "parent",
+                order_index: 4,
+                parent_node_key: "task_control_suite",
+                policy: "browser_first_worker",
+                role: "ui_delivery_lead",
+            },
+            {
+                child_node_keys: [],
+                depended_on_by_node_keys: [],
+                depends_on_node_keys: [],
+                description: "Prepare the human request page route.",
+                node_key: "human_request_page",
+                node_kind: "worker",
+                order_index: 5,
+                parent_node_key: "task_control_suite",
+                policy: "browser_first_worker",
+                role: "ui_engineer",
+            },
+            {
+                child_node_keys: [],
+                depended_on_by_node_keys: [],
+                depends_on_node_keys: [],
+                description: "Prepare the command runs page route.",
+                node_key: "command_runs_page",
+                node_kind: "worker",
+                order_index: 6,
+                parent_node_key: "task_control_suite",
+                policy: "browser_first_worker",
+                role: "ui_engineer",
+            },
+            {
+                child_node_keys: [],
+                depended_on_by_node_keys: ["task_detail_build"],
+                depends_on_node_keys: [],
+                description: "Confirm Task Detail contract boundaries.",
+                node_key: "task_detail_source_contract",
+                node_kind: "worker",
+                order_index: 7,
+                parent_node_key: "task_detail_page",
+                policy: "browser_first_review",
+                role: "source_reviewer",
+            },
+            {
+                child_node_keys: [],
+                depended_on_by_node_keys: ["task_detail_review"],
+                depends_on_node_keys: ["task_detail_source_contract"],
+                description: "Implement the Task Detail page.",
+                node_key: "task_detail_build",
+                node_kind: "worker",
+                order_index: 8,
+                parent_node_key: "task_detail_page",
+                policy: "browser_first_worker",
+                role: "ui_engineer",
+            },
+            {
+                child_node_keys: [],
+                depended_on_by_node_keys: [],
+                depends_on_node_keys: ["task_detail_build"],
+                description: "Review the Task Detail implementation.",
+                node_key: "task_detail_review",
+                node_kind: "worker",
+                order_index: 9,
+                parent_node_key: "task_detail_page",
+                policy: "browser_first_review",
+                role: "delivery_reviewer",
+            },
+        ],
         next_cursor: null,
         scope: "whole",
         task_id: TASK_DETAIL_TASK_ID,
@@ -416,19 +559,6 @@ function payloadForEvent(
                 node_key: nodeKey,
                 previous_dispatch_id: null,
                 summary: "Dispatch opened.",
-            };
-        case "provider_resolution_recorded":
-            return {
-                requested_provider: "codex",
-                resolved_provider: "codex",
-                summary: "Provider resolution recorded.",
-            };
-        case "provider_event_normalized":
-            return {
-                event_kind: "message_delta",
-                event_no: 3,
-                provider_event_name: "response.output_text.delta",
-                summary: "Provider event normalized.",
             };
         case "checkpoint_recorded":
             return {
@@ -543,9 +673,6 @@ function occurredAtForEvent(
 function eventSourceForType(
     eventType: components["schemas"]["TaskEventType"],
 ): components["schemas"]["TaskEventSource"] {
-    if (eventType === "provider_event_normalized") {
-        return "provider";
-    }
     if (eventType === "task_started") {
         return "controller";
     }

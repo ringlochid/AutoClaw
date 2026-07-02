@@ -77,11 +77,14 @@ describe("TaskDetailPage", () => {
 
         renderTaskDetailPage();
 
-        expect(screen.getByText("Loading Task Detail")).toBeVisible();
+        expect(screen.getByRole("status", { name: "Loading Task Detail" })).toBeVisible();
         expect(
             await screen.findByRole("heading", { name: "Refresh runtime route copy" }),
         ).toBeVisible();
         expect(screen.getByText("Execution graph")).toBeVisible();
+        expect(
+            screen.getByLabelText("Execution graph").querySelectorAll('path[stroke="#c4a4f7"]'),
+        ).toHaveLength(0);
         expect(screen.getByText("Events")).toBeVisible();
         expect(screen.queryByText("Approve the last copy trim")).not.toBeInTheDocument();
         expect(screen.queryByText("Verify command-run runner behavior.")).not.toBeInTheDocument();
@@ -98,9 +101,14 @@ describe("TaskDetailPage", () => {
         expect(seenStreamUrls[0]?.searchParams.get("cursor")).toBe(TASK_DETAIL_STREAM_HEAD);
 
         expect(await screen.findByText("Task cancelled")).toBeVisible();
-        expect(screen.getByText("Provider event normalized")).toBeVisible();
-        expect(screen.getAllByText("Provider event normalized")).toHaveLength(1);
+        expect(screen.queryByText("Provider event normalized")).not.toBeInTheDocument();
+        expect(screen.queryByText("Provider resolution recorded")).not.toBeInTheDocument();
+        expect(screen.getByText("Dispatch opened")).toBeVisible();
         expect(screen.getAllByText("Checkpoint recorded").length).toBeGreaterThan(0);
+        expect(screen.getByRole("button", { name: /Task cancelled/i })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
 
         await user.click(screen.getByRole("button", { name: /Checkpoint recorded/i }));
         const openDetailButton = screen.getByRole("button", { name: /Open detail/i });

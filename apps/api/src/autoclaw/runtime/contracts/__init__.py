@@ -65,6 +65,8 @@ from autoclaw.runtime.contracts.operator import (
     OperatorFlowSnapshotResponse,
     OperatorFlowTraceQuery,
     OperatorFlowTraceResponse,
+    TaskGraphDependencyEntry,
+    TaskGraphNodeEntry,
     TopActionableItem,
 )
 from autoclaw.runtime.contracts.parent_tools import (
@@ -323,6 +325,8 @@ __all__ = [
     "TaskEventRecord",
     "TaskEventSource",
     "TaskEventType",
+    "TaskGraphDependencyEntry",
+    "TaskGraphNodeEntry",
     "TaskIdentifier",
     "TaskRootBindingInput",
     "TaskRootMode",

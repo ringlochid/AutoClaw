@@ -35,7 +35,7 @@ export function PageFrame({
         <section
             aria-labelledby={headingId}
             className={classNames(
-                "mx-auto max-w-[1640px] overflow-hidden rounded-shell border border-outline-soft bg-surface shadow-shell",
+                "mx-auto w-full max-w-[1320px] overflow-hidden rounded-shell border border-outline-soft bg-surface shadow-shell",
                 className,
             )}
         >

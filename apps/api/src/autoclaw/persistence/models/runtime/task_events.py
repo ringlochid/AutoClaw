@@ -17,7 +17,13 @@ if TYPE_CHECKING:
     from autoclaw.persistence.models.runtime.task import TaskModel
 
 TASK_EVENT_SOURCE_VALUES = tuple(source.value for source in TaskEventSource)
-TASK_EVENT_TYPE_VALUES = tuple(event_type.value for event_type in TaskEventType)
+LEGACY_PROVIDER_EVENT_NORMALIZED_TYPE = "provider_event_normalized"
+LEGACY_PROVIDER_RESOLUTION_RECORDED_TYPE = "provider_resolution_recorded"
+TASK_EVENT_TYPE_VALUES = (
+    *(event_type.value for event_type in TaskEventType),
+    LEGACY_PROVIDER_EVENT_NORMALIZED_TYPE,
+    LEGACY_PROVIDER_RESOLUTION_RECORDED_TYPE,
+)
 
 
 class TaskEventModel(RuntimeBase):

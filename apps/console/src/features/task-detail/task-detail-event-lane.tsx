@@ -158,8 +158,6 @@ function eventLabel(eventType: TaskEventRow["eventType"]): string {
         child_assignment_committed: "Child assignment committed",
         child_assignment_staged: "Child assignment staged",
         dispatch_opened: "Dispatch opened",
-        provider_event_normalized: "Provider event normalized",
-        provider_resolution_recorded: "Provider resolution recorded",
         structural_revision_adopted: "Structural revision adopted",
         task_started: "Task started",
     };
@@ -174,8 +172,6 @@ function eventInlineRows(
         boundary_accepted: ["boundary", "resulting_flow_status"],
         checkpoint_recorded: ["checkpoint_kind", "outcome"],
         dispatch_opened: ["delivery_status", "control_state"],
-        provider_event_normalized: ["event_kind", "provider_event_name"],
-        provider_resolution_recorded: ["requested_provider", "resolved_provider"],
         task_started: ["workflow_key", "initial_node_key"],
     };
     const keys = keysByType[event.eventType] ?? [];

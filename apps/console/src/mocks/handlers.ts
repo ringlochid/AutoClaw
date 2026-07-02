@@ -56,10 +56,9 @@ export interface ConsoleMockScenario {
     readonly definitionVersionsByDefinition?: Readonly<
         Record<string, components["schemas"]["DefinitionRevisionHistoryResponse"]>
     >;
-    readonly draftApply: components["schemas"]["DefinitionDraftApplyResponse"];
-    readonly draftDetail: components["schemas"]["DefinitionDraftSetDetailResponse"];
-    readonly draftList: components["schemas"]["DefinitionDraftSetListResponse"];
-    readonly draftPreview: components["schemas"]["DefinitionDraftTaskComposePreviewResponse"];
+    readonly draftDetail: components["schemas"]["DefinitionDraftDetailResponse"];
+    readonly draftList: components["schemas"]["DefinitionDraftListResponse"];
+    readonly draftPublish: components["schemas"]["DefinitionDraftPublishResponse"];
     readonly draftValidation: components["schemas"]["DefinitionDraftValidationResponse"];
     readonly humanRequestList: components["schemas"]["HumanRequestListResponse"];
     readonly humanRequestResolve: components["schemas"]["HumanRequestResolveResponse"];
@@ -262,8 +261,9 @@ function definitionListForRequest(
 ): components["schemas"]["DefinitionSummaryListResponse"] {
     const url = new URL(request.url);
     const cursor = url.searchParams.get("cursor");
-    if (cursor !== null) {
-        return scenario.definitionListPages?.[kind]?.[cursor] ?? scenario.definitionLists[kind];
+    const explicitPages = scenario.definitionListPages?.[kind];
+    if (cursor !== null && explicitPages !== undefined) {
+        return explicitPages[cursor] ?? scenario.definitionLists[kind];
     }
 
     return filterDefinitionListForRequest(scenario.definitionLists[kind], url);
@@ -275,18 +275,29 @@ function filterDefinitionListForRequest(
 ): components["schemas"]["DefinitionSummaryListResponse"] {
     const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
     const limit = Number(url.searchParams.get("limit"));
+    const offset = parseDefinitionListOffset(url.searchParams.get("cursor"));
     const filteredItems =
         query.length === 0
             ? list.items
             : list.items.filter((item) => definitionSummaryMatchesQuery(item, query));
-    const limitedItems =
-        Number.isFinite(limit) && limit > 0 ? filteredItems.slice(0, limit) : filteredItems;
+    const pageLimit = Number.isFinite(limit) && limit > 0 ? limit : filteredItems.length;
+    const selectedItems = filteredItems.slice(offset, offset + pageLimit + 1);
+    const limitedItems = selectedItems.slice(0, pageLimit);
 
     return {
         ...list,
         items: [...limitedItems],
-        next_cursor: null,
+        next_cursor: selectedItems.length > pageLimit ? String(offset + pageLimit) : null,
     };
+}
+
+function parseDefinitionListOffset(cursor: string | null): number {
+    if (cursor === null) {
+        return 0;
+    }
+
+    const offset = Number(cursor);
+    return Number.isInteger(offset) && offset >= 0 ? offset : 0;
 }
 
 function definitionSummaryMatchesQuery(
@@ -346,53 +357,87 @@ function definitionLookupKey(kind: unknown, key: unknown): string | null {
 
 function createDraftAuthoringHandlers(scenario: ConsoleMockScenario): readonly HttpHandler[] {
     return [
-        http.get("*/authoring/definition-draft-sets", ({ request }) =>
+        http.get("*/authoring/definition-drafts", ({ request }) =>
             guardedJson(request, scenario, scenario.draftList),
         ),
-        http.post("*/authoring/definition-draft-sets", ({ request }) =>
-            guardedJson(request, scenario, scenario.draftDetail),
+        http.post("*/authoring/definition-drafts", async ({ request }) => {
+            if (!isAuthorized(request, scenario)) {
+                return authFailureResponse();
+            }
+            const body =
+                (await request.json()) as components["schemas"]["DefinitionDraftCreateRequest"];
+            return HttpResponse.json({
+                draft: {
+                    ...scenario.draftDetail.draft,
+                    body: body.body ?? scenario.draftDetail.draft.body,
+                    is_saved: true,
+                    key: body.key,
+                    kind: body.kind,
+                    mode: body.mode,
+                    status: body.mode === "create" ? "new" : "modified",
+                },
+            } satisfies components["schemas"]["DefinitionDraftDetailResponse"]);
+        }),
+        http.get("*/authoring/definitions/:kind/:key/draft", ({ params, request }) =>
+            guardedJson(
+                request,
+                scenario,
+                draftDetailForRequest(params.kind, params.key, scenario),
+            ),
         ),
-        http.get("*/authoring/definition-draft-sets/:draftSetId", ({ request }) =>
-            guardedJson(request, scenario, scenario.draftDetail),
-        ),
-        http.delete("*/authoring/definition-draft-sets/:draftSetId", ({ request }) =>
+        http.put("*/authoring/definitions/:kind/:key/draft", async ({ params, request }) => {
+            if (!isAuthorized(request, scenario)) {
+                return authFailureResponse();
+            }
+            const body =
+                (await request.json()) as components["schemas"]["DefinitionDraftWriteRequest"];
+            return HttpResponse.json(
+                draftDetailForRequest(params.kind, params.key, scenario, body.body),
+            );
+        }),
+        http.delete("*/authoring/definitions/:kind/:key/draft", ({ request }) =>
             guardedEmpty(request, scenario),
         ),
-        http.post("*/authoring/definition-draft-sets/:draftSetId/materialize", ({ request }) =>
-            guardedJson(request, scenario, scenario.draftDetail),
-        ),
-        http.put("*/authoring/definition-draft-sets/:draftSetId/files/:kind/:key", ({ request }) =>
-            guardedJson(request, scenario, scenario.draftDetail),
-        ),
-        http.post(
-            "*/authoring/definition-draft-sets/:draftSetId/files/:kind/:key/reset",
-            ({ request }) => guardedJson(request, scenario, scenario.draftDetail),
-        ),
-        http.post(
-            "*/authoring/definition-draft-sets/:draftSetId/files/:kind/:key/rematerialize-current",
-            ({ request }) => guardedJson(request, scenario, scenario.draftDetail),
-        ),
-        http.post("*/authoring/definition-draft-sets/:draftSetId/validate", ({ request }) =>
+        http.post("*/authoring/definitions/:kind/:key/draft/validate", ({ request }) =>
             guardedJson(request, scenario, scenario.draftValidation),
         ),
-        http.post(
-            "*/authoring/definition-draft-sets/:draftSetId/preview-task-compose",
-            ({ request }) => guardedJson(request, scenario, scenario.draftPreview),
-        ),
-        http.post("*/authoring/definition-draft-sets/:draftSetId/apply", ({ request }) =>
-            guardedJson(request, scenario, scenario.draftApply),
+        http.post("*/authoring/definitions/:kind/:key/draft/publish", ({ request }) =>
+            guardedJson(request, scenario, scenario.draftPublish),
         ),
     ];
 }
 
+function draftDetailForRequest(
+    kind: unknown,
+    key: unknown,
+    scenario: ConsoleMockScenario,
+    body?: string,
+): components["schemas"]["DefinitionDraftDetailResponse"] {
+    const normalizedKind = normalizePathParam(kind);
+    const normalizedKey = normalizePathParam(key);
+    if (normalizedKind === null || normalizedKey === null || !isDefinitionKind(normalizedKind)) {
+        return scenario.draftDetail;
+    }
+
+    return {
+        draft: {
+            ...scenario.draftDetail.draft,
+            body: body ?? scenario.draftDetail.draft.body,
+            is_saved: body === undefined ? scenario.draftDetail.draft.is_saved : true,
+            key: normalizedKey,
+            kind: normalizedKind,
+            status: body === undefined ? scenario.draftDetail.draft.status : "modified",
+        },
+    };
+}
+
+function isDefinitionKind(value: string): value is components["schemas"]["DefinitionKind"] {
+    return value === "policy" || value === "role" || value === "workflow";
+}
+
 function guardedEmpty(request: Request, scenario: ConsoleMockScenario): Response {
-    if (request.headers.get("X-AutoClaw-API-Key") !== scenario.apiKey) {
-        return operationFailureResponse({
-            code: "illegal_caller",
-            status: 401,
-            summary: "The AutoClaw API key is missing or invalid.",
-            suggestedNextStep: "Provide a valid operator API key.",
-        });
+    if (!isAuthorized(request, scenario)) {
+        return authFailureResponse();
     }
 
     return new HttpResponse(null, { status: 204 });
@@ -403,26 +448,16 @@ function guardedJson(
     scenario: ConsoleMockScenario,
     body: JsonBodyType,
 ): Response {
-    if (request.headers.get("X-AutoClaw-API-Key") !== scenario.apiKey) {
-        return operationFailureResponse({
-            code: "illegal_caller",
-            status: 401,
-            summary: "The AutoClaw API key is missing or invalid.",
-            suggestedNextStep: "Provide a valid operator API key.",
-        });
+    if (!isAuthorized(request, scenario)) {
+        return authFailureResponse();
     }
 
     return HttpResponse.json(body);
 }
 
 function guardedTaskEventStream(request: Request, scenario: ConsoleMockScenario): Response {
-    if (request.headers.get("X-AutoClaw-API-Key") !== scenario.apiKey) {
-        return operationFailureResponse({
-            code: "illegal_caller",
-            status: 401,
-            summary: "The AutoClaw API key is missing or invalid.",
-            suggestedNextStep: "Provide a valid operator API key.",
-        });
+    if (!isAuthorized(request, scenario)) {
+        return authFailureResponse();
     }
 
     const cursor = new URL(request.url).searchParams.get("cursor");
@@ -446,13 +481,26 @@ function guardedTaskEventStream(request: Request, scenario: ConsoleMockScenario)
     });
 }
 
+function isAuthorized(request: Request, scenario: ConsoleMockScenario): boolean {
+    return request.headers.get("X-AutoClaw-API-Key") === scenario.apiKey;
+}
+
+function authFailureResponse(): Response {
+    return operationFailureResponse({
+        code: "illegal_caller",
+        status: 401,
+        summary: "The AutoClaw API key is missing or invalid.",
+        suggestedNextStep: "Provide a valid operator API key.",
+    });
+}
+
 function operationFailureResponse({
     code,
     status,
     summary,
     suggestedNextStep,
 }: {
-    readonly code: components["schemas"]["OperationFailureCode"];
+    readonly code: string;
     readonly status: number;
     readonly summary: string;
     readonly suggestedNextStep: string;

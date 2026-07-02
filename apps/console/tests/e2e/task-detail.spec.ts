@@ -31,7 +31,9 @@ test("renders the API-backed Task Detail control room at desktop width", async (
     await expect(page.getByText("Approve the last copy trim")).toHaveCount(0);
     await expect(page.getByText("Verify command-run runner behavior.")).toHaveCount(0);
     await expect(page.getByText("Task cancelled")).toBeVisible();
-    await expect(page.getByText("Provider event normalized")).toBeVisible();
+    await expect(page.getByText("Provider event normalized")).toHaveCount(0);
+    await expect(page.getByText("Provider resolution recorded")).toHaveCount(0);
+    await expect(page.getByText("Dispatch opened")).toBeVisible();
     await expectNoDocumentOverflow(page);
 
     const accessibilityScanResults = await new AxeBuilder({ page })

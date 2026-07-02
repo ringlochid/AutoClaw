@@ -100,6 +100,7 @@ def _runtime_failure_status(code: OperationFailureCode) -> int:
     if code == OperationFailureCode.MISSING_RESOURCE:
         return status.HTTP_404_NOT_FOUND
     if code in {
+        OperationFailureCode.NAME_COLLISION,
         OperationFailureCode.STALE_DISPATCH,
         OperationFailureCode.STALE_FLOW_REVISION,
         OperationFailureCode.STALE_ASSIGNMENT,

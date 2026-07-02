@@ -162,13 +162,11 @@ class TaskEventSource(StrEnum):
 class TaskEventType(StrEnum):
     TASK_STARTED = "task_started"
     DISPATCH_OPENED = "dispatch_opened"
-    PROVIDER_RESOLUTION_RECORDED = "provider_resolution_recorded"
     CHECKPOINT_RECORDED = "checkpoint_recorded"
     BOUNDARY_ACCEPTED = "boundary_accepted"
     CHILD_ASSIGNMENT_STAGED = "child_assignment_staged"
     CHILD_ASSIGNMENT_COMMITTED = "child_assignment_committed"
     STRUCTURAL_REVISION_ADOPTED = "structural_revision_adopted"
-    PROVIDER_EVENT_NORMALIZED = "provider_event_normalized"
     HUMAN_REQUEST_OPENED = "human_request_opened"
     HUMAN_REQUEST_RESOLVED = "human_request_resolved"
     HUMAN_REQUEST_TIMED_OUT = "human_request_timed_out"

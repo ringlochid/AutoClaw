@@ -101,7 +101,7 @@ function HumanRequestsState({ controller }: { readonly controller: HumanRequests
     }
 
     return (
-        <div className="grid min-w-0 gap-0 lg:h-[calc(100vh-160px)] lg:max-h-[960px] lg:min-h-[720px] lg:grid-cols-[19rem_minmax(0,1fr)]">
+        <div className="grid min-w-0 gap-0 lg:min-h-[720px] lg:grid-cols-[19rem_minmax(0,1fr)]">
             <HumanRequestQueue controller={controller} />
             <SelectedHumanRequest controller={controller} />
         </div>
@@ -243,7 +243,7 @@ function SelectedHumanRequest({ controller }: { readonly controller: HumanReques
     const editable = isRequestEditable(read);
 
     return (
-        <section className="min-w-0 bg-surface lg:min-h-0 lg:overflow-y-auto">
+        <section className="min-w-0 bg-surface">
             <div className="hidden border-b border-outline-soft pb-4 lg:block">
                 <div className="space-y-4 px-5 pb-0 pt-8 sm:px-6 sm:pb-0 sm:pt-8 lg:px-5">
                     <div className="flex min-w-0 flex-wrap items-center gap-2">

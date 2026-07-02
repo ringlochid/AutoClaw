@@ -22,7 +22,6 @@ from autoclaw.runtime.contracts import (
     FlowStatus,
     NodeKind,
     PromptFamily,
-    ProviderName,
     TaskEventSource,
     TaskEventType,
     WorkflowManifestRef,
@@ -391,23 +390,6 @@ async def _append_dispatch_open_events(
     workflow_manifest_ref = WorkflowManifestRef(
         path=task_root_paths.runtime_path / "workflow-manifest.md",
         description=WORKFLOW_MANIFEST_REF_DESCRIPTION,
-    )
-    await append_task_event(
-        session,
-        task_id=context.task_id,
-        event_type=TaskEventType.PROVIDER_RESOLUTION_RECORDED,
-        event_source=TaskEventSource.CONTROLLER,
-        occurred_at=accepted_at,
-        flow_revision_id=context.flow.active_flow_revision_id,
-        dispatch_id=context.dispatch.dispatch_id,
-        attempt_id=context.attempt.attempt_id,
-        node_key=context.dispatch.node_key,
-        payload={
-            "requested_provider": ProviderName.OPENCLAW.value,
-            "resolved_provider": ProviderName.OPENCLAW.value,
-            "dispatch_id": context.dispatch.dispatch_id,
-            "attempt_id": context.attempt.attempt_id,
-        },
     )
     await append_task_event(
         session,

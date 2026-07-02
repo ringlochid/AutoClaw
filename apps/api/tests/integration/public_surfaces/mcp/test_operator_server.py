@@ -11,7 +11,6 @@ from autoclaw.interfaces.mcp.operator.server import (
     create_operator_mcp_server,
 )
 from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.operator_auth_headers import OPERATOR_HEADERS
 from tests.helpers.runtime_support import prepare_runtime_db
 from tests.helpers.seeded_runtime_support import task_compose_payload
 from tests.integration.mcp.support import (
@@ -27,6 +26,8 @@ from tests.integration.mcp.support import (
 )
 
 _REMOVED_OPERATOR_DRAFT_MUTATION_TOOLS = {
+    "list_definition_draft_sets",
+    "get_definition_draft_set",
     "create_definition_draft_set",
     "delete_definition_draft_set",
     "materialize_definition_draft_set",
@@ -87,11 +88,6 @@ async def test_operator_mcp_uses_query_arguments_in_tool_schemas() -> None:
             tools_result, "start_task"
         )
         assert "create and start a real task" in tool_description(tools_result, "start_task")
-        for tool_name in {"list_definition_draft_sets", "get_definition_draft_set"}:
-            description = tool_description(tools_result, tool_name)
-            assert description.startswith("Read-only:"), (tool_name, description)
-            assert "HTTP /authoring workbench API" in description
-            assert tool_read_only_hint(tools_result, tool_name) is True, tool_name
         assert _REMOVED_OPERATOR_DRAFT_MUTATION_TOOLS.isdisjoint(set(tool_names(tools_result)))
 
 
@@ -101,9 +97,8 @@ async def test_operator_mcp_server_instructions_include_definition_writes() -> N
     )
     instructions = server.instructions
     assert instructions is not None
-    assert "Definitions, task start, and draft inspection" in instructions
-    assert "list_definition_draft_sets and get_definition_draft_set are read-only" in instructions
-    assert "mutating draft authoring stays on the HTTP /authoring workbench API" in instructions
+    assert "Definitions and task start" in instructions
+    assert "definition draft authoring stays on the trusted HTTP /authoring" in instructions
     assert "apply_definition_draft_set" not in instructions
 
 
@@ -288,61 +283,3 @@ async def test_operator_mcp_uploads_definitions_and_starts_tasks(
             async with mcp_client_session(app) as session:
                 await _assert_uploaded_role_round_trip(session, role_definition_path)
                 await _assert_started_task(session, task_compose_path)
-
-
-async def test_operator_mcp_inspects_definition_draft_sets_created_by_http(
-    tmp_path: Path,
-    openclaw_gateway_test_server: LocalGatewayTestServer,
-) -> None:
-    config_path = await prepare_runtime_db(tmp_path)
-
-    with openclaw_gateway_test_server.configured_env():
-        async with runtime_api_context(config_path) as api:
-            draft_set_id = await _create_http_definition_draft_set(api.client)
-            app = create_operator_mcp_app(
-                transport_security=default_transport_security(host="127.0.0.1")
-            )
-            async with mcp_client_session(app) as session:
-                await _assert_definition_draft_set_readback(session, draft_set_id)
-
-
-async def _create_http_definition_draft_set(client: Any) -> str:
-    created = await client.post(
-        "/authoring/definition-draft-sets",
-        headers=OPERATOR_HEADERS,
-        json={
-            "title": "Operator MCP draft",
-            "materialize": [{"kind": "workflow", "key": "minimal-implement-change"}],
-            "preview_task_compose": yaml.safe_dump(
-                task_compose_payload("minimal-implement-change").model_dump(mode="json"),
-                sort_keys=False,
-            ),
-        },
-    )
-    assert created.status_code == 200
-    draft_set = created.json()["draft_set"]
-    draft_set_id = cast(str, draft_set["draft_set_id"])
-    workflow_file = draft_set["files"][0]
-    assert workflow_file["kind"] == "workflow"
-    assert workflow_file["status"] == "clean"
-    return draft_set_id
-
-
-async def _assert_definition_draft_set_readback(session: Any, draft_set_id: str) -> None:
-    listed = await call_tool_structured(
-        session,
-        "list_definition_draft_sets",
-        {"limit": 10},
-    )
-    assert listed["items"]
-    assert listed["items"][0]["draft_set_id"] == draft_set_id
-
-    detail = await call_tool_structured(
-        session,
-        "get_definition_draft_set",
-        {"draft_set_id": draft_set_id},
-    )
-    original_body = cast(str, detail["draft_set"]["files"][0]["body"])
-    edited_workflow = cast(dict[str, Any], yaml.safe_load(original_body))
-    assert edited_workflow["id"] == "minimal-implement-change"
-    assert detail["draft_set"]["preview_task_compose_body"]

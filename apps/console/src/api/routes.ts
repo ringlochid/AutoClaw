@@ -21,8 +21,8 @@ export type DefinitionListQuery = NonNullable<
 export type DefinitionVersionsQuery = NonNullable<
     operations["get_definition_versions_definitions__kind___key__versions_get"]["parameters"]["query"]
 >;
-export type DefinitionDraftSetsQuery = NonNullable<
-    operations["get_definition_draft_sets_authoring_definition_draft_sets_get"]["parameters"]["query"]
+export type DefinitionDraftsQuery = NonNullable<
+    operations["get_definition_drafts_authoring_definition_drafts_get"]["parameters"]["query"]
 >;
 
 export function runtimeTasksRoute(query?: RuntimeTasksQuery): ApiRoute {
@@ -133,66 +133,28 @@ export function definitionVersionsRoute(
     };
 }
 
-export function definitionDraftSetsRoute(query?: DefinitionDraftSetsQuery): ApiRoute {
+export function definitionDraftsRoute(query?: DefinitionDraftsQuery): ApiRoute {
     return {
-        path: "/authoring/definition-draft-sets",
+        path: "/authoring/definition-drafts",
         query: buildOptionalQuery(query),
     };
 }
 
-export function definitionDraftSetRoute(draftSetId: string): ApiRoute {
+export function definitionDraftRoute(kind: string, key: string): ApiRoute {
     return {
-        path: `/authoring/definition-draft-sets/${encodeURIComponent(draftSetId)}`,
+        path: `/authoring/definitions/${encodeURIComponent(kind)}/${encodeURIComponent(key)}/draft`,
     };
 }
 
-export function definitionDraftSetMaterializeRoute(draftSetId: string): ApiRoute {
+export function definitionDraftValidateRoute(kind: string, key: string): ApiRoute {
     return {
-        path: `/authoring/definition-draft-sets/${encodeURIComponent(draftSetId)}/materialize`,
+        path: `${definitionDraftRoute(kind, key).path}/validate`,
     };
 }
 
-export function definitionDraftFileRoute(draftSetId: string, kind: string, key: string): ApiRoute {
+export function definitionDraftPublishRoute(kind: string, key: string): ApiRoute {
     return {
-        path: `/authoring/definition-draft-sets/${encodeURIComponent(draftSetId)}/files/${encodeURIComponent(kind)}/${encodeURIComponent(key)}`,
-    };
-}
-
-export function definitionDraftFileResetRoute(
-    draftSetId: string,
-    kind: string,
-    key: string,
-): ApiRoute {
-    return {
-        path: `${definitionDraftFileRoute(draftSetId, kind, key).path}/reset`,
-    };
-}
-
-export function definitionDraftFileRematerializeCurrentRoute(
-    draftSetId: string,
-    kind: string,
-    key: string,
-): ApiRoute {
-    return {
-        path: `${definitionDraftFileRoute(draftSetId, kind, key).path}/rematerialize-current`,
-    };
-}
-
-export function definitionDraftSetValidateRoute(draftSetId: string): ApiRoute {
-    return {
-        path: `/authoring/definition-draft-sets/${encodeURIComponent(draftSetId)}/validate`,
-    };
-}
-
-export function definitionDraftSetApplyRoute(draftSetId: string): ApiRoute {
-    return {
-        path: `/authoring/definition-draft-sets/${encodeURIComponent(draftSetId)}/apply`,
-    };
-}
-
-export function definitionDraftSetPreviewTaskComposeRoute(draftSetId: string): ApiRoute {
-    return {
-        path: `/authoring/definition-draft-sets/${encodeURIComponent(draftSetId)}/preview-task-compose`,
+        path: `${definitionDraftRoute(kind, key).path}/publish`,
     };
 }
 

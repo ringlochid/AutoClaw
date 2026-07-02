@@ -57,6 +57,10 @@ STALE_DISPATCH_NEXT_STEP = (
     "Reread the current dispatch context and retry only if this node is still "
     "the current caller for an open dispatch."
 )
+NAME_COLLISION_NEXT_STEP = (
+    "Choose a different definition key, or open the existing definition in update mode "
+    "before publishing a new revision."
+)
 
 
 class RuntimeOperationError(ValueError):
@@ -183,6 +187,19 @@ def stale_dispatch_error(
         code=OperationFailureCode.STALE_DISPATCH,
         summary=summary,
         is_retryable=True,
+        suggested_next_step=suggested_next_step,
+    )
+
+
+def name_collision_error(
+    summary: str,
+    *,
+    suggested_next_step: str = NAME_COLLISION_NEXT_STEP,
+) -> RuntimeOperationError:
+    return RuntimeOperationError(
+        code=OperationFailureCode.NAME_COLLISION,
+        summary=summary,
+        is_retryable=False,
         suggested_next_step=suggested_next_step,
     )
 

@@ -3,296 +3,58 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 
-import autoclaw.definitions.authoring.service as definition_authoring_service
-import pytest
 import yaml
-from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
-from autoclaw.runtime.errors import RuntimeOperationError
-from tests.integration.public_surfaces.support import public_api_context, task_start_payload
+from tests.integration.public_surfaces.support import public_api_context
 
 
-async def test_definition_authoring_end_to_end_apply_and_start_task(
-    tmp_path: Path,
-) -> None:
+async def test_definition_authoring_updates_existing_definition_draft(tmp_path: Path) -> None:
     async with public_api_context(tmp_path) as context:
-        draft_set_id, workflow_file = await _create_workflow_editor_draft(context)
-        await _save_workflow_description_edit(
-            context,
-            draft_set_id=draft_set_id,
-            original_body=workflow_file["body"],
-            description="Revised workflow description for authoring apply coverage.",
-        )
-        await _assert_workflow_draft_validates_and_previews(context, draft_set_id)
-        started_task_id = await _apply_workflow_draft_and_start_task(context, draft_set_id)
-        await _assert_started_task_readable(context, started_task_id=started_task_id)
-        await _assert_applied_draft_reopens_and_deletes(context, draft_set_id)
-
-
-async def test_definition_authoring_reset_and_rematerialize_current_handle_staleness(
-    tmp_path: Path,
-) -> None:
-    async with public_api_context(tmp_path) as context:
-        created = await context.client.post(
-            "/authoring/definition-draft-sets",
+        opened = await context.client.get(
+            "/authoring/definitions/workflow/minimal-implement-change/draft",
             headers=context.operator_headers,
-            json={"materialize": [{"kind": "role", "key": "engineer"}]},
         )
-        assert created.status_code == 200
-        draft_set = created.json()["draft_set"]
-        draft_set_id = draft_set["draft_set_id"]
-        role_file = draft_set["files"][0]
-        original_body = cast(str, role_file["body"])
-        original_revision_no = role_file["based_on"]["revision_no"]
+        assert opened.status_code == 200
+        opened_draft = opened.json()["draft"]
+        assert opened_draft["is_saved"] is False
+        assert opened_draft["mode"] == "update"
+        assert opened_draft["status"] == "clean"
 
-        edited_body = _replace_role_description(
-            original_body,
-            "Locally edited engineer role description.",
+        edited_body = _replace_description(
+            cast(str, opened_draft["body"]),
+            "Revised workflow description from a flat draft.",
         )
         saved = await context.client.put(
-            f"/authoring/definition-draft-sets/{draft_set_id}/files/role/engineer",
+            "/authoring/definitions/workflow/minimal-implement-change/draft",
             headers=context.operator_headers,
             json={"body": edited_body, "body_format": "yaml"},
         )
         assert saved.status_code == 200
-        assert saved.json()["draft_set"]["files"][0]["status"] == "modified"
-
-        reset = await context.client.post(
-            f"/authoring/definition-draft-sets/{draft_set_id}/files/role/engineer/reset",
-            headers=context.operator_headers,
-            json={"discard_local_changes": True},
-        )
-        assert reset.status_code == 200
-        reset_file = reset.json()["draft_set"]["files"][0]
-        assert reset_file["status"] == "clean"
-        assert reset_file["body"] == original_body
-
-        uploaded = await context.client.post(
-            "/definitions",
-            headers=context.operator_headers,
-            json={
-                "kind": "role",
-                "content": {
-                    **cast(dict[str, Any], role_file["normalized_content"]),
-                    "description": "Registry advanced engineer role baseline.",
-                },
-            },
-        )
-        assert uploaded.status_code == 201
-
-        stale = await context.client.get(
-            f"/authoring/definition-draft-sets/{draft_set_id}",
-            headers=context.operator_headers,
-        )
-        assert stale.status_code == 200
-        stale_file = stale.json()["draft_set"]["files"][0]
-        assert stale.json()["draft_set"]["state"] == "stale"
-        assert stale_file["status"] == "stale"
-
-        stale_validation = await context.client.post(
-            f"/authoring/definition-draft-sets/{draft_set_id}/validate",
-            headers=context.operator_headers,
-        )
-        assert stale_validation.status_code == 200
-        assert stale_validation.json()["status"] == "stale"
-        assert any(error["kind"] == "stale" for error in stale_validation.json()["errors"])
-
-        rematerialized = await context.client.post(
-            f"/authoring/definition-draft-sets/{draft_set_id}/files/role/engineer/rematerialize-current",
-            headers=context.operator_headers,
-            json={"discard_local_changes": True},
-        )
-        assert rematerialized.status_code == 200
-        rematerialized_file = rematerialized.json()["draft_set"]["files"][0]
-        assert rematerialized.json()["draft_set"]["state"] == "open"
-        assert rematerialized_file["status"] == "clean"
-        assert (
-            rematerialized_file["normalized_content"]["description"]
-            == "Registry advanced engineer role baseline."
-        )
-        assert rematerialized_file["based_on"]["revision_no"] == original_revision_no + 1
-
-
-async def test_definition_authoring_create_rolls_back_partial_materialization_failure(
-    tmp_path: Path,
-) -> None:
-    async with public_api_context(tmp_path) as context:
-        created = await context.client.post(
-            "/authoring/definition-draft-sets",
-            headers=context.operator_headers,
-            json={
-                "title": "Should not leave a ghost draft set",
-                "materialize": [
-                    {"kind": "workflow", "key": "minimal-implement-change"},
-                    {"kind": "workflow", "key": "missing-workflow"},
-                ],
-                "preview_task_compose": yaml.safe_dump(
-                    task_start_payload("minimal-implement-change").model_dump(mode="json"),
-                    sort_keys=False,
-                ),
-            },
-        )
-        assert created.status_code == 404
-        assert created.json()["detail"]["code"] == "missing_resource"
+        saved_draft = saved.json()["draft"]
+        assert saved_draft["is_saved"] is True
+        assert saved_draft["status"] == "modified"
 
         listed = await context.client.get(
-            "/authoring/definition-draft-sets",
+            "/authoring/definition-drafts",
             headers=context.operator_headers,
         )
         assert listed.status_code == 200
-        assert listed.json()["items"] == []
-
-        drafts_root = context.data_dir / "drafts" / "definitions"
-        assert not drafts_root.exists() or list(drafts_root.iterdir()) == []
-
-
-async def test_definition_authoring_materialize_rolls_back_partial_file_writes_on_failure(
-    tmp_path: Path,
-) -> None:
-    async with public_api_context(tmp_path) as context:
-        created = await context.client.post(
-            "/authoring/definition-draft-sets",
-            headers=context.operator_headers,
-            json={"title": "Existing draft set"},
-        )
-        assert created.status_code == 200
-        draft_set_id = created.json()["draft_set"]["draft_set_id"]
-
-        materialized = await context.client.post(
-            f"/authoring/definition-draft-sets/{draft_set_id}/materialize",
-            headers=context.operator_headers,
-            json={
-                "definitions": [
-                    {"kind": "workflow", "key": "minimal-implement-change"},
-                    {"kind": "workflow", "key": "missing-workflow"},
-                ]
-            },
-        )
-        assert materialized.status_code == 404
-        assert materialized.json()["detail"]["code"] == "missing_resource"
-
-        detail = await context.client.get(
-            f"/authoring/definition-draft-sets/{draft_set_id}",
-            headers=context.operator_headers,
-        )
-        assert detail.status_code == 200
-        assert detail.json()["draft_set"]["files"] == []
-
-        draft_set_root = context.data_dir / "drafts" / "definitions" / draft_set_id
-        assert not (draft_set_root / "workflows" / "minimal-implement-change.yaml").exists()
-        assert not (
-            draft_set_root / "_normalized" / "workflows" / "minimal-implement-change.json"
-        ).exists()
-
-
-async def test_definition_authoring_apply_allows_invalid_saved_preview_without_task_start(
-    tmp_path: Path,
-) -> None:
-    async with public_api_context(tmp_path) as context:
-        created = await context.client.post(
-            "/authoring/definition-draft-sets",
-            headers=context.operator_headers,
-            json={
-                "materialize": [{"kind": "workflow", "key": "minimal-implement-change"}],
-                "preview_task_compose": "not: [valid",
-            },
-        )
-        assert created.status_code == 200
-        draft_set_id = created.json()["draft_set"]["draft_set_id"]
+        assert listed.json()["items"][0]["key"] == "minimal-implement-change"
 
         validated = await context.client.post(
-            f"/authoring/definition-draft-sets/{draft_set_id}/validate",
+            "/authoring/definitions/workflow/minimal-implement-change/draft/validate",
             headers=context.operator_headers,
         )
         assert validated.status_code == 200
         assert validated.json()["status"] == "valid"
-        assert validated.json()["errors"] == []
-        assert len(validated.json()["warnings"]) == 1
-        warning = validated.json()["warnings"][0]
-        assert warning["code"] == "preview_task_compose_invalid"
-        assert warning["path"] == "task-compose.preview.yaml"
-        assert warning["kind"] == "preview"
-        assert "invalid YAML:" in warning["message"]
 
-        applied = await context.client.post(
-            f"/authoring/definition-draft-sets/{draft_set_id}/apply",
+        published = await context.client.post(
+            "/authoring/definitions/workflow/minimal-implement-change/draft/publish",
             headers=context.operator_headers,
-            json={"should_start_task_after_apply": False},
         )
-        assert applied.status_code == 200
-        applied_json = applied.json()
-        assert applied_json["status"] == "applied"
-        assert applied_json["task_start_status"] == "not_requested"
-        assert applied_json["started_task_id"] is None
-        assert applied_json["task_start_failure"] is None
-        assert applied_json["validation"]["status"] == "valid"
-        assert applied_json["validation"]["errors"] == []
-        assert applied_json["validation"]["warnings"][0]["code"] == "preview_task_compose_invalid"
-
-
-async def test_definition_authoring_apply_reports_task_start_failure_after_successful_publish(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    async with public_api_context(tmp_path) as context:
-        created = await context.client.post(
-            "/authoring/definition-draft-sets",
-            headers=context.operator_headers,
-            json={
-                "title": "Workflow editor draft",
-                "materialize": [{"kind": "workflow", "key": "minimal-implement-change"}],
-                "preview_task_compose": yaml.safe_dump(
-                    task_start_payload("minimal-implement-change").model_dump(mode="json"),
-                    sort_keys=False,
-                ),
-            },
-        )
-        assert created.status_code == 200
-        created_json = created.json()["draft_set"]
-        draft_set_id = created_json["draft_set_id"]
-        workflow_file = created_json["files"][0]
-
-        edited_body = _replace_workflow_description(
-            workflow_file["body"],
-            "Published even when the follow-on task start fails.",
-        )
-        saved = await context.client.put(
-            f"/authoring/definition-draft-sets/{draft_set_id}/files/workflow/minimal-implement-change",
-            headers=context.operator_headers,
-            json={"body": edited_body, "body_format": "yaml"},
-        )
-        assert saved.status_code == 200
-
-        async def fail_task_start(_request: object) -> object:
-            raise RuntimeOperationError(
-                code=OperationFailureCode.INVALID_REQUEST_SHAPE,
-                summary="simulated post-apply task start failure",
-                is_retryable=False,
-                suggested_next_step="Repair the saved preview task-start body before retrying.",
-            )
-
-        monkeypatch.setattr(
-            definition_authoring_service,
-            "start_task_from_definition",
-            fail_task_start,
-        )
-
-        applied = await context.client.post(
-            f"/authoring/definition-draft-sets/{draft_set_id}/apply",
-            headers=context.operator_headers,
-            json={"should_start_task_after_apply": True},
-        )
-        assert applied.status_code == 200
-        applied_json = applied.json()
-        assert applied_json["status"] == "applied"
-        assert applied_json["published_revisions"]
-        assert applied_json["started_task_id"] is None
-        assert applied_json["task_start_status"] == "failed"
-        assert applied_json["task_start_failure"] == {
-            "code": "invalid_request_shape",
-            "summary": "simulated post-apply task start failure",
-            "is_retryable": False,
-            "suggested_next_step": "Repair the saved preview task-start body before retrying.",
-        }
+        assert published.status_code == 200
+        published_json = published.json()
+        assert published_json["status"] == "published"
+        assert published_json["published_revision"]["kind"] == "workflow"
 
         detail = await context.client.get(
             "/definitions/workflow/minimal-implement-change",
@@ -301,251 +63,235 @@ async def test_definition_authoring_apply_reports_task_start_failure_after_succe
         assert detail.status_code == 200
         assert (
             detail.json()["content"]["description"]
-            == "Published even when the follow-on task start fails."
+            == "Revised workflow description from a flat draft."
         )
 
-        reopened = await context.client.get(
-            f"/authoring/definition-draft-sets/{draft_set_id}",
+        listed_after_publish = await context.client.get(
+            "/authoring/definition-drafts",
             headers=context.operator_headers,
         )
-        assert reopened.status_code == 200
-        reopened_json = reopened.json()["draft_set"]
-        assert reopened_json["state"] == "applied"
-        assert reopened_json["files"][0]["status"] == "clean"
+        assert listed_after_publish.status_code == 200
+        assert listed_after_publish.json()["items"] == []
 
 
-async def test_definition_authoring_local_changes_reopen_applied_draft_set(
+async def test_definition_authoring_create_rejects_existing_name(tmp_path: Path) -> None:
+    async with public_api_context(tmp_path) as context:
+        created = await context.client.post(
+            "/authoring/definition-drafts",
+            headers=context.operator_headers,
+            json={
+                "kind": "role",
+                "key": "engineer",
+                "mode": "create",
+                "body": _role_body("engineer", "Duplicate engineer role draft."),
+                "body_format": "yaml",
+            },
+        )
+        assert created.status_code == 409
+        assert created.json()["detail"]["code"] == "name_collision"
+
+
+async def test_definition_authoring_creates_new_definition_and_blocks_duplicate_draft(
     tmp_path: Path,
 ) -> None:
     async with public_api_context(tmp_path) as context:
-        draft_set_id, original_body = await _create_applied_workflow_draft(context)
-        await _reopen_applied_draft_with_preview_edit(context, draft_set_id)
-        await _reapply_workflow_draft_without_task_start(context, draft_set_id)
-        saved_workflow_file = await _save_workflow_description_edit(
-            context,
-            draft_set_id=draft_set_id,
-            original_body=original_body,
-            description="Applied draft reopened after a local workflow edit.",
-        )
-        await _upload_workflow_baseline_before_rematerialize(context, saved_workflow_file)
-        await _assert_workflow_rematerializes_current(context, draft_set_id)
-
-
-async def _create_workflow_editor_draft(context: Any) -> tuple[str, dict[str, Any]]:
-    listed = await context.client.get(
-        "/authoring/definition-draft-sets",
-        headers=context.operator_headers,
-    )
-    assert listed.status_code == 200
-    assert listed.json()["items"] == []
-
-    created = await context.client.post(
-        "/authoring/definition-draft-sets",
-        headers=context.operator_headers,
-        json={
-            "title": "Workflow editor draft",
-            "materialize": [{"kind": "workflow", "key": "minimal-implement-change"}],
-            "preview_task_compose": _minimal_workflow_task_compose_body(),
-        },
-    )
-    assert created.status_code == 200
-    created_json = created.json()["draft_set"]
-    workflow_file = created_json["files"][0]
-    assert workflow_file["body_format"] == "yaml"
-    assert workflow_file["status"] == "clean"
-    assert workflow_file["body"]
-    assert workflow_file["normalized_content"]["id"] == "minimal-implement-change"
-    assert workflow_file["baseline_body"] == workflow_file["body"]
-    assert created_json["preview_task_compose_path"] == "task-compose.preview.yaml"
-    assert "minimal-implement-change" in created_json["preview_task_compose_body"]
-    return created_json["draft_set_id"], workflow_file
-
-
-async def _save_workflow_description_edit(
-    context: Any,
-    *,
-    draft_set_id: str,
-    original_body: str,
-    description: str,
-) -> dict[str, Any]:
-    edited_body = _replace_workflow_description(original_body, description)
-    saved = await context.client.put(
-        f"/authoring/definition-draft-sets/{draft_set_id}/files/workflow/minimal-implement-change",
-        headers=context.operator_headers,
-        json={"body": edited_body, "body_format": "yaml"},
-    )
-    assert saved.status_code == 200
-    saved_workflow_file = saved.json()["draft_set"]["files"][0]
-    assert saved.json()["draft_set"]["state"] == "open"
-    assert saved_workflow_file["status"] == "modified"
-    assert saved_workflow_file["body"] == edited_body
-    assert saved_workflow_file["normalized_content"]["description"] == description
-    return cast(dict[str, Any], saved_workflow_file)
-
-
-async def _assert_workflow_draft_validates_and_previews(
-    context: Any,
-    draft_set_id: str,
-) -> None:
-    validated = await context.client.post(
-        f"/authoring/definition-draft-sets/{draft_set_id}/validate",
-        headers=context.operator_headers,
-    )
-    assert validated.status_code == 200
-    assert validated.json()["status"] == "valid"
-    assert validated.json()["errors"] == []
-
-    previewed = await context.client.post(
-        f"/authoring/definition-draft-sets/{draft_set_id}/preview-task-compose",
-        headers=context.operator_headers,
-        json={"body": _minimal_workflow_task_compose_body(), "body_format": "yaml"},
-    )
-    assert previewed.status_code == 200
-    assert previewed.json()["status"] == "valid"
-
-
-async def _apply_workflow_draft_and_start_task(context: Any, draft_set_id: str) -> str:
-    applied = await context.client.post(
-        f"/authoring/definition-draft-sets/{draft_set_id}/apply",
-        headers=context.operator_headers,
-        json={"should_start_task_after_apply": True},
-    )
-    assert applied.status_code == 200
-    applied_json = applied.json()
-    assert applied_json["status"] == "applied"
-    assert applied_json["published_revisions"]
-    assert applied_json["published_revisions"][0]["kind"] == "workflow"
-    started_task_id = applied_json["started_task_id"]
-    assert isinstance(started_task_id, str)
-    return started_task_id
-
-
-async def _assert_started_task_readable(context: Any, *, started_task_id: str) -> None:
-    runtime_read = await context.client.get(
-        f"/runtime/tasks/{started_task_id}",
-        headers=context.operator_headers,
-    )
-    assert runtime_read.status_code == 200
-
-
-async def _assert_applied_draft_reopens_and_deletes(context: Any, draft_set_id: str) -> None:
-    reopened = await context.client.get(
-        f"/authoring/definition-draft-sets/{draft_set_id}",
-        headers=context.operator_headers,
-    )
-    assert reopened.status_code == 200
-    reopened_json = reopened.json()["draft_set"]
-    assert reopened_json["state"] == "applied"
-    assert reopened_json["files"][0]["status"] == "clean"
-
-    deleted = await context.client.delete(
-        f"/authoring/definition-draft-sets/{draft_set_id}",
-        headers=context.operator_headers,
-    )
-    assert deleted.status_code == 204
-
-    missing = await context.client.get(
-        f"/authoring/definition-draft-sets/{draft_set_id}",
-        headers=context.operator_headers,
-    )
-    assert missing.status_code == 404
-    assert missing.json()["detail"]["code"] == "missing_resource"
-
-
-async def _create_applied_workflow_draft(context: Any) -> tuple[str, str]:
-    created = await context.client.post(
-        "/authoring/definition-draft-sets",
-        headers=context.operator_headers,
-        json={
-            "materialize": [{"kind": "workflow", "key": "minimal-implement-change"}],
-            "preview_task_compose": _minimal_workflow_task_compose_body(),
-        },
-    )
-    assert created.status_code == 200
-    draft_set = created.json()["draft_set"]
-    draft_set_id = draft_set["draft_set_id"]
-    original_body = cast(str, draft_set["files"][0]["body"])
-    await _reapply_workflow_draft_without_task_start(context, draft_set_id)
-    return draft_set_id, original_body
-
-
-async def _reopen_applied_draft_with_preview_edit(context: Any, draft_set_id: str) -> None:
-    previewed = await context.client.post(
-        f"/authoring/definition-draft-sets/{draft_set_id}/preview-task-compose",
-        headers=context.operator_headers,
-        json={
-            "body": _minimal_workflow_task_compose_body(
-                operator_notes="reopened after preview edit"
-            ),
-            "body_format": "yaml",
-        },
-    )
-    assert previewed.status_code == 200
-
-    preview_reopened = await context.client.get(
-        f"/authoring/definition-draft-sets/{draft_set_id}",
-        headers=context.operator_headers,
-    )
-    assert preview_reopened.status_code == 200
-    assert preview_reopened.json()["draft_set"]["state"] == "open"
-
-
-async def _reapply_workflow_draft_without_task_start(context: Any, draft_set_id: str) -> None:
-    reapplied = await context.client.post(
-        f"/authoring/definition-draft-sets/{draft_set_id}/apply",
-        headers=context.operator_headers,
-        json={"should_start_task_after_apply": False},
-    )
-    assert reapplied.status_code == 200
-    assert reapplied.json()["status"] == "applied"
-
-
-async def _upload_workflow_baseline_before_rematerialize(
-    context: Any,
-    workflow_file: dict[str, Any],
-) -> None:
-    uploaded = await context.client.post(
-        "/definitions",
-        headers=context.operator_headers,
-        json={
-            "kind": "workflow",
-            "content": {
-                **cast(dict[str, Any], workflow_file["normalized_content"]),
-                "description": "Registry advanced workflow baseline before rematerialize.",
+        body = _role_body("local-reviewer", "Review local changes before release.")
+        created = await context.client.post(
+            "/authoring/definition-drafts",
+            headers=context.operator_headers,
+            json={
+                "kind": "role",
+                "key": "local-reviewer",
+                "mode": "create",
+                "body": body,
+                "body_format": "yaml",
             },
+        )
+        assert created.status_code == 200
+        assert created.json()["draft"]["status"] == "new"
+
+        duplicate = await context.client.post(
+            "/authoring/definition-drafts",
+            headers=context.operator_headers,
+            json={
+                "kind": "role",
+                "key": "local-reviewer",
+                "mode": "create",
+                "body": body,
+                "body_format": "yaml",
+            },
+        )
+        assert duplicate.status_code == 409
+        assert duplicate.json()["detail"]["code"] == "name_collision"
+
+        published = await context.client.post(
+            "/authoring/definitions/role/local-reviewer/draft/publish",
+            headers=context.operator_headers,
+        )
+        assert published.status_code == 200
+        assert published.json()["status"] == "published"
+        assert published.json()["published_revision"]["revision_no"] == 1
+
+        detail = await context.client.get(
+            "/definitions/role/local-reviewer",
+            headers=context.operator_headers,
+        )
+        assert detail.status_code == 200
+        assert detail.json()["content"]["description"] == "Review local changes before release."
+
+
+async def test_definition_authoring_lists_body_backed_draft_without_metadata(
+    tmp_path: Path,
+) -> None:
+    async with public_api_context(tmp_path) as context:
+        body = _role_body("hello", "Draft role stored as a body-only file.")
+        draft_path = context.data_dir / "drafts" / "definitions" / "roles" / "hello.yaml"
+        draft_path.parent.mkdir(parents=True, exist_ok=True)
+        draft_path.write_text(body, encoding="utf-8")
+
+        listed = await context.client.get(
+            "/authoring/definition-drafts",
+            headers=context.operator_headers,
+        )
+        assert listed.status_code == 200
+        items = listed.json()["items"]
+        assert [item["key"] for item in items] == ["hello"]
+        assert items[0]["kind"] == "role"
+        assert items[0]["mode"] == "create"
+        assert items[0]["draft_path"] == "roles/hello.yaml"
+        assert items[0]["status"] == "new"
+
+        detail = await context.client.get(
+            "/authoring/definitions/role/hello/draft",
+            headers=context.operator_headers,
+        )
+        assert detail.status_code == 200
+        draft = detail.json()["draft"]
+        assert draft["is_saved"] is True
+        assert draft["body"] == body
+        assert draft["normalized_content"]["id"] == "hello"
+
+
+async def test_definition_authoring_publish_blocks_stale_update(tmp_path: Path) -> None:
+    async with public_api_context(tmp_path) as context:
+        created = await context.client.post(
+            "/authoring/definition-drafts",
+            headers=context.operator_headers,
+            json={"kind": "role", "key": "engineer", "mode": "update"},
+        )
+        assert created.status_code == 200
+        draft_body = cast(str, created.json()["draft"]["body"])
+
+        saved = await context.client.put(
+            "/authoring/definitions/role/engineer/draft",
+            headers=context.operator_headers,
+            json={
+                "body": _replace_description(
+                    draft_body,
+                    "Engineer role edited inside a stale flat draft.",
+                ),
+                "body_format": "yaml",
+            },
+        )
+        assert saved.status_code == 200
+
+        advanced = await context.client.post(
+            "/definitions",
+            headers=context.operator_headers,
+            json={
+                "kind": "role",
+                "content": {
+                    **cast(dict[str, Any], created.json()["draft"]["normalized_content"]),
+                    "description": "Registry advanced before flat draft publish.",
+                },
+            },
+        )
+        assert advanced.status_code == 201
+
+        validated = await context.client.post(
+            "/authoring/definitions/role/engineer/draft/validate",
+            headers=context.operator_headers,
+        )
+        assert validated.status_code == 200
+        assert validated.json()["status"] == "stale"
+
+        published = await context.client.post(
+            "/authoring/definitions/role/engineer/draft/publish",
+            headers=context.operator_headers,
+        )
+        assert published.status_code == 200
+        assert published.json()["status"] == "stale"
+        assert published.json()["published_revision"] is None
+
+        detail = await context.client.get(
+            "/definitions/role/engineer",
+            headers=context.operator_headers,
+        )
+        assert detail.status_code == 200
+        assert (
+            detail.json()["content"]["description"]
+            == "Registry advanced before flat draft publish."
+        )
+
+
+async def test_definition_authoring_publish_blocks_create_race_collision(tmp_path: Path) -> None:
+    async with public_api_context(tmp_path) as context:
+        body = _role_body("race-reviewer", "Draft created before another writer wins.")
+        created = await context.client.post(
+            "/authoring/definition-drafts",
+            headers=context.operator_headers,
+            json={
+                "kind": "role",
+                "key": "race-reviewer",
+                "mode": "create",
+                "body": body,
+                "body_format": "yaml",
+            },
+        )
+        assert created.status_code == 200
+
+        advanced = await context.client.post(
+            "/definitions",
+            headers=context.operator_headers,
+            json={
+                "kind": "role",
+                "content": {
+                    "id": "race-reviewer",
+                    "title": "race-reviewer",
+                    "description": "Another writer published first.",
+                    "instruction": "Review the assigned scope.",
+                    "allowed_node_kinds": ["worker"],
+                    "labels": ["authoring"],
+                },
+            },
+        )
+        assert advanced.status_code == 201
+
+        published = await context.client.post(
+            "/authoring/definitions/role/race-reviewer/draft/publish",
+            headers=context.operator_headers,
+        )
+        assert published.status_code == 200
+        assert published.json()["status"] == "name_collision"
+        assert published.json()["published_revision"] is None
+
+
+def _role_body(key: str, description: str) -> str:
+    return yaml.safe_dump(
+        {
+            "kind": "role",
+            "id": key,
+            "title": key,
+            "description": description,
+            "instruction": "Review the assigned scope.",
+            "allowed_node_kinds": ["worker"],
+            "labels": ["authoring"],
         },
-    )
-    assert uploaded.status_code == 201
-
-
-async def _assert_workflow_rematerializes_current(context: Any, draft_set_id: str) -> None:
-    rematerialized = await context.client.post(
-        f"/authoring/definition-draft-sets/{draft_set_id}/files/workflow/minimal-implement-change/rematerialize-current",
-        headers=context.operator_headers,
-        json={"discard_local_changes": True},
-    )
-    assert rematerialized.status_code == 200
-    rematerialized_json = rematerialized.json()["draft_set"]
-    assert rematerialized_json["state"] == "open"
-    assert rematerialized_json["files"][0]["status"] == "clean"
-    assert (
-        rematerialized_json["files"][0]["normalized_content"]["description"]
-        == "Registry advanced workflow baseline before rematerialize."
+        sort_keys=False,
     )
 
 
-def _minimal_workflow_task_compose_body(**extra: Any) -> str:
-    payload = task_start_payload("minimal-implement-change").model_dump(mode="json") | extra
-    return yaml.safe_dump(payload, sort_keys=False)
-
-
-def _replace_workflow_description(body: str, description: str) -> str:
-    payload = cast(dict[str, Any], yaml.safe_load(body))
-    payload["description"] = description
-    return yaml.safe_dump(payload, sort_keys=False)
-
-
-def _replace_role_description(body: str, description: str) -> str:
+def _replace_description(body: str, description: str) -> str:
     payload = cast(dict[str, Any], yaml.safe_load(body))
     payload["description"] = description
     return yaml.safe_dump(payload, sort_keys=False)

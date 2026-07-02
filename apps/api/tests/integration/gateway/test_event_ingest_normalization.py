@@ -24,7 +24,6 @@ from tests.helpers.openclaw_gateway_support import gateway_server, recv_json, se
 from tests.helpers.runtime_support import runtime_bootstrap_context
 from tests.helpers.seeded_runtime_support import launch_seeded_runtime, task_compose_payload
 from tests.integration.gateway.dispatch_gateway_support import (
-    DispatchGatewaySnapshot,
     override_gateway_base_url,
     wait_for_latest_dispatch_snapshot,
 )
@@ -390,52 +389,27 @@ async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_ev
         "assistant.message",
         "run.completed",
     ]
-    task_events = await _load_provider_task_events(runtime.session_factory, task_id=task_id)
-    _assert_current_openclaw_task_events(task_events, snapshot)
+    task_event_types = await _load_task_event_types(runtime.session_factory, task_id=task_id)
+    assert "provider_event_normalized" not in task_event_types
     assert (
         snapshot.delivery_state.last_provider_signal_at
         == snapshot.provider_events[1].provider_occurred_at
     )
 
 
-async def _load_provider_task_events(
+async def _load_task_event_types(
     session_factory: async_sessionmaker[AsyncSession],
     *,
     task_id: str,
-) -> list[TaskEventModel]:
+) -> list[str]:
     async with session_factory() as session:
         return list(
             await session.scalars(
-                select(TaskEventModel)
-                .where(
-                    TaskEventModel.task_id == task_id,
-                    TaskEventModel.event_type == "provider_event_normalized",
-                )
+                select(TaskEventModel.event_type)
+                .where(TaskEventModel.task_id == task_id)
                 .order_by(TaskEventModel.event_seq.asc())
             )
         )
-
-
-def _assert_current_openclaw_task_events(
-    task_events: list[TaskEventModel],
-    snapshot: DispatchGatewaySnapshot,
-) -> None:
-    assert [event.event_source for event in task_events[:4]] == [
-        "adapter",
-        "provider",
-        "provider",
-        "provider",
-    ]
-    assert [event.payload["event_kind"] for event in task_events[:4]] == [
-        "accepted",
-        "first_data",
-        "output_delta",
-        "response_completed",
-    ]
-    assert task_events[1].payload["provider_event_name"] == "assistant.delta"
-    assert task_events[1].payload["transport_family"] == "openclaw_gateway_ws_rpc"
-    assert task_events[1].payload["gateway_run_id"] == snapshot.dispatch.gateway_run_id
-    assert task_events[1].payload["gateway_session_key"] == snapshot.dispatch.gateway_session_key
 
 
 async def _send_openclaw_tool_delta_noise_stream(connection: ServerConnection) -> None:

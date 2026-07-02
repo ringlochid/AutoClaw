@@ -34,7 +34,25 @@ test("renders Definitions browse detail, versions, focus, and accessibility at d
     await expect(definitionRow(page, ROLE_KEY)).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: ROLE_KEY })).toBeVisible();
     await expect(page.getByText("Revision 4").first()).toBeVisible();
+    const definitionRows = page.getByRole("list", { name: "Definition rows" }).getByRole("button");
+    await expect(definitionRows).toHaveCount(4);
+    await expect(page.getByText("4 roles loaded.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Load more" })).toBeVisible();
+    const listShellMetrics = await page.locator(".definition-list-shell").evaluate((element) => {
+        const shellStyle = window.getComputedStyle(element);
+        const body = element.querySelector(".definition-list-body");
+        const bodyStyle = body === null ? null : window.getComputedStyle(body);
+        return {
+            bodyOverflowY: bodyStyle?.overflowY ?? null,
+            maxHeight: shellStyle.maxHeight,
+        };
+    });
+    expect(listShellMetrics).toEqual({
+        bodyOverflowY: "auto",
+        maxHeight: expect.not.stringMatching(/^none$/),
+    });
     await expectNoDocumentOverflow(page);
+    await expectDocumentOwnsVerticalOverflow(page);
 
     mkdirSync(DEFINITIONS_SCREENSHOT_DIR, { recursive: true });
     await page.evaluate(() => {
@@ -66,8 +84,8 @@ test("renders Definitions browse detail, versions, focus, and accessibility at d
     await expect(page.getByRole("link", { name: "Create/update draft" })).toHaveCount(0);
     const editDraftLink = page.getByRole("link", { name: "Edit in draft" });
     const editDraftHref = await editDraftLink.getAttribute("href");
-    expect(editDraftHref).toContain("materialize_kind=workflow");
-    expect(editDraftHref).toContain("materialize_key=maximal-parent-first-release");
+    expect(editDraftHref).toContain("kind=workflow");
+    expect(editDraftHref).toContain("key=maximal-parent-first-release");
 
     const revisionButton = page.getByRole("button", { name: "Revision 5" });
     await revisionButton.click();
@@ -142,13 +160,12 @@ async function mockDefinitions(page: Page): Promise<void> {
         }
 
         if (path === "/definitions/roles") {
+            const roleRowsForPage = createOverflowRoleDefinitionRows();
             const roleRows =
                 requestUrl.searchParams.get("allowed_node_kind") === "worker"
-                    ? createRoleDefinitionRows().filter((row) =>
-                          row.allowed_node_kinds?.includes("worker"),
-                      )
-                    : createRoleDefinitionRows();
-            await fulfillJson(route, createDefinitionSummaryList("role", roleRows, null));
+                    ? roleRowsForPage.filter((row) => row.allowed_node_kinds?.includes("worker"))
+                    : roleRowsForPage;
+            await fulfillJson(route, definitionPage("role", roleRows, requestUrl));
             return;
         }
 
@@ -175,6 +192,51 @@ async function mockDefinitions(page: Page): Promise<void> {
     });
 }
 
+function createOverflowRoleDefinitionRows(): readonly components["schemas"]["DefinitionSummaryRead"][] {
+    return [
+        ...createRoleDefinitionRows(),
+        {
+            allowed_node_kinds: ["worker"],
+            applies_to: null,
+            budget_spec: null,
+            current_revision_no: 2,
+            description: "Ordinary bounded release worker.",
+            key: "release_operator",
+            labels: ["authoring"],
+            title: "release_operator",
+            updated_at: "2026-06-05T18:54:00Z",
+        },
+        {
+            allowed_node_kinds: ["worker"],
+            applies_to: null,
+            budget_spec: null,
+            current_revision_no: 1,
+            description: "Worker for one bounded product review.",
+            key: "product_reviewer",
+            labels: ["authoring"],
+            title: "product_reviewer",
+            updated_at: "2026-06-04T18:54:00Z",
+        },
+    ];
+}
+
+function definitionPage(
+    kind: components["schemas"]["DefinitionKind"],
+    rows: readonly components["schemas"]["DefinitionSummaryRead"][],
+    requestUrl: URL,
+): components["schemas"]["DefinitionSummaryListResponse"] {
+    const limit = Number(requestUrl.searchParams.get("limit"));
+    const pageLimit = Number.isFinite(limit) && limit > 0 ? limit : rows.length;
+    const cursor = Number(requestUrl.searchParams.get("cursor") ?? "0");
+    const offset = Number.isInteger(cursor) && cursor >= 0 ? cursor : 0;
+    const selectedRows = rows.slice(offset, offset + pageLimit + 1);
+    return createDefinitionSummaryList(
+        kind,
+        selectedRows.slice(0, pageLimit),
+        selectedRows.length > pageLimit ? String(offset + pageLimit) : null,
+    );
+}
+
 async function fulfillJson(route: Route, body: unknown): Promise<void> {
     await route.fulfill({
         body: JSON.stringify(body),
@@ -188,4 +250,27 @@ async function expectNoDocumentOverflow(page: Page): Promise<void> {
     );
 
     expect(overflow).toBeLessThanOrEqual(1);
+}
+
+async function expectDocumentOwnsVerticalOverflow(page: Page): Promise<void> {
+    const shellScroll = await page.evaluate(() => {
+        const shell = document.querySelector("main");
+        const rootStyle = window.getComputedStyle(document.documentElement);
+        const bodyStyle = window.getComputedStyle(document.body);
+        const shellStyle = shell === null ? null : window.getComputedStyle(shell);
+        if (shell !== null) {
+            shell.scrollTop = shell.scrollHeight;
+        }
+        return {
+            bodyOverflowY: bodyStyle.overflowY,
+            rootOverflowY: rootStyle.overflowY,
+            shellOverflowY: shellStyle?.overflowY ?? null,
+            shellScrollTop: shell === null ? 0 : shell.scrollTop,
+        };
+    });
+
+    expect(shellScroll.rootOverflowY).not.toBe("hidden");
+    expect(shellScroll.bodyOverflowY).not.toBe("hidden");
+    expect(shellScroll.shellOverflowY).toBe("visible");
+    expect(shellScroll.shellScrollTop).toBe(0);
 }

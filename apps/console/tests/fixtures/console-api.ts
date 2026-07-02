@@ -7,7 +7,7 @@ export const TEST_TASK_ID = "task-console-fixture";
 export const TEST_UPDATED_AT = "2026-06-29T14:00:00Z";
 
 export interface OperationFailureBody {
-    readonly code: components["schemas"]["OperationFailureCode"];
+    readonly code: string;
     readonly field_path?: string | null;
     readonly is_retryable: boolean;
     readonly suggested_next_step?: string | null;
@@ -15,7 +15,7 @@ export interface OperationFailureBody {
 }
 
 export interface BackendOperationFailureDetail {
-    readonly code: components["schemas"]["OperationFailureCode"];
+    readonly code: string;
     readonly field_path: string | null;
     readonly ok: false;
     readonly retryable: boolean;
@@ -85,7 +85,9 @@ function createTaskScenario(
             boundary_history: [],
             checkpoint_history: [],
             current_paths: [],
+            dependency_edges: [],
             dispatch_history: [],
+            graph_nodes: [],
             next_cursor: null,
             scope: "current",
             task_id: TEST_TASK_ID,
@@ -119,7 +121,7 @@ export function createMixedRuntimeTaskRows(): readonly components["schemas"]["Ru
             current_node_key: "boundary_check",
             status: "pending",
             task_id: "task-definition-boundaries",
-            task_summary: "Confirm draft-set apply and Task Start stay separate.",
+            task_summary: "Confirm draft publish and Task Start stay separate.",
             task_title: "Check Definition Editor boundaries",
             updated_at: "2026-06-29T13:31:00Z",
             workflow_key: "definition-authoring-suite",
@@ -276,36 +278,28 @@ function createDefinitionScenario(): Pick<
 
 function createDraftScenario(): Pick<
     ConsoleMockScenario,
-    "draftApply" | "draftDetail" | "draftList" | "draftPreview" | "draftValidation"
+    "draftDetail" | "draftList" | "draftPublish" | "draftValidation"
 > {
-    const draftDetail = createDraftSetDetail();
+    const draftDetail = createDraftDetail();
     const draftValidation = createDraftValidation();
     return {
-        draftApply: {
-            draft_set_id: "draft-set-001",
-            published_revisions: [
-                {
-                    content_hash: "sha256:published",
-                    key: "frontend_engineer",
-                    kind: "role",
-                    revision_no: 3,
-                },
-            ],
-            started_task_id: null,
-            status: "applied",
-            task_start_failure: null,
-            task_start_status: "not_requested",
-            validation: draftValidation,
-        },
         draftDetail: {
-            draft_set: draftDetail,
+            draft: draftDetail,
         },
         draftList: {
-            items: [createDraftSetSummary()],
+            items: [createDraftSummary()],
             next_cursor: null,
         },
-        draftPreview: {
-            status: "valid",
+        draftPublish: {
+            key: "frontend_engineer",
+            kind: "role",
+            published_revision: {
+                content_hash: "sha256:published",
+                key: "frontend_engineer",
+                kind: "role",
+                revision_no: 3,
+            },
+            status: "published",
             validation: draftValidation,
         },
         draftValidation,
@@ -555,42 +549,48 @@ export function createDefinitionVersions(): components["schemas"]["DefinitionRev
     };
 }
 
-export function createDraftSetSummary(): components["schemas"]["DefinitionDraftSetSummary"] {
+export function createDraftSummary(): components["schemas"]["DefinitionDraftSummary"] {
     return {
-        created_at: TEST_UPDATED_AT,
-        draft_set_id: "draft-set-001",
-        files: [createDraftFileSummary()],
-        preview_task_compose_path: null,
-        state: "open",
-        title: "Console fixture draft set",
+        based_on: {
+            content_hash: "sha256:baseline",
+            revision_no: 2,
+            source_path: null,
+        },
+        body_format: "yaml",
+        content_hash: "sha256:draft",
+        draft_path: "drafts/definitions/roles/frontend_engineer.yaml",
+        key: "frontend_engineer",
+        kind: "role",
+        mode: "update",
+        normalized_path: "drafts/definitions/_normalized/roles/frontend_engineer.json",
+        status: "modified",
         updated_at: TEST_UPDATED_AT,
     };
 }
 
-export function createDraftSetDetail(): components["schemas"]["DefinitionDraftSetDetail"] {
+export function createDraftDetail(): components["schemas"]["DefinitionDraftDetail"] {
     return {
-        created_at: TEST_UPDATED_AT,
-        draft_set_id: "draft-set-001",
-        files: [createDraftFileDetail()],
-        preview_task_compose_body: null,
-        preview_task_compose_path: null,
-        state: "open",
-        title: "Console fixture draft set",
-        updated_at: TEST_UPDATED_AT,
+        ...createDraftSummary(),
+        baseline_body: "id: frontend_engineer\n",
+        baseline_normalized_content: null,
+        body: "id: frontend_engineer\ndescription: Frontend engineer\n",
+        is_saved: true,
+        normalized_content: null,
     };
 }
 
 export function createDraftValidation(): components["schemas"]["DefinitionDraftValidationResponse"] {
     return {
-        draft_set_id: "draft-set-001",
         errors: [],
+        key: "frontend_engineer",
+        kind: "role",
         status: "valid",
         warnings: [
             {
                 code: "review_recommended",
-                kind: "preview",
-                message: "Review generated task-compose before launch.",
-                path: "workflow.root",
+                kind: "schema",
+                message: "Review saved definition draft before publish.",
+                path: "role.frontend_engineer",
             },
         ],
     };
@@ -719,32 +719,5 @@ function createDefinitionContent(
         instruction: "Implement the assigned scope.",
         labels: ["console"],
         title: "Role Fixture",
-    };
-}
-
-function createDraftFileSummary(): components["schemas"]["DefinitionDraftFileSummary"] {
-    return {
-        based_on: {
-            content_hash: "sha256:baseline",
-            revision_no: 2,
-            source_path: null,
-        },
-        body_format: "yaml",
-        content_hash: "sha256:draft",
-        draft_path: "drafts/roles/frontend_engineer.yaml",
-        key: "frontend_engineer",
-        kind: "role",
-        normalized_path: "drafts/roles/frontend_engineer.json",
-        status: "modified",
-    };
-}
-
-function createDraftFileDetail(): components["schemas"]["DefinitionDraftFileDetail"] {
-    return {
-        ...createDraftFileSummary(),
-        baseline_body: "id: frontend_engineer\n",
-        baseline_normalized_content: null,
-        body: "id: frontend_engineer\ndescription: Frontend engineer\n",
-        normalized_content: null,
     };
 }

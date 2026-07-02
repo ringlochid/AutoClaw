@@ -88,6 +88,8 @@ Rules:
 - root node appears at the top
 - parent and worker descendants appear beneath their committed parent
 - staged relationships may appear as dashed or otherwise visually secondary edges
+- producer/consumer dependency rows are inspector/read-model facts and must not render in the main graph canvas by default
+- boundary transitions, previous/next trace fields, and dispatch chronology must stay out of the graph canvas
 - the active lineage should be visually emphasized
 - done or quiet subtrees may collapse, but the current active path must remain obvious
 - node cards should stay compact and should not duplicate rich inspector detail
@@ -236,10 +238,10 @@ Rules:
 
 - drafts are not runtime truth
 - the UI must show saved draft state separately from stored current truth
-- saved draft state comes from backend-owned draft-set storage under AutoClaw's configured data dir rather than browser-owned truth
-- one draft set may expose YAML authored bodies plus backend-owned normalized JSON shadows for exact compare or stale inspection without making JSON a second editable truth
+- saved draft state comes from backend-owned flat draft storage under AutoClaw's configured data dir rather than browser-owned truth
+- one flat draft may expose a YAML authored body plus backend-owned normalized JSON shadow for exact compare or stale inspection without making JSON a second editable truth
 - local draft reset and current-stored-revision replacement stay authoring-local; neither action publishes or becomes runtime truth
-- the exact draft-set, validation, apply, and stale semantics belong to the definition authoring API and draft-set contract rather than this page
+- the exact flat draft, validation, publish, collision, and stale semantics belong to the definition authoring API and flat draft contract rather than this page
 
 ## Non-goals
 
@@ -256,6 +258,6 @@ This page does not define:
 - [Human request and approval contract](human-request-and-approval-contract.md)
 - [Command run and long-running boundary](../architecture/command-run-and-long-running-boundary.md)
 - [Definition authoring workbench](definition-authoring-workbench.md)
-- [Definition authoring API and draft-set contract](definition-authoring-api-and-draft-set-contract.md)
+- [Definition authoring API and flat draft contract](definition-authoring-api-and-flat-draft-contract.md)
 - [Provider preference and runtime config](provider-selection-and-runtime-config.md)
 - [Prompt system v2](../prompt-layer/prompt-system-v2.md)

@@ -16,10 +16,9 @@ import {
     createRoleDefinitionRows,
 } from "../../tests/fixtures/definitions";
 import {
-    createDefinitionEditorApply,
-    createDefinitionEditorDraftSetList,
-    createDefinitionEditorDraftSetResponse,
-    createDefinitionEditorPreview,
+    createDefinitionEditorDraftList,
+    createDefinitionEditorDraftResponse,
+    createDefinitionEditorPublish,
     createDefinitionEditorValidation,
 } from "../../tests/fixtures/definition-editor";
 import {
@@ -85,7 +84,7 @@ function createDevMockScenario() {
     ];
     const definitionDetails = createDefinitionDetailMap();
     const definitionVersionsByDefinition = createDefinitionVersionsMap();
-    const definitionEditorDraftDetail = createDefinitionEditorDraftSetResponse();
+    const definitionEditorDraftDetail = createDefinitionEditorDraftResponse();
     const scenario = createConsoleMockScenario({
         commandRunList: taskDetailScenario.commandRunList,
         humanRequestList,
@@ -124,10 +123,9 @@ function createDevMockScenario() {
                 SECOND_TASK_START_WORKFLOW_KEY,
             ),
         },
-        draftApply: createDefinitionEditorApply(),
         draftDetail: definitionEditorDraftDetail,
-        draftList: createDefinitionEditorDraftSetList(definitionEditorDraftDetail.draft_set),
-        draftPreview: createDefinitionEditorPreview(),
+        draftList: createDefinitionEditorDraftList(definitionEditorDraftDetail.draft),
+        draftPublish: createDefinitionEditorPublish(),
         draftValidation: createDefinitionEditorValidation(),
     };
 }

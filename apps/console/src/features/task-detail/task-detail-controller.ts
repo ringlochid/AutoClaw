@@ -313,18 +313,9 @@ function taskDetailReducer(state: TaskDetailState, action: TaskDetailAction): Ta
                 streamResetStaleCursor: null,
             };
         case "live-event":
-            return {
-                ...state,
-                events: mergeTaskEvents(state.events, [action.event]),
-                streamError: null,
-                streamStatus: "live",
-            };
+            return applyLiveEvents(state, [action.event], "live");
         case "live-events":
-            return {
-                ...state,
-                events: mergeTaskEvents(state.events, action.events),
-                streamError: null,
-            };
+            return applyLiveEvents(state, action.events, state.streamStatus);
         case "stream-status":
             return {
                 ...state,
@@ -429,6 +420,34 @@ function applyActionSuccess(
             task,
         },
     };
+}
+
+function applyLiveEvents(
+    state: TaskDetailState,
+    events: readonly components["schemas"]["TaskEventRecord"][],
+    streamStatus: TaskEventStreamStatus,
+): TaskDetailState {
+    const focusEvent = latestNodeEvent(events);
+    return {
+        ...state,
+        events: mergeTaskEvents(state.events, events),
+        selectedEventId: focusEvent?.event_id ?? state.selectedEventId,
+        selectedNodeKey: focusEvent?.node_key ?? state.selectedNodeKey,
+        streamError: null,
+        streamStatus,
+    };
+}
+
+function latestNodeEvent(
+    events: readonly components["schemas"]["TaskEventRecord"][],
+): components["schemas"]["TaskEventRecord"] | null {
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+        const event = events[index];
+        if (event.node_key !== null) {
+            return event;
+        }
+    }
+    return null;
 }
 
 function applyNodeSelection(state: TaskDetailState, nodeKey: string): TaskDetailState {

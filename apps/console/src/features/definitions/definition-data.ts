@@ -8,7 +8,7 @@ import {
 } from "../../api/routes";
 import type { DefinitionKind, DefinitionListKind, DefinitionListSort } from "./definition-model";
 
-const DEFINITION_PAGE_SIZE = 25;
+const DEFINITION_PAGE_SIZE = 4;
 const VERSION_PAGE_SIZE = 10;
 
 export type DefinitionListResponse = components["schemas"]["DefinitionSummaryListResponse"];

@@ -1,11 +1,11 @@
 ---
 name: "autoclaw-definition-author"
-description: "Write, revise, review, or explain AutoClaw roles, policies, workflows, task-compose files, and definition draft sets."
+description: "Write, revise, review, or explain AutoClaw roles, policies, workflows, task-compose files, and definition drafts."
 ---
 
 # autoclaw-definition-author
 
-Use this skill when the user asks you to write, revise, review, or explain AutoClaw roles, policies, workflows, task-compose files, or definition draft sets.
+Use this skill when the user asks you to write, revise, review, or explain AutoClaw roles, policies, workflows, task-compose files, or definition drafts.
 
 This is an AutoClaw usage skill. It is not for developing AutoClaw internals.
 
@@ -114,7 +114,7 @@ Prefer `ensure_task_default` for isolated first runs. Use `ensure_host_path` or 
 
 Controller registry truth wins after seed/upload/apply.
 
-Operator MCP registry tools read current truth. `upload_definition` and `start_task` are writes and need authorization. Operator MCP draft tools inspect saved draft sets only.
+Operator MCP registry tools read current truth. `upload_definition` and `start_task` are writes and need authorization. Definition draft authoring stays on the trusted HTTP `/authoring` API.
 
 ## Related Skills
 

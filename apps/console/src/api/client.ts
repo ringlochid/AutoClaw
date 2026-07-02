@@ -1,7 +1,5 @@
 import { getConsoleConfig, type ConsoleConfig } from "../app/config";
 
-import type { components } from "./generated/openapi";
-
 export type QueryPrimitive = string | number | boolean;
 export type QueryValue = QueryPrimitive | null | undefined | readonly QueryPrimitive[];
 export type QueryParams = Readonly<Record<string, QueryValue>>;
@@ -372,4 +370,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export type OperationFailureCode = components["schemas"]["OperationFailureCode"];
+export type OperationFailureCode = string;

@@ -63,11 +63,11 @@ export interface DefinitionSummary {
     readonly updatedAt: string;
 }
 
-export interface DraftSetSummary {
-    readonly draftSetId: string;
-    readonly fileCount: number;
-    readonly state: components["schemas"]["DefinitionDraftSetState"];
-    readonly title: string | null;
+export interface DefinitionDraftSummary {
+    readonly key: string;
+    readonly kind: components["schemas"]["DefinitionKind"];
+    readonly mode: components["schemas"]["DefinitionDraftMode"];
+    readonly status: components["schemas"]["DefinitionDraftStatus"];
     readonly updatedAt: string;
 }
 
@@ -154,15 +154,15 @@ export function mapDefinitionSummary(
     };
 }
 
-export function mapDraftSetSummary(
-    draftSet: components["schemas"]["DefinitionDraftSetSummary"],
-): DraftSetSummary {
+export function mapDefinitionDraftSummary(
+    draft: components["schemas"]["DefinitionDraftSummary"],
+): DefinitionDraftSummary {
     return {
-        draftSetId: draftSet.draft_set_id,
-        fileCount: draftSet.files.length,
-        state: draftSet.state,
-        title: draftSet.title ?? null,
-        updatedAt: draftSet.updated_at,
+        key: draft.key,
+        kind: draft.kind,
+        mode: draft.mode,
+        status: draft.status,
+        updatedAt: draft.updated_at,
     };
 }
 

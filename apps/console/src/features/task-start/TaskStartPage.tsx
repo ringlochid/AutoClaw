@@ -15,7 +15,7 @@ export function TaskStartPage() {
 
     return (
         <PageFrame
-            className="!max-w-[1320px]"
+            className="lg:shrink-0"
             contentClassName="!px-0 !py-0"
             eyebrow="Authoring"
             title="Task Start"

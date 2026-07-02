@@ -21,15 +21,10 @@ import {
     controlTaskRoute,
     controlTaskSnapshotRoute,
     controlTaskTraceRoute,
-    definitionDraftFileRematerializeCurrentRoute,
-    definitionDraftFileResetRoute,
-    definitionDraftFileRoute,
-    definitionDraftSetRoute,
-    definitionDraftSetApplyRoute,
-    definitionDraftSetMaterializeRoute,
-    definitionDraftSetPreviewTaskComposeRoute,
-    definitionDraftSetValidateRoute,
-    definitionDraftSetsRoute,
+    definitionDraftPublishRoute,
+    definitionDraftRoute,
+    definitionDraftValidateRoute,
+    definitionDraftsRoute,
     definitionRoute,
     definitionsRoute,
     definitionVersionsRoute,
@@ -48,8 +43,8 @@ import {
 } from "../../src/api/sse";
 import {
     mapCommandRunRow,
+    mapDefinitionDraftSummary,
     mapDefinitionSummary,
-    mapDraftSetSummary,
     mapHumanRequestQueueItem,
     mapTaskEventItem,
     mapTaskRow,
@@ -340,89 +335,56 @@ describe("console API client foundation", () => {
             config,
             path: definitionVersionsRoute("role", "role-fixture").path,
         });
-        const draftList = await requestJson<
-            components["schemas"]["DefinitionDraftSetListResponse"]
-        >({
+        const draftList = await requestJson<components["schemas"]["DefinitionDraftListResponse"]>({
             config,
-            path: definitionDraftSetsRoute().path,
+            path: definitionDraftsRoute().path,
         });
         const draftDetail = await requestJson<
-            components["schemas"]["DefinitionDraftSetDetailResponse"]
+            components["schemas"]["DefinitionDraftDetailResponse"]
         >({
             config,
-            path: definitionDraftSetRoute("draft-set-001").path,
+            path: definitionDraftRoute("role", "frontend_engineer").path,
         });
         const draftCreate = await requestJson<
-            components["schemas"]["DefinitionDraftSetDetailResponse"]
+            components["schemas"]["DefinitionDraftDetailResponse"]
         >({
-            body: { materialize: [], preview_task_compose: null, title: "Created draft set" },
+            body: {
+                body: "kind: role\nid: frontend_engineer\n",
+                body_format: "yaml",
+                key: "frontend_engineer",
+                kind: "role",
+                mode: "create",
+            },
             config,
             method: "POST",
-            path: definitionDraftSetsRoute().path,
-        });
-        const draftMaterialize = await requestJson<
-            components["schemas"]["DefinitionDraftSetDetailResponse"]
-        >({
-            body: { definitions: [{ kind: "role", key: "frontend_engineer" }] },
-            config,
-            method: "POST",
-            path: definitionDraftSetMaterializeRoute("draft-set-001").path,
+            path: definitionDraftsRoute().path,
         });
         const draftWrite = await requestJson<
-            components["schemas"]["DefinitionDraftSetDetailResponse"]
+            components["schemas"]["DefinitionDraftDetailResponse"]
         >({
             body: { body: "id: frontend_engineer\n", body_format: "yaml" },
             config,
             method: "PUT",
-            path: definitionDraftFileRoute("draft-set-001", "role", "frontend_engineer").path,
-        });
-        const draftReset = await requestJson<
-            components["schemas"]["DefinitionDraftSetDetailResponse"]
-        >({
-            body: { discard_local_changes: true },
-            config,
-            method: "POST",
-            path: definitionDraftFileResetRoute("draft-set-001", "role", "frontend_engineer").path,
-        });
-        const draftRematerialize = await requestJson<
-            components["schemas"]["DefinitionDraftSetDetailResponse"]
-        >({
-            body: { discard_local_changes: true },
-            config,
-            method: "POST",
-            path: definitionDraftFileRematerializeCurrentRoute(
-                "draft-set-001",
-                "role",
-                "frontend_engineer",
-            ).path,
+            path: definitionDraftRoute("role", "frontend_engineer").path,
         });
         const draftValidation = await requestJson<
             components["schemas"]["DefinitionDraftValidationResponse"]
         >({
             config,
             method: "POST",
-            path: definitionDraftSetValidateRoute("draft-set-001").path,
+            path: definitionDraftValidateRoute("role", "frontend_engineer").path,
         });
-        const draftPreview = await requestJson<
-            components["schemas"]["DefinitionDraftTaskComposePreviewResponse"]
+        const draftPublish = await requestJson<
+            components["schemas"]["DefinitionDraftPublishResponse"]
         >({
-            body: { body: "tasks: []\n", body_format: "yaml" },
             config,
             method: "POST",
-            path: definitionDraftSetPreviewTaskComposeRoute("draft-set-001").path,
+            path: definitionDraftPublishRoute("role", "frontend_engineer").path,
         });
-        const draftApply = await requestJson<components["schemas"]["DefinitionDraftApplyResponse"]>(
-            {
-                body: { should_start_task_after_apply: false },
-                config,
-                method: "POST",
-                path: definitionDraftSetApplyRoute("draft-set-001").path,
-            },
-        );
         const draftDelete = await requestJson<undefined>({
             config,
             method: "DELETE",
-            path: definitionDraftSetRoute("draft-set-001").path,
+            path: definitionDraftRoute("role", "frontend_engineer").path,
         });
         const taskStart = await requestJson<components["schemas"]["TaskStartResponse"]>({
             body: createTaskStartRequest(),
@@ -460,20 +422,18 @@ describe("console API client foundation", () => {
         ).toBe("role-fixture");
         expect(definition.revision_no).toBe(2);
         expect(versions.current_revision_no).toBe(2);
-        expect(mapDraftSetSummary(draftList.items[0] ?? scenario.draftList.items[0]).state).toBe(
-            "open",
-        );
-        expect(draftDetail.draft_set.files[0]?.status).toBe("modified");
-        expect(draftCreate.draft_set.draft_set_id).toBe("draft-set-001");
-        expect(draftMaterialize.draft_set.files[0]?.kind).toBe("role");
-        expect(draftWrite.draft_set.files[0]?.body_format).toBe("yaml");
-        expect(draftReset.draft_set.files[0]?.based_on.revision_no).toBe(2);
-        expect(draftRematerialize.draft_set.files[0]?.based_on.content_hash).toBe(
-            "sha256:baseline",
-        );
+        expect(
+            mapDefinitionDraftSummary(draftList.items[0] ?? scenario.draftList.items[0]).status,
+        ).toBe("modified");
+        expect(draftDetail.draft.status).toBe("modified");
+        expect(draftCreate.draft.mode).toBe("create");
+        expect(draftWrite.draft.body_format).toBe("yaml");
+        expect(draftWrite.draft.body).toBe("id: frontend_engineer\n");
+        expect(draftDetail.draft.based_on.content_hash).toBe("sha256:baseline");
         expect(draftValidation.status).toBe("valid");
-        expect(draftPreview.validation.warnings[0]?.kind).toBe("preview");
-        expect(draftApply.status).toBe("applied");
+        expect(draftValidation.warnings[0]?.kind).toBe("schema");
+        expect(draftPublish.status).toBe("published");
+        expect(draftPublish.published_revision?.revision_no).toBe(3);
         expect(draftDelete).toBeUndefined();
         expect(mapTaskStartResult(taskStart).flowStatus).toBe("running");
     });

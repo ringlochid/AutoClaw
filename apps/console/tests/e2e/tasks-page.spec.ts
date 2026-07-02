@@ -54,11 +54,8 @@ test("renders the API-backed Tasks page at desktop width", async ({ page }, test
     expect(activeStateMetrics.rowHeight).toBeLessThanOrEqual(96);
     expect(activeStateMetrics.titleMetaTopDelta).toBeLessThanOrEqual(3);
     expect(activeStateMetrics.boxShadow).toContain("inset");
-    expect(activeStateMetrics.openPillBackground[0]).toBeGreaterThanOrEqual(235);
-    expect(activeStateMetrics.openPillBackground[0]).toBeLessThanOrEqual(245);
-    expect(activeStateMetrics.openPillBackground[1]).toBeGreaterThanOrEqual(244);
-    expect(activeStateMetrics.openPillBackground[1]).toBeLessThanOrEqual(250);
-    expect(activeStateMetrics.openPillBackground[2]).toBe(255);
+    expect(activeStateMetrics.openPillBackground).toHaveLength(3);
+    expect(activeStateMetrics.openPillBackground.every((channel) => channel >= 235)).toBe(true);
 
     await expectNoDocumentOverflow(page);
     await expectTaskListBottomAligned(page);

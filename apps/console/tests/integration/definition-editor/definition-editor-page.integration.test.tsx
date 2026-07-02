@@ -7,28 +7,24 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import type { components } from "../../../src/api/generated/openapi";
 import { DefinitionEditorPage } from "../../../src/features/definition-editor/DefinitionEditorPage";
+import { TEST_API_BASE_URL, TEST_API_KEY } from "../../fixtures/console-api";
+import { installTestConsoleConfig } from "../../fixtures/console-config";
 import {
-    DEFINITION_EDITOR_MATERIALIZED_KEY,
     DEFINITION_EDITOR_NEW_DRAFT_KEY,
     DEFINITION_EDITOR_ROLE_KEY,
     DEFINITION_EDITOR_UPDATED_BODY,
     DEFINITION_EDITOR_WORKFLOW_KEY,
-    createCleanSavedDefinitionEditorDraftSet,
-    createDefinitionEditorApply,
+    bodyForKind,
+    createCleanDefinitionEditorDraft,
     createDefinitionEditorAuthFailure,
-    createDefinitionEditorDraftFile,
-    createDefinitionEditorDraftSetDetail,
-    createDefinitionEditorDraftSetList,
-    createDefinitionEditorDraftSetResponse,
-    createDefinitionEditorPreview,
+    createDefinitionEditorDraftDetail,
+    createDefinitionEditorDraftList,
+    createDefinitionEditorDraftResponse,
+    createDefinitionEditorPublish,
     createDefinitionEditorValidation,
-    createMaterializedDraftSet,
-    createNewDraftAddedSet,
-    createRematerializedDefinitionEditorDraftSet,
-    createResetDefinitionEditorDraftSet,
+    createNewRoleDraft,
+    createUnsavedCurrentDefinitionDraft,
 } from "../../fixtures/definition-editor";
-import { TEST_API_BASE_URL, TEST_API_KEY } from "../../fixtures/console-api";
-import { installTestConsoleConfig } from "../../fixtures/console-config";
 
 const server = setupServer();
 
@@ -54,8 +50,19 @@ afterAll(() => {
 });
 
 describe("DefinitionEditorPage", () => {
-    it("loads a draft set, preserves mode while switching files, and keeps draft/preview truth separate", async () => {
-        installDefinitionEditorHandlers();
+    it("loads one flat saved draft, saves before validate, and publishes one revision", async () => {
+        const user = userEvent.setup();
+        let savedBody = "";
+        installDefinitionEditorHandlers({
+            onWrite: async (request) => {
+                const body =
+                    (await request.json()) as components["schemas"]["DefinitionDraftWriteRequest"];
+                savedBody = body.body;
+                return createDefinitionEditorDraftResponse(
+                    createCleanDefinitionEditorDraft(body.body),
+                );
+            },
+        });
 
         renderDefinitionEditorPage();
 
@@ -63,192 +70,96 @@ describe("DefinitionEditorPage", () => {
         expect(
             await screen.findByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
         ).toBeVisible();
-        expect(screen.getAllByText("Draft set").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("workflow").length).toBeGreaterThan(0);
-        expect(screen.getAllByText("dirty").length).toBeGreaterThan(0);
-        expect(screen.getByDisplayValue(new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY))).toBeVisible();
+        expect(await screen.findByLabelText("Draft body")).toHaveValue(
+            bodyForKind("workflow", DEFINITION_EDITOR_WORKFLOW_KEY),
+        );
 
-        await userEvent.click(screen.getByRole("button", { name: "Preview" }));
-        expect(await screen.findAllByText("Draft truth")).toHaveLength(2);
-        await userEvent.click(
-            within(screen.getByLabelText("Preview provenance")).getByRole("button", {
-                name: "Stored truth",
-            }),
-        );
-        expect(screen.getByText("Captured rev 12")).toBeVisible();
-        await userEvent.click(screen.getByRole("button", { name: "Validate" }));
-        expect(await screen.findByText("Validation Valid")).toBeVisible();
-        await userEvent.click(
-            screen.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_ROLE_KEY) }),
-        );
-        expect(screen.getByText("Validation Valid")).toBeVisible();
-        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
-        expect(screen.getByDisplayValue(new RegExp(DEFINITION_EDITOR_ROLE_KEY))).toBeVisible();
+        await user.clear(screen.getByLabelText("Draft body"));
+        await user.type(screen.getByLabelText("Draft body"), DEFINITION_EDITOR_UPDATED_BODY);
+        expect(screen.getByText("local edits")).toBeVisible();
+        await user.click(screen.getByRole("button", { name: "Validate" }));
+
+        expect(savedBody).toBe(DEFINITION_EDITOR_UPDATED_BODY);
+        const validationDialog = await screen.findByRole("dialog", { name: "Validation valid" });
+        expect(within(validationDialog).getByText("No validation issues returned.")).toBeVisible();
+        await user.click(within(validationDialog).getByRole("button", { name: /^Close$/ }));
+        await waitFor(() => {
+            expect(
+                screen.queryByRole("dialog", { name: "Validation valid" }),
+            ).not.toBeInTheDocument();
+        });
+
+        await user.click(screen.getByRole("button", { name: "Publish" }));
+        const publishDialog = await screen.findByRole("dialog", { name: "Publish published" });
+        expect(
+            within(publishDialog).getByText(/Workflow definition-editor-page revision 14/),
+        ).toBeVisible();
     });
 
-    it("creates starter drafts and materializes stored definitions through authoring routes", async () => {
+    it("creates flat definition drafts and keeps name collisions in the dialog", async () => {
         const user = userEvent.setup();
-        let writtenBody = "";
         installDefinitionEditorHandlers({
-            onWrite: async (request, key) => {
+            onCreate: async (request) => {
                 const body =
-                    (await request.json()) as components["schemas"]["DefinitionDraftFileWriteRequest"];
-                writtenBody = body.body;
-                if (key === DEFINITION_EDITOR_NEW_DRAFT_KEY) {
-                    return createDefinitionEditorDraftSetResponse(
-                        createNewDraftAddedSet(body.body),
+                    (await request.json()) as components["schemas"]["DefinitionDraftCreateRequest"];
+                if (body.key === DEFINITION_EDITOR_ROLE_KEY) {
+                    return HttpResponse.json(
+                        {
+                            detail: {
+                                code: "name_collision",
+                                field_path: "key",
+                                ok: false,
+                                retryable: false,
+                                suggested_next_step: "Choose a different definition key.",
+                                summary: "A stored role already owns this key.",
+                            },
+                        },
+                        { status: 409 },
                     );
                 }
-                return createDefinitionEditorDraftSetResponse();
+                return HttpResponse.json(createDefinitionEditorDraftResponse(createNewRoleDraft()));
             },
         });
 
         renderDefinitionEditorPage();
+        await screen.findByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) });
+
+        await user.click(screen.getAllByRole("button", { name: "New draft" })[0]);
+        const dialog = await screen.findByRole("dialog", { name: "New draft" });
+        await user.type(within(dialog).getByLabelText("Key"), DEFINITION_EDITOR_ROLE_KEY);
+        await user.click(within(dialog).getByRole("button", { name: "Create draft" }));
         expect(
-            await screen.findByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
+            await within(dialog).findByText("A stored role already owns this key."),
         ).toBeVisible();
 
-        await user.click(screen.getByRole("button", { name: "New draft" }));
-        await user.type(screen.getByLabelText("Draft key"), DEFINITION_EDITOR_NEW_DRAFT_KEY);
-        await user.clear(screen.getByLabelText("Description"));
-        await user.type(screen.getByLabelText("Description"), "Review the editor page.");
-        await user.click(screen.getByRole("button", { name: "Create draft" }));
+        await user.clear(within(dialog).getByLabelText("Key"));
+        await user.type(within(dialog).getByLabelText("Key"), DEFINITION_EDITOR_NEW_DRAFT_KEY);
+        await user.click(within(dialog).getByRole("button", { name: "Create draft" }));
 
         expect(
             await screen.findByRole("button", {
                 name: new RegExp(DEFINITION_EDITOR_NEW_DRAFT_KEY),
             }),
         ).toBeVisible();
-        expect(writtenBody).toContain("allowed_node_kinds");
         expect(screen.getByDisplayValue(new RegExp(DEFINITION_EDITOR_NEW_DRAFT_KEY))).toBeVisible();
-
-        cleanup();
-        server.resetHandlers();
-        let createdDraftMaterialize:
-            components["schemas"]["DefinitionDraftSetCreateRequest"]["materialize"] | undefined;
-        installDefinitionEditorHandlers({
-            onCreateDraftSet: async (request) => {
-                const body =
-                    (await request.json()) as components["schemas"]["DefinitionDraftSetCreateRequest"];
-                createdDraftMaterialize = body.materialize;
-                return createDefinitionEditorDraftSetResponse(createMaterializedDraftSet());
-            },
-        });
-
-        renderDefinitionEditorPage(
-            `/definitions/editor?materialize_kind=workflow&materialize_key=${DEFINITION_EDITOR_MATERIALIZED_KEY}`,
-        );
-        expect(
-            await screen.findByRole("button", {
-                name: new RegExp(DEFINITION_EDITOR_MATERIALIZED_KEY),
-            }),
-        ).toBeVisible();
-        expect(createdDraftMaterialize).toEqual([
-            { key: DEFINITION_EDITOR_MATERIALIZED_KEY, kind: "workflow" },
-        ]);
     });
 
-    it("keeps duplicate draft-key failures inside the new-draft dialog", async () => {
+    it("opens a current stored definition from query params and saves it as an update draft", async () => {
         const user = userEvent.setup();
-        installDefinitionEditorHandlers();
-        server.use(
-            http.put(
-                "*/authoring/definition-draft-sets/:draftSetId/files/:kind/:key",
-                ({ params }) =>
-                    HttpResponse.json(
-                        {
-                            detail: {
-                                code: "illegal_state",
-                                retryable: false,
-                                summary: `draft set does not yet materialize current ${String(params.kind)} '${String(params.key)}'`,
-                            },
-                        },
-                        { status: 409 },
-                    ),
-            ),
-        );
-
-        renderDefinitionEditorPage();
-        expect(
-            await screen.findByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
-        ).toBeVisible();
-
-        await user.click(screen.getByRole("button", { name: "New draft" }));
-        const newDraftDialog = await screen.findByRole("dialog", { name: "New draft" });
-        const draftKeyInput = within(newDraftDialog).getByLabelText("Draft key");
-        await user.type(draftKeyInput, DEFINITION_EDITOR_ROLE_KEY);
-        await user.click(within(newDraftDialog).getByRole("button", { name: "Create draft" }));
-        expect(
-            await within(newDraftDialog).findByText(
-                "That draft key already exists in this draft set.",
-            ),
-        ).toBeVisible();
-
-        await user.clear(draftKeyInput);
-        await user.type(draftKeyInput, "stored-role");
-        await user.click(within(newDraftDialog).getByRole("button", { name: "Create draft" }));
-
-        expect(
-            await within(newDraftDialog).findByText(
-                "That key already exists in stored definitions. Use Create/update draft from Definitions to edit it here.",
-            ),
-        ).toBeVisible();
-        expect(screen.queryByText("Illegal State")).not.toBeInTheDocument();
-    });
-
-    it("saves dirty drafts, resets to captured baseline, and replaces from current stored revision separately", async () => {
-        const user = userEvent.setup();
+        const currentDraft = createUnsavedCurrentDefinitionDraft("from-definitions-link");
         installDefinitionEditorHandlers({
-            onWrite: () =>
-                Promise.resolve(
-                    createDefinitionEditorDraftSetResponse(
-                        createCleanSavedDefinitionEditorDraftSet(DEFINITION_EDITOR_UPDATED_BODY),
-                    ),
-                ),
+            detail: currentDraft,
+            list: createDefinitionEditorDraftList(createDefinitionEditorDraftDetail()),
         });
 
-        renderDefinitionEditorPage();
-        const editor = await screen.findByLabelText("Draft body");
-        expect(screen.getByRole("button", { name: "Save draft" })).toBeDisabled();
-        expect(screen.queryByText("Editable draft body")).not.toBeInTheDocument();
-        expect(
-            screen.queryByText("Reset restores the captured stored baseline."),
-        ).not.toBeInTheDocument();
+        renderDefinitionEditorPage("/definitions/editor?kind=workflow&key=from-definitions-link");
+        expect(await screen.findByDisplayValue(/from-definitions-link/)).toBeVisible();
+        expect(screen.getAllByText("Update").length).toBeGreaterThan(0);
 
-        await user.clear(editor);
-        await user.type(editor, DEFINITION_EDITOR_UPDATED_BODY);
-        expect(screen.getByText("local edits")).toBeVisible();
-        const saveButton = screen.getByRole("button", { name: "Save draft" });
-        expect(saveButton).toBeEnabled();
-
-        await user.click(saveButton);
+        await user.type(screen.getByLabelText("Draft body"), "\n# saved from link");
+        await user.click(screen.getByRole("button", { name: "Save draft" }));
         await waitFor(() => {
-            expect(screen.getByLabelText("Draft body")).toHaveValue(DEFINITION_EDITOR_UPDATED_BODY);
-        });
-        expect(screen.getAllByText("clean").length).toBeGreaterThan(0);
-        expect(screen.getByRole("button", { name: "Save draft" })).toBeDisabled();
-
-        await user.type(screen.getByLabelText("Draft body"), "\nlocal change");
-        await user.click(screen.getByRole("button", { name: "Reset draft" }));
-        expect(await screen.findByRole("dialog", { name: "Reset draft" })).toBeVisible();
-        await user.click(
-            within(screen.getByRole("dialog")).getByRole("button", { name: "Reset draft" }),
-        );
-        await waitFor(() => {
-            expect(screen.getByDisplayValue(/Captured stored baseline/)).toBeVisible();
-        });
-
-        await user.click(
-            screen.getByRole("button", { name: "Replace with current stored revision" }),
-        );
-        expect(
-            await screen.findByRole("dialog", { name: "Replace with current stored revision" }),
-        ).toBeVisible();
-        await user.click(
-            within(screen.getByRole("dialog")).getByRole("button", { name: "Replace draft" }),
-        );
-        await waitFor(() => {
-            expect(screen.getByDisplayValue(/Current stored revision body/)).toBeVisible();
+            expect(screen.queryByText("local edits")).not.toBeInTheDocument();
         });
     });
 
@@ -274,211 +185,23 @@ describe("DefinitionEditorPage", () => {
         expect(editor).toHaveValue("root:\nchild: value");
     });
 
-    it("shows validation, stale validation, preview, no-op apply, published apply, and auth failures", async () => {
-        const user = userEvent.setup();
-        let applyCount = 0;
-        installDefinitionEditorHandlers({
-            onApply: () => {
-                applyCount += 1;
-                return createDefinitionEditorApply(applyCount === 1 ? "no_op" : "published");
-            },
-            previewResponse: createDefinitionEditorPreview("invalid"),
-            validationResponse: createDefinitionEditorValidation("invalid"),
-        });
+    it("shows API-key failures on the flat draft list", async () => {
+        server.use(
+            http.get("*/authoring/definition-drafts", () =>
+                HttpResponse.json(createDefinitionEditorAuthFailure(), { status: 401 }),
+            ),
+        );
 
         renderDefinitionEditorPage();
-        expect(
-            await screen.findByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
-        ).toBeVisible();
-
-        await user.click(screen.getByRole("button", { name: "Validate" }));
-        expect(await screen.findByText("Validation Invalid")).toBeVisible();
-        expect(screen.getByText("Workflow root.role is required.")).toBeVisible();
-        expect(screen.getByText("missing_role_reference")).toBeVisible();
-        expect(screen.getByText("preview_review_recommended")).toBeVisible();
-
-        await user.click(screen.getByRole("button", { name: "Edit" }));
-        await user.type(screen.getByLabelText("Draft body"), "\nchanged after validation");
-        await user.click(screen.getByRole("button", { name: "Validate" }));
-        expect(screen.getByText("Validation result is stale")).toBeVisible();
-
-        await user.click(screen.getByRole("button", { name: "Preview" }));
-        await user.click(screen.getByRole("button", { name: "Run preview" }));
-        expect(await screen.findByText("Preview invalid")).toBeVisible();
-        expect(
-            screen.getByText("Preview task-compose input does not match the draft set."),
-        ).toBeVisible();
-        await user.click(screen.getByRole("button", { name: "Stored truth" }));
-        expect(screen.getByText("Captured rev 12")).toBeVisible();
-
-        await user.click(screen.getByRole("button", { name: "Apply" }));
-        const noOpApplyDialog = await screen.findByRole("dialog", {
-            name: "Apply completed with no new revision",
-        });
-        expect(
-            within(noOpApplyDialog).getByText("No published revisions were returned."),
-        ).toBeVisible();
-        await user.click(within(noOpApplyDialog).getByRole("button", { name: "Close" }));
-        await waitFor(() => {
-            expect(
-                screen.queryByRole("dialog", {
-                    name: "Apply completed with no new revision",
-                }),
-            ).not.toBeInTheDocument();
-        });
-
-        await user.click(screen.getByRole("button", { name: "Apply" }));
-        const publishedApplyDialog = await screen.findByRole("dialog", {
-            name: "Apply published new current revisions",
-        });
-        expect(
-            within(publishedApplyDialog).getByText(/workflow\/definition-editor-page revision 14/),
-        ).toBeVisible();
-
-        cleanup();
-        server.resetHandlers();
-        installDefinitionEditorHandlers({ listAuthFailure: true });
-        renderDefinitionEditorPage();
-        expect(await screen.findByText("Access to draft sets failed")).toBeVisible();
+        expect(await screen.findByText("Access to drafts failed")).toBeVisible();
         expect(
             screen.getByText("Definition authoring requires an operator API key."),
         ).toBeVisible();
     });
-
-    it("does not show previous draft truth while a switched draft-set detail is pending or failed", async () => {
-        const user = userEvent.setup();
-        const failedDraftSetId = "draft-set-detail-failed";
-        const failedDraftSet = createDefinitionEditorDraftSetDetail({
-            draft_set_id: failedDraftSetId,
-            files: [
-                createDefinitionEditorDraftFile({
-                    key: "failed-detail-workflow",
-                    kind: "workflow",
-                    status: "clean",
-                }),
-            ],
-            title: "Unavailable draft set",
-        });
-        const primaryDraftSet = createDefinitionEditorDraftSetDetail();
-        server.use(
-            http.get("*/authoring/definition-draft-sets", () =>
-                HttpResponse.json({
-                    items: [
-                        createDefinitionEditorDraftSetList(primaryDraftSet).items[0],
-                        createDefinitionEditorDraftSetList(failedDraftSet).items[0],
-                    ],
-                    next_cursor: null,
-                }),
-            ),
-            http.get("*/authoring/definition-draft-sets/:draftSetId", async ({ params }) => {
-                const draftSetId = String(params.draftSetId);
-                if (draftSetId === failedDraftSetId) {
-                    await new Promise((resolve) => {
-                        setTimeout(resolve, 50);
-                    });
-                    return HttpResponse.json(
-                        {
-                            detail: {
-                                code: "missing_resource",
-                                field_path: null,
-                                ok: false,
-                                retryable: true,
-                                suggested_next_step: "Choose another draft set.",
-                                summary: "The selected draft set could not be read.",
-                            },
-                        },
-                        { status: 404 },
-                    );
-                }
-
-                return HttpResponse.json(createDefinitionEditorDraftSetResponse(primaryDraftSet));
-            }),
-        );
-
-        renderDefinitionEditorPage();
-        expect(
-            await screen.findByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
-        ).toBeVisible();
-        expect(screen.getByDisplayValue(new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY))).toBeVisible();
-
-        await user.selectOptions(screen.getByLabelText("Draft set"), failedDraftSetId);
-
-        expect(await screen.findByText("Loading selected draft")).toBeVisible();
-        expect(
-            screen.queryByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.queryByDisplayValue(new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY)),
-        ).not.toBeInTheDocument();
-
-        expect(await screen.findAllByText("Selected draft could not load")).toHaveLength(2);
-        expect(screen.getAllByText("The selected draft set could not be read.")).toHaveLength(2);
-        expect(
-            screen.queryByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.queryByDisplayValue(new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY)),
-        ).not.toBeInTheDocument();
-    });
-
-    it("keeps Definition Editor dialogs focused, closes with Escape, and restores opener focus", async () => {
-        const user = userEvent.setup();
-        installDefinitionEditorHandlers();
-
-        renderDefinitionEditorPage();
-        expect(
-            await screen.findByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
-        ).toBeVisible();
-
-        const newDraftButton = screen.getByRole("button", { name: "New draft" });
-        await user.click(newDraftButton);
-        const newDraftDialog = await screen.findByRole("dialog", { name: "New draft" });
-        await waitFor(() => {
-            expect(within(newDraftDialog).getByLabelText("Draft key")).toHaveFocus();
-        });
-        await user.keyboard("{Escape}");
-        await waitFor(() => {
-            expect(newDraftButton).toHaveFocus();
-        });
-
-        const resetButton = screen.getByRole("button", { name: "Reset draft" });
-        await user.click(resetButton);
-        const resetDialog = await screen.findByRole("dialog", { name: "Reset draft" });
-        await waitFor(() => {
-            expect(within(resetDialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
-        });
-        await user.keyboard("{Shift>}{Tab}{/Shift}");
-        expect(resetDialog).toContainElement(
-            document.activeElement as HTMLElement | SVGElement | null,
-        );
-        await user.keyboard("{Tab}{Tab}{Tab}{Tab}");
-        expect(resetDialog).toContainElement(
-            document.activeElement as HTMLElement | SVGElement | null,
-        );
-        await user.keyboard("{Escape}");
-        await waitFor(() => {
-            expect(resetButton).toHaveFocus();
-        });
-
-        const replaceButton = screen.getByRole("button", {
-            name: "Replace with current stored revision",
-        });
-        await user.click(replaceButton);
-        const deleteDialog = await screen.findByRole("dialog", {
-            name: "Replace with current stored revision",
-        });
-        await waitFor(() => {
-            expect(within(deleteDialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
-        });
-        await user.keyboard("{Escape}");
-        await waitFor(() => {
-            expect(replaceButton).toHaveFocus();
-        });
-    });
 });
 
 function renderDefinitionEditorPage(initialEntry = "/definitions/editor") {
-    return render(
+    render(
         <MemoryRouter initialEntries={[initialEntry]}>
             <Routes>
                 <Route element={<DefinitionEditorPage />} path="/definitions/editor" />
@@ -488,87 +211,89 @@ function renderDefinitionEditorPage(initialEntry = "/definitions/editor") {
 }
 
 function installDefinitionEditorHandlers({
-    listAuthFailure = false,
-    onCreateDraftSet,
-    onApply,
+    detail = createDefinitionEditorDraftDetail(),
+    list,
+    onCreate,
     onWrite,
-    previewResponse = createDefinitionEditorPreview("valid"),
+    publishResponse = createDefinitionEditorPublish("published"),
     validationResponse = createDefinitionEditorValidation("valid"),
 }: {
-    readonly listAuthFailure?: boolean;
-    readonly onCreateDraftSet?: (
-        request: Request,
-    ) => Promise<components["schemas"]["DefinitionDraftSetDetailResponse"]>;
-    readonly onApply?: () => components["schemas"]["DefinitionDraftApplyResponse"];
+    readonly detail?: components["schemas"]["DefinitionDraftDetail"];
+    readonly list?: components["schemas"]["DefinitionDraftListResponse"];
+    readonly onCreate?: (request: Request) => Promise<Response>;
     readonly onWrite?: (
         request: Request,
-        key: string,
-    ) => Promise<components["schemas"]["DefinitionDraftSetDetailResponse"]>;
-    readonly previewResponse?: components["schemas"]["DefinitionDraftTaskComposePreviewResponse"];
+    ) => Promise<components["schemas"]["DefinitionDraftDetailResponse"]>;
+    readonly publishResponse?: components["schemas"]["DefinitionDraftPublishResponse"];
     readonly validationResponse?: components["schemas"]["DefinitionDraftValidationResponse"];
-} = {}): void {
-    let detail = createDefinitionEditorDraftSetDetail();
+} = {}) {
     server.use(
-        http.get("*/authoring/definition-draft-sets", () => {
-            if (listAuthFailure) {
-                return HttpResponse.json(createDefinitionEditorAuthFailure(), { status: 401 });
-            }
-            return HttpResponse.json(createDefinitionEditorDraftSetList(detail));
-        }),
-        http.post("*/authoring/definition-draft-sets", async ({ request }) => {
-            if (onCreateDraftSet !== undefined) {
-                const response = await onCreateDraftSet(request);
-                detail = response.draft_set;
-                return HttpResponse.json(response);
-            }
-            detail = createDefinitionEditorDraftSetDetail();
-            return HttpResponse.json(createDefinitionEditorDraftSetResponse(detail));
-        }),
-        http.get("*/authoring/definition-draft-sets/:draftSetId", () =>
-            HttpResponse.json(createDefinitionEditorDraftSetResponse(detail)),
+        http.get("*/authoring/definition-drafts", () =>
+            HttpResponse.json(list ?? createDefinitionEditorDraftList(detail)),
         ),
+        http.post("*/authoring/definition-drafts", async ({ request }) => {
+            if (onCreate !== undefined) {
+                return onCreate(request);
+            }
+            return HttpResponse.json(createDefinitionEditorDraftResponse(createNewRoleDraft()));
+        }),
+        http.get("*/authoring/definitions/:kind/:key/draft", ({ params }) =>
+            HttpResponse.json(
+                createDefinitionEditorDraftResponse(
+                    createDraftForPath(detail, String(params.kind), String(params.key)),
+                ),
+            ),
+        ),
+        http.put("*/authoring/definitions/:kind/:key/draft", async ({ params, request }) => {
+            if (onWrite !== undefined) {
+                return HttpResponse.json(await onWrite(request));
+            }
+            const body =
+                (await request.json()) as components["schemas"]["DefinitionDraftWriteRequest"];
+            return HttpResponse.json(
+                createDefinitionEditorDraftResponse(
+                    createCleanDefinitionEditorDraft(body.body).kind === detail.kind
+                        ? createCleanDefinitionEditorDraft(body.body)
+                        : createDefinitionEditorDraftDetail({
+                              body: body.body,
+                              is_saved: true,
+                              key: String(params.key),
+                              kind: params.kind as components["schemas"]["DefinitionKind"],
+                              status: "clean",
+                          }),
+                ),
+            );
+        }),
         http.delete(
-            "*/authoring/definition-draft-sets/:draftSetId",
+            "*/authoring/definitions/:kind/:key/draft",
             () => new HttpResponse(null, { status: 204 }),
         ),
-        http.post("*/authoring/definition-draft-sets/:draftSetId/materialize", () => {
-            detail = createMaterializedDraftSet();
-            return HttpResponse.json(createDefinitionEditorDraftSetResponse(detail));
-        }),
-        http.put(
-            "*/authoring/definition-draft-sets/:draftSetId/files/:kind/:key",
-            async ({ request }) => {
-                const key = decodeURIComponent(
-                    new URL(request.url).pathname.split("/").at(-1) ?? "",
-                );
-                if (onWrite !== undefined) {
-                    const response = await onWrite(request, key);
-                    detail = response.draft_set;
-                    return HttpResponse.json(response);
-                }
-                detail = createCleanSavedDefinitionEditorDraftSet();
-                return HttpResponse.json(createDefinitionEditorDraftSetResponse(detail));
-            },
-        ),
-        http.post("*/authoring/definition-draft-sets/:draftSetId/files/:kind/:key/reset", () => {
-            detail = createResetDefinitionEditorDraftSet();
-            return HttpResponse.json(createDefinitionEditorDraftSetResponse(detail));
-        }),
-        http.post(
-            "*/authoring/definition-draft-sets/:draftSetId/files/:kind/:key/rematerialize-current",
-            () => {
-                detail = createRematerializedDefinitionEditorDraftSet();
-                return HttpResponse.json(createDefinitionEditorDraftSetResponse(detail));
-            },
-        ),
-        http.post("*/authoring/definition-draft-sets/:draftSetId/validate", () =>
+        http.post("*/authoring/definitions/:kind/:key/draft/validate", () =>
             HttpResponse.json(validationResponse),
         ),
-        http.post("*/authoring/definition-draft-sets/:draftSetId/preview-task-compose", () =>
-            HttpResponse.json(previewResponse),
-        ),
-        http.post("*/authoring/definition-draft-sets/:draftSetId/apply", () =>
-            HttpResponse.json(onApply?.() ?? createDefinitionEditorApply("published")),
+        http.post("*/authoring/definitions/:kind/:key/draft/publish", () =>
+            HttpResponse.json(publishResponse),
         ),
     );
+}
+
+function createDraftForPath(
+    baseDraft: components["schemas"]["DefinitionDraftDetail"],
+    kind: string,
+    key: string,
+): components["schemas"]["DefinitionDraftDetail"] {
+    if (kind !== "role" && kind !== "policy" && kind !== "workflow") {
+        return baseDraft;
+    }
+    if (baseDraft.kind === kind && baseDraft.key === key) {
+        return baseDraft;
+    }
+    return createDefinitionEditorDraftDetail({
+        body: bodyForKind(kind, key),
+        is_saved: false,
+        key,
+        kind,
+        mode: "update",
+        status: "clean",
+    });
 }

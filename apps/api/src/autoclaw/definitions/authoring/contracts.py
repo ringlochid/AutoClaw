@@ -2,29 +2,27 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from autoclaw.definitions.contracts import DefinitionKind
-from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 
 
-class DefinitionDraftSetState(StrEnum):
-    OPEN = "open"
-    APPLIED = "applied"
-    STALE = "stale"
+class DefinitionDraftMode(StrEnum):
+    CREATE = "create"
+    UPDATE = "update"
 
 
-class DefinitionDraftFileStatus(StrEnum):
+class DefinitionDraftStatus(StrEnum):
     CLEAN = "clean"
     MODIFIED = "modified"
-    ADDED = "added"
+    NEW = "new"
     STALE = "stale"
     INVALID = "invalid"
 
 
-class DefinitionDraftSetListQuery(BaseModel):
+class DefinitionDraftListQuery(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     cursor: str | None = None
@@ -39,102 +37,63 @@ class DefinitionDraftBaselineRead(BaseModel):
     source_path: str | None = None
 
 
-class DefinitionDraftFileSummary(BaseModel):
+class DefinitionDraftSummary(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
     kind: DefinitionKind
     key: str
+    mode: DefinitionDraftMode
     draft_path: str
     normalized_path: str
     body_format: Literal["yaml"] = "yaml"
     content_hash: str
     based_on: DefinitionDraftBaselineRead
-    status: DefinitionDraftFileStatus
+    status: DefinitionDraftStatus
+    updated_at: datetime
 
 
-class DefinitionDraftFileDetail(DefinitionDraftFileSummary):
+class DefinitionDraftDetail(DefinitionDraftSummary):
     body: str
     normalized_content: dict[str, Any] | None = None
     baseline_body: str | None = None
     baseline_normalized_content: dict[str, Any] | None = None
+    is_saved: bool = True
 
 
-class DefinitionDraftSetSummary(BaseModel):
+class DefinitionDraftListResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
-    draft_set_id: str
-    title: str | None = None
-    created_at: datetime
-    updated_at: datetime
-    state: DefinitionDraftSetState
-    files: tuple[DefinitionDraftFileSummary, ...]
-    preview_task_compose_path: str | None = None
-
-
-class DefinitionDraftSetDetail(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
-
-    draft_set_id: str
-    title: str | None = None
-    created_at: datetime
-    updated_at: datetime
-    state: DefinitionDraftSetState
-    files: tuple[DefinitionDraftFileDetail, ...]
-    preview_task_compose_path: str | None = None
-    preview_task_compose_body: str | None = None
-
-
-class DefinitionDraftSetListResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
-
-    items: tuple[DefinitionDraftSetSummary, ...]
+    items: tuple[DefinitionDraftSummary, ...]
     next_cursor: str | None = None
 
 
-class DefinitionDraftSetCreateItem(BaseModel):
+class DefinitionDraftCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     kind: DefinitionKind
     key: str
+    mode: DefinitionDraftMode
+    body: str | None = None
+    body_format: Literal["yaml"] = "yaml"
+
+    @model_validator(mode="after")
+    def validate_create_body(self) -> Self:
+        if self.mode == DefinitionDraftMode.CREATE and self.body is None:
+            raise ValueError("create drafts require body")
+        return self
 
 
-class DefinitionDraftSetCreateRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    title: str | None = None
-    materialize: tuple[DefinitionDraftSetCreateItem, ...] = ()
-    preview_task_compose: str | None = None
-
-
-class DefinitionDraftMaterializeRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    definitions: tuple[DefinitionDraftSetCreateItem, ...]
-
-
-class DefinitionDraftFileWriteRequest(BaseModel):
+class DefinitionDraftWriteRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     body: str
     body_format: Literal["yaml"] = "yaml"
 
 
-class DefinitionDraftFileResetRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    discard_local_changes: Literal[True]
-
-
-class DefinitionDraftFileRematerializeCurrentRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    discard_local_changes: Literal[True]
-
-
-class DefinitionDraftSetDetailResponse(BaseModel):
+class DefinitionDraftDetailResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
-    draft_set: DefinitionDraftSetDetail
+    draft: DefinitionDraftDetail
 
 
 class DefinitionDraftValidationIssue(BaseModel):
@@ -143,14 +102,15 @@ class DefinitionDraftValidationIssue(BaseModel):
     code: str
     message: str
     path: str | None = None
-    kind: Literal["schema", "cross_reference", "stale", "preview"]
+    kind: Literal["schema", "cross_reference", "stale", "collision"]
 
 
 class DefinitionDraftValidationResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
-    draft_set_id: str
-    status: Literal["valid", "invalid", "stale"]
+    kind: DefinitionKind
+    key: str
+    status: Literal["valid", "invalid", "stale", "name_collision"]
     errors: tuple[DefinitionDraftValidationIssue, ...]
     warnings: tuple[DefinitionDraftValidationIssue, ...]
 
@@ -164,99 +124,29 @@ class DefinitionDraftPublishedRevision(BaseModel):
     content_hash: str
 
 
-class DefinitionDraftApplyRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    should_start_task_after_apply: bool = False
-
-
-class DefinitionDraftTaskStartStatus(StrEnum):
-    NOT_REQUESTED = "not_requested"
-    STARTED = "started"
-    FAILED = "failed"
-
-
-class DefinitionDraftTaskStartFailure(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    code: OperationFailureCode
-    summary: str
-    is_retryable: bool
-    suggested_next_step: str | None = None
-
-
-class DefinitionDraftApplyResponse(BaseModel):
+class DefinitionDraftPublishResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
-    draft_set_id: str
-    status: Literal["applied", "stale", "invalid"]
-    published_revisions: tuple[DefinitionDraftPublishedRevision, ...]
-    started_task_id: str | None = None
-    task_start_status: DefinitionDraftTaskStartStatus = DefinitionDraftTaskStartStatus.NOT_REQUESTED
-    task_start_failure: DefinitionDraftTaskStartFailure | None = None
-    validation: DefinitionDraftValidationResponse
-
-    @model_validator(mode="after")
-    def validate_task_start_outcome(self) -> DefinitionDraftApplyResponse:
-        if self.task_start_status == DefinitionDraftTaskStartStatus.STARTED:
-            if self.started_task_id is None:
-                raise ValueError("started task start outcome requires started_task_id")
-            if self.task_start_failure is not None:
-                raise ValueError("started task start outcome must not set task_start_failure")
-            return self
-
-        if self.task_start_status == DefinitionDraftTaskStartStatus.FAILED:
-            if self.started_task_id is not None:
-                raise ValueError("failed task start outcome must not set started_task_id")
-            if self.task_start_failure is None:
-                raise ValueError("failed task start outcome requires task_start_failure")
-            return self
-
-        if self.started_task_id is not None:
-            raise ValueError("not_requested task start outcome must not set started_task_id")
-        if self.task_start_failure is not None:
-            raise ValueError("not_requested task start outcome must not set task_start_failure")
-        return self
-
-
-class DefinitionDraftTaskComposePreviewRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    body: str
-    body_format: Literal["yaml"] = "yaml"
-
-
-class DefinitionDraftTaskComposePreviewResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
-
-    status: Literal["valid", "invalid"]
+    kind: DefinitionKind
+    key: str
+    status: Literal["published", "invalid", "stale", "name_collision"]
+    published_revision: DefinitionDraftPublishedRevision | None
     validation: DefinitionDraftValidationResponse
 
 
 __all__ = [
-    "DefinitionDraftApplyRequest",
-    "DefinitionDraftApplyResponse",
     "DefinitionDraftBaselineRead",
-    "DefinitionDraftFileDetail",
-    "DefinitionDraftFileRematerializeCurrentRequest",
-    "DefinitionDraftFileResetRequest",
-    "DefinitionDraftFileStatus",
-    "DefinitionDraftFileSummary",
-    "DefinitionDraftFileWriteRequest",
-    "DefinitionDraftMaterializeRequest",
+    "DefinitionDraftCreateRequest",
+    "DefinitionDraftDetail",
+    "DefinitionDraftDetailResponse",
+    "DefinitionDraftListQuery",
+    "DefinitionDraftListResponse",
+    "DefinitionDraftMode",
+    "DefinitionDraftPublishResponse",
     "DefinitionDraftPublishedRevision",
-    "DefinitionDraftSetCreateItem",
-    "DefinitionDraftSetCreateRequest",
-    "DefinitionDraftSetDetail",
-    "DefinitionDraftSetDetailResponse",
-    "DefinitionDraftSetListQuery",
-    "DefinitionDraftSetListResponse",
-    "DefinitionDraftSetState",
-    "DefinitionDraftSetSummary",
-    "DefinitionDraftTaskComposePreviewRequest",
-    "DefinitionDraftTaskComposePreviewResponse",
-    "DefinitionDraftTaskStartFailure",
-    "DefinitionDraftTaskStartStatus",
+    "DefinitionDraftStatus",
+    "DefinitionDraftSummary",
     "DefinitionDraftValidationIssue",
     "DefinitionDraftValidationResponse",
+    "DefinitionDraftWriteRequest",
 ]

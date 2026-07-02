@@ -21,7 +21,7 @@ The workbench may share shell chrome with runtime control surfaces, but it remai
 The workbench may provide:
 
 - registry inspection of current roles, policies, and workflows
-- draft-set create, open, save, and delete actions
+- flat draft create, open, save, publish, and delete actions
 - local draft editing of one or more definition files
 - local draft reset to the captured stored baseline or local starter baseline
 - explicit re-materialize-current action when replacing a draft with the current stored revision is intended
@@ -44,21 +44,21 @@ Workflow-node editing should expose `description` and `instruction` as separate 
 
 The workbench may collapse these into one page or switcher, but it must not blur saved draft state into stored current truth.
 
-The workbench talks to backend-owned draft-set folders under AutoClaw's configured data dir. Browser state may cache editor input transiently, but it is not the authoritative saved-draft surface.
+The workbench talks to backend-owned flat draft files under AutoClaw's configured data dir. Browser state may cache editor input transiently, but it is not the authoritative saved-draft surface.
 
-The workbench and `/authoring` API own draft mutations. Operator MCP may inspect saved draft-set refs and readbacks, but it must not expose a parallel create, save, reset, apply, or preview editor lane.
+The workbench and `/authoring` API own draft mutations. Operator MCP must not expose a parallel create, save, validate, publish, or delete editor lane.
 
 ## Surface rules
 
 Rules:
 
 - the workbench should show current stored truth and saved draft state as separate states
-- editable authored bodies may stay YAML-first while the same draft set also exposes backend-owned normalized JSON shadows for machine-exact inspection
+- editable authored bodies may stay YAML-first while the same flat draft also exposes backend-owned normalized JSON shadows for machine-exact inspection
 - local reset must remain a draft-state operation; it must not imply a registry current refresh
 - replacing a draft with current stored truth must be a separate explicit operation; it must not imply publish
 - apply or import is explicit and separate from draft save
 - task start remains a post-apply action over current controller truth
-- exact draft-set, validation, staleness, and apply semantics live in the definition authoring API and draft-set contract rather than this UI page
+- exact flat draft, validation, staleness, collision, and publish semantics live in the definition authoring API and flat draft contract rather than this UI page
 
 ## Non-goals
 
@@ -71,7 +71,7 @@ This contract does not define:
 
 ## Related contracts
 
-- [Definition authoring API and draft-set contract](definition-authoring-api-and-draft-set-contract.md)
+- [Definition authoring API and flat draft contract](definition-authoring-api-and-flat-draft-contract.md)
 - [Role and policy definition schema](role-and-policy-definition-schema.md)
 - [Provider preference and runtime config](provider-selection-and-runtime-config.md)
 - [Control UI runtime and authoring surfaces](control-ui-runtime-and-authoring-surfaces.md)
