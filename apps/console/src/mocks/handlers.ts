@@ -260,12 +260,42 @@ function definitionListForRequest(
     request: Request,
     scenario: ConsoleMockScenario,
 ): components["schemas"]["DefinitionSummaryListResponse"] {
-    const cursor = new URL(request.url).searchParams.get("cursor");
+    const url = new URL(request.url);
+    const cursor = url.searchParams.get("cursor");
     if (cursor !== null) {
         return scenario.definitionListPages?.[kind]?.[cursor] ?? scenario.definitionLists[kind];
     }
 
-    return scenario.definitionLists[kind];
+    return filterDefinitionListForRequest(scenario.definitionLists[kind], url);
+}
+
+function filterDefinitionListForRequest(
+    list: components["schemas"]["DefinitionSummaryListResponse"],
+    url: URL,
+): components["schemas"]["DefinitionSummaryListResponse"] {
+    const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+    const limit = Number(url.searchParams.get("limit"));
+    const filteredItems =
+        query.length === 0
+            ? list.items
+            : list.items.filter((item) => definitionSummaryMatchesQuery(item, query));
+    const limitedItems =
+        Number.isFinite(limit) && limit > 0 ? filteredItems.slice(0, limit) : filteredItems;
+
+    return {
+        ...list,
+        items: [...limitedItems],
+        next_cursor: null,
+    };
+}
+
+function definitionSummaryMatchesQuery(
+    item: components["schemas"]["DefinitionSummaryRead"],
+    query: string,
+): boolean {
+    const searchableFields = [item.key, item.description ?? "", item.title ?? ""];
+
+    return searchableFields.some((field) => field.toLowerCase().includes(query));
 }
 
 function definitionDetailForRequest(

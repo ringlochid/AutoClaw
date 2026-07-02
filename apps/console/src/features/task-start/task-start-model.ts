@@ -11,8 +11,6 @@ export type DefinitionRevisionDetailResponse =
 export type DefinitionRevisionHistoryEntry =
     components["schemas"]["DefinitionRevisionHistoryEntry"];
 export type WorkflowDefinitionContent = components["schemas"]["WorkflowDefinitionInput-Output"];
-export type WorkflowRootDefinition = components["schemas"]["RootNodeDefinition-Output"];
-export type WorkflowNodeDefinition = components["schemas"]["NodeDefinitionInput-Output"];
 
 export interface TaskStartFormState {
     readonly contextHostPath: string;
@@ -34,6 +32,13 @@ export interface TaskStartFormErrors {
     readonly workspaceHostPath?: string;
 }
 
+export interface TaskStartFieldPlaceholders {
+    readonly instruction: string;
+    readonly summary: string;
+    readonly taskKey: string;
+    readonly title: string;
+}
+
 export interface TaskStartWorkflowChoice extends DefinitionSummary {
     readonly displayName: string;
 }
@@ -41,13 +46,8 @@ export interface TaskStartWorkflowChoice extends DefinitionSummary {
 export interface TaskStartWorkflowDetail {
     readonly description: string;
     readonly key: string;
-    readonly nodeCount: number;
-    readonly recordedBy: string | null;
     readonly revisionNo: number;
-    readonly rootPolicy: string | null;
-    readonly rootRole: string;
     readonly updatedAt: string;
-    readonly workflowId: string;
 }
 
 export interface TaskStartVersionRow {
@@ -82,12 +82,20 @@ export interface TaskStartResultView {
 export const TASK_START_INITIAL_FORM: TaskStartFormState = {
     contextHostPath: "",
     contextMode: "ensure_task_default",
-    instruction: "Keep the work scoped to the current assignment and publish focused verification.",
-    summary: "Launch one bounded task from stored workflow truth.",
-    taskKey: "implement-task-start-launch-form",
-    title: "Implement Task Start launch form",
+    instruction: "",
+    summary: "",
+    taskKey: "",
+    title: "",
     workspaceHostPath: "",
     workspaceMode: "ensure_task_default",
+};
+
+export const TASK_START_FIELD_PLACEHOLDERS: TaskStartFieldPlaceholders = {
+    instruction:
+        "Keep the work scoped to the current task-start UI and publish focused verification.",
+    summary: "Launch one bounded implementation task from stored workflow truth.",
+    taskKey: "implement-task-start-launch-form",
+    title: "Implement Task Start launch form",
 };
 
 export const TASK_ROOT_MODE_OPTIONS: readonly {
@@ -116,13 +124,8 @@ export function mapTaskStartWorkflowDetail(
     return {
         description: content.description,
         key: detail.key,
-        nodeCount: countWorkflowNodes(content.root),
-        recordedBy: detail.recorded_by ?? null,
         revisionNo: detail.revision_no,
-        rootPolicy: content.root.policy ?? null,
-        rootRole: content.root.role,
         updatedAt: detail.updated_at,
-        workflowId: content.id,
     };
 }
 
@@ -158,6 +161,15 @@ export function validateTaskStartForm(
 
 export function hasTaskStartFormErrors(errors: TaskStartFormErrors): boolean {
     return Object.values(errors).some((value) => value !== undefined);
+}
+
+export function countTaskStartRequiredInputs(
+    form: TaskStartFormState,
+    selectedWorkflowKey: string | null,
+): number {
+    return Object.values(validateTaskStartForm(form, selectedWorkflowKey)).filter(
+        (value) => value !== undefined,
+    ).length;
 }
 
 export function buildTaskStartRequest(
@@ -299,12 +311,4 @@ function flowStatusTone(status: components["schemas"]["FlowStatus"]): StatusTone
         case "pending":
             return "neutral";
     }
-}
-
-function countWorkflowNodes(root: WorkflowRootDefinition): number {
-    return 1 + (root.children ?? []).reduce((count, child) => count + countWorkflowNode(child), 0);
-}
-
-function countWorkflowNode(node: WorkflowNodeDefinition): number {
-    return 1 + (node.children ?? []).reduce((count, child) => count + countWorkflowNode(child), 0);
 }

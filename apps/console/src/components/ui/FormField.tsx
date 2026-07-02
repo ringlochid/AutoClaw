@@ -1,14 +1,17 @@
 import { cloneElement, isValidElement, type ReactNode } from "react";
 
+import { classNames } from "../../lib/classNames";
+
 export interface FormFieldProps {
     readonly children: ReactNode;
     readonly error?: ReactNode;
     readonly hint?: ReactNode;
     readonly id: string;
     readonly label: string;
+    readonly labelClassName?: string;
 }
 
-export function FormField({ children, error, hint, id, label }: FormFieldProps) {
+export function FormField({ children, error, hint, id, label, labelClassName }: FormFieldProps) {
     const hintId = `${id}-hint`;
     const errorId = `${id}-error`;
     const describedBy = [hint === undefined ? null : hintId, error === undefined ? null : errorId]
@@ -25,7 +28,10 @@ export function FormField({ children, error, hint, id, label }: FormFieldProps) 
     return (
         <div>
             <label
-                className="block font-mono text-label font-medium uppercase text-muted"
+                className={classNames(
+                    "block font-mono text-label font-medium uppercase text-muted",
+                    labelClassName,
+                )}
                 htmlFor={id}
             >
                 {label}

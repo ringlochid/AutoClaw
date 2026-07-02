@@ -9,24 +9,87 @@ import {
 export const TASK_START_SCREENSHOT_DIR =
     "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity/06-task-start/screenshots";
 
-export const TASK_START_WORKFLOW_KEY = WORKFLOW_KEY;
-export const SECOND_TASK_START_WORKFLOW_KEY = "normal-parent-first-release";
+export const TASK_START_WORKFLOW_KEY = "normal-parent-first-release";
+export const SECOND_TASK_START_WORKFLOW_KEY = WORKFLOW_KEY;
+
+const TASK_START_WORKFLOW_OVERRIDES = new Map<
+    string,
+    { readonly description: string; readonly updated_at: string }
+>([
+    [
+        WORKFLOW_KEY,
+        {
+            description:
+                "Execute staged discovery, planning, implementation, review, QA, and release work.",
+            updated_at: "2026-06-20T07:58:00Z",
+        },
+    ],
+    [
+        "minimal-implement-change",
+        {
+            description: "Execute one bounded engineering change under parent ownership.",
+            updated_at: "2026-06-18T09:26:00Z",
+        },
+    ],
+    [
+        TASK_START_WORKFLOW_KEY,
+        {
+            description:
+                "Execute one implementation subtree, review it, then release from current evidence.",
+            updated_at: "2026-06-16T18:42:00Z",
+        },
+    ],
+]);
 
 export function createTaskStartWorkflowRows(): readonly components["schemas"]["DefinitionSummaryRead"][] {
-    return createWorkflowDefinitionRows();
+    const rows = createWorkflowDefinitionRows().map(applyTaskStartWorkflowOverride);
+    return [
+        ...rows.filter((row) => row.key === TASK_START_WORKFLOW_KEY),
+        ...rows.filter((row) => row.key !== TASK_START_WORKFLOW_KEY),
+    ];
 }
 
 export function createTaskStartWorkflowDetail(
     key = TASK_START_WORKFLOW_KEY,
 ): components["schemas"]["DefinitionRevisionDetailResponse"] {
-    return createWorkflowDefinitionDetail(key);
+    const detail = createWorkflowDefinitionDetail(key);
+    const override = TASK_START_WORKFLOW_OVERRIDES.get(detail.key);
+
+    if (override === undefined) {
+        return detail;
+    }
+
+    return {
+        ...detail,
+        content: {
+            ...detail.content,
+            description: override.description,
+        },
+        updated_at: override.updated_at,
+    };
 }
 
 export function createTaskStartWorkflowVersions(
     key = TASK_START_WORKFLOW_KEY,
 ): components["schemas"]["DefinitionRevisionHistoryResponse"] {
     return createDefinitionVersions("workflow", key, {
-        currentRevisionNo: key === SECOND_TASK_START_WORKFLOW_KEY ? 3 : 5,
-        revisions: key === SECOND_TASK_START_WORKFLOW_KEY ? [3, 2] : [5, 4],
+        currentRevisionNo: key === TASK_START_WORKFLOW_KEY ? 3 : 5,
+        revisions: key === TASK_START_WORKFLOW_KEY ? [3, 2] : [5, 4],
     });
+}
+
+function applyTaskStartWorkflowOverride(
+    row: components["schemas"]["DefinitionSummaryRead"],
+): components["schemas"]["DefinitionSummaryRead"] {
+    const override = TASK_START_WORKFLOW_OVERRIDES.get(row.key);
+
+    if (override === undefined) {
+        return row;
+    }
+
+    return {
+        ...row,
+        description: override.description,
+        updated_at: override.updated_at,
+    };
 }

@@ -1,45 +1,39 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
-import { Search } from "lucide-react";
+import { ArrowUpRight, Search } from "lucide-react";
 
-import {
-    Button,
-    Disclosure,
-    IdRefText,
-    PropertyGrid,
-    StatePanel,
-    StatusChip,
-    TimestampText,
-} from "../../components/ui";
-import { classNames } from "../../lib/classNames";
+import { Button, StatePanel } from "../../components/ui";
 import type { TaskStartController } from "./task-start-controller";
 import { isAuthError } from "./task-start-data";
-import {
-    type TaskStartVersionRow,
-    type TaskStartWorkflowChoice,
-    type TaskStartWorkflowDetail,
-} from "./task-start-model";
+import type { TaskStartWorkflowChoice } from "./task-start-model";
 import { controlClassName } from "./task-start-ui";
 
 export function WorkflowSection({ controller }: { readonly controller: TaskStartController }) {
     const [isSearchOpen, setSearchOpen] = useState(false);
-    const shouldShowChoices =
-        isSearchOpen ||
-        controller.workflowQuery.trim().length > 0 ||
-        controller.listState.isLoading ||
+    const showChoices =
         controller.listState.error !== null ||
-        controller.listState.rows.length === 0 ||
-        controller.selectedWorkflowKey === null;
+        (controller.selectedWorkflowKey === null && controller.listState.isLoading) ||
+        (isSearchOpen && controller.workflowQuery.trim().length > 0);
 
     return (
-        <div className="space-y-4">
+        <div
+            className="space-y-3"
+            onBlur={(event) => {
+                const nextTarget = event.relatedTarget;
+                if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+                    return;
+                }
+                setSearchOpen(false);
+            }}
+        >
             <WorkflowSearch
                 controller={controller}
                 onSearchOpen={() => {
                     setSearchOpen(true);
                 }}
             />
-            {shouldShowChoices ? (
+            {showChoices ? (
                 <WorkflowChoices
                     controller={controller}
                     onSelectWorkflow={(key) => {
@@ -48,7 +42,7 @@ export function WorkflowSection({ controller }: { readonly controller: TaskStart
                     }}
                 />
             ) : null}
-            <SelectedWorkflow controller={controller} />
+            {showChoices ? null : <SelectedWorkflow controller={controller} />}
         </div>
     );
 }
@@ -63,7 +57,7 @@ function WorkflowSearch({
     return (
         <div className="min-w-0 flex-1">
             <label
-                className="block font-mono text-label font-medium uppercase text-muted"
+                className="block font-display text-compact font-semibold text-foreground"
                 htmlFor="task-start-workflow-search"
             >
                 Search workflow
@@ -74,6 +68,8 @@ function WorkflowSearch({
                     className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted"
                 />
                 <input
+                    aria-autocomplete="list"
+                    aria-expanded={controller.workflowQuery.trim().length > 0}
                     className={controlClassName("pl-10")}
                     id="task-start-workflow-search"
                     onChange={(event) => {
@@ -82,6 +78,7 @@ function WorkflowSearch({
                     }}
                     onFocus={onSearchOpen}
                     placeholder="Search stored workflows"
+                    role="combobox"
                     type="search"
                     value={controller.workflowQuery}
                 />
@@ -105,13 +102,7 @@ function WorkflowChoices({
     const { listState } = controller;
 
     if (listState.isLoading) {
-        return (
-            <StatePanel
-                summary="Reading stored workflows from the controller registry."
-                title="Loading workflows"
-                tone="loading"
-            />
-        );
+        return <CompactStatePanel title="Loading workflows" />;
     }
 
     if (listState.error !== null) {
@@ -131,91 +122,75 @@ function WorkflowChoices({
 
     if (listState.rows.length === 0) {
         return (
-            <StatePanel
+            <CompactStatePanel
                 summary={
                     controller.workflowQuery.trim().length === 0
-                        ? "The controller did not return stored workflows available for launch."
-                        : "No stored workflows match the current search."
+                        ? "Type a workflow key or description."
+                        : "No stored workflows match this search."
                 }
                 title={
                     controller.workflowQuery.trim().length === 0
-                        ? "No stored workflows"
+                        ? "Select a stored workflow"
                         : "No matching workflows"
                 }
-                tone="empty"
             />
         );
     }
 
     return (
-        <div className="space-y-3">
-            <ol aria-label="Workflow choices" className="grid gap-2 lg:grid-cols-2">
-                {listState.rows.map((workflow) => (
-                    <li key={workflow.key}>
-                        <WorkflowChoiceButton
-                            isSelected={controller.selectedWorkflowKey === workflow.key}
-                            onSelect={() => {
-                                onSelectWorkflow(workflow.key);
-                            }}
-                            workflow={workflow}
-                        />
-                    </li>
-                ))}
-            </ol>
-            <div className="flex flex-col gap-3 border-t border-outline-soft pt-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-compact text-muted">
-                    {listState.nextCursor === null
-                        ? "End of current workflow suggestions."
-                        : "More matching workflows are available."}
-                </p>
-                <Button
-                    disabled={
-                        listState.nextCursor === null ||
-                        listState.isLoadingMore ||
-                        listState.isRefreshing
-                    }
-                    onClick={controller.loadMoreWorkflows}
-                >
-                    {listState.isLoadingMore ? "Loading" : "Load more"}
-                </Button>
-            </div>
+        <ol
+            aria-label="Workflow choices"
+            className="overflow-hidden rounded-card border border-outline-soft bg-surface-low shadow-panel"
+        >
+            {listState.rows.map((workflow) => (
+                <li className="border-b border-outline-soft last:border-b-0" key={workflow.key}>
+                    <WorkflowChoiceButton
+                        onSelect={() => {
+                            onSelectWorkflow(workflow.key);
+                        }}
+                        workflow={workflow}
+                    />
+                </li>
+            ))}
+        </ol>
+    );
+}
+
+function CompactStatePanel({
+    summary,
+    title,
+}: {
+    readonly summary?: string;
+    readonly title: string;
+}) {
+    return (
+        <div className="rounded-card border border-outline-soft bg-surface-low px-4 py-3 shadow-hairline">
+            <p className="font-display text-compact font-semibold text-foreground">{title}</p>
+            {summary === undefined ? null : (
+                <p className="mt-1 text-compact text-muted">{summary}</p>
+            )}
         </div>
     );
 }
 
 function WorkflowChoiceButton({
-    isSelected,
     onSelect,
     workflow,
 }: {
-    readonly isSelected: boolean;
     readonly onSelect: () => void;
     readonly workflow: TaskStartWorkflowChoice;
 }) {
     return (
         <button
-            aria-pressed={isSelected}
-            className={classNames(
-                "grid h-full w-full min-w-0 gap-3 rounded-card border bg-surface-low p-4 text-left shadow-hairline transition-colors hover:border-primary/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                isSelected ? "border-primary/60 bg-primary-soft/45" : "border-outline-soft",
-            )}
+            className="grid w-full min-w-0 gap-1 bg-surface-low px-4 py-3 text-left transition-colors hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
             onClick={onSelect}
             type="button"
         >
-            <span className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="min-w-0 truncate font-display text-compact font-semibold text-foreground">
-                    {workflow.displayName}
-                </span>
-                <StatusChip tone="success" withDot>
-                    Workflow
-                </StatusChip>
+            <span className="min-w-0 truncate font-mono text-compact font-semibold text-foreground">
+                {workflow.key}
             </span>
             <span className="break-words text-compact text-muted">
                 {workflow.description ?? "No description reported."}
-            </span>
-            <span className="flex min-w-0 flex-wrap items-center gap-3">
-                <IdRefText className="max-w-full truncate" value={workflow.key} />
-                <TimestampText value={workflow.updatedAt} />
             </span>
         </button>
     );
@@ -224,30 +199,19 @@ function WorkflowChoiceButton({
 function SelectedWorkflow({ controller }: { readonly controller: TaskStartController }) {
     if (controller.selectedWorkflowKey === null) {
         return (
-            <StatePanel
-                summary="Select one current stored workflow before previewing or starting a task."
-                title="Workflow selection is required"
-                tone="empty"
-            />
+            <div className="rounded-card border border-outline-soft bg-surface-low p-4 shadow-hairline">
+                <p className="font-mono text-label font-medium text-muted">Selected workflow</p>
+                <p className="mt-1 text-compact text-muted">Select a stored workflow.</p>
+            </div>
         );
     }
 
     if (!controller.isSelectedWorkflowInRows && controller.listState.hasLoaded) {
         return (
             <StatePanel
-                summary="The selected workflow is no longer present in the current search result. Reread or choose another stored workflow before launch."
+                summary="The selected workflow is no longer present in the current search result."
                 title="Selected workflow is outside the current search"
                 tone="stale"
-            />
-        );
-    }
-
-    if (controller.detailState.isLoading) {
-        return (
-            <StatePanel
-                summary="Reading current stored workflow detail and revision provenance."
-                title="Loading selected workflow"
-                tone="loading"
             />
         );
     }
@@ -273,156 +237,65 @@ function SelectedWorkflow({ controller }: { readonly controller: TaskStartContro
 
     const selectedWorkflowUpdatedAt =
         controller.detailState.detail?.updatedAt ?? controller.selectedWorkflow.updatedAt;
+    const selectedWorkflowUpdatedAtLabel = formatTaskStartTimestamp(selectedWorkflowUpdatedAt);
+    const selectedDescription =
+        controller.detailState.detail?.description ??
+        controller.selectedWorkflow.description ??
+        "No workflow description reported.";
 
     return (
-        <div className="rounded-card border border-outline-soft bg-surface-low p-4 shadow-hairline">
-            <div
-                aria-label="Selected workflow summary"
-                className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
-                role="group"
-            >
+        <div
+            aria-label="Selected workflow"
+            className="rounded-card border border-outline-soft bg-surface-low px-4 py-3 shadow-hairline"
+            role="group"
+        >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0">
-                    <p className="font-mono text-label font-medium uppercase text-muted">
-                        Selected workflow
-                    </p>
+                    <p className="font-mono text-label font-medium text-muted">Selected workflow</p>
                     <h2 className="mt-1 break-all font-mono text-compact font-semibold text-foreground">
                         {controller.selectedWorkflow.key}
                     </h2>
-                    <p className="mt-2 break-words text-compact text-muted">
-                        {controller.detailState.detail?.description ??
-                            controller.selectedWorkflow.description ??
-                            "No description reported."}
+                    <p className="mt-2 max-w-3xl break-words text-utility text-muted">
+                        {selectedDescription}
                     </p>
                 </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
-                    <StatusChip>
-                        <span>Updated</span>
-                        <TimestampText className="text-current" value={selectedWorkflowUpdatedAt} />
-                    </StatusChip>
-                </div>
-            </div>
-            <WorkflowDetailDisclosure
-                detail={controller.detailState.detail}
-                versions={controller.versionsState.rows}
-                versionsError={controller.versionsState.error}
-                versionsLoading={controller.versionsState.isLoading}
-                workflow={controller.selectedWorkflow}
-            />
-        </div>
-    );
-}
-
-function WorkflowDetailDisclosure({
-    detail,
-    versions,
-    versionsError,
-    versionsLoading,
-    workflow,
-}: {
-    readonly detail: TaskStartWorkflowDetail | null;
-    readonly versions: readonly TaskStartVersionRow[];
-    readonly versionsError: TaskStartController["versionsState"]["error"];
-    readonly versionsLoading: boolean;
-    readonly workflow: TaskStartWorkflowChoice;
-}) {
-    return (
-        <Disclosure className="mt-4" label="Source confirmation" title="Open definition details">
-            <div className="space-y-4">
-                <PropertyGrid
-                    items={[
-                        { label: "Workflow", value: <IdRefText value={workflow.key} /> },
-                        {
-                            label: "Updated",
-                            value: (
-                                <TimestampText value={detail?.updatedAt ?? workflow.updatedAt} />
-                            ),
-                        },
-                        {
-                            label: "Current revision",
-                            value: detail?.revisionNo ?? workflow.currentRevisionNo,
-                        },
-                        { label: "Root role", value: detail?.rootRole ?? "Not reported" },
-                        { label: "Root policy", value: detail?.rootPolicy ?? "Not reported" },
-                        { label: "Stored nodes", value: detail?.nodeCount ?? "Not reported" },
-                    ]}
-                />
-                {detail === null ? null : (
-                    <p className="break-words text-compact text-muted">
-                        Stored workflow id: <IdRefText value={detail.workflowId} />
-                    </p>
-                )}
-                <WorkflowVersions
-                    error={versionsError}
-                    isLoading={versionsLoading}
-                    rows={versions}
-                />
-            </div>
-        </Disclosure>
-    );
-}
-
-function WorkflowVersions({
-    error,
-    isLoading,
-    rows,
-}: {
-    readonly error: TaskStartController["versionsState"]["error"];
-    readonly isLoading: boolean;
-    readonly rows: readonly TaskStartVersionRow[];
-}) {
-    if (isLoading) {
-        return (
-            <StatePanel
-                summary="Reading compact workflow revision history."
-                title="Loading versions"
-                tone="loading"
-            />
-        );
-    }
-
-    if (error !== null) {
-        return (
-            <StatePanel
-                summary={error.summary}
-                title={
-                    isAuthError(error)
-                        ? "Access to workflow history failed"
-                        : "Workflow history could not load"
-                }
-                tone={isAuthError(error) ? "auth" : "error"}
-            />
-        );
-    }
-
-    if (rows.length === 0) {
-        return (
-            <StatePanel
-                summary="The controller returned no revision history entries for this workflow."
-                title="No versions"
-                tone="empty"
-            />
-        );
-    }
-
-    return (
-        <div>
-            <p className="font-mono text-label font-medium uppercase text-muted">Versions</p>
-            <ol aria-label="Workflow versions" className="mt-3 grid gap-2 sm:grid-cols-2">
-                {rows.map((row) => (
-                    <li
-                        className="rounded-card border border-outline-soft bg-surface px-3 py-3"
-                        key={row.revisionNo}
+                <div className="flex w-full min-w-0 flex-col items-end gap-2 lg:w-auto lg:shrink-0">
+                    <span
+                        aria-label={`Updated ${selectedWorkflowUpdatedAtLabel}`}
+                        className="inline-flex max-w-full items-center gap-2 rounded-full bg-surface-high px-3 py-1 font-mono text-utility text-muted"
                     >
-                        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-                            <StatusChip>Revision {row.revisionNo}</StatusChip>
-                            <TimestampText value={row.updatedAt} />
-                        </div>
-                        <p className="mt-2 text-compact text-muted">
-                            Recorded by: {row.recordedBy ?? "Not reported"}
-                        </p>
-                    </li>
-                ))}
-            </ol>
+                        <span>Updated</span>
+                        <span className="font-mono text-utility">
+                            {selectedWorkflowUpdatedAtLabel}
+                        </span>
+                    </span>
+                    <Link
+                        className="inline-flex h-control w-full items-center justify-center gap-2 rounded-control border border-outline bg-surface-low px-4 text-utility font-semibold text-foreground transition-colors hover:border-primary/45 hover:text-primary-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto"
+                        to="/definitions"
+                    >
+                        Open definition details
+                        <ArrowUpRight aria-hidden="true" className="size-4 shrink-0" />
+                    </Link>
+                </div>
+            </div>
         </div>
     );
+}
+
+function formatTaskStartTimestamp(value: string): string {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.valueOf())) {
+        return value;
+    }
+
+    return new Intl.DateTimeFormat("en-AU", {
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        month: "short",
+        timeZone: "Australia/Sydney",
+        timeZoneName: "short",
+        year: "numeric",
+    }).format(date);
 }

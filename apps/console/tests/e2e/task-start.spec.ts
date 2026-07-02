@@ -3,7 +3,7 @@
 import { mkdirSync } from "node:fs";
 
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
 
 import {
     createBackendOperationFailureBody,
@@ -27,20 +27,26 @@ test("starts a task from stored workflow truth at desktop width", async ({ page 
     await expect(page.getByRole("heading", { level: 1, name: "Task Start" })).toBeVisible();
     await expect(page.getByText(TASK_START_WORKFLOW_KEY).first()).toBeVisible();
     const selectedWorkflowSummary = page.getByRole("group", {
-        name: "Selected workflow summary",
+        name: "Selected workflow",
     });
     await expect(
         selectedWorkflowSummary.getByRole("heading", { name: TASK_START_WORKFLOW_KEY }),
     ).toBeVisible();
     await expect(selectedWorkflowSummary.getByText("Updated")).toBeVisible();
+    await expectWorkflowActionClusterStacked(selectedWorkflowSummary);
     await expect(selectedWorkflowSummary.getByText(/Revision/)).toHaveCount(0);
     await expectNoDocumentOverflow(page);
 
-    await page.getByLabel("Search workflow").focus();
+    await page.getByLabel("Search workflow").fill("normal");
     const workflowChoices = page.getByRole("list", { name: "Workflow choices" });
     await expect(workflowChoices).toBeVisible();
+    await expect(workflowChoices.getByRole("button")).toHaveCount(1);
     await expect(workflowChoices.getByText(TASK_START_WORKFLOW_KEY).first()).toBeVisible();
     await expect(workflowChoices.getByText(/Revision/)).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Selected workflow" })).toHaveCount(0);
+    await page.getByLabel("Search workflow").fill("");
+    await expect(selectedWorkflowSummary).toBeVisible();
+    await fillRequiredTaskFields(page);
 
     const previewButton = page.getByRole("button", { name: "Preview" });
     await previewButton.focus();
@@ -56,12 +62,14 @@ test("starts a task from stored workflow truth at desktop width", async ({ page 
     await expect(previewDialog.getByText("implement-task-start-launch-form")).toBeVisible();
     await expect(previewDialog.getByText("Summary", { exact: true })).toBeVisible();
     await expect(
-        previewDialog.getByText("Launch one bounded task from stored workflow truth."),
+        previewDialog.getByText(
+            "Launch one bounded implementation task from stored workflow truth.",
+        ),
     ).toBeVisible();
     await expect(previewDialog.getByText("Instruction", { exact: true })).toBeVisible();
     await expect(
         previewDialog.getByText(
-            "Keep the work scoped to the current assignment and publish focused verification.",
+            "Keep the work scoped to the current task-start UI and publish focused verification.",
         ),
     ).toBeVisible();
     await expect(previewDialog.getByText("Workspace", { exact: true })).toBeVisible();
@@ -106,7 +114,7 @@ test("keeps Task Start root modes, validation, and layout usable at mobile width
     await expect(page.getByRole("heading", { level: 1, name: "Task Start" })).toBeVisible();
     await expect(page.getByText(TASK_START_WORKFLOW_KEY).first()).toBeVisible();
     const selectedWorkflowSummary = page.getByRole("group", {
-        name: "Selected workflow summary",
+        name: "Selected workflow",
     });
     await expect(
         selectedWorkflowSummary.getByRole("heading", { name: TASK_START_WORKFLOW_KEY }),
@@ -115,11 +123,16 @@ test("keeps Task Start root modes, validation, and layout usable at mobile width
     await expect(selectedWorkflowSummary.getByText(/Revision/)).toHaveCount(0);
     await expectNoDocumentOverflow(page);
 
-    await page.getByLabel("Search workflow").focus();
+    await page.getByLabel("Search workflow").fill("normal");
     const workflowChoices = page.getByRole("list", { name: "Workflow choices" });
     await expect(workflowChoices).toBeVisible();
+    await expect(workflowChoices.getByRole("button")).toHaveCount(1);
     await expect(workflowChoices.getByText(TASK_START_WORKFLOW_KEY).first()).toBeVisible();
     await expect(workflowChoices.getByText(/Revision/)).toHaveCount(0);
+    await expect(page.getByRole("group", { name: "Selected workflow" })).toHaveCount(0);
+    await page.getByLabel("Search workflow").fill("");
+    await expect(selectedWorkflowSummary).toBeVisible();
+    await fillRequiredTaskFields(page);
 
     const workspaceRoot = page.getByRole("region", { name: "Workspace root" });
     await workspaceRoot.getByRole("button", { name: "Create host path" }).click();
@@ -130,7 +143,7 @@ test("keeps Task Start root modes, validation, and layout usable at mobile width
     await contextRoot.getByLabel("Host path").fill("/tmp/task-start-context");
 
     await page.getByLabel("Task key").fill("");
-    await page.getByRole("button", { name: "Start Task" }).click();
+    await page.getByRole("button", { name: "Preview" }).click();
     await expect(page.getByText("Task key is required.")).toBeVisible();
     await page.getByLabel("Task key").fill("task-start-mobile-proof");
     await page.getByRole("button", { name: "Start Task" }).click();
@@ -164,10 +177,14 @@ async function mockTaskStart(
         }
 
         if (path === "/definitions/workflows") {
-            await fulfillJson(
-                route,
-                createDefinitionSummaryList("workflow", createTaskStartWorkflowRows(), null),
+            const query = (requestUrl.searchParams.get("q") ?? "").trim().toLowerCase();
+            const limit = Number(requestUrl.searchParams.get("limit"));
+            const rows = createTaskStartWorkflowRows().filter((workflow) =>
+                taskStartWorkflowMatchesQuery(workflow, query),
             );
+            const limitedRows = Number.isFinite(limit) && limit > 0 ? rows.slice(0, limit) : rows;
+
+            await fulfillJson(route, createDefinitionSummaryList("workflow", limitedRows, null));
             return;
         }
 
@@ -201,11 +218,64 @@ async function mockTaskStart(
     });
 }
 
+async function expectWorkflowActionClusterStacked(selectedWorkflowSummary: Locator): Promise<void> {
+    const updatedPill = selectedWorkflowSummary.locator('[aria-label^="Updated "]');
+    const definitionDetailsLink = selectedWorkflowSummary.getByRole("link", {
+        name: "Open definition details",
+    });
+
+    await expect(updatedPill).toBeVisible();
+    await expect(definitionDetailsLink).toBeVisible();
+
+    const updatedPillBox = await updatedPill.boundingBox();
+    const definitionDetailsLinkBox = await definitionDetailsLink.boundingBox();
+
+    if (updatedPillBox === null || definitionDetailsLinkBox === null) {
+        throw new Error("Workflow action cluster did not produce measurable boxes.");
+    }
+
+    expect(definitionDetailsLinkBox.y).toBeGreaterThan(updatedPillBox.y + updatedPillBox.height);
+    expect(
+        Math.abs(
+            updatedPillBox.x +
+                updatedPillBox.width -
+                (definitionDetailsLinkBox.x + definitionDetailsLinkBox.width),
+        ),
+    ).toBeLessThanOrEqual(1);
+    expect(definitionDetailsLinkBox.width).toBeLessThan(updatedPillBox.width);
+}
+
+function taskStartWorkflowMatchesQuery(
+    workflow: ReturnType<typeof createTaskStartWorkflowRows>[number],
+    query: string,
+): boolean {
+    if (query.length === 0) {
+        return true;
+    }
+
+    return [workflow.key, workflow.description ?? "", workflow.title ?? ""].some((field) =>
+        field.toLowerCase().includes(query),
+    );
+}
+
 async function fulfillJson(route: Route, body: unknown): Promise<void> {
     await route.fulfill({
         body: JSON.stringify(body),
         contentType: "application/json",
     });
+}
+
+async function fillRequiredTaskFields(page: Page): Promise<void> {
+    await page.getByLabel("Task key").fill("implement-task-start-launch-form");
+    await page.getByLabel("Title").fill("Implement Task Start launch form");
+    await page
+        .getByLabel("Summary")
+        .fill("Launch one bounded implementation task from stored workflow truth.");
+    await page
+        .getByLabel("Instruction")
+        .fill(
+            "Keep the work scoped to the current task-start UI and publish focused verification.",
+        );
 }
 
 async function expectNoDocumentOverflow(page: Page): Promise<void> {

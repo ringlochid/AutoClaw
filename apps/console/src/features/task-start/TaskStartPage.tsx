@@ -14,7 +14,12 @@ export function TaskStartPage() {
     const controller = useTaskStartController();
 
     return (
-        <PageFrame eyebrow="Authoring" title="Task Start">
+        <PageFrame
+            className="!max-w-[1320px]"
+            contentClassName="!px-0 !py-0"
+            eyebrow="Authoring"
+            title="Task Start"
+        >
             <div className="space-y-4">
                 <div className="divide-y divide-outline-soft">
                     <TaskStartSection label="Workflow">

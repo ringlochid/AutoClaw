@@ -14,7 +14,6 @@ import {
     createDefinitionVersionsMap,
     createPolicyDefinitionRows,
     createRoleDefinitionRows,
-    createWorkflowDefinitionRows,
 } from "../../tests/fixtures/definitions";
 import {
     createDefinitionEditorApply,
@@ -35,6 +34,7 @@ import {
     SECOND_TASK_START_WORKFLOW_KEY,
     TASK_START_WORKFLOW_KEY,
     createTaskStartWorkflowDetail,
+    createTaskStartWorkflowRows,
     createTaskStartWorkflowVersions,
 } from "../../tests/fixtures/task-start";
 
@@ -114,11 +114,7 @@ function createDevMockScenario() {
         definitionLists: {
             roles: createDefinitionSummaryList("role", createRoleDefinitionRows(), null),
             policies: createDefinitionSummaryList("policy", createPolicyDefinitionRows(), null),
-            workflows: createDefinitionSummaryList(
-                "workflow",
-                createWorkflowDefinitionRows(),
-                null,
-            ),
+            workflows: createDefinitionSummaryList("workflow", createTaskStartWorkflowRows(), null),
         },
         definitionVersionsByDefinition: {
             ...definitionVersionsByDefinition,

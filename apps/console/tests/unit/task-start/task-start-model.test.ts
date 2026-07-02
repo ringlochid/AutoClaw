@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    TASK_START_FIELD_PLACEHOLDERS,
     TASK_START_INITIAL_FORM,
     buildTaskStartPreview,
     buildTaskStartRequest,
@@ -86,23 +87,30 @@ describe("task start request mapper", () => {
 
         expect(choice.key).toBe(TASK_START_WORKFLOW_KEY);
         expect(choice.displayName).toBe("Display title for picker only");
-        expect(choice.updatedAt).toBe("2026-06-29T14:00:00Z");
+        expect(choice.updatedAt).toBe("2026-06-16T18:42:00Z");
         expect("revisionLabel" in choice).toBe(false);
     });
 
     it("keeps preview readback to launch intent fields without workflow revision", () => {
         const workflow = mapTaskStartWorkflowChoice(createTaskStartWorkflowRows()[0]);
+        const form = {
+            ...TASK_START_INITIAL_FORM,
+            instruction: TASK_START_FIELD_PLACEHOLDERS.instruction,
+            summary: TASK_START_FIELD_PLACEHOLDERS.summary,
+            taskKey: TASK_START_FIELD_PLACEHOLDERS.taskKey,
+            title: TASK_START_FIELD_PLACEHOLDERS.title,
+        };
         const preview = buildTaskStartPreview({
             detail: mapTaskStartWorkflowDetail(createTaskStartWorkflowDetail()),
-            form: TASK_START_INITIAL_FORM,
+            form,
             workflow,
         });
 
         expect(preview).toMatchObject({
             contextModeLabel: "Task default",
             instructionSummary:
-                "Keep the work scoped to the current assignment and publish focused verification.",
-            summary: "Launch one bounded task from stored workflow truth.",
+                "Keep the work scoped to the current task-start UI and publish focused verification.",
+            summary: "Launch one bounded implementation task from stored workflow truth.",
             taskKey: "implement-task-start-launch-form",
             title: "Implement Task Start launch form",
             workflowKey: TASK_START_WORKFLOW_KEY,

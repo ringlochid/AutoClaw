@@ -13,7 +13,6 @@ import {
     isAuthError,
     readWorkflowChoices,
     readWorkflowDetail,
-    readWorkflowVersions,
     startTask,
     toErrorView,
     type DefinitionListSort,
@@ -24,7 +23,6 @@ import {
     buildTaskStartRequest,
     hasTaskStartFormErrors,
     mapTaskStartResult,
-    mapTaskStartVersionRow,
     mapTaskStartWorkflowChoice,
     mapTaskStartWorkflowDetail,
     shouldShowHostPath,
@@ -34,7 +32,6 @@ import {
     type TaskStartFormState,
     type TaskStartPreview,
     type TaskStartResultView,
-    type TaskStartVersionRow,
     type TaskStartWorkflowChoice,
     type TaskStartWorkflowDetail,
 } from "./task-start-model";
@@ -55,13 +52,6 @@ interface WorkflowDetailState {
     readonly detail: TaskStartWorkflowDetail | null;
     readonly error: ConsoleErrorView | null;
     readonly isLoading: boolean;
-    readonly selectedKey: string | null;
-}
-
-interface WorkflowVersionsState {
-    readonly error: ConsoleErrorView | null;
-    readonly isLoading: boolean;
-    readonly rows: readonly TaskStartVersionRow[];
     readonly selectedKey: string | null;
 }
 
@@ -96,7 +86,6 @@ export interface TaskStartController {
     readonly statusSummary: string;
     readonly submitState: TaskStartSubmitState;
     readonly updateWorkflowQuery: (value: string) => void;
-    readonly versionsState: WorkflowVersionsState;
     readonly workflowQuery: string;
 }
 
@@ -122,13 +111,6 @@ const initialDetailState: WorkflowDetailState = {
     selectedKey: null,
 };
 
-const initialVersionsState: WorkflowVersionsState = {
-    error: null,
-    isLoading: false,
-    rows: [],
-    selectedKey: null,
-};
-
 const initialSubmitState: TaskStartSubmitState = {
     error: null,
     isSubmitting: false,
@@ -144,11 +126,11 @@ export function useTaskStartController(): TaskStartController {
     const [refreshToken, setRefreshToken] = useState(0);
     const [listState, setListState] = useState<WorkflowListState>(initialListState);
     const [detailState, setDetailState] = useState<WorkflowDetailState>(initialDetailState);
-    const [versionsState, setVersionsState] = useState<WorkflowVersionsState>(initialVersionsState);
     const [submitState, setSubmitState] = useState<TaskStartSubmitState>(initialSubmitState);
     const [preview, setPreview] = useState<TaskStartPreview | null>(null);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [resultOpen, setResultOpen] = useState(false);
+    const hasPrimedWorkflowQueryRef = useRef(false);
     const listGenerationRef = useRef(0);
     const trimmedWorkflowQuery = workflowQuery.trim();
     const criteriaKey = buildWorkflowCriteriaKey(trimmedWorkflowQuery, sort);
@@ -180,9 +162,16 @@ export function useTaskStartController(): TaskStartController {
                     rows,
                     setListState,
                 });
-                setSelectedWorkflowKey(
-                    (currentKey) => currentKey ?? (rows.length > 0 ? rows[0].key : null),
-                );
+                const firstWorkflowKey = rows.length > 0 ? rows[0].key : null;
+                setSelectedWorkflowKey((currentKey) => currentKey ?? firstWorkflowKey);
+                if (
+                    firstWorkflowKey !== null &&
+                    trimmedWorkflowQuery.length === 0 &&
+                    !hasPrimedWorkflowQueryRef.current
+                ) {
+                    hasPrimedWorkflowQueryRef.current = true;
+                    setWorkflowQuery(firstWorkflowKey);
+                }
             })
             .catch((error: unknown) => {
                 applyWorkflowListError({ criteriaKey, error, listGeneration, setListState });
@@ -199,7 +188,7 @@ export function useTaskStartController(): TaskStartController {
         }
 
         const abortController = new AbortController();
-        beginWorkflowDetailRead(setDetailState, setVersionsState, selectedWorkflowKey);
+        beginWorkflowDetailRead(setDetailState, selectedWorkflowKey);
         void readWorkflowDetail({ key: selectedWorkflowKey, signal: abortController.signal })
             .then((detail) => {
                 setDetailState((currentState) => {
@@ -226,37 +215,6 @@ export function useTaskStartController(): TaskStartController {
                         detail: null,
                         error: toErrorView(error),
                         isLoading: false,
-                        selectedKey: selectedWorkflowKey,
-                    };
-                });
-            });
-
-        void readWorkflowVersions({ key: selectedWorkflowKey, signal: abortController.signal })
-            .then((history) => {
-                setVersionsState((currentState) => {
-                    if (currentState.selectedKey !== selectedWorkflowKey) {
-                        return currentState;
-                    }
-                    return {
-                        error: null,
-                        isLoading: false,
-                        rows: history.items.map(mapTaskStartVersionRow),
-                        selectedKey: selectedWorkflowKey,
-                    };
-                });
-            })
-            .catch((error: unknown) => {
-                if (isAbortError(error)) {
-                    return;
-                }
-                setVersionsState((currentState) => {
-                    if (currentState.selectedKey !== selectedWorkflowKey) {
-                        return currentState;
-                    }
-                    return {
-                        error: toErrorView(error),
-                        isLoading: false,
-                        rows: [],
                         selectedKey: selectedWorkflowKey,
                     };
                 });
@@ -361,8 +319,9 @@ export function useTaskStartController(): TaskStartController {
     return {
         clearWorkflow: () => {
             setSelectedWorkflowKey(null);
+            setWorkflowQuery("");
+            hasPrimedWorkflowQueryRef.current = false;
             setDetailState(initialDetailState);
-            setVersionsState(initialVersionsState);
             setFormErrors((currentErrors) => ({
                 ...currentErrors,
                 workflow: "Workflow selection is required.",
@@ -393,6 +352,8 @@ export function useTaskStartController(): TaskStartController {
         },
         selectWorkflow: (key: string) => {
             setSelectedWorkflowKey(key);
+            hasPrimedWorkflowQueryRef.current = true;
+            setWorkflowQuery(key);
             setFormErrors((currentErrors) => ({ ...currentErrors, workflow: undefined }));
         },
         selectedWorkflow,
@@ -407,7 +368,6 @@ export function useTaskStartController(): TaskStartController {
         statusSummary: getStatusSummary(listState),
         submitState,
         updateWorkflowQuery: setWorkflowQuery,
-        versionsState,
         workflowQuery,
     };
 }
@@ -562,19 +522,12 @@ function applyWorkflowListError({
 
 function beginWorkflowDetailRead(
     setDetailState: Dispatch<SetStateAction<WorkflowDetailState>>,
-    setVersionsState: Dispatch<SetStateAction<WorkflowVersionsState>>,
     selectedKey: string,
 ): void {
     setDetailState({
         detail: null,
         error: null,
         isLoading: true,
-        selectedKey,
-    });
-    setVersionsState({
-        error: null,
-        isLoading: true,
-        rows: [],
         selectedKey,
     });
 }

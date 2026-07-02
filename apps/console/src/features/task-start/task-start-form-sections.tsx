@@ -1,20 +1,22 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
-import { Eye, Rocket, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import {
     Button,
     FormField,
     IdRefText,
     PropertyGrid,
-    SegmentedControl,
     StatePanel,
     StatusChip,
 } from "../../components/ui";
+import { classNames } from "../../lib/classNames";
 import type { TaskStartController } from "./task-start-controller";
 import { isAuthError } from "./task-start-data";
 import {
+    TASK_START_FIELD_PLACEHOLDERS,
     TASK_ROOT_MODE_OPTIONS,
+    countTaskStartRequiredInputs,
     shouldShowHostPath,
     type TaskRootMode,
     type TaskStartPreview,
@@ -23,23 +25,38 @@ import {
 import { controlClassName, textAreaClassName } from "./task-start-ui";
 
 export function TaskIdentitySection({ controller }: { readonly controller: TaskStartController }) {
+    const labelClassName =
+        "font-display text-compact font-semibold tracking-normal !normal-case text-foreground";
+
     return (
         <div className="grid gap-4 lg:grid-cols-2">
-            <FormField error={controller.formErrors.taskKey} id="task-start-key" label="Task key">
+            <FormField
+                error={controller.formErrors.taskKey}
+                id="task-start-key"
+                label="Task key"
+                labelClassName={labelClassName}
+            >
                 <input
                     className={controlClassName()}
                     onChange={(event) => {
                         controller.setField("taskKey", event.target.value);
                     }}
+                    placeholder={TASK_START_FIELD_PLACEHOLDERS.taskKey}
                     value={controller.form.taskKey}
                 />
             </FormField>
-            <FormField error={controller.formErrors.title} id="task-start-title" label="Title">
+            <FormField
+                error={controller.formErrors.title}
+                id="task-start-title"
+                label="Title"
+                labelClassName={labelClassName}
+            >
                 <input
                     className={controlClassName()}
                     onChange={(event) => {
                         controller.setField("title", event.target.value);
                     }}
+                    placeholder={TASK_START_FIELD_PLACEHOLDERS.title}
                     value={controller.form.title}
                 />
             </FormField>
@@ -48,24 +65,31 @@ export function TaskIdentitySection({ controller }: { readonly controller: TaskS
                     error={controller.formErrors.summary}
                     id="task-start-summary"
                     label="Summary"
+                    labelClassName={labelClassName}
                 >
                     <textarea
-                        className={textAreaClassName()}
+                        className={textAreaClassName("min-h-[76px]")}
                         onChange={(event) => {
                             controller.setField("summary", event.target.value);
                         }}
+                        placeholder={TASK_START_FIELD_PLACEHOLDERS.summary}
                         rows={3}
                         value={controller.form.summary}
                     />
                 </FormField>
             </div>
             <div className="lg:col-span-2">
-                <FormField id="task-start-instruction" label="Instruction">
+                <FormField
+                    id="task-start-instruction"
+                    label="Instruction"
+                    labelClassName={labelClassName}
+                >
                     <textarea
-                        className={textAreaClassName()}
+                        className={textAreaClassName("min-h-[84px]")}
                         onChange={(event) => {
                             controller.setField("instruction", event.target.value);
                         }}
+                        placeholder={TASK_START_FIELD_PLACEHOLDERS.instruction}
                         rows={3}
                         value={controller.form.instruction}
                     />
@@ -118,12 +142,9 @@ export function TaskStartSection({
     return (
         <section
             aria-labelledby={headingId}
-            className="grid gap-4 py-5 lg:grid-cols-[8.5rem_minmax(0,1fr)]"
+            className="grid gap-4 px-4 py-4 sm:px-5 sm:py-5 xl:grid-cols-[13rem_minmax(0,1fr)]"
         >
-            <h2
-                className="font-mono text-label font-medium uppercase text-muted lg:pt-2"
-                id={headingId}
-            >
+            <h2 className="font-mono text-label font-medium text-muted lg:pt-2" id={headingId}>
                 {label}
             </h2>
             <div className="min-w-0">{children}</div>
@@ -156,10 +177,9 @@ function RootBindingControl({
                         {label}
                     </h2>
                 </div>
-                <SegmentedControl
+                <RootModeButtons
                     label={`${label} root mode`}
                     onChange={onModeChange}
-                    options={TASK_ROOT_MODE_OPTIONS}
                     value={mode}
                 />
             </div>
@@ -171,11 +191,7 @@ function RootBindingControl({
                             onChange={(event) => {
                                 onHostPathChange(event.target.value);
                             }}
-                            placeholder={
-                                mode === "ensure_host_path"
-                                    ? "/home/ubuntu/workspace/new-task-root"
-                                    : "/home/ubuntu/workspace/existing-root"
-                            }
+                            placeholder={rootHostPathPlaceholder(label, mode)}
                             value={hostPath}
                         />
                     </FormField>
@@ -185,21 +201,79 @@ function RootBindingControl({
     );
 }
 
-export function TaskStartActions({ controller }: { readonly controller: TaskStartController }) {
+function RootModeButtons({
+    label,
+    onChange,
+    value,
+}: {
+    readonly label: string;
+    readonly onChange: (value: TaskRootMode) => void;
+    readonly value: TaskRootMode;
+}) {
     return (
-        <div className="flex flex-col gap-3 rounded-card border border-outline-soft bg-surface-low p-4 shadow-hairline sm:flex-row sm:items-center sm:justify-between">
+        <div aria-label={label} className="inline-flex min-w-0 flex-wrap gap-2" role="group">
+            {TASK_ROOT_MODE_OPTIONS.map((option) => {
+                const isSelected = option.value === value;
+
+                return (
+                    <button
+                        aria-pressed={isSelected}
+                        className={classNames(
+                            "inline-flex h-control items-center justify-center gap-2 rounded-control border px-4 text-utility font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-55",
+                            isSelected
+                                ? "border-primary/25 bg-primary-soft text-primary-foreground"
+                                : "border-outline bg-surface-low text-foreground hover:border-primary/45 hover:text-primary-foreground",
+                        )}
+                        key={option.value}
+                        onClick={() => {
+                            onChange(option.value);
+                        }}
+                        type="button"
+                    >
+                        {isSelected ? (
+                            <span
+                                aria-hidden="true"
+                                className="size-1.5 shrink-0 rounded-full bg-primary"
+                            />
+                        ) : null}
+                        <span className="min-w-0 truncate">{option.label}</span>
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+function rootHostPathPlaceholder(label: string, mode: TaskRootMode): string {
+    if (label === "Workspace") {
+        return mode === "ensure_host_path" ? "/workspaces/new-task" : "/workspaces/existing-root";
+    }
+
+    return "/contexts/source-material";
+}
+
+export function TaskStartActions({ controller }: { readonly controller: TaskStartController }) {
+    const requiredInputCount = countTaskStartRequiredInputs(
+        controller.form,
+        controller.selectedWorkflowKey,
+    );
+    const requiredInputLabel = String(requiredInputCount);
+    const isStartDisabled = controller.submitState.isSubmitting || requiredInputCount > 0;
+
+    return (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-compact text-muted">
-                {controller.selectedWorkflowKey === null
-                    ? "Select a stored workflow before starting a task."
+                {requiredInputCount > 0
+                    ? `${requiredInputLabel} required input${
+                          requiredInputCount === 1 ? "" : "s"
+                      } still need attention.`
                     : "Ready to start from the selected workflow."}
             </p>
             <div className="flex flex-wrap gap-2">
-                <Button icon={<Eye />} onClick={controller.showPreview}>
-                    Preview
-                </Button>
+                <Button onClick={controller.showPreview}>Preview</Button>
                 <Button
-                    disabled={controller.submitState.isSubmitting}
-                    icon={<Rocket />}
+                    className="disabled:border-outline disabled:bg-outline disabled:text-white disabled:opacity-100"
+                    disabled={isStartDisabled}
                     onClick={controller.start}
                     variant="primary"
                 >
@@ -229,8 +303,8 @@ export function PreviewPanel({
                         Back to edit
                     </Button>
                     <Button
+                        className="disabled:border-outline disabled:bg-outline disabled:text-white disabled:opacity-100"
                         disabled={startDisabled}
-                        icon={<Rocket />}
                         onClick={onStart}
                         variant="primary"
                     >
