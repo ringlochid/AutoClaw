@@ -256,7 +256,6 @@ async def test_root_cli_config_show_redacts_secrets(
         payload = json.loads(capsys.readouterr().out)
         assert result == 0
         assert payload["security"]["api_key"] == "__AUTOCLAW_REDACTED__"
-        assert payload["security"]["internal_api_key"] == "__AUTOCLAW_REDACTED__"
     finally:
         await dispose_db_engine()
 

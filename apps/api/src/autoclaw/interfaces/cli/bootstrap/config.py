@@ -19,7 +19,6 @@ def settings_to_config_text(
     port: int,
     log_level: str,
     api_key: str,
-    internal_api_key: str,
 ) -> str:
     payload: dict[str, dict[str, Any]] = {
         "paths": {
@@ -44,7 +43,6 @@ def settings_to_config_text(
         },
         "security": {
             "api_key": api_key,
-            "internal_api_key": internal_api_key,
         },
         "openclaw": {
             "base_url": OpenClawSettings().base_url,

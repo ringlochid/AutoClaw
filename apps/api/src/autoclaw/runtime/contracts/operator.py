@@ -10,6 +10,7 @@ from autoclaw.runtime.contracts.primitives import (
     CheckpointOutcome,
     DispatchDeliveryStatus,
     EgressBoundary,
+    FlowStatus,
 )
 from autoclaw.runtime.contracts.refs import (
     ArtifactIndexRef,
@@ -71,6 +72,7 @@ class DispatchHistoryEntry(BaseModel):
 
     attempt_id: RuntimeSchemaText
     assignment_key: RuntimeSchemaText | None = None
+    assignment_summary: RuntimeSchemaText | None = None
     node_key: RuntimeSchemaText
     delivery_status: DispatchDeliveryStatus
     rendered_at: datetime
@@ -88,10 +90,24 @@ class CheckpointHistoryEntry(BaseModel):
 
 
 class BoundaryHistoryEntry(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        from_attributes=True,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
 
     node_key: RuntimeSchemaText
     boundary: EgressBoundary
+    previous_node_key: RuntimeSchemaText
+    next_node_key: RuntimeSchemaText | None = None
+    next_attempt_id: RuntimeSchemaText | None = None
+    resulting_flow_status: FlowStatus | None = None
+    should_reopen_after_inactivity: bool | None = Field(
+        default=None,
+        alias="requires_reopen_after_inactivity",
+    )
     occurred_at: datetime
 
 

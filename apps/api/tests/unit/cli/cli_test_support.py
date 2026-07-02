@@ -37,7 +37,6 @@ def build_cli_init_args(config_path: Path, data_dir: Path) -> argparse.Namespace
         port=DEFAULT_API_PORT,
         log_level=DEFAULT_LOG_LEVEL,
         api_key="api-test-key",
-        internal_api_key="internal-test-key",
         force=True,
         skip_db_upgrade=False,
         json=True,

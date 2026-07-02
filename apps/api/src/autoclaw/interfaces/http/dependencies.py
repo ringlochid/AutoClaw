@@ -19,12 +19,6 @@ def require_api_key(
     _require_exact_api_key(provided_key=api_key, expected_key=get_settings().api_key)
 
 
-def require_internal_api_key(
-    api_key: Annotated[str | None, Header(alias="X-AutoClaw-API-Key")] = None,
-) -> None:
-    _require_exact_api_key(provided_key=api_key, expected_key=get_settings().internal_api_key)
-
-
 def read_control_actor_ref(
     actor_ref: Annotated[str | None, Header(alias=_CONTROL_ACTOR_REF_HEADER_NAME)] = None,
 ) -> str | None:

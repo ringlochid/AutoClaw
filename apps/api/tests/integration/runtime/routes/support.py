@@ -123,7 +123,6 @@ async def runtime_route_context(
         data_dir=data_dir,
         log_level="WARNING",
         api_key="api-test-key",
-        internal_api_key="internal-test-key",
         host="127.0.0.1",
         port=8123,
     )

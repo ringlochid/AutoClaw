@@ -19,6 +19,7 @@ Use `api-trust-lanes.md` for caller authority and the difference between operato
 Current router families are:
 
 - `health`
+- `web_console`
 - `definitions`
 - `authoring`
 - `tasks`
@@ -43,6 +44,32 @@ Unauthenticated health routes are:
 - `GET /readyz`
 
 `/readyz` performs a DB ping before returning ready.
+
+## Current packaged web console routes
+
+When packaged console assets are available, the web-console router serves the browser shell on the API origin. These routes are not part of generated OpenAPI.
+
+Current routes are:
+
+- `GET /console/config`
+- `GET /`
+- `GET /tasks`
+- `GET /tasks/{console_path:path}`
+- `GET /definitions`
+- `GET /definitions/{console_path:path}`
+- `GET /task-start`
+- `GET /fixtures`
+- `GET /app-icon.png`
+- `GET /site.webmanifest`
+- `GET /mockServiceWorker.js`
+- `GET /assets/*`
+
+`GET /console/config` returns the same-origin runtime config used by the packaged browser app:
+
+- `apiBaseUrl`
+- `apiKey`
+
+The route sets `Cache-Control: no-store` and does not return any other API key material.
 
 ## Current definition and task-start routes
 
@@ -198,6 +225,8 @@ Current mounted-node facts:
 
 Current shipped path families are:
 
+- `/console/config`
+- `/assets/*`
 - `/definitions/*`
 - `/tasks/*`
 - `/runtime/*`
@@ -210,8 +239,6 @@ Current shipped path families are:
 Current docs must treat these as implementation truth only. They are not the clean-break design surface.
 
 Current code does not ship the older legacy flow, approval, registry-internal, task-compose-start, or browser-bootstrap route families anymore.
-
-Current code still keeps `require_internal_api_key()` in `app.api.deps`, but no shipped HTTP router currently uses it.
 
 ## Minimal example
 

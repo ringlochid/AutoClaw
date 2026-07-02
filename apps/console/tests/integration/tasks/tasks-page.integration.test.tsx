@@ -17,6 +17,7 @@ import {
     createRuntimeFlowSummary,
     createRuntimeFlowSummaryList,
 } from "../../fixtures/console-api";
+import { installTestConsoleConfig } from "../../fixtures/console-config";
 
 const server = setupServer();
 
@@ -27,11 +28,13 @@ beforeAll(() => {
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
     vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
+    installTestConsoleConfig();
 });
 
 afterEach(() => {
     cleanup();
     server.resetHandlers();
+    installTestConsoleConfig(null);
     vi.unstubAllEnvs();
 });
 

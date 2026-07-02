@@ -50,7 +50,6 @@ def build_settings_payload(settings: Any, config_path: Path) -> dict[str, Any]:
         },
         "security": {
             "api_key": settings.api_key,
-            "internal_api_key": settings.internal_api_key,
         },
         "openclaw": settings.openclaw.model_dump(mode="json"),
         "runtime": settings.runtime.model_dump(mode="json"),
@@ -63,9 +62,8 @@ def _redact_config_payload(payload: dict[str, Any]) -> dict[str, Any]:
     security = redacted.get("security")
     if isinstance(security, dict):
         security = dict(security)
-        for key in ("api_key", "internal_api_key"):
-            if security.get(key):
-                security[key] = REDACTED_VALUE
+        if security.get("api_key"):
+            security["api_key"] = REDACTED_VALUE
         redacted["security"] = security
     openclaw = redacted.get("openclaw")
     if isinstance(openclaw, dict):

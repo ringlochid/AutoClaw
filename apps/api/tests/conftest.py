@@ -17,7 +17,6 @@ from tests.helpers.runtime_support.dispatch import (
 os.environ["AUTOCLAW_ENV"] = "test"
 os.environ["AUTOCLAW_DEBUG"] = "false"
 os.environ["AUTOCLAW_API_KEY"] = "autoclaw-operator-test-key"
-os.environ["AUTOCLAW_INTERNAL_API_KEY"] = "autoclaw-internal-test-key"
 
 get_settings.cache_clear()
 

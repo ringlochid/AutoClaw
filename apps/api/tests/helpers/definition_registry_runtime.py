@@ -66,7 +66,6 @@ def _build_init_args(config_path: Path, data_dir: Path) -> argparse.Namespace:
         port=8123,
         log_level="INFO",
         api_key="api-test-key",
-        internal_api_key="internal-test-key",
         force=True,
         skip_db_upgrade=False,
         json=False,

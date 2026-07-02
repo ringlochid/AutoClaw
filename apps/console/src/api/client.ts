@@ -1,4 +1,4 @@
-import { buildConsoleConfig, type ConsoleConfig } from "../app/config";
+import { getConsoleConfig, type ConsoleConfig } from "../app/config";
 
 import type { components } from "./generated/openapi";
 
@@ -96,7 +96,7 @@ export async function createApiErrorFromResponse(response: Response): Promise<Au
 
 export async function requestJson<TResponse>({
     body,
-    config = buildConsoleConfig(),
+    config = getConsoleConfig(),
     fetchImpl = fetch,
     method = "GET",
     path,

@@ -24,7 +24,6 @@ async def test_readyz_uses_real_database(tmp_path: Path) -> None:
                 port=8123,
                 log_level="INFO",
                 api_key="api-test-key",
-                internal_api_key="internal-test-key",
                 force=True,
                 skip_db_upgrade=False,
                 json=False,

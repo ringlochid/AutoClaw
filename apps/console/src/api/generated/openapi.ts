@@ -870,6 +870,10 @@ export interface components {
         /** BoundaryHistoryEntry */
         BoundaryHistoryEntry: {
             boundary: components["schemas"]["EgressBoundary"];
+            /** Next Attempt Id */
+            next_attempt_id?: string | null;
+            /** Next Node Key */
+            next_node_key?: string | null;
             /** Node Key */
             node_key: string;
             /**
@@ -877,6 +881,11 @@ export interface components {
              * Format: date-time
              */
             occurred_at: string;
+            /** Previous Node Key */
+            previous_node_key: string;
+            /** Requires Reopen After Inactivity */
+            requires_reopen_after_inactivity?: boolean | null;
+            resulting_flow_status?: components["schemas"]["FlowStatus"] | null;
         };
         /** BoundaryRead */
         BoundaryRead: {
@@ -1560,6 +1569,8 @@ export interface components {
         DispatchHistoryEntry: {
             /** Assignment Key */
             assignment_key?: string | null;
+            /** Assignment Summary */
+            assignment_summary?: string | null;
             /** Attempt Id */
             attempt_id: string;
             delivery_status: components["schemas"]["DispatchDeliveryStatus"];

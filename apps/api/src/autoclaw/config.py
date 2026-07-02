@@ -121,7 +121,6 @@ class Settings(BaseSettings):
     config_path: Path = Field(default_factory=default_config_path)
     data_dir: Path = Field(default_factory=default_data_dir)
     api_key: str = ""
-    internal_api_key: str = ""
     openclaw: OpenClawSettings = Field(default_factory=OpenClawSettings)
     runtime: RuntimeSettings = Field(default_factory=RuntimeSettings)
 
@@ -178,8 +177,6 @@ def get_settings() -> Settings:
 
     if not settings.api_key:
         raise RuntimeError("AUTOCLAW_API_KEY is required for non-test environments")
-    if not settings.internal_api_key:
-        raise RuntimeError("AUTOCLAW_INTERNAL_API_KEY is required for non-test environments")
     return settings
 
 
@@ -198,8 +195,6 @@ def load_settings() -> Settings:
     if settings.env == Environment.TEST:
         if not settings.api_key:
             settings.api_key = "autoclaw-test-key"
-        if not settings.internal_api_key:
-            settings.internal_api_key = settings.api_key
     return settings
 
 
@@ -248,7 +243,6 @@ def _load_toml_settings() -> dict[str, Any]:
         "api_port": ("server", "port"),
         "log_level": ("logging", "level"),
         "api_key": ("security", "api_key"),
-        "internal_api_key": ("security", "internal_api_key"),
     }
     for field_name, key_path in field_mapping.items():
         value = _nested_get(payload, *key_path)
@@ -258,7 +252,7 @@ def _load_toml_settings() -> dict[str, Any]:
         loaded["openclaw"] = {
             key: value
             for key, value in payload["openclaw"].items()
-            if key not in {"internal_api_key", "account"}
+            if key != "account"
         }
     if isinstance(payload.get("runtime"), dict):
         loaded["runtime"] = payload["runtime"]

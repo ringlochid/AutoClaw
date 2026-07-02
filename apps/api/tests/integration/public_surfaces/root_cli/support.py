@@ -49,7 +49,6 @@ def build_init_args(
         port=8123,
         log_level="INFO",
         api_key="api-test-key",
-        internal_api_key="internal-test-key",
         force=True,
         skip_db_upgrade=False,
         json=False,

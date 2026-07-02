@@ -56,7 +56,6 @@ def runtime_db_init_args(paths: RuntimeDatabasePaths) -> argparse.Namespace:
         port=8123,
         log_level="WARNING",
         api_key="api-test-key",
-        internal_api_key="internal-test-key",
         force=True,
         skip_db_upgrade=False,
         json=False,
@@ -79,7 +78,6 @@ async def runtime_database_context(
         data_dir=paths.data_dir,
         log_level="WARNING",
         api_key="api-test-key",
-        internal_api_key="internal-test-key",
         host="127.0.0.1",
         port=8123,
     )

@@ -73,9 +73,9 @@ Current operator snapshot returns:
 
 Current operator trace returns:
 
-- dispatch history
+- dispatch history, including assignment key and assignment summary when the dispatch is assignment-backed
 - checkpoint history
-- boundary history
+- boundary history, including previous node, next node, next attempt, resulting flow status, and reopen-after-inactivity flag when the matching boundary event exists
 - `current_paths` readback refs for the current semantic task view
 - the workflow manifest is always included in `current_paths`
 - dispatch-scoped observability refs appear in `current_paths` only while a current open dispatch exists; these refs are readback aids only and do not define semantic currentness

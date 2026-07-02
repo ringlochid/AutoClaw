@@ -33,7 +33,6 @@ async def test_init_writes_canonical_config_and_db_file(
     config_payload = tomllib.loads(config_text)
     assert f'level = "{DEFAULT_LOG_LEVEL}"' in config_text
     assert 'api_key = "api-test-key"' in config_text
-    assert 'internal_api_key = "internal-test-key"' in config_text
     assert "definitions_root" not in config_text
     assert "[app]" not in config_text
     assert config_payload["database"]["echo"] is False

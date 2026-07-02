@@ -35,7 +35,6 @@ async def cmd_init(args: argparse.Namespace) -> int:
     data_dir = coerce_path(args.data_dir or default_data_dir())
     database_url = args.database_url or default_database_url(data_dir)
     api_key = args.api_key or secrets.token_urlsafe(24)
-    internal_api_key = args.internal_api_key or secrets.token_urlsafe(24)
 
     if config_path.exists() and not args.force:
         raise FileExistsError(
@@ -53,7 +52,6 @@ async def cmd_init(args: argparse.Namespace) -> int:
             port=args.port,
             log_level=args.log_level,
             api_key=api_key,
-            internal_api_key=internal_api_key,
         ),
         encoding="utf-8",
     )
@@ -66,7 +64,6 @@ async def cmd_init(args: argparse.Namespace) -> int:
         api_port=args.port,
         log_level=args.log_level,
         api_key=api_key,
-        internal_api_key=internal_api_key,
     ):
         if not args.skip_db_upgrade:
             await ensure_database_ready(database_url, progress=progress)

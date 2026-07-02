@@ -137,7 +137,7 @@ Current defaults include:
 - SQLite by default
 - `127.0.0.1:18125` by default
 - `platformdirs`-derived config and data directories by default
-- non-test envs require public and internal API keys
+- non-test envs require an operator API key
 
 ## Current config file shape
 
@@ -168,7 +168,6 @@ level = "WARNING"
 
 [security]
 api_key = "<generated secret>"
-internal_api_key = "<generated secret>"
 
 [openclaw]
 base_url = "http://127.0.0.1:18789"
@@ -188,7 +187,7 @@ watchdog_max_flows_per_tick = 50
 watchdog_max_auto_recoveries_per_tick = 10
 ```
 
-The example above shows the config shape only. When `autoclaw init` generates a fresh config without explicit key flags, it writes generated API keys rather than the literal placeholder strings shown here.
+The example above shows the config shape only. When `autoclaw init` generates a fresh config without an explicit key flag, it writes a generated API key rather than the literal placeholder string shown here.
 
 Current onboard/setup behavior may additionally persist these optional `[openclaw]` fields to keep later service runs independent from transient shell env overrides:
 
@@ -204,7 +203,7 @@ Current port ownership also matters:
 
 Current load behavior also matters:
 
-- legacy `openclaw.internal_api_key` and `openclaw.account` keys are ignored on load
+- legacy `openclaw.account` keys are ignored on load
 - runtime auth can still resolve from the persisted OpenClaw config path when the Gateway token/password lives in the OpenClaw config family instead of the AutoClaw TOML
 
 ## Minimal example

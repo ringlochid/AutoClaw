@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
 
+import { initializeConsoleConfig } from "./app/config";
 import { router } from "./app/router";
 import "./styles/tailwind.css";
 
@@ -14,6 +15,8 @@ if (rootElement === null) {
 const consoleRootElement = rootElement;
 
 async function startConsole(): Promise<void> {
+    await initializeConsoleConfig();
+
     if (import.meta.env.DEV && import.meta.env.VITE_AUTOCLAW_MOCK_API === "true") {
         const { enableMockApi } = await import("./mocks/browser");
         await enableMockApi();

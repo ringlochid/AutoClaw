@@ -227,7 +227,6 @@ def _interactive_onboard_ports(
         api_port=getattr(args, "port", None),
         log_level=args.log_level,
         api_key=args.api_key,
-        internal_api_key=args.internal_api_key,
     )
     default_api_port = getattr(args, "port", None) or preflight.settings.api_port
     default_gateway_port = (
@@ -317,7 +316,6 @@ def _collect_onboard_preflight(
         api_port=getattr(args, "port", None),
         log_level=args.log_level,
         api_key=args.api_key,
-        internal_api_key=args.internal_api_key,
         openclaw_base_url=openclaw_base_url,
         openclaw_gateway_token=getattr(args, "openclaw_gateway_token", None),
     )
@@ -372,7 +370,6 @@ async def _initialize_onboard_config(
                 port=args.port if args.port is not None else DEFAULT_API_PORT,
                 log_level=args.log_level,
                 api_key=args.api_key,
-                internal_api_key=args.internal_api_key,
                 force=True,
                 skip_db_upgrade=True,
                 json=True,

@@ -69,7 +69,7 @@ async def test_runtime_routes_filter_runtime_lists_by_query_and_status(
 async def test_runtime_routes_trace_boundary_queries(tmp_path: Path) -> None:
     async with runtime_route_context(tmp_path) as context:
         alpha_task, _ = await launch_alpha_and_zulu_routes(context)
-        await stage_waiting_child_dispatch(context, alpha_task)
+        assign_payload = await stage_waiting_child_dispatch(context, alpha_task)
 
         boundary_trace = await context.client.get(
             f"/operator/tasks/{alpha_task.task_id}/trace",
@@ -78,7 +78,13 @@ async def test_runtime_routes_trace_boundary_queries(tmp_path: Path) -> None:
         )
         assert boundary_trace.status_code == 200
         boundary_trace_json = boundary_trace.json()
-        assert boundary_trace_json["boundary_history"][0]["boundary"] == "yield"
+        boundary_history_entry = boundary_trace_json["boundary_history"][0]
+        assert boundary_history_entry["boundary"] == "yield"
+        assert boundary_history_entry["previous_node_key"] == "root"
+        assert boundary_history_entry["next_node_key"] == "implementation_subtree"
+        assert boundary_history_entry["next_attempt_id"] == assign_payload["target_attempt_id"]
+        assert boundary_history_entry["resulting_flow_status"] == "running"
+        assert boundary_history_entry["requires_reopen_after_inactivity"] is True
         assert_operator_current_paths(boundary_trace_json["current_paths"])
 
         paged_trace = await context.client.get(
@@ -104,6 +110,9 @@ async def test_runtime_routes_trace_delivery_queries(tmp_path: Path) -> None:
         delivery_trace_json = delivery_trace.json()
         assert delivery_trace_json["dispatch_history"]
         assert delivery_trace_json["dispatch_history"][0]["delivery_status"] == "accepted"
+        assert delivery_trace_json["dispatch_history"][0]["assignment_summary"] == (
+            "Alpha implementation subtree."
+        )
         assert_operator_current_paths(delivery_trace_json["current_paths"])
 
 
@@ -136,8 +145,9 @@ async def launch_alpha_and_zulu_routes(
 async def stage_waiting_child_dispatch(
     context: RuntimeRouteContext,
     task: SeededRouteTask,
-) -> None:
+) -> dict[str, object]:
     assign_response = await assign_child(context, task)
     assert assign_response.status_code == 200
     yielded = await yield_boundary(context, task)
     assert yielded.status_code == 200
+    return dict(assign_response.json())

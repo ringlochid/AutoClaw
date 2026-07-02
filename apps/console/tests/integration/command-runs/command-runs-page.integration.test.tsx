@@ -9,8 +9,11 @@ import type { components } from "../../../src/api/generated/openapi";
 import { CommandRunsPage } from "../../../src/features/command-runs/CommandRunsPage";
 import {
     createBackendOperationFailureBody,
+    TEST_API_BASE_URL,
+    TEST_API_KEY,
     createRuntimeFlowRead,
 } from "../../fixtures/console-api";
+import { installTestConsoleConfig } from "../../fixtures/console-config";
 import {
     COMMAND_RUN_TASK_ID,
     createCommandRunDetail,
@@ -27,13 +30,15 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-    vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", "http://127.0.0.1:18125");
-    vi.stubEnv("VITE_AUTOCLAW_API_KEY", "autoclaw-console-test-key");
+    vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
+    vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
+    installTestConsoleConfig();
 });
 
 afterEach(() => {
     cleanup();
     server.resetHandlers();
+    installTestConsoleConfig(null);
     vi.unstubAllEnvs();
 });
 

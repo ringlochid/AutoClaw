@@ -134,7 +134,6 @@ async def test_legacy_postgres_schema_repair_moves_tables_to_backup_schema(
             port=DEFAULT_API_PORT,
             log_level=DEFAULT_LOG_LEVEL,
             api_key="test-api-key",
-            internal_api_key="internal-test-key",
             force=True,
             skip_db_upgrade=True,
             json=False,

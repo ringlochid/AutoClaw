@@ -44,6 +44,21 @@ async def test_packaged_web_console_serves_static_assets() -> None:
     assert "--ac-background" in stylesheet_response.text
 
 
+async def test_packaged_web_console_serves_runtime_config() -> None:
+    app = create_app(should_enable_mcp_mounts=False)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/console/config")
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {
+        "apiBaseUrl": "http://test",
+        "apiKey": "autoclaw-operator-test-key",
+    }
+    assert "internal" not in response.text
+
+
 def _first_asset_with_suffix(directory: Path, suffix: str) -> Path:
     for path in sorted(directory.iterdir()):
         if path.suffix == suffix:

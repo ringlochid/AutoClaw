@@ -35,7 +35,6 @@ def collect_openclaw_preflight(
     api_port: int | None = None,
     log_level: str | None = None,
     api_key: str | None = None,
-    internal_api_key: str | None = None,
     openclaw_base_url: str | None = None,
     openclaw_gateway_token: str | None = None,
 ) -> OpenClawPreflightResult:
@@ -47,7 +46,6 @@ def collect_openclaw_preflight(
         api_port=api_port,
         log_level=log_level,
         api_key=api_key,
-        internal_api_key=internal_api_key,
         openclaw_base_url=openclaw_base_url,
         openclaw_gateway_token=openclaw_gateway_token,
     ):

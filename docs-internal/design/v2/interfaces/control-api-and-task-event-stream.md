@@ -123,6 +123,7 @@ Rules:
 DispatchHistoryEntry:
     attempt_id: string
     assignment_key: string | null
+    assignment_summary: string | null
     node_key: string
     delivery_status: prepared | accepted | provider_signal_seen | provider_completed | provider_failed | transport_failed | transport_ambiguous | superseded
     rendered_at: timestamp
@@ -138,6 +139,11 @@ CheckpointHistoryEntry:
 BoundaryHistoryEntry:
     node_key: string
     boundary: yield | green | retry | blocked
+    previous_node_key: string
+    next_node_key: string | null
+    next_attempt_id: string | null
+    resulting_flow_status: pending | running | blocked | paused | succeeded | cancelled | null
+    requires_reopen_after_inactivity: boolean | null
     occurred_at: timestamp
 
 OperatorFlowTraceResponse:
@@ -166,6 +172,7 @@ Rules:
 
 - snapshot answers current state; trace answers nearby controller history and supporting refs
 - trace is still a read model and does not replace `task_event` chronology for replay
+- trace may duplicate bounded render facts from assignment rows and boundary task-event payloads so inspectors do not need support-file parsing for ordinary selected-node details
 - `current_paths` may expose controller-backed support refs, but clients must not reconstruct runtime truth from those refs alone
 
 ## Pause, continue, and cancel envelopes

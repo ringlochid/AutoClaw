@@ -48,13 +48,11 @@ export CONFIG=/tmp/autoclaw-real-e2e/autoclaw-config.toml
 export DATA=/tmp/autoclaw-real-e2e/data
 export API=http://127.0.0.1:8123
 export API_KEY=api-test-key
-export INTERNAL_API_KEY=internal-test-key
 
 ./.venv/bin/autoclaw init \
   --config "$CONFIG" \
   --data-dir "$DATA" \
   --api-key "$API_KEY" \
-  --internal-api-key "$INTERNAL_API_KEY" \
   --force
 ```
 

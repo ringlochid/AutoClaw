@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -23,6 +23,7 @@ import {
     createTaskStartWorkflowVersions,
 } from "../../fixtures/task-start";
 import { createDefinitionSummaryList } from "../../fixtures/definitions";
+import { installTestConsoleConfig } from "../../fixtures/console-config";
 
 const server = setupServer();
 
@@ -33,11 +34,13 @@ beforeAll(() => {
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
     vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
+    installTestConsoleConfig();
 });
 
 afterEach(() => {
     cleanup();
     server.resetHandlers();
+    installTestConsoleConfig(null);
     vi.unstubAllEnvs();
 });
 
@@ -87,7 +90,7 @@ describe("TaskStartPage", () => {
         expect(within(workflowChoices).queryByText(/Revision/)).not.toBeInTheDocument();
         await user.clear(screen.getByLabelText("Search workflow"));
 
-        await fillRequiredTaskFields(user);
+        fillRequiredTaskFields();
         expect(screen.getByText("Ready to start from the selected workflow.")).toBeVisible();
 
         await user.click(screen.getByRole("button", { name: "Preview" }));
@@ -268,7 +271,7 @@ describe("TaskStartPage", () => {
         });
         renderTaskStartPage();
         expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
-        await fillRequiredTaskFields(user);
+        fillRequiredTaskFields();
         await user.click(screen.getByRole("button", { name: "Start Task" }));
         const validationDialog = await screen.findByRole("dialog", {
             name: "Task Start validation failed",
@@ -293,7 +296,7 @@ describe("TaskStartPage", () => {
 
         renderTaskStartPage();
         expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
-        await fillRequiredTaskFields(user);
+        fillRequiredTaskFields();
         await user.click(
             within(screen.getByRole("region", { name: "Workspace root" })).getByRole("button", {
                 name: "Use existing host",
@@ -324,7 +327,7 @@ describe("TaskStartPage", () => {
         });
         renderTaskStartPage();
         expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
-        await fillRequiredTaskFields(user);
+        fillRequiredTaskFields();
         await user.click(screen.getByRole("button", { name: "Start Task" }));
         expect(
             await screen.findByText("The selected workspace is already held by a live task."),
@@ -344,7 +347,7 @@ describe("TaskStartPage", () => {
         });
         renderTaskStartPage();
         expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
-        await fillRequiredTaskFields(user);
+        fillRequiredTaskFields();
         await user.click(screen.getByRole("button", { name: "Start Task" }));
         const accessDialog = await screen.findByRole("dialog", {
             name: "Access to Task Start failed",
@@ -361,7 +364,7 @@ describe("TaskStartPage", () => {
 
         renderTaskStartPage();
         expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
-        await fillRequiredTaskFields(user);
+        fillRequiredTaskFields();
 
         const previewButton = screen.getByRole("button", { name: "Preview" });
         previewButton.focus();
@@ -399,17 +402,21 @@ function renderTaskStartPage() {
     );
 }
 
-async function fillRequiredTaskFields(user: ReturnType<typeof userEvent.setup>) {
-    await user.type(screen.getByLabelText("Task key"), "implement-task-start-launch-form");
-    await user.type(screen.getByLabelText("Title"), "Implement Task Start launch form");
-    await user.type(
-        screen.getByLabelText("Summary"),
-        "Launch one bounded implementation task from stored workflow truth.",
-    );
-    await user.type(
-        screen.getByLabelText("Instruction"),
-        "Keep the work scoped to the current task-start UI and publish focused verification.",
-    );
+function fillRequiredTaskFields(): void {
+    fireEvent.change(screen.getByLabelText("Task key"), {
+        target: { value: "implement-task-start-launch-form" },
+    });
+    fireEvent.change(screen.getByLabelText("Title"), {
+        target: { value: "Implement Task Start launch form" },
+    });
+    fireEvent.change(screen.getByLabelText("Summary"), {
+        target: { value: "Launch one bounded implementation task from stored workflow truth." },
+    });
+    fireEvent.change(screen.getByLabelText("Instruction"), {
+        target: {
+            value: "Keep the work scoped to the current task-start UI and publish focused verification.",
+        },
+    });
 }
 
 async function searchWorkflow(user: ReturnType<typeof userEvent.setup>, value: string) {

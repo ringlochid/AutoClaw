@@ -24,7 +24,6 @@ def command_env(
     api_port: int | None = None,
     log_level: str | None = None,
     api_key: str | None = None,
-    internal_api_key: str | None = None,
     openclaw_base_url: str | None = None,
     openclaw_gateway_token: str | None = None,
     env: str | None = None,
@@ -37,7 +36,6 @@ def command_env(
         "AUTOCLAW_API_PORT": str(api_port) if api_port is not None else None,
         "AUTOCLAW_LOG_LEVEL": log_level,
         "AUTOCLAW_API_KEY": api_key,
-        "AUTOCLAW_INTERNAL_API_KEY": internal_api_key,
         "AUTOCLAW_ENV": env,
     }
     if openclaw_base_url is not None:

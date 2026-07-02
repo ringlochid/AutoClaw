@@ -46,10 +46,10 @@ The same human may supply user intent and later act as human operator, but the a
 | Lane               | Typical caller                       | Current capability level                                                                                                                                                                                     | Notes                                                                   |
 | ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
 | health lane        | any caller                           | `/healthz`, `/readyz`                                                                                                                                                                                        | unauthenticated                                                         |
+| console bootstrap  | packaged browser console             | `/console/config`                                                                                                                                                                                            | same-origin runtime config with `Cache-Control: no-store`              |
 | operator HTTP lane | operator                             | definition discovery and upload, definition authoring drafts, task start, runtime list/read, continue, pause, cancel, snapshot, trace, control events, human requests, command runs, observability file refs | protected by `X-AutoClaw-API-Key`                                       |
 | callback HTTP lane | bound worker, parent, or root caller | checkpoint writes, boundary acceptance, parent/root tools                                                                                                                                                    | explicit `session_key` query parameter + route `task_id`                |
 | node MCP mount     | bound worker, parent, or root caller | current-only definition reads plus checkpoint, boundary, and parent/root tools                                                                                                                               | explicit `session_key` + `task_id`, mounted at `/node/mcp` when enabled |
-| internal-key gap   | none on the shipped HTTP router      | none                                                                                                                                                                                                         | `require_internal_api_key()` exists but is unused                       |
 
 Lane and role are not identical in the current system.
 
@@ -151,11 +151,16 @@ Unauthenticated:
 - `GET /healthz`
 - `GET /readyz`
 
-### 5. No current browser bootstrap or legacy internal lane
+### 5. Packaged console bootstrap
 
-Current code does not ship the older browser-bootstrap, internal, flow, approval, or legacy registry route families.
+When packaged console assets are available, `GET /console/config` returns the runtime browser config for the same API origin:
 
-The config still carries `internal_api_key`, but no shipped HTTP router uses the internal-key dependency.
+- `apiBaseUrl`
+- `apiKey`
+
+The route sets `Cache-Control: no-store`. It is a local browser bootstrap for the packaged UI, not a general operator action lane and not part of generated OpenAPI.
+
+Current code does not ship the older flow, approval, or legacy registry route families.
 
 ## Operator action summary
 

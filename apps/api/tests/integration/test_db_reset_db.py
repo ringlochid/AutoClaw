@@ -50,8 +50,6 @@ def test_db_reset_recreates_seeded_sqlite_database_on_packaged_cli_path(
         "INFO",
         "--api-key",
         "api-test-key",
-        "--internal-api-key",
-        "internal-test-key",
         "--force",
     )
     database_path.write_bytes(b"stale")

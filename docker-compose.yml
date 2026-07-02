@@ -48,7 +48,6 @@ services:
             AUTOCLAW_OPENCLAW__AGENT_ID: ${AUTOCLAW_OPENCLAW__AGENT_ID:-autoclaw-worker}
             AUTOCLAW_OPENCLAW__TIMEOUT_MS: ${AUTOCLAW_OPENCLAW__TIMEOUT_MS:-120000}
             AUTOCLAW_API_KEY: ${AUTOCLAW_API_KEY:?set AUTOCLAW_API_KEY}
-            AUTOCLAW_INTERNAL_API_KEY: ${AUTOCLAW_INTERNAL_API_KEY:?set AUTOCLAW_INTERNAL_API_KEY}
         extra_hosts:
             - "host.docker.internal:host-gateway"
         ports:
@@ -72,7 +71,6 @@ services:
             AUTOCLAW_OPENCLAW__AGENT_ID: autoclaw-worker
             AUTOCLAW_OPENCLAW__TIMEOUT_MS: 120000
             AUTOCLAW_API_KEY: autoclaw-operator-test-key
-            AUTOCLAW_INTERNAL_API_KEY: autoclaw-internal-test-key
         extra_hosts:
             - "host.docker.internal:host-gateway"
         command:

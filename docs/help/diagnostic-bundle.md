@@ -18,7 +18,6 @@ autoclaw openclaw check --json
 If you include `autoclaw config show --json`, redact:
 
 - `security.api_key`
-- `security.internal_api_key`
 - `openclaw.gateway_token`
 - `openclaw.gateway_password`
 - private local paths when needed

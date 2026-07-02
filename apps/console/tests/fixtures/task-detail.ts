@@ -260,13 +260,23 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
         boundary_history: [
             {
                 boundary: "green",
+                next_attempt_id: "attempt-task_detail_page",
+                next_node_key: "task_detail_page",
                 node_key: "task_detail_source_contract",
                 occurred_at: "2026-06-29T13:45:00Z",
+                previous_node_key: "task_detail_source_contract",
+                requires_reopen_after_inactivity: true,
+                resulting_flow_status: "running",
             },
             {
                 boundary: "yield",
+                next_attempt_id: "attempt-task_detail_build",
+                next_node_key: "task_detail_build",
                 node_key: "task_detail",
                 occurred_at: "2026-06-29T13:55:00Z",
+                previous_node_key: "task_detail",
+                requires_reopen_after_inactivity: true,
+                resulting_flow_status: "running",
             },
         ],
         checkpoint_history: [
@@ -299,6 +309,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
         dispatch_history: [
             {
                 assignment_key: "assignment-root",
+                assignment_summary: "Start the Task Detail runtime route refresh.",
                 attempt_id: "attempt-root",
                 delivery_status: "accepted",
                 node_key: "root",
@@ -306,6 +317,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
             },
             {
                 assignment_key: "assignment-source-contract",
+                assignment_summary: "Capture the runtime route source contract.",
                 attempt_id: "attempt-source_contract",
                 delivery_status: "provider_completed",
                 node_key: "source_contract",
@@ -313,6 +325,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
             },
             {
                 assignment_key: "assignment-task-control-suite",
+                assignment_summary: "Build the task control suite surface.",
                 attempt_id: "attempt-task_control_suite",
                 delivery_status: "accepted",
                 node_key: "task_control_suite",
@@ -320,6 +333,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
             },
             {
                 assignment_key: "assignment-tasks-page",
+                assignment_summary: "Refresh the runtime task list page.",
                 attempt_id: "attempt-tasks_page",
                 delivery_status: "provider_completed",
                 node_key: "tasks_page",
@@ -327,6 +341,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
             },
             {
                 assignment_key: "assignment-task-detail-page",
+                assignment_summary: "Coordinate the Task Detail page work.",
                 attempt_id: "attempt-task_detail_page",
                 delivery_status: "accepted",
                 node_key: "task_detail_page",
@@ -334,6 +349,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
             },
             {
                 assignment_key: "assignment-human-request-page",
+                assignment_summary: "Prepare the human request page route.",
                 attempt_id: "attempt-human_request_page",
                 delivery_status: "prepared",
                 node_key: "human_request_page",
@@ -341,6 +357,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
             },
             {
                 assignment_key: "assignment-command-runs-page",
+                assignment_summary: "Prepare the command runs page route.",
                 attempt_id: "attempt-command_runs_page",
                 delivery_status: "prepared",
                 node_key: "command_runs_page",
@@ -348,6 +365,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
             },
             {
                 assignment_key: "assignment-task-detail-source-contract",
+                assignment_summary: "Confirm Task Detail contract boundaries.",
                 attempt_id: "attempt-task_detail_source_contract",
                 delivery_status: "provider_completed",
                 node_key: "task_detail_source_contract",
@@ -355,6 +373,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
             },
             {
                 assignment_key: "assignment-task-detail-build",
+                assignment_summary: "Implement the Task Detail page.",
                 attempt_id: "attempt-task_detail_build",
                 delivery_status: "accepted",
                 node_key: "task_detail_build",
@@ -362,6 +381,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
             },
             {
                 assignment_key: "assignment-task-detail-review",
+                assignment_summary: "Review the Task Detail implementation.",
                 attempt_id: "attempt-task_detail_review",
                 delivery_status: "prepared",
                 node_key: "task_detail_review",

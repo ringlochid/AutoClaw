@@ -113,7 +113,6 @@ level = "WARNING"
 
 [security]
 api_key = "replace-me"
-internal_api_key = "replace-me"
 
 [openclaw]
 base_url = "http://127.0.0.1:18789"
@@ -148,7 +147,7 @@ Rules:
 - if a loopback password connect needs password material, the adapter may resolve it from explicit AutoClaw config or environment, then from the OpenClaw config path chosen by preflight
 - explicit loopback no-auth is accepted only when OpenClaw already exposes that mode; AutoClaw prints a hard warning and sends no auth material
 - non-loopback Gateway connects require a later remote identity and trust model and are not a shipped v1 path
-- older local configs may still carry `openclaw.internal_api_key` and `openclaw.account`; the current runtime drops those legacy TOML keys during config load and does not use them in live Gateway requests
+- older local configs may still carry `openclaw.account`; the current runtime drops that legacy TOML key during config load and does not use it in live Gateway requests
 - local definition import reads explicit files or a shallow current-working-directory scan
 - runtime does not depend on a configured definitions root after import
 - actual OpenClaw dispatch, wait, abort, and callback authority validation stays in the runtime-owned adapter path; this config only supplies its tunable inputs

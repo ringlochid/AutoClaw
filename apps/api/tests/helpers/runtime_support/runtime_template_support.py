@@ -32,7 +32,6 @@ async def initialize_runtime_from_template(
     data_dir: Path,
     log_level: str,
     api_key: str,
-    internal_api_key: str,
     host: str,
     port: int,
 ) -> None:
@@ -40,7 +39,6 @@ async def initialize_runtime_from_template(
     template = await ensure_runtime_init_template(
         log_level=log_level,
         api_key=api_key,
-        internal_api_key=internal_api_key,
         host=host,
         port=port,
     )
@@ -59,7 +57,6 @@ async def initialize_runtime_from_template(
             port=port,
             log_level=log_level,
             api_key=api_key,
-            internal_api_key=internal_api_key,
         ),
         encoding="utf-8",
     )
@@ -88,7 +85,6 @@ async def ensure_runtime_init_template(
     *,
     log_level: str,
     api_key: str,
-    internal_api_key: str,
     host: str,
     port: int,
 ) -> RuntimeInitTemplate:
@@ -114,7 +110,6 @@ async def ensure_runtime_init_template(
             port=port,
             log_level=log_level,
             api_key=api_key,
-            internal_api_key=internal_api_key,
             force=True,
             skip_db_upgrade=False,
             json=False,

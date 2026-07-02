@@ -11,7 +11,6 @@ from autoclaw.interfaces.cli.terminal.theme import rich_enabled
 
 SENSITIVE_OPTION_NAMES = {
     "--api-key",
-    "--internal-api-key",
     "--openclaw-gateway-token",
     "--password",
     "--token",
@@ -20,7 +19,7 @@ AUTHORIZATION_VALUE_PATTERN = re.compile(
     r"(?i)(authorization[\"']?\s*[:=]\s*[\"']?)(?!bearer\s+)([^\"'\s,}]+)"
 )
 SENSITIVE_VALUE_PATTERN = re.compile(
-    r"(?i)((?:api[_-]?key|internal[_-]?api[_-]?key|password|secret|token)"
+    r"(?i)((?:api[_-]?key|password|secret|token)"
     r"[\"']?\s*[:=]\s*)([\"']?)([^\"'\s,}]+)"
 )
 BEARER_TOKEN_PATTERN = re.compile(r"(?i)(bearer\s+)([A-Za-z0-9._~+/=-]+)")

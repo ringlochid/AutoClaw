@@ -2,9 +2,7 @@
 
 Date: 2026-06-30
 
-This log records implementation blockers, risks, and debt routes for the
-frontend design parity rebuild. Owners are role owners rather than named
-people.
+This log records implementation blockers, risks, and debt routes for the frontend design parity rebuild. Owners are role owners rather than named people.
 
 | Item                                                                                                                                                      | Owner                                   | Block status                                                | Next action                                                                                                                                                  |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -12,7 +10,7 @@ people.
 | Existing feature code has not been accepted against served design references in this task.                                                                | Scope implementer and strict reviewer   | Blocks release, not planning                                | Treat current code as candidate source and review/refine one scope at a time.                                                                                |
 | Browser screenshots from the planning pass were observed but not persisted.                                                                               | Scope implementer                       | Blocks implementation-scope acceptance                      | Save desktop and narrow design/app screenshots under each scope evidence directory.                                                                          |
 | `task-detail.png` is flagged by design docs as unreliable and the referenced last-known-good JPEG is absent.                                              | Design reviewer                         | Potential blocker for Task Detail visual disputes           | Use served `task-detail.html`, `task-detail-modal-open.png`, charter, shared CSS/JS, and fresh browser evidence; request updated PNG only if those conflict. |
-| `/console/config` is not present in current route docs or OpenAPI.                                                                                        | Backend/API owner                       | Blocker only if release requires backend-served config      | Keep frontend environment config; open backend contract work if a config endpoint is required.                                                               |
+| `/console/config` is intentionally route-map-only and excluded from generated OpenAPI.                                                                     | Backend/API owner                       | Not blocked after this doc update                           | Keep the packaged-console runtime config test covering `apiBaseUrl`, `apiKey`, and `Cache-Control: no-store`.                                                |
 | Static prototype uses Material Symbols while the console uses `lucide-react`.                                                                             | Frontend implementer                    | Not blocked                                                 | Map semantic icon intent to approved lucide icons; do not add icon font dependency.                                                                          |
 | Static visual mock data includes counts, durations, sample logs, labels, and ids.                                                                         | Frontend implementer and reviewer       | Blocks any unsupported UI claim                             | Use visual data as layout examples only; backend schema wins over visual mock data.                                                                          |
 | Visual test directory is empty even though e2e specs exist.                                                                                               | Verification owner                      | Blocks final visual parity proof until filled with evidence | Capture browser screenshots and comparison notes per scope; add visual automation only if the scope needs it.                                                |
@@ -21,7 +19,4 @@ people.
 
 ## Blocker Rule
 
-Publish a blocker instead of guessing whenever backend/OpenAPI does not expose a
-required field, route, state, auth behavior, currentness token, or action
-legality; when served design HTML and PNG references conflict; or when browser
-visual evidence is unavailable for a visual acceptance claim.
+Publish a blocker instead of guessing whenever backend/OpenAPI does not expose a required field, route, state, auth behavior, currentness token, or action legality; when served design HTML and PNG references conflict; or when browser visual evidence is unavailable for a visual acceptance claim.

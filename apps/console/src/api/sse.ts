@@ -1,4 +1,4 @@
-import { buildConsoleConfig, type ConsoleConfig } from "../app/config";
+import { getConsoleConfig, type ConsoleConfig } from "../app/config";
 
 import {
     AutoClawApiError,
@@ -60,7 +60,7 @@ export function buildTaskEventStreamRequest(
         readonly cursor?: string | null;
     } = {},
 ): TaskEventStreamRequest {
-    const config = options.config ?? buildConsoleConfig();
+    const config = options.config ?? getConsoleConfig();
     const url = resolveApiUrl(
         `/control/tasks/${encodeURIComponent(taskId)}/events/stream`,
         config,
@@ -77,7 +77,7 @@ export function buildTaskEventStreamRequest(
 }
 
 export async function readTaskEventStream({
-    config = buildConsoleConfig(),
+    config = getConsoleConfig(),
     cursor = null,
     fetchImpl = fetch,
     onEvent,

@@ -35,7 +35,6 @@ console_origins = ["http://127.0.0.1:4173"]
 
 [security]
 api_key = "config-api-key"
-internal_api_key = "config-internal-key"
 
 [openclaw]
 base_url = "http://127.0.0.1:18789"
@@ -68,7 +67,6 @@ watchdog_interval_seconds = 20
     monkeypatch.delenv("AUTOCLAW_CONFIG", raising=False)
     monkeypatch.delenv("AUTOCLAW_DATABASE_URL", raising=False)
     monkeypatch.delenv("AUTOCLAW_API_KEY", raising=False)
-    monkeypatch.delenv("AUTOCLAW_INTERNAL_API_KEY", raising=False)
 
     config_module = _reload_config_module()
     config_module.get_settings.cache_clear()
@@ -78,7 +76,6 @@ watchdog_interval_seconds = 20
     assert settings.database_echo is True
     assert settings.console_origins == ["http://127.0.0.1:4173"]
     assert settings.api_key == "config-api-key"
-    assert settings.internal_api_key == "config-internal-key"
     assert settings.config_path == config_path
     assert settings.data_dir == data_home / "autoclaw"
     assert settings.openclaw.base_url == "http://127.0.0.1:18789"
@@ -114,7 +111,6 @@ port = 18125
 
 [security]
 api_key = "config-api-key"
-internal_api_key = "config-internal-key"
 
 [openclaw]
 base_url = "http://127.0.0.1:18789"
@@ -134,7 +130,6 @@ terminal_truth_commit_poll_interval_seconds = 0.03
     monkeypatch.setenv("AUTOCLAW_DATABASE_URL", "sqlite+aiosqlite:////tmp/from-env.db")
     monkeypatch.setenv("AUTOCLAW_DATABASE_ECHO", "true")
     monkeypatch.setenv("AUTOCLAW_API_KEY", "env-api-key")
-    monkeypatch.setenv("AUTOCLAW_INTERNAL_API_KEY", "env-internal-key")
     monkeypatch.setenv("AUTOCLAW_API_PORT", "9001")
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", "https://gateway.example.test")
     monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_ENABLED", "false")
@@ -162,7 +157,6 @@ terminal_truth_commit_poll_interval_seconds = 0.03
     assert settings.database_url == "sqlite+aiosqlite:////tmp/from-env.db"
     assert settings.database_echo is True
     assert settings.api_key == "env-api-key"
-    assert settings.internal_api_key == "env-internal-key"
     assert settings.api_port == 9001
     assert settings.config_path == config_path
     assert settings.openclaw.base_url == "https://gateway.example.test"
@@ -187,7 +181,6 @@ def test_removed_watchdog_keys_fail_fast(
         """
 [security]
 api_key = "config-api-key"
-internal_api_key = "config-internal-key"
 
 [runtime]
 watchdog_stale_after_seconds = 123
@@ -213,7 +206,6 @@ def test_watchdog_interval_rejects_non_positive_values(
         """
 [security]
 api_key = "config-api-key"
-internal_api_key = "config-internal-key"
 
 [runtime]
 watchdog_interval_seconds = 0
@@ -239,7 +231,6 @@ def test_watchdog_bootstrap_first_progress_timeout_accepts_canonical_name_and_al
         """
 [security]
 api_key = "config-api-key"
-internal_api_key = "config-internal-key"
 
 [runtime]
 watchdog_bootstrap_first_progress_timeout_seconds = 77
@@ -258,7 +249,6 @@ watchdog_bootstrap_first_progress_timeout_seconds = 77
         """
 [security]
 api_key = "config-api-key"
-internal_api_key = "config-internal-key"
 
 [runtime]
 watchdog_bootstrap_ack_timeout_seconds = 88

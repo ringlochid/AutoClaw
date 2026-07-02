@@ -38,6 +38,8 @@ export type {
     TaskTraceSummary,
 } from "./task-detail-types";
 
+type BoundaryHistoryEntry = components["schemas"]["BoundaryHistoryEntry"];
+
 export function buildTaskDetailView({
     bootstrap,
     events,
@@ -142,7 +144,7 @@ export function buildSelectedContext({
     return {
         assignmentRows: buildAssignmentRows(view, node, event),
         artifactRefs: selectedArtifactRefs.length === 0 ? view.artifactRefs : selectedArtifactRefs,
-        boundaryRows: buildBoundaryRows(view, event),
+        boundaryRows: buildBoundaryRows(view, node, event),
         checkpointRows: buildCheckpointRows(view, event),
         event,
         node,
@@ -215,6 +217,7 @@ function buildGraphNodes(
             status: resolveNodeStatus(isCurrent, dispatch, checkpoint),
             summary:
                 checkpoint?.summary ??
+                dispatch?.assignment_summary ??
                 dispatch?.delivery_status ??
                 eventsForNode.at(-1)?.payloadSummary ??
                 "Controller-backed task context.",
@@ -424,9 +427,10 @@ function buildAssignmentRows(
     event: TaskEventRow | null,
 ): readonly DetailRow[] {
     const payload = event?.record.payload;
+    const selectedNodeKey = node?.nodeKey ?? event?.nodeKey ?? null;
     const dispatch = [...view.trace.dispatches]
         .reverse()
-        .find((candidate) => candidate.node_key === node?.nodeKey);
+        .find((candidate) => candidate.node_key === selectedNodeKey);
 
     return compactRows([
         { label: "Node", value: node?.nodeKey ?? event?.nodeKey ?? "not exposed" },
@@ -439,14 +443,21 @@ function buildAssignmentRows(
         { label: "Delivery status", value: dispatch?.delivery_status ?? "not exposed" },
         {
             label: "Assignment summary",
-            value: readString(payload, "assignment_summary") ?? "not exposed",
+            value:
+                readString(payload, "assignment_summary") ??
+                dispatch?.assignment_summary ??
+                "not exposed",
         },
     ]);
 }
 
-function buildBoundaryRows(view: TaskDetailView, event: TaskEventRow | null): readonly DetailRow[] {
+function buildBoundaryRows(
+    view: TaskDetailView,
+    node: TaskGraphNode | null,
+    event: TaskEventRow | null,
+): readonly DetailRow[] {
     const payload = event?.record.payload;
-    const boundary = view.trace.boundaries.at(-1);
+    const boundary = findBoundaryEntry(view.trace.boundaries, node, event);
 
     return compactRows([
         {
@@ -455,15 +466,64 @@ function buildBoundaryRows(view: TaskDetailView, event: TaskEventRow | null): re
         },
         {
             label: "Previous node",
-            value: readString(payload, "previous_node_key") ?? boundary?.node_key ?? "not exposed",
+            value:
+                readString(payload, "previous_node_key") ??
+                boundary?.previous_node_key ??
+                boundary?.node_key ??
+                "not exposed",
         },
-        { label: "Next node", value: readString(payload, "next_node_key") ?? "not exposed" },
+        {
+            label: "Next node",
+            value: readString(payload, "next_node_key") ?? boundary?.next_node_key ?? "not exposed",
+        },
         {
             label: "Resulting status",
-            value: readString(payload, "resulting_flow_status") ?? "not exposed",
+            value:
+                readString(payload, "resulting_flow_status") ??
+                boundary?.resulting_flow_status ??
+                "not exposed",
         },
         { label: "Occurred", value: boundary?.occurred_at ?? event?.occurredAt ?? "not exposed" },
     ]);
+}
+
+function findBoundaryEntry(
+    boundaries: readonly BoundaryHistoryEntry[],
+    node: TaskGraphNode | null,
+    event: TaskEventRow | null,
+): BoundaryHistoryEntry | undefined {
+    const payload = event?.record.payload;
+    const payloadBoundary = readString(payload, "boundary");
+    const payloadPrevious = readString(payload, "previous_node_key");
+    const payloadNext = readString(payload, "next_node_key");
+
+    if (payloadBoundary !== null || payloadPrevious !== null || payloadNext !== null) {
+        const payloadMatch = [...boundaries].reverse().find((boundary) => {
+            return (
+                (payloadBoundary === null || boundary.boundary === payloadBoundary) &&
+                (payloadPrevious === null || boundary.previous_node_key === payloadPrevious) &&
+                (payloadNext === null || boundary.next_node_key === payloadNext)
+            );
+        });
+        if (payloadMatch !== undefined) {
+            return payloadMatch;
+        }
+    }
+
+    if (node !== null) {
+        const nodeMatch = [...boundaries].reverse().find((boundary) => {
+            return (
+                boundary.node_key === node.nodeKey ||
+                boundary.previous_node_key === node.nodeKey ||
+                boundary.next_node_key === node.nodeKey
+            );
+        });
+        if (nodeMatch !== undefined) {
+            return nodeMatch;
+        }
+    }
+
+    return boundaries.at(-1);
 }
 
 function buildActionMode(status: components["schemas"]["FlowStatus"]): TaskActionMode {

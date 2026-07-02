@@ -18,6 +18,7 @@ import {
     TASK_DETAIL_TASK_ID,
     createTaskDetailMockScenario,
 } from "../../fixtures/task-detail";
+import { installTestConsoleConfig } from "../../fixtures/console-config";
 
 const server = setupServer();
 
@@ -28,11 +29,13 @@ beforeAll(() => {
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
     vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
+    installTestConsoleConfig();
 });
 
 afterEach(() => {
     cleanup();
     server.resetHandlers();
+    installTestConsoleConfig(null);
     vi.unstubAllEnvs();
 });
 
@@ -288,6 +291,7 @@ describe("TaskDetailPage", () => {
             ),
         );
         vi.stubEnv("VITE_AUTOCLAW_API_KEY", "wrong-key");
+        installTestConsoleConfig("wrong-key");
 
         renderTaskDetailPage();
         expect(await screen.findByText("Access to Task Detail failed")).toBeVisible();

@@ -50,7 +50,6 @@ def runtime_bootstrap_init_args(paths: RuntimeBootstrapPaths) -> argparse.Namesp
         port=8123,
         log_level="INFO",
         api_key="api-test-key",
-        internal_api_key="internal-test-key",
         force=True,
         skip_db_upgrade=False,
         json=False,
@@ -79,7 +78,6 @@ async def runtime_bootstrap_context(
         data_dir=paths.data_dir,
         log_level=init_args.log_level,
         api_key=init_args.api_key,
-        internal_api_key=init_args.internal_api_key,
         host=init_args.host,
         port=init_args.port,
     )

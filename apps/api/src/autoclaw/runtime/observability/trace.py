@@ -1,22 +1,25 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, cast
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import raiseload
+from sqlalchemy.orm import raiseload, selectinload
 
 from autoclaw.persistence.models import (
     AttemptCheckpointModel,
     AttemptModel,
     DispatchTurnModel,
     FlowModel,
+    TaskEventModel,
 )
 from autoclaw.runtime.contracts import (
     BoundaryHistoryEntry,
     CheckpointHistoryEntry,
     DispatchHistoryEntry,
     OperatorFlowTraceResponse,
+    TaskEventType,
 )
 from autoclaw.runtime.errors import invalid_request_shape_error
 from autoclaw.runtime.flow.queries import require_flow_for_task
@@ -25,6 +28,8 @@ from autoclaw.runtime.observability.support import (
     current_trace_scope,
     operator_current_paths,
 )
+
+type BoundaryTraceRow = tuple[str, str, datetime, dict[str, Any] | None]
 
 
 async def operator_trace(
@@ -86,20 +91,26 @@ async def operator_trace(
 
 
 def _boundary_history_entries(
-    boundary_rows: list[tuple[str, str, object]],
+    boundary_rows: list[BoundaryTraceRow],
     *,
     limit: int,
 ) -> tuple[BoundaryHistoryEntry, ...]:
     entries: list[BoundaryHistoryEntry] = []
-    for node_key, accepted_boundary, occurred_at in boundary_rows[:limit]:
-        if not isinstance(occurred_at, object):
-            continue
+    for node_key, accepted_boundary, occurred_at, event_payload in boundary_rows[:limit]:
+        payload = event_payload or {}
         entries.append(
             BoundaryHistoryEntry.model_validate(
                 {
                     "node_key": node_key,
                     "boundary": accepted_boundary,
-                    "occurred_at": coerce_datetime_to_utc(cast(Any, occurred_at)),
+                    "previous_node_key": str(payload.get("previous_node_key") or node_key),
+                    "next_node_key": payload.get("next_node_key"),
+                    "next_attempt_id": payload.get("next_attempt_id"),
+                    "resulting_flow_status": payload.get("resulting_flow_status"),
+                    "should_reopen_after_inactivity": payload.get(
+                        "requires_reopen_after_inactivity"
+                    ),
+                    "occurred_at": coerce_datetime_to_utc(occurred_at),
                 }
             )
         )
@@ -121,7 +132,7 @@ def _parse_trace_offset(cursor: str | None) -> int:
 def _base_trace_queries(task_id: str) -> tuple[Any, Any, Any]:
     dispatch_query = (
         select(DispatchTurnModel)
-        .options(raiseload("*"))
+        .options(raiseload("*"), selectinload(DispatchTurnModel.assignment))
         .where(DispatchTurnModel.task_id == task_id)
     )
     checkpoint_query = (
@@ -130,16 +141,26 @@ def _base_trace_queries(task_id: str) -> tuple[Any, Any, Any]:
         .join(AttemptModel, AttemptModel.attempt_id == AttemptCheckpointModel.attempt_id)
         .where(AttemptModel.task_id == task_id)
     )
-    boundary_query = select(
-        DispatchTurnModel.node_key,
-        DispatchTurnModel.accepted_boundary,
-        func.coalesce(
-            DispatchTurnModel.closed_at,
-            DispatchTurnModel.rendered_at,
-        ).label("occurred_at"),
-    ).where(
-        DispatchTurnModel.task_id == task_id,
-        DispatchTurnModel.accepted_boundary.is_not(None),
+    boundary_query = (
+        select(
+            DispatchTurnModel.node_key,
+            DispatchTurnModel.accepted_boundary,
+            func.coalesce(
+                DispatchTurnModel.closed_at,
+                DispatchTurnModel.rendered_at,
+            ).label("occurred_at"),
+            TaskEventModel.payload,
+        )
+        .outerjoin(
+            TaskEventModel,
+            (TaskEventModel.task_id == DispatchTurnModel.task_id)
+            & (TaskEventModel.dispatch_id == DispatchTurnModel.dispatch_id)
+            & (TaskEventModel.event_type == TaskEventType.BOUNDARY_ACCEPTED.value),
+        )
+        .where(
+            DispatchTurnModel.task_id == task_id,
+            DispatchTurnModel.accepted_boundary.is_not(None),
+        )
     )
     return dispatch_query, checkpoint_query, boundary_query
 
@@ -249,7 +270,7 @@ async def _trace_history(
     boundary_query: Any,
     offset: int,
     limit: int,
-) -> tuple[list[DispatchTurnModel], list[AttemptCheckpointModel], list[tuple[str, str, object]]]:
+) -> tuple[list[DispatchTurnModel], list[AttemptCheckpointModel], list[BoundaryTraceRow]]:
     dispatches = cast(
         list[DispatchTurnModel],
         list(await session.scalars(dispatch_query.offset(offset).limit(limit + 1))),
@@ -259,7 +280,7 @@ async def _trace_history(
         list(await session.scalars(checkpoint_query.offset(offset).limit(limit + 1))),
     )
     boundary_rows = cast(
-        list[tuple[str, str, object]],
+        list[BoundaryTraceRow],
         list((await session.execute(boundary_query.offset(offset).limit(limit + 1))).all()),
     )
     return dispatches, checkpoints, boundary_rows
@@ -273,7 +294,7 @@ def _build_operator_trace_response(
     offset: int,
     dispatches: list[DispatchTurnModel],
     checkpoints: list[AttemptCheckpointModel],
-    boundary_rows: list[tuple[str, str, object]],
+    boundary_rows: list[BoundaryTraceRow],
     current_paths: tuple[Any, ...],
 ) -> OperatorFlowTraceResponse:
     return OperatorFlowTraceResponse(
@@ -284,6 +305,9 @@ def _build_operator_trace_response(
                 {
                     "attempt_id": dispatch.attempt_id,
                     "assignment_key": dispatch.assignment_key,
+                    "assignment_summary": (
+                        None if dispatch.assignment is None else dispatch.assignment.summary
+                    ),
                     "node_key": dispatch.node_key,
                     "delivery_status": dispatch.delivery_status,
                     "rendered_at": coerce_datetime_to_utc(dispatch.rendered_at),
@@ -322,7 +346,7 @@ def _next_cursor(
     limit: int,
     dispatches: list[DispatchTurnModel],
     checkpoints: list[AttemptCheckpointModel],
-    boundary_rows: list[tuple[str, str, object]],
+    boundary_rows: list[BoundaryTraceRow],
 ) -> str | None:
     if len(dispatches) > limit or len(checkpoints) > limit or len(boundary_rows) > limit:
         return str(offset + limit)

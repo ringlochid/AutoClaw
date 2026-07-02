@@ -50,7 +50,6 @@ async def test_runtime_bootstrap_reset_clears_lifecycle_managers(tmp_path: Path)
         data_dir=data_dir,
         log_level="WARNING",
         api_key="api-test-key",
-        internal_api_key="internal-test-key",
         host="127.0.0.1",
         port=8123,
     )

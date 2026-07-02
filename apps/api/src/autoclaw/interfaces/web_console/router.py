@@ -2,16 +2,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, FastAPI, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, FastAPI, HTTPException, Request, status
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, ConfigDict, Field
 
+from autoclaw.config import get_settings
 from autoclaw.interfaces.web_console import (
     get_packaged_web_console_assets_root,
     is_packaged_web_console_available,
 )
 
 web_console_router = APIRouter(include_in_schema=False)
+_NO_STORE_HEADERS = {"Cache-Control": "no-store"}
+
+
+class WebConsoleRuntimeConfig(BaseModel):
+    model_config = ConfigDict(frozen=True, populate_by_name=True, serialize_by_alias=True)
+
+    api_base_url: str = Field(serialization_alias="apiBaseUrl")
+    api_key: str = Field(serialization_alias="apiKey")
 
 
 def mount_packaged_web_console(app: FastAPI) -> None:
@@ -27,6 +37,19 @@ def mount_packaged_web_console(app: FastAPI) -> None:
             name="web-console-assets",
         )
     app.include_router(web_console_router)
+
+
+@web_console_router.get("/console/config")
+async def get_web_console_runtime_config(request: Request) -> JSONResponse:
+    settings = get_settings()
+    runtime_config = WebConsoleRuntimeConfig(
+        api_base_url=_request_origin(request),
+        api_key=settings.api_key,
+    )
+    return JSONResponse(
+        content=runtime_config.model_dump(mode="json", by_alias=True),
+        headers=_NO_STORE_HEADERS,
+    )
 
 
 @web_console_router.get("/")
@@ -67,3 +90,7 @@ def _is_packaged_asset_file(path: Path) -> bool:
     assets_root = get_packaged_web_console_assets_root().resolve()
     resolved_path = path.resolve()
     return resolved_path.is_file() and resolved_path.is_relative_to(assets_root)
+
+
+def _request_origin(request: Request) -> str:
+    return str(request.base_url).rstrip("/")
