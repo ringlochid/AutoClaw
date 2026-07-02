@@ -1,4 +1,5 @@
 export interface ConsoleEnvironment {
+    readonly DEV?: boolean;
     readonly VITE_AUTOCLAW_API_BASE_URL?: string;
     readonly VITE_AUTOCLAW_API_KEY?: string;
 }
@@ -8,23 +9,40 @@ export interface ConsoleConfig {
     readonly apiKey: string | null;
 }
 
-const DEFAULT_API_BASE_URL = "http://127.0.0.1:18125";
+const LOCAL_DEV_API_BASE_URL = "http://127.0.0.1:18125";
 const defaultConsoleEnvironment = import.meta.env as ConsoleEnvironment;
 
-export function normalizeApiBaseUrl(value: string | undefined): string {
+export function defaultApiBaseUrl(
+    env: ConsoleEnvironment = defaultConsoleEnvironment,
+    origin: string | undefined = globalThis.location?.origin,
+): string {
+    if (env.DEV === true) {
+        return LOCAL_DEV_API_BASE_URL;
+    }
+
+    const trimmedOrigin = origin?.trim();
+    return trimmedOrigin === undefined || trimmedOrigin === "" || trimmedOrigin === "null"
+        ? LOCAL_DEV_API_BASE_URL
+        : trimmedOrigin;
+}
+
+export function normalizeApiBaseUrl(
+    value: string | undefined,
+    fallbackBaseUrl = defaultApiBaseUrl(),
+): string {
     const trimmedValue = value?.trim();
-    const rawValue =
-        trimmedValue === undefined || trimmedValue === "" ? DEFAULT_API_BASE_URL : trimmedValue;
+    const rawValue = trimmedValue === undefined || trimmedValue === "" ? fallbackBaseUrl : trimmedValue;
     return rawValue.replace(/\/+$/, "");
 }
 
 export function buildConsoleConfig(
     env: ConsoleEnvironment = defaultConsoleEnvironment,
+    fallbackBaseUrl = defaultApiBaseUrl(env),
 ): ConsoleConfig {
     const apiKey = env.VITE_AUTOCLAW_API_KEY?.trim();
 
     return {
-        apiBaseUrl: normalizeApiBaseUrl(env.VITE_AUTOCLAW_API_BASE_URL),
+        apiBaseUrl: normalizeApiBaseUrl(env.VITE_AUTOCLAW_API_BASE_URL, fallbackBaseUrl),
         apiKey: apiKey === undefined || apiKey === "" ? null : apiKey,
     };
 }

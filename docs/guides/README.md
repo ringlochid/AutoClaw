@@ -2,6 +2,10 @@
 
 Use guides for practical authoring and operator workflows.
 
+## OpenClaw setup
+
+- [Set up OpenClaw agents and operator skills](set-up-openclaw-agents-and-skills.md)
+
 ## Recommended authoring path
 
 1. [Design workflows and instructions](design-workflows-and-instructions.md)

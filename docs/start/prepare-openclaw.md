@@ -9,6 +9,7 @@ Current AutoClaw packages support the OpenClaw Gateway adapter.
 | Requirement | Supported path |
 | --- | --- |
 | OpenClaw binary | installed and discoverable from AutoClaw config, env, or `PATH` |
+| OpenClaw version | 2026.6.10 or newer |
 | Gateway bind | loopback Gateway |
 | Recommended auth | token auth |
 | Other supported auth | password auth, or explicit no-auth loopback |
@@ -27,6 +28,7 @@ Install OpenClaw through a supported OpenClaw release channel before installing 
 npm install -g openclaw
 
 # Confirm the OpenClaw binary that AutoClaw will later discover.
+# AutoClaw supports OpenClaw 2026.6.10 or newer; update older installs first.
 openclaw --version
 ```
 
@@ -79,6 +81,8 @@ AutoClaw's OpenClaw setup creates or reconciles dedicated worker and operator ag
 - the worker profile receives bounded assignments and node tools
 - the operator profile inspects and steers tasks through operator tools
 
+After onboarding, see [set up OpenClaw agents and operator skills](../guides/set-up-openclaw-agents-and-skills.md) for the annotated config shape, the worker workspace `AGENTS.md`, and the operator skills that let you drive AutoClaw from chat.
+
 For the early local lane, the intended OpenClaw posture is trusted and direct: full tools, gateway exec, no approval prompts, and sandbox off for the AutoClaw-managed worker/operator profiles. In OpenClaw terms, this is the practical "YOLO" direction; in docs and config, prefer the real fields: full tool profile, `exec` ask off, full security, and sandbox off.
 
 Use that posture only on a trusted local machine and a workspace you are willing to let an agent edit. AutoClaw controls workflow authority; it does not turn unsafe operating-system permissions into safe ones.
@@ -121,5 +125,6 @@ Codex, Claude, and other harnesses are adapter directions, not current shipped s
 
 - [Get started](getting-started.md)
 - [Start a task](start-a-task.md)
+- [Set up OpenClaw agents and operator skills](../guides/set-up-openclaw-agents-and-skills.md)
 - [OpenClaw integration problems](../help/openclaw-integration.md)
 - [Install and start AutoClaw locally](../reference/cli/install-and-start-local.md)

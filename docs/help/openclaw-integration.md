@@ -18,6 +18,8 @@ The shipped v1 support check allows:
 - loopback Gateway with password auth
 - explicit loopback no-auth Gateway
 
+AutoClaw supports OpenClaw 2026.6.10 or newer. Run `openclaw --version` and `openclaw update status` when integration behavior looks stale.
+
 The shipped v1 support check blocks:
 
 - missing OpenClaw binary
@@ -84,6 +86,7 @@ autoclaw openclaw doctor --fix
 ## Related pages
 
 - [Operator model](../concepts/operator-model.md)
+- [Set up OpenClaw agents and operator skills](../guides/set-up-openclaw-agents-and-skills.md)
 - [Prepare OpenClaw first](../start/prepare-openclaw.md)
 - [CLI support checks and self-contained setup](../reference/cli/cli-fast-fail-and-self-contained-report.md)
 - [OpenClaw integration boundary](../reference/operator/openclaw-integration-boundary.md)

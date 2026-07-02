@@ -39,9 +39,9 @@ There is no separate `leaf` policy value. A leaf is a `worker` node with no chil
 
 Rules:
 
-- omitted `budget_spec` means no controller budget counter for that budget family
-- `retry_limit` belongs on worker policies
-- `child_assignment_limit` belongs on root or parent policies
+- omitted `budget_spec` means no controller budget counter for that budget family: repeated work is unlimited
+- `retry_limit` belongs on worker policies; retry opens another attempt at the same assignment
+- `child_assignment_limit` belongs on root or parent policies; `assign_child` is a parent/root tool
 - one policy must not mix both fields
 
 Budget exhaustion should force an honest routing decision: close with evidence, ask for human direction when allowed, replan, or block.

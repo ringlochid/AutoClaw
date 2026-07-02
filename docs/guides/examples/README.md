@@ -4,6 +4,8 @@ Use examples as patterns, not as a fixed menu of everything AutoClaw can do.
 
 ## How to use examples
 
+The shipped roles, policies, and workflows are seeded into the registry during onboarding, so `workflow.key` in a task-compose file can reference any of them immediately. The [definitions reference](../../reference/definitions/README.md) mirrors the same fixtures as copyable YAML; import adapted copies with `autoclaw definitions import --file <path>`.
+
 1. Read [design workflows and instructions](../design-workflows-and-instructions.md).
 2. Pick the closest example by workflow shape, not by role name.
 3. Copy only the parts that match your evidence path.

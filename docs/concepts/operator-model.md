@@ -47,5 +47,6 @@ Use the narrowest control that matches the problem. Cancelling a command run is 
 ## Related pages
 
 - [Runtime model](runtime-model.md)
+- [Set up OpenClaw agents and operator skills](../guides/set-up-openclaw-agents-and-skills.md)
 - [Inspect and control a task](../guides/inspect-and-control-a-task.md)
 - [Operator reference](../reference/operator/README.md)

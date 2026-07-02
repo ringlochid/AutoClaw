@@ -13,7 +13,7 @@ TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_INTERNA
 TEST_COMPOSE := COMPOSE_PROJECT_NAME=autoclaw-test-db $(TEST_COMPOSE_ENV) $(COMPOSE)
 TREE_IGNORE := .git|.venv|node_modules|dist|build|tmp|.pytest_cache|.mypy_cache|.ruff_cache|.coverage|coverage|htmlcov|__pycache__|*.egg-info|*.pyc
 
-.PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api console-install console-dev console-format console-format-check console-lint console-typecheck console-openapi-generate console-openapi-check console-test console-test-integration console-e2e console-build check-console install-user-service
+.PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api console-install console-dev console-format console-format-check console-lint console-typecheck console-openapi-generate console-openapi-check console-test console-test-integration console-e2e console-build console-package-assets check-console package-build install-user-service
 
 tree:
 	@tree -a -L 6 --dirsfirst --prune --gitignore -I '$(TREE_IGNORE)'
@@ -137,6 +137,9 @@ console-e2e:
 console-build:
 	$(NPM) --prefix $(CONSOLE_DIR) run build
 
+console-package-assets: console-build $(PYTHON)
+	$(PYTHON) scripts/console/sync_packaged_console.py
+
 check-console: $(PYTHON)
 	$(MAKE) console-format-check
 	$(MAKE) console-lint
@@ -145,6 +148,9 @@ check-console: $(PYTHON)
 	$(MAKE) console-test
 	$(MAKE) console-test-integration
 	$(MAKE) console-build
+
+package-build: console-package-assets
+	$(PYTHON) -m build
 
 install-user-service:
 	bash scripts/install-systemd-user.sh

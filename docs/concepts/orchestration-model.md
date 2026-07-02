@@ -38,16 +38,15 @@ Current public support is narrower than the target architecture: the shipped ada
 
 ```mermaid
 flowchart LR
-    A[Role / policy / workflow definitions] --> B[Definition registry]
-    C[Task-compose launch] --> D[Compiler]
-    B --> D
-    D --> E[Controller-owned task + flow]
-    E --> F[Assignment]
-    F --> G[MCP node tools]
-    G --> H[Execution harness<br/>OpenClaw today]
-    H --> I[Checkpoint + artifacts]
-    I --> E
-    E --> J[Operator snapshot + trace]
+    D[Role / policy / workflow definitions] --> R[Definition registry]
+    T[Task-compose file] --> C[Compiler]
+    R --> C
+    C --> F[Controller-owned flow]
+    F --> A[Current assignment]
+    A --> H[Harness loop<br/>OpenClaw today]
+    H --> N[MCP node tools<br/>checkpoint / artifacts / assign child / boundary]
+    N --> F
+    F --> O[Operator read and control surfaces]
 ```
 
 The sequence is:
@@ -70,7 +69,16 @@ AutoClaw separates controller truth, generated files, and prompts on purpose.
 | Files      | manifest, assignment, latest checkpoint, artifacts, trace/support refs              | humans and agents need stable inspectable projections |
 | Prompt     | current node mission, allowed tools, current context, legal next moves              | the model needs a narrow operational contract         |
 
-The controller is the source of truth. Files are the shared workbench. Prompts are dispatch-specific instructions. Keeping those separate lets AutoClaw scale up without turning every agent into a free-form peer with hidden authority.
+The controller is the source of truth. Files are the shared workbench. Prompts are dispatch-specific instructions.
+
+This separation is what lets a multi-agent run scale without chaos:
+
+- adding agents does not add authority surfaces; every node still has one bounded assignment
+- parents own routing, so agents do not all talk to each other
+- evidence moves through declared `consumes`/`produces` dependencies instead of shared chat memory
+- budgets are atomic controller counters, not prompt reminders
+- structural change is a validated flow revision, not an improvised prompt edit
+- an operator can recover any run from controller state, whatever the agents believed
 
 The files layer is an external materialized layer, not a transcript log. Manifests, assignments, latest checkpoints, artifacts, trace refs, and support refs are stable projections of controller truth. Agents can hand off through those surfaces, and humans can inspect them without reconstructing hidden provider state.
 
@@ -135,7 +143,7 @@ The result is less magical than a free-form swarm, deliberately. AutoClaw trades
 | AutoGen / AG2                  | Multi-agent conversation and group-chat patterns                  | AutoClaw is workflow/tree/evidence centered: handoff happens through controller-validated assignments, checkpoints, and artifacts                                                     |
 | OpenAI Agents SDK              | Lightweight agents, handoffs, guardrails, tracing, sandbox agents | AutoClaw keeps orchestration state, evidence, replan, and recovery outside one provider SDK or agent loop                                                                             |
 | oh-my-claudecode / oh-my-codex | Harness-side workflow layers, team modes, tmux/worktree workers   | AutoClaw makes orchestration controller-owned: assignments, checkpoints, artifacts, waits, replan, and release are legal state transitions                                            |
-| A2A                            | Interop between independent opaque agents                         | AutoClaw can use A2A at external agent boundaries later; internally, handoff records are checked and minted by the controller                                                        |
+| A2A                            | Interop between independent opaque agents                         | AutoClaw can use A2A at external agent boundaries later; internally, handoff records are checked and minted by the controller                                                         |
 | OpenClaw                       | Local agent harness, tools, skills, sessions, and channels        | AutoClaw adds a real orchestration layer above the harness instead of replacing the harness                                                                                           |
 
 ## Next

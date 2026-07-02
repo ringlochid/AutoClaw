@@ -73,7 +73,7 @@ Rules:
 - use `retry_limit` only for worker policies
 - use `child_assignment_limit` only for root or parent policies
 - do not put both fields in one policy
-- omitted `budget_spec` means no controller budget counter for that budget family
+- omitted `budget_spec` means no controller budget counter for that budget family: retries or child assignments are unlimited, so omit it deliberately
 
 Good worker budget:
 

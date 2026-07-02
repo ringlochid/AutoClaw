@@ -22,6 +22,7 @@ from autoclaw.interfaces.mcp import (
     create_node_mcp_mount_app,
     create_operator_mcp_app,
 )
+from autoclaw.interfaces.web_console.router import mount_packaged_web_console
 from autoclaw.persistence.session import dispose_db_engine, verify_database_schema
 from autoclaw.runtime.command_run_runner import start_command_run_runner
 from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
@@ -84,6 +85,7 @@ def create_app(
         )
 
     app.include_router(api_router)
+    mount_packaged_web_console(app)
     if should_enable_mcp_mounts:
         operator_mcp_app = create_operator_mcp_app(host=settings.api_host)
         app.state.operator_mcp_app = operator_mcp_app

@@ -21,11 +21,31 @@ Current package data includes:
 - `definitions/seeds/policies/*.yaml`
 - `definitions/seeds/roles/*.yaml`
 - `definitions/seeds/workflows/*.yaml`
+- `interfaces/web_console/assets/*`
+- `interfaces/web_console/assets/assets/*`
 - `platform/managed_services/resources/systemd/*.service`
 - `runtime/prompt/assets/*.json`
 - `runtime/prompt/assets/blocks/*.md`
 
 If a new runtime resource must ship inside the package, add it to package data and prove it from an installed package path.
+
+## When changing the console UI
+
+The publishable package serves the built console UI from packaged resources under `autoclaw.interfaces.web_console`.
+
+Use:
+
+```bash
+make console-package-assets
+```
+
+This runs the Vite production build and syncs `apps/console/dist` into `apps/api/src/autoclaw/interfaces/web_console/assets`. Build package artifacts after this step:
+
+```bash
+make package-build
+```
+
+The production console uses same-origin API requests by default, so packaged UI routes keep working when the API service runs on a configured port instead of the development default.
 
 ## When changing bundled definitions
 
@@ -80,7 +100,9 @@ For packaging changes, use at least:
 
 ```bash
 make check-api
+make check-console
 ./.venv/bin/python -m scripts.docs.docs_freeze.cli validate
+make package-build
 git diff --check
 ```
 

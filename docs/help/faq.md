@@ -16,7 +16,7 @@ No. The fully supported v1 managed-service path is Linux with `systemd --user`. 
 
 Setup and service commands need a reliable local OpenClaw integration. AutoClaw supports loopback Gateway shapes with token auth, password auth, or explicit no-auth loopback. It blocks non-loopback, trusted-proxy, ambiguous, or unresolved-secret shapes instead of writing partial local state.
 
-Use token auth for the clearest first-run path. The other supported auth shapes are compatibility lanes, not the recommended public default.
+Use token auth for the clearest first-run path. The other supported auth shapes are compatibility options, not the recommended public default.
 
 ## Which agent providers does AutoClaw support now?
 

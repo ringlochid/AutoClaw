@@ -12,6 +12,7 @@ from typing import Any, cast
 import autoclaw
 from autoclaw.definitions.seeds import get_packaged_seed_definitions_root
 from autoclaw.interfaces.cli.main import main
+from autoclaw.interfaces.web_console import get_packaged_web_console_assets_root
 from autoclaw.main import app, create_app
 from autoclaw.platform.managed_services.resources import get_managed_service_resources_root
 from fastapi import FastAPI
@@ -45,6 +46,7 @@ def test_autoclaw_package_uses_src_modules_only() -> None:
     packaged_http = importlib.import_module("autoclaw.interfaces.http")
     packaged_cli_owner = importlib.import_module("autoclaw.interfaces.cli")
     packaged_mcp_owner = importlib.import_module("autoclaw.interfaces.mcp")
+    packaged_web_console_owner = importlib.import_module("autoclaw.interfaces.web_console")
     packaged_main_module = importlib.import_module("autoclaw.main")
     packaged_persistence = importlib.import_module("autoclaw.persistence")
     packaged_runtime_contracts = importlib.import_module("autoclaw.runtime.contracts")
@@ -78,6 +80,11 @@ def test_autoclaw_package_uses_src_modules_only() -> None:
     assert (
         Path(packaged_mcp_owner.__file__).resolve()
         == src_root / "interfaces" / "mcp" / "__init__.py"
+    )
+    assert packaged_web_console_owner.__file__ is not None
+    assert (
+        Path(packaged_web_console_owner.__file__).resolve()
+        == src_root / "interfaces" / "web_console" / "__init__.py"
     )
     assert packaged_main_module.__file__ is not None
     assert Path(packaged_main_module.__file__).resolve() == src_root / "main.py"
@@ -127,6 +134,8 @@ def test_pyproject_ships_canonical_packages_only() -> None:
         "definitions/seeds/policies/*.yaml",
         "definitions/seeds/roles/*.yaml",
         "definitions/seeds/workflows/*.yaml",
+        "interfaces/web_console/assets/*",
+        "interfaces/web_console/assets/assets/*",
         "platform/managed_services/resources/systemd/*.service",
         "runtime/prompt/assets/*.json",
         "runtime/prompt/assets/blocks/*.md",
@@ -201,12 +210,15 @@ def test_fresh_interpreter_can_import_canonical_package_roots() -> None:
                 "import autoclaw.runtime.contracts; "
                 "import autoclaw.platform.managed_services.resources; "
                 "import autoclaw.runtime.prompt.assets; "
+                "import autoclaw.interfaces.web_console; "
                 "seed_root = resources.files('autoclaw.definitions.seeds'); "
                 "service_root = resources.files('autoclaw.platform.managed_services.resources'); "
                 "prompt_root = resources.files('autoclaw.runtime.prompt.assets'); "
+                "console_root = resources.files('autoclaw.interfaces.web_console'); "
                 "assert seed_root.name == 'seeds'; "
                 "assert service_root.name == 'resources'; "
-                "assert prompt_root.name == 'assets'"
+                "assert prompt_root.name == 'assets'; "
+                "assert console_root.joinpath('assets', 'index.html').is_file()"
             ),
         ],
         cwd=repo_root,
@@ -226,8 +238,12 @@ def test_fresh_interpreter_can_import_canonical_package_roots() -> None:
 def test_resource_owner_helpers_point_to_canonical_package_paths() -> None:
     seed_root = get_packaged_seed_definitions_root()
     service_root = get_managed_service_resources_root()
+    console_assets_root = get_packaged_web_console_assets_root()
 
     assert seed_root.name == "seeds"
     assert seed_root.joinpath("roles", "planning_lead.yaml").is_file()
     assert service_root.name == "resources"
     assert service_root.joinpath("systemd", "autoclaw.service").is_file()
+    assert console_assets_root.name == "assets"
+    assert console_assets_root.joinpath("index.html").is_file()
+    assert console_assets_root.joinpath("app-icon.png").is_file()
