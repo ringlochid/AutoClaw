@@ -2,7 +2,7 @@
 
 Use this policy when the root may need a typed human wait before honest whole-task closure.
 
-This example teaches:
+This example shows:
 
 - human-request capability is separate from command-run capability
 - root human requests are for final direction, approval, missing input, or review

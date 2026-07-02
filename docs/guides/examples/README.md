@@ -10,7 +10,7 @@ Use examples as patterns, not as a fixed menu of everything AutoClaw can do.
 4. Replace task-specific criteria, artifacts, scope limits, and tool assumptions.
 5. Run a small pilot before turning the pattern into a larger workflow.
 
-The shipped examples teach valid shapes. Your definition set should still be purpose-specific.
+The shipped examples show valid shapes. Your definition set should still be purpose-specific.
 
 ## Example families
 

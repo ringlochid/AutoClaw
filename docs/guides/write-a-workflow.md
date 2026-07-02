@@ -55,17 +55,17 @@ Dynamic does not mean loose. It means the parent/root chooses the next child fro
 
 ## Choose the smallest useful structure
 
-| Shape | Use when |
-| --- | --- |
-| Single worker | one bounded output and one proof loop are enough |
+| Shape                    | Use when                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| Single worker            | one bounded output and one proof loop are enough                                      |
 | Root + worker + reviewer | ordinary implementation, research, docs, or planning work needs one independent check |
-| Fixed sequence | each step depends on the previous artifact |
-| Parent orchestration | a parent must inspect evidence and choose the next child |
-| Parallel specialists | independent perspectives improve confidence |
-| Review/fix loop | clear criteria allow useful critique and correction |
-| Human checkpoint | direction, approval, input, or review needs human judgment |
-| Command-run worker | long/log-heavy/cancelable command work matters |
-| Delivery batch parent | many similar scopes should run one at a time |
+| Fixed sequence           | each step depends on the previous artifact                                            |
+| Parent orchestration     | a parent must inspect evidence and choose the next child                              |
+| Parallel specialists     | independent perspectives improve confidence                                           |
+| Review/fix loop          | clear criteria allow useful critique and correction                                   |
+| Human checkpoint         | direction, approval, input, or review needs human judgment                            |
+| Command-run worker       | long/log-heavy/cancelable command work matters                                        |
+| Delivery batch parent    | many similar scopes should run one at a time                                          |
 
 Every parent should have a real routing job. Every worker should have one bounded mode.
 
@@ -109,7 +109,7 @@ Example:
 
 ```yaml
 instruction: >-
-  Assign one page at a time. Each child assignment must include the page route, design reference, expected states, viewport targets, required screenshots, and validation commands. Inspect child checkpoint and artifacts before assigning the next page. Do not assign parallel page work when pages share components, fixtures, or visual tokens.
+    Assign one page at a time. Each child assignment must include the page route, design reference, expected states, viewport targets, required screenshots, and validation commands. Inspect child checkpoint and artifacts before assigning the next page. Do not assign parallel page work when pages share components, fixtures, or visual tokens.
 ```
 
 ## Define the evidence path
@@ -220,7 +220,7 @@ Skills should support the node mission. They do not replace workflow criteria, a
 
 ## Pilot before scaling
 
-Run the smallest useful version first:
+Pilot a small version first:
 
 - root
 - one worker
@@ -235,26 +235,26 @@ After the run, inspect:
 - provider tool usage
 - operator snapshot and trace
 
-Only scale the workflow after the pilot proves the assignment size, evidence path, and review gate are understandable.
+Scale the workflow after the pilot has clear assignment size, evidence path, and review gate behavior.
 
 ## Route ambiguity
 
 Add explicit routing posture when a workflow may encounter gaps.
 
-Good dynamic parent instruction:
+Dynamic parent instruction example:
 
 ```yaml
 instruction: >-
-  Inspect current evidence before assigning the next child. Route unclear scope to a scope reviewer, weak verification to a verifier, repeated failure to failure analysis, and workflow-shape mismatch to replan. Do not force a worker to widen scope to make progress.
+    Inspect current evidence before assigning the next child. Route unclear scope to a scope reviewer, weak verification to a verifier, repeated failure to failure analysis, and workflow-shape mismatch to replan. Do not force a worker to widen scope to make progress.
 ```
 
 Workers should surface ambiguity. Parents and roots should route it.
 
 ## Keep shipped workflows as examples
 
-The shipped workflows show valid patterns, but they are not the product boundary. Use them to learn shape, then write workflows for your own automation.
+The shipped workflows show valid patterns, but they are not the product boundary. Use them as structural examples, then write workflows for your own automation.
 
-Good automation workflows are domain-specific:
+Domain-specific workflow examples:
 
 - support triage
 - accounting reconciliation
@@ -264,7 +264,7 @@ Good automation workflows are domain-specific:
 - product planning
 - migration execution
 
-## Good workflow checklist
+## Workflow checklist
 
 - the root knows what final closure means
 - every parent has a reason to exist
@@ -277,7 +277,7 @@ Good automation workflows are domain-specific:
 - command-run points are isolated to nodes that need them
 - parent/root instructions control repeated scope size
 - provider skills are listed only where the harness can use them
-- the workflow says what is out of scope
+- the workflow defines what is out of scope
 
 ## Related pages
 

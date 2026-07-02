@@ -82,5 +82,5 @@ Then set `AUTOCLAW_DATABASE_URL` to a real `postgresql+asyncpg://...` URL before
 After the install path is healthy:
 
 1. Run [start a task](start-a-task.md).
-2. Learn where runtime outputs land in [inspect a task](inspect-a-task.md).
+2. Read the generated runtime-output map in [inspect a task](inspect-a-task.md).
 3. Use [install and start locally](../reference/cli/install-and-start-local.md) for the exact support boundary and the contributor/dev repo-checkout lane.

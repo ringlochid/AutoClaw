@@ -64,7 +64,7 @@ Use a command run for controller-managed long-running command work that needs pr
 
 ## Is an operator always a human?
 
-No. In AutoClaw docs, `operator` means a trusted external operator agent or operator-authorized client unless the text explicitly says `human operator`. AutoClaw's intended operator shape is a trusted OpenClaw operator agent profile using operator tools. A human can also act as an operator through UI surfaces, but that is a different surface from an agent using tools.
+No. In AutoClaw docs, `operator` means a trusted external operator agent or operator-authorized client unless the text uses `human operator`. AutoClaw's intended operator shape is a trusted OpenClaw operator agent profile using operator tools. A human can also act as an operator through UI surfaces, but that is a different surface from an agent using tools.
 
 ## When should I use Postgres?
 

@@ -1,10 +1,10 @@
 # Inspect a task
 
-After a task starts, the useful proof is in runtime outputs and operator read surfaces. Start with the task root before reading logs or transcripts.
+After a task starts, inspect generated runtime files and operator read surfaces before reading logs or transcripts.
 
 ## Generated task-root surfaces
 
-Inspect these files inside the task root:
+AutoClaw materializes these files under the task root:
 
 - `_runtime/workflow-manifest.md`
 - `_runtime/attempts/<attempt_id>/assignment.md`
@@ -16,11 +16,11 @@ The workflow manifest explains the current workflow shape. The assignment file s
 ## What to check
 
 - the task used the workflow you expected
-- the current assignment is bounded and understandable
+- the current assignment has explicit scope and evidence requirements
 - the assigned node published the outputs the workflow declared
 - the latest checkpoint matches the work that actually happened
 - artifacts and surfaced evidence are consistent with runtime state
-- any wait is a real human request or command run, not just silence
+- any wait is a real human request or command run, not an absence of output
 
 ## Observability-only files
 
@@ -34,7 +34,7 @@ Use them after reading task-root evidence and operator readbacks.
 
 ## Operator read surfaces
 
-Use the operator reference when you want runtime readbacks beyond the task root:
+Use the operator reference when you need controller readbacks beyond generated files:
 
 - [Runtime read models and operator surfaces](../reference/operator/runtime-read-models-and-operator-surfaces.md)
 - [Inspect approvals and watchdog state](../reference/operator/inspect-approvals-and-watchdog.md)

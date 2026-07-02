@@ -1,43 +1,35 @@
 # Core concepts
 
-AutoClaw separates reusable design, one launch request, runtime truth, and operator readbacks. Most confusion comes from mixing those surfaces.
+AutoClaw separates reusable design, one launch request, controller-owned runtime state, and operator readbacks. Each surface has different authority.
 
-## Four planes
+## Planes
 
-| Plane | Owns | Example nouns |
-| --- | --- | --- |
-| Authoring | reusable definitions | role, policy, workflow, node, criteria, consumes, produces |
-| Launch | one concrete task request | task-compose, task instruction, workspace root, context root |
-| Runtime | controller-owned execution state | task, flow, assignment, attempt, dispatch, checkpoint, artifact, boundary, wait, replan |
-| Operator | trusted inspection and control | snapshot, trace, human request resolution, command-run inspection, pause, continue, cancel |
+| Plane     | Owns                             | Example nouns                                                                              |
+| --------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| Authoring | reusable definitions             | role, policy, workflow, node, criteria, consumes, produces                                 |
+| Launch    | one concrete task request        | task-compose, task instruction, workspace root, context root                               |
+| Runtime   | controller-owned execution state | task, flow, assignment, attempt, dispatch, checkpoint, artifact, boundary, wait, replan    |
+| Operator  | trusted inspection and control   | snapshot, trace, human request resolution, command-run inspection, pause, continue, cancel |
 
-Authored files describe intent. Runtime records describe what happened in one launched task. Operator readbacks help humans and trusted operators inspect that runtime truth.
+## Launch concepts
 
-## The minimum vocabulary
-
-Learn these first:
-
-- **Workflow:** reusable evidence path for a kind of work.
-- **Task-compose:** one concrete launch request.
-- **Assignment:** bounded mission currently given to a root, parent, or worker node.
-- **Checkpoint:** durable progress or handoff record for an assignment attempt.
-- **Artifact:** durable output published into a declared slot.
-
-Assignment is the delegation boundary. Checkpoints and artifacts are evidence for that assigned mission.
+- **Workflow:** reusable node tree, routing rules, criteria, and evidence contract.
+- **Task-compose:** one launch request with task metadata, instruction, workflow key, and optional roots.
+- **Assignment:** controller-owned scope, instructions, and evidence requirements for an active node.
+- **Checkpoint:** controller-recorded progress or handoff record for one assignment attempt.
+- **Artifact:** durable output published into a workflow-declared slot.
 
 ## Definition concepts
 
 Definitions are reusable:
 
-- **Role:** specialist lens and behavior contract.
-- **Policy:** authority, budgets, capabilities, and guardrails.
-- **Workflow:** node tree plus evidence path.
-- **Node:** one mission inside a workflow.
-- **Criteria:** hard requirements that can block closure.
-- **Consumes:** evidence a node must read.
-- **Produces:** artifacts a node must publish.
-
-Role says who the node is good at being. Policy says what the node may do. Workflow says how evidence moves.
+- **Role:** reusable instructions for how a node performs a class of work.
+- **Policy:** reusable authority limits, budgets, capabilities, and guardrails.
+- **Workflow:** reusable node tree, routing rules, criteria, consumed evidence, and produced artifacts.
+- **Node:** one planned work unit inside a workflow tree.
+- **Criteria:** hard closure requirements.
+- **Consumes:** evidence a node is required to read.
+- **Produces:** artifact slots a node is required to publish.
 
 ## Runtime concepts
 
@@ -57,13 +49,11 @@ Generated task-root files such as manifest, assignment, checkpoint, and artifact
 
 ## Node kinds
 
-Node kind comes from workflow structure:
-
 - `root`: owns whole-task purpose and final closure.
 - `parent`: owns routing and release for a subtree.
 - `worker`: performs one bounded assignment.
 
-Review, research, implementation, verification, planning, and release are modes of work. They are not separate node kinds.
+Runtime node kind is derived from workflow tree position: the top node becomes the root, leaf nodes become workers, and intermediate nodes become parents.
 
 ## Budgets and authority
 
@@ -86,7 +76,7 @@ AutoClaw treats evidence as part of the workflow contract:
 - checkpoints record progress and handoff context
 - artifacts carry inspectable output
 
-A child returning green is evidence, not proof by itself. Parent and root nodes should inspect current evidence before release.
+A child `green` boundary is an evidence claim, not final closure. Parent and root nodes should inspect current evidence before release.
 
 ## Small example
 

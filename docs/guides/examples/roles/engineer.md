@@ -2,7 +2,7 @@
 
 Use the engineer role when a worker should complete one bounded implementation assignment and publish durable outputs.
 
-This example teaches:
+This example shows:
 
 - engineer is a worker-only role
 - it stays inside the current assignment

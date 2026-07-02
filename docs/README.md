@@ -1,6 +1,6 @@
 # AutoClaw docs
 
-AutoClaw is a local-first orchestration tool for delegated AI work. Use these docs to install it, learn the mental model, write small workflows, and inspect running tasks from controller-owned evidence.
+AutoClaw is a local-first orchestration tool for delegated AI work. Use these docs to install it, understand the architecture, write small workflows, and inspect running tasks from controller-owned evidence.
 
 ## Recommended path
 
@@ -10,10 +10,10 @@ AutoClaw is a local-first orchestration tool for delegated AI work. Use these do
 2. [Get started](start/getting-started.md)
 3. [Start a task](start/start-a-task.md)
 4. [Inspect a task](start/inspect-a-task.md)
-5. [Learn the orchestration model](concepts/orchestration-model.md)
+5. [Read the orchestration model](concepts/orchestration-model.md)
 6. [Design your first workflow](guides/design-workflows-and-instructions.md)
 
-## Learn the model
+## Model
 
 Read concepts in this order:
 

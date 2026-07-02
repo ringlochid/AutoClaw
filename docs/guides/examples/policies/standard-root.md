@@ -2,7 +2,7 @@
 
 Use this policy when the root node owns final task closure without human waits or command runs.
 
-This example teaches:
+This example shows:
 
 - root policies attach to the `root` node only
 - `child_assignment_limit` bounds root child assignments, not worker retries

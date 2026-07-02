@@ -83,7 +83,7 @@ instead of forcing the current assignment to fit.
 
 ## Incident posture
 
-An incident is not just a failed node. It is a condition where the task may be causing harm, losing control, or proving that the current assumptions are wrong.
+An incident is a condition where the task may be causing harm, losing control, or proving that the current assumptions are wrong.
 
 Incident-capable workflows should prefer this order:
 

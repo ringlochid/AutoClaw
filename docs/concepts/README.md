@@ -1,6 +1,6 @@
 # Concepts
 
-AutoClaw concepts are easiest to learn in layers. Start with why orchestration exists, then learn authoring nouns, then runtime nouns.
+AutoClaw concepts are organized by layer: orchestration purpose, reusable authoring nouns, and runtime nouns for one launched task.
 
 ## Learning path
 

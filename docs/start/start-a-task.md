@@ -48,8 +48,8 @@ The command reads one local file and starts the same task body that the public t
 ## What success looks like
 
 - the command returns a task id
-- a task root is materialized on disk
-- `_runtime/workflow-manifest.md` exists under the task root
+- AutoClaw reports the generated task-root path
+- `_runtime/workflow-manifest.md` exists under that path
 - the first assignment surface is inspectable
 - checkpoint and artifact surfaces become inspectable as the researcher works
 - the final artifact includes a polished `research_brief.md`

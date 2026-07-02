@@ -39,11 +39,11 @@ The controller updates runtime truth first, then materializes generated projecti
 
 Assignment is the mission. Checkpoint is the evidence written against that mission.
 
-A good assignment is bounded enough that another node or operator can tell whether the work stayed in scope. A good checkpoint says what happened, what evidence exists, what criteria are satisfied or not, and what risk remains.
+An assignment should be bounded enough that another node or operator can tell whether the work stayed in scope. A checkpoint should record what happened, what evidence exists, which criteria are satisfied or blocked, and what risk remains.
 
 ## Boundaries and progress
 
-A checkpoint records what the node learned or produced. A boundary tells the controller what should happen next.
+A checkpoint records progress, evidence, and handoff context. A boundary tells the controller what should happen next.
 
 - `yield`: parent/root has staged child work or needs the controller to continue later.
 - `green`: the node believes its current assignment is complete with evidence.

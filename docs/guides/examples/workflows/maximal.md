@@ -2,7 +2,7 @@
 
 Use the maximal workflow when discovery, planning, implementation, review, QA, and release need separate stages.
 
-This example teaches:
+This example shows:
 
 - multiple coordinated subtrees can still keep explicit criteria and artifact flow
 - review and QA are separate evidence lanes

@@ -4,12 +4,12 @@ AutoClaw authoring separates reusable definitions from one concrete launch. Role
 
 ## Authoring objects
 
-| Object | Plain meaning | Owns | Should not own |
+| Object | Purpose | Owns | Does not own |
 | --- | --- | --- | --- |
-| Role | specialist lens | behavior posture, evidence-reading habits, output style | one task's paths, secrets, launch details |
+| Role | reusable performance instructions | behavior posture, evidence-reading habits, output style | one task's paths, secrets, launch details |
 | Policy | authority rules | node kind, budgets, capabilities, guardrails | specialist identity or node tree |
-| Workflow | evidence path | node tree, criteria, consumes, produces, routing intent | live runtime state |
-| Task-compose | this launch | task instruction, selected workflow, optional root bindings | reusable doctrine |
+| Workflow | reusable work structure | node tree, criteria, consumes, produces, routing intent | live runtime state |
+| Task-compose | one launch request | task instruction, selected workflow, optional root bindings | reusable doctrine |
 
 ## Roles
 
@@ -21,7 +21,7 @@ Use roles for durable specialist posture:
 - what it should avoid doing
 - how it should surface uncertainty
 
-Good role names are specific enough to review: `bug-fix-engineer`, `scope-reviewer`, `market-researcher`.
+Reviewable role names are specific: `bug-fix-engineer`, `scope-reviewer`, `market-researcher`.
 
 ## Policies
 
@@ -56,7 +56,7 @@ A workflow is not a runtime log. It does not own checkpoints, dispatch state, op
 
 Task-compose names one concrete task, selects a workflow, gives task-specific instruction, and can bind roots such as `workspace` and `context`. If roots are omitted, AutoClaw uses task-owned defaults.
 
-Task-compose is intentionally separate from reusable definitions. It is the thing you start.
+Task-compose is intentionally separate from reusable definitions. It is the launch file passed to task start.
 
 ## Criteria, consumes, and produces
 

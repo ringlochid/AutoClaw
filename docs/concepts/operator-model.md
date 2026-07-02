@@ -1,6 +1,6 @@
 # Operator model
 
-Operators inspect and steer running tasks. In AutoClaw docs, `operator` means a trusted external operator agent or operator-authorized client unless the text explicitly says `human operator`.
+Operators inspect and steer running tasks. In AutoClaw docs, `operator` means a trusted external operator agent or operator-authorized client unless the text uses `human operator`.
 
 In AutoClaw's intended product model, the primary operator is a trusted OpenClaw agent profile with operator MCP tools.
 

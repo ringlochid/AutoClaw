@@ -2,13 +2,13 @@
 
 Use this policy when a worker assignment should stay bounded and should not wait on humans or start controller-managed command runs.
 
-This example teaches:
+This example shows:
 
 - worker policy is attached to worker nodes only
 - `retry_limit` is worker-only retry budget
 - the base worker policy grants no human request or command-run capability
 - worker nodes are AutoClaw's executable leaf nodes when they have no children
-- the base worker policy does not need `instruction`; the role and node mission teach behavior
+- the base worker policy does not need `instruction`; the role and node mission define behavior
 
 ```yaml
 kind: policy

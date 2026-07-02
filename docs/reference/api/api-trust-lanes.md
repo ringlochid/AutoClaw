@@ -110,7 +110,7 @@ This lane is explicitly non-operator. It is scoped to the currently live dispatc
 
 The current implementation validates that the presented session key still matches live `NodeSession`, the live dispatch, and the persisted current assignment and attempt basis for that task before a callback write can commit. The callback route requires explicit `session_key` request input.
 
-Most callback writes now return only after controller truth commits and the owned task-root file surfaces are refreshed synchronously. That includes manifest, attempt, dispatch, artifact-pointer, and observability projections for the cases that teach or return those refs.
+Most callback writes now return only after controller truth commits and the owned task-root file surfaces are refreshed synchronously. That includes manifest, attempt, dispatch, artifact-pointer, and observability projections for the cases that expose or return those refs.
 
 Structural callback tools are stricter. `add_child`, `update_child`, and `remove_child` stage stable-manifest rewrites for the selected task. `commit_runtime_session()` commits controller truth first and then applies the owned `_runtime/workflow-manifest.*` writes synchronously before route success, so tool success still means the taught reread path is already refreshed. If the commit fails, `rollback_runtime_session()` clears the staged writes and preserves the last committed stable manifest.
 

@@ -2,7 +2,7 @@
 
 Use this policy when a parent node coordinates children without human waits or command runs.
 
-This example teaches:
+This example shows:
 
 - parent policies attach to `parent` nodes only
 - `child_assignment_limit` is parent/root-only assignment budget

@@ -2,7 +2,7 @@
 
 Use the normal workflow when you want implementation, review, and release closure without the coordination overhead of the maximal lane.
 
-This example teaches:
+This example shows:
 
 - a parent subtree can coordinate investigation, implementation, and review
 - root closure remains separate from ordinary worker success

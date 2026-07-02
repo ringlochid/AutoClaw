@@ -2,7 +2,7 @@
 
 Use the minimal workflow when one bounded engineering change plus direct verification is enough.
 
-This example teaches:
+This example shows:
 
 - one parent/root lane can verify one worker lane cleanly
 - criteria and produced artifact slots stay explicit

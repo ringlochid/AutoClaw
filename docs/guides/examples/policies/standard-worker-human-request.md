@@ -2,7 +2,7 @@
 
 Use this policy when a worker may need a typed human wait for judgment, input, approval, or review.
 
-This example teaches:
+This example shows:
 
 - human-request capability is separate from command-run capability
 - `allowed_kinds` must be non-empty when human requests are allowed

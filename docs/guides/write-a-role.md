@@ -6,7 +6,7 @@ Do not start from the shipped roles as a menu. Treat them as examples. Your auto
 
 ## Start with one capability
 
-A good role has one stable capability profile:
+A role should have one stable capability profile:
 
 - `market_researcher`
 - `scope_reviewer`
@@ -43,7 +43,7 @@ Use `parent` or `root` only for roles whose durable job is orchestration, routin
 
 ## Write the instruction
 
-Role instruction should teach stable behavior:
+Role instruction should define stable behavior:
 
 ```yaml
 kind: role
@@ -62,29 +62,29 @@ That role can be reused anywhere a scope review is needed.
 
 Research belongs in roles only when it is part of the specialist lens.
 
-Good:
+Use research in a role when it has a domain target:
 
 - an engineer inspects local code patterns, contracts, docs, and tests
 - a market researcher gathers source-grounded audience or competitor evidence
 - a verifier researches expected behavior before choosing a test oracle
 - a reviewer researches criteria and risk before judging
 
-Bad:
+Avoid generic research instructions:
 
-- every role says "do research first" with no domain evidence target
+- every role uses "do research first" with no domain evidence target
 - a role tells workers to rewrite contracts or replan the workflow
 - a role asks for broad research when the node needs a bounded output
 
 Use policies for the shared ambiguity protocol. Use workflow nodes to route research to the right place.
 
-## Good role checklist
+## Role checklist
 
 - the role name describes a real specialist
 - `allowed_node_kinds` is narrow
-- the instruction says what to read first
+- the instruction defines what to read first
 - the instruction names the role's evidence lens
-- the instruction says what to publish
-- the instruction says what not to do
+- the instruction defines what to publish
+- the instruction defines what not to do
 - the role does not mention task-specific paths or users
 - the role does not duplicate policy capability rules
 - ambiguity is surfaced rather than hidden

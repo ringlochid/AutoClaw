@@ -148,7 +148,7 @@ instruction: >-
   Assign one frontend page at a time. Each child assignment must name the page, design reference, expected states, required screenshots, and validation commands. Inspect the child's checkpoint, artifacts, desktop screenshot, mobile screenshot, and test output before assigning the next page. Do not open parallel page work unless the pages have no shared components or fixture conflicts.
 ```
 
-Bad parent instruction:
+Weak parent instruction:
 
 ```yaml
 instruction: >-
@@ -169,13 +169,13 @@ Pilot goals:
 - the reviewer can decide from evidence without rereading the whole transcript
 - operator readbacks and task-root files explain the run
 
-Only embed the pattern in a larger workflow after the pilot is understandable.
+Embed the pattern in a larger workflow after the pilot has clear assignment size, evidence path, and review behavior.
 
 ## Design fixed and dynamic workflows
 
 Use a fixed workflow when the path is known.
 
-Good fixed-workflow fits:
+Fixed workflows fit:
 
 - one bounded implementation
 - bug fix with reproduce, fix, verify, review
@@ -191,7 +191,7 @@ triage_report -> fix_plan -> patch -> verification_report -> review_report
 
 Use a dynamic workflow when the route is not knowable up front.
 
-Good dynamic-workflow fits:
+Dynamic workflows fit:
 
 - large feature touching unknown areas
 - incident response
@@ -305,7 +305,7 @@ For the operational walkthrough, use [inspect and control a task](inspect-and-co
 | Bug fix | reproduce, fix, verify, review, and release one defect | triage, fix plan, patch, regression proof, review |
 | Marketing campaign | plan campaign work without external publishing | audience research, campaign brief, approval risks |
 | Project management | coordinate delivery without implementation | objectives, task slices, owners, dependency map, status |
-| Incident response | contain, triage, recover, and learn | timeline, impact, mitigation, fix evidence, lesson |
+| Incident response | contain, triage, recover, and extract lessons | timeline, impact, mitigation, fix evidence, lesson |
 
 ## Before saving
 

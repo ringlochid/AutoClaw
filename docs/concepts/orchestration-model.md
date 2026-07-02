@@ -72,7 +72,7 @@ AutoClaw separates controller truth, generated files, and prompts on purpose.
 
 The controller is the source of truth. Files are the shared workbench. Prompts are dispatch-specific instructions. Keeping those separate lets AutoClaw scale up without turning every agent into a free-form peer with hidden authority.
 
-The files layer is not just logging. It is an external materialized layer: manifests, assignments, latest checkpoints, artifacts, trace refs, and support refs are stable projections of controller truth. Agents can hand off through those surfaces, and humans can inspect them without reconstructing hidden provider state.
+The files layer is an external materialized layer, not a transcript log. Manifests, assignments, latest checkpoints, artifacts, trace refs, and support refs are stable projections of controller truth. Agents can hand off through those surfaces, and humans can inspect them without reconstructing hidden provider state.
 
 Materialized means projected into durable reader-facing form. It does not mean the file becomes the legal source of truth. If a file and a controller readback disagree, the controller wins.
 
@@ -94,7 +94,7 @@ A2A is designed for independent, potentially opaque agents to discover each othe
 
 AutoClaw's internal lane has a different problem: controller authority. A node is not a free peer agent; it is a bounded runtime actor with a current assignment, dispatch, attempt, budget, and flow revision. AutoClaw therefore uses its own runtime contract through MCP tools internally, while A2A can fit future external delegation to independent remote agents.
 
-The internal pattern is deliberately controller-first: A2A-like handoff happens through assignments, checkpoints, and artifacts, but those objects are checked and minted by the controller. A provider cannot make task state true merely by saying it is true.
+The internal pattern is deliberately controller-first: A2A-like handoff happens through assignments, checkpoints, and artifacts, but those objects are checked and minted by the controller. A provider can request state transitions through tools; it cannot assert controller state directly.
 
 ## Harness-side workflow layers
 
@@ -132,7 +132,7 @@ The result is less magical than a free-form swarm, deliberately. AutoClaw trades
 | ------------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | LangGraph                      | Low-level durable graph runtime for stateful agents               | AutoClaw decouples orchestration from the harness loop, materializes task evidence outside the graph. replan is a controller-approved change, so graph can change after a task starts |
 | CrewAI                         | Role-based crews and approachable flow abstractions               | AutoClaw makes roles subordinate to controller-minted assignments, checkpoints, artifacts, budgets, waits, and release decisions                                                      |
-| AutoGen / AG2                  | Multi-agent conversation and group-chat patterns                  | AutoClaw is workflow/tree/evidence centered: agents do not just talk; they hand off controller-validated evidence                                                                     |
+| AutoGen / AG2                  | Multi-agent conversation and group-chat patterns                  | AutoClaw is workflow/tree/evidence centered: handoff happens through controller-validated assignments, checkpoints, and artifacts                                                     |
 | OpenAI Agents SDK              | Lightweight agents, handoffs, guardrails, tracing, sandbox agents | AutoClaw keeps orchestration state, evidence, replan, and recovery outside one provider SDK or agent loop                                                                             |
 | oh-my-claudecode / oh-my-codex | Harness-side workflow layers, team modes, tmux/worktree workers   | AutoClaw makes orchestration controller-owned: assignments, checkpoints, artifacts, waits, replan, and release are legal state transitions                                            |
 | A2A                            | Interop between independent opaque agents                         | AutoClaw can use A2A at external agent boundaries later; internally, handoff records are checked and minted by the controller                                                        |

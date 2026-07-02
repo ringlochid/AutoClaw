@@ -1,8 +1,8 @@
 # Topic research brief workflow guide example
 
-Use this workflow when the first useful output is a polished idea brief from one topic.
+Use this workflow for a polished idea brief from one topic.
 
-This example teaches:
+This example shows:
 
 - a first AutoClaw run can be research-only, not code-first
 - one root plus one researcher is enough when the evidence path is simple

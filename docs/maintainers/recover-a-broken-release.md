@@ -54,7 +54,7 @@ Update docs and examples in the same change when the public contract changed.
 
 ## Verify
 
-Run the lane that proves the broken surface, not just the smallest local test.
+Run the lane that proves the broken surface. The smallest local test is not enough when the failed surface is broader.
 
 Common recovery checks:
 

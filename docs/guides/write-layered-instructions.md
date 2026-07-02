@@ -33,7 +33,7 @@ Task-compose = this launch
 
 ## Separate summary from instruction
 
-`description` should help a reader scan a list and understand why the object exists. It should not teach the agent how to act.
+`description` should help a reader scan a list and understand why the object exists. It should not instruct the agent.
 
 Good:
 
@@ -58,7 +58,7 @@ instruction: >-
 
 A role teaches the agent what kind of work it is doing across many tasks.
 
-Good role instructions answer:
+Role instructions define:
 
 - what kind of evidence this specialist reads first
 - what mode it is in: research, planning, implementation, review, verification, release, or coordination
@@ -70,7 +70,7 @@ Do not put one run's paths, users, secrets, or launch detail in a role.
 
 ## Write policy instructions as authority
 
-A policy teaches what the node may do and how tightly it must behave.
+A policy defines what the node may do and how tightly it must behave.
 
 Use policies for:
 

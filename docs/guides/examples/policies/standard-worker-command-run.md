@@ -2,7 +2,7 @@
 
 Use this policy when a worker may need controller-managed long command runs.
 
-This example teaches:
+This example shows:
 
 - command-run capability is separate from human-request capability
 - ordinary commands should stay inline and finish comfortably under about two minutes

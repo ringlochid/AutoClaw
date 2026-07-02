@@ -2,7 +2,7 @@
 
 Use this policy when a parent may need a typed human wait while routing a subtree.
 
-This example teaches:
+This example shows:
 
 - human-request capability is separate from command-run capability
 - parent human requests are for material direction, approval, missing input, or review

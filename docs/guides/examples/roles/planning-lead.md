@@ -2,7 +2,7 @@
 
 Use the planning lead role when one node needs to coordinate a subtree instead of completing the bounded worker task itself.
 
-This example teaches:
+This example shows:
 
 - a planning lead can own `root` or `parent` nodes
 - it reads manifests, checkpoints, criteria, and artifacts to decide what happens next
