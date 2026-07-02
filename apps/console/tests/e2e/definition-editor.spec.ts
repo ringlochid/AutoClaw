@@ -31,8 +31,9 @@ test("renders Definition Editor workbench, focus, accessibility, and replace mod
     await expect(
         page.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }),
     ).toBeVisible();
-    await expect(page.getByLabel("Editable draft body")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible();
+    await expect(page.getByLabel("Draft body")).toBeVisible();
+    await expect(page.getByText("Editable draft body")).toHaveCount(0);
+    await expect(page.getByText("Reset restores the captured stored baseline.")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Save draft" })).toBeDisabled();
     await expectNoDocumentOverflow(page);
 
@@ -116,7 +117,7 @@ test("keeps Definition Editor draft selection and editor usable at mobile width"
 
     await expect(page.getByRole("heading", { level: 1, name: "Definition Editor" })).toBeVisible();
     await page.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_WORKFLOW_KEY) }).click();
-    await expect(page.getByLabel("Editable draft body")).toBeVisible();
+    await expect(page.getByLabel("Draft body")).toBeVisible();
     await page.getByRole("button", { name: "Preview" }).click();
     await expect(
         page.getByLabel("Preview provenance").getByRole("button", { name: "Draft truth" }),

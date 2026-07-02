@@ -68,7 +68,7 @@ export function TaskIdentitySection({ controller }: { readonly controller: TaskS
                     labelClassName={labelClassName}
                 >
                     <textarea
-                        className={textAreaClassName("min-h-[76px]")}
+                        className={textAreaClassName("min-h-19")}
                         onChange={(event) => {
                             controller.setField("summary", event.target.value);
                         }}
@@ -85,7 +85,7 @@ export function TaskIdentitySection({ controller }: { readonly controller: TaskS
                     labelClassName={labelClassName}
                 >
                     <textarea
-                        className={textAreaClassName("min-h-[84px]")}
+                        className={textAreaClassName("min-h-21")}
                         onChange={(event) => {
                             controller.setField("instruction", event.target.value);
                         }}

@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 
 import { CodeBlock, StatePanel, StatusChip, Tabs } from "../../components/ui";
 import type { TaskDetailController } from "./task-detail-controller";
+import { titleCaseNodeLabel } from "./task-detail-format";
 import {
     TASK_DETAIL_TABS,
     commandRunTone,
@@ -15,7 +16,7 @@ import {
     type TaskDetailView,
     type TaskGraphNode,
 } from "./task-detail-model";
-import { TaskDetailTimestamp, titleCaseNodeLabel } from "./task-detail-summary";
+import { TaskDetailTimestamp } from "./task-detail-summary";
 
 export function TaskDetailModal({
     context,

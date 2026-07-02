@@ -109,6 +109,7 @@ function TaskDetailLoadedState({ controller }: { readonly controller: TaskDetail
             }
             description={view.task.summary}
             eyebrow={<TaskDetailEyebrow view={view} />}
+            headerClassName="!px-5 !py-3.5 sm:!px-6 lg:!px-7"
             headerContent={<TaskSummaryHeader view={view} />}
             headerContentPlacement="title-inline"
             title={view.task.title}

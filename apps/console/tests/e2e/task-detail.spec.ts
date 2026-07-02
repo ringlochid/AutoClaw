@@ -46,6 +46,9 @@ test("renders the API-backed Task Detail control room at desktop width", async (
 
     const initialZoom = await readGraphZoom(page);
     expect(initialZoom).toBe(156);
+    await expectGraphWheelZoomWithoutPageScroll(page, initialZoom);
+    await page.getByRole("button", { name: "Reset graph zoom" }).click();
+    expect(await readGraphZoom(page)).toBe(156);
     for (let index = 0; index < 8; index += 1) {
         await page.getByRole("button", { name: "Zoom out graph" }).click();
     }
@@ -79,7 +82,7 @@ test("renders the API-backed Task Detail control room at desktop width", async (
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("button", { name: "Close node detail" })).toBeFocused();
     await expect(
-        dialog.getByRole("heading", { level: 2, name: "Task detail contract" }),
+        dialog.getByRole("heading", { level: 2, name: "Runtime page contract" }),
     ).toBeVisible();
     await expect(dialog.getByText("Approve the last copy trim")).toBeVisible();
     await expect(dialog.getByText("Verify command-run runner behavior.")).toBeVisible();
@@ -217,6 +220,29 @@ async function readGraphZoom(page: Page): Promise<number> {
     const zoomMatch = /(\d+)%/.exec(graphSectionText);
     expect(zoomMatch).not.toBeNull();
     return Number(zoomMatch?.[1] ?? 0);
+}
+
+async function expectGraphWheelZoomWithoutPageScroll(
+    page: Page,
+    initialZoom: number,
+): Promise<void> {
+    const graph = page.getByLabel("Execution graph");
+    await graph.scrollIntoViewIfNeeded();
+    await page.evaluate(() => {
+        window.scrollBy(0, 64);
+    });
+    const graphBox = await graph.boundingBox();
+    expect(graphBox).not.toBeNull();
+    if (graphBox === null) {
+        return;
+    }
+
+    const beforeScrollY = await page.evaluate(() => window.scrollY);
+    await page.mouse.move(graphBox.x + graphBox.width / 2, graphBox.y + graphBox.height / 2);
+    await page.mouse.wheel(0, 240);
+    await expect.poll(async () => readGraphZoom(page)).not.toBe(initialZoom);
+    const afterScrollY = await page.evaluate(() => window.scrollY);
+    expect(afterScrollY).toBe(beforeScrollY);
 }
 
 async function readGraphTransform(page: Page): Promise<string | null> {

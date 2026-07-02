@@ -285,11 +285,12 @@ export function useDefinitionEditorController(): DefinitionEditorController {
             setSelectedDraftSetId(draftSet.draftSetId);
             setPreviewBody(draftSet.previewTaskComposeBody ?? DEFAULT_PREVIEW_TASK_COMPOSE_BODY);
             setSelectedFileId((currentFileId) => {
-                const nextFile =
-                    (preferredFileId === undefined
+                const preferredFile =
+                    preferredFileId === undefined
                         ? null
-                        : (draftSet.files.find((file) => file.id === preferredFileId) ?? null)) ??
-                    selectedFileFromDraftSet(draftSet, currentFileId);
+                        : (draftSet.files.find((file) => file.id === preferredFileId) ?? null);
+                const currentFile = selectedFileFromDraftSet(draftSet, currentFileId);
+                const nextFile = preferredFile ?? currentFile;
                 if (nextFile !== null) {
                     setEditorBody(nextFile.body);
                     setEditorSourceKey(`${nextFile.id}:${nextFile.contentHash}`);

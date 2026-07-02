@@ -183,9 +183,7 @@ function withTaskTitle(context: ShellContext, title: string): ShellContext {
 function ShellBrand() {
     return (
         <div className="mb-2 flex min-h-[4.25rem] items-center gap-3 border-b border-outline-soft px-4 pb-5 pt-4 lg:mb-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft font-display text-[28px] font-bold leading-9 text-primary">
-                A
-            </div>
+            <img alt="" className="size-10 shrink-0 rounded-lg object-cover" src="/app-icon.png" />
             <div className="min-w-0">
                 <p className="truncate font-display text-[20px] font-bold leading-6 text-foreground">
                     AutoClaw

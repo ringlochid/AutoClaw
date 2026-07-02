@@ -112,7 +112,7 @@ describe("TaskDetailPage", () => {
         await user.tab();
         expect(within(dialog).getByRole("button", { name: "Close node detail" })).toHaveFocus();
         expect(
-            within(dialog).getByRole("heading", { level: 2, name: "Task Detail contract" }),
+            within(dialog).getByRole("heading", { level: 2, name: "Runtime page contract" }),
         ).toBeVisible();
         expect(within(dialog).getByText("Approve the last copy trim")).toBeVisible();
         expect(within(dialog).getByText("Verify command-run runner behavior.")).toBeVisible();

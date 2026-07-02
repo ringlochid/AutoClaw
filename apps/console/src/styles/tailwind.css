@@ -161,6 +161,20 @@ textarea {
     box-shadow: 0 12px 28px rgb(59 130 246 / 0.08);
 }
 
+.definition-editor-body {
+    background: #fafaf9;
+    border-radius: 16px;
+    font-family: var(--ac-font-mono);
+    line-height: 1.5rem;
+    min-height: 28rem;
+    resize: vertical;
+    tab-size: 2;
+}
+
+.definition-editor-body::selection {
+    background: rgb(59 130 246 / 0.16);
+}
+
 .task-row {
     box-shadow: var(--ac-shadow-hairline);
     color: inherit;

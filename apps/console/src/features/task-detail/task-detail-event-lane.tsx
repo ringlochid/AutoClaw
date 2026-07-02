@@ -1,7 +1,8 @@
 import { StatePanel } from "../../components/ui";
 import { classNames } from "../../lib/classNames";
+import { titleCaseNodeLabel } from "./task-detail-format";
 import type { TaskEventRow } from "./task-detail-model";
-import { TaskDetailTimestamp, titleCaseNodeLabel } from "./task-detail-summary";
+import { TaskDetailTimestamp } from "./task-detail-summary";
 
 export function TaskEventLane({
     events,

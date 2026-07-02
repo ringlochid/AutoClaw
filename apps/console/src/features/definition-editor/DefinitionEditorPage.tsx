@@ -1,5 +1,12 @@
 import { AlertTriangle, Plus, RotateCcw, Save, X } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+    useEffect,
+    useRef,
+    useState,
+    type KeyboardEvent as ReactKeyboardEvent,
+    type ReactNode,
+    type RefObject,
+} from "react";
 
 import { PageFrame } from "../../components/layout";
 import {
@@ -26,6 +33,7 @@ import {
     validationStatusTone,
     type DraftFileView,
 } from "./definition-editor-model";
+import { applyDraftBodyIndentation } from "./definition-editor-indent";
 
 export function DefinitionEditorPage() {
     const controller = useDefinitionEditorController();
@@ -481,22 +489,37 @@ function EditMode({ controller }: { readonly controller: DefinitionEditorControl
         return null;
     }
 
+    const handleDraftBodyKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+        if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey) {
+            return;
+        }
+
+        event.preventDefault();
+        const textArea = event.currentTarget;
+        const edit = applyDraftBodyIndentation({
+            body: controller.editorBody,
+            selectionEnd: textArea.selectionEnd,
+            selectionStart: textArea.selectionStart,
+            shouldOutdent: event.shiftKey,
+        });
+        controller.setEditorBody(edit.body);
+        window.requestAnimationFrame(() => {
+            textArea.setSelectionRange(edit.selectionStart, edit.selectionEnd);
+        });
+    };
+
     return (
-        <div className="space-y-4">
-            <FormField id="definition-editor-body" label="Editable draft body">
-                <textarea
-                    className={classNames(
-                        controlClassName(),
-                        "min-h-[28rem] resize-y font-mono text-utility",
-                    )}
-                    onChange={(event) => {
-                        controller.setEditorBody(event.target.value);
-                    }}
-                    spellCheck={false}
-                    value={controller.editorBody}
-                />
-            </FormField>
-        </div>
+        <textarea
+            aria-label="Draft body"
+            className="definition-editor-body w-full rounded-card border border-outline-soft p-4 font-mono text-utility text-foreground shadow-inner transition-colors focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/15"
+            id="definition-editor-body"
+            onChange={(event) => {
+                controller.setEditorBody(event.target.value);
+            }}
+            onKeyDown={handleDraftBodyKeyDown}
+            spellCheck={false}
+            value={controller.editorBody}
+        />
     );
 }
 
@@ -510,7 +533,7 @@ function DraftActionFooter({
     readonly selectedFile: DraftFileView;
 }) {
     return (
-        <div className="flex flex-wrap items-center justify-end gap-2 rounded-card border border-outline-soft bg-surface px-4 py-3 text-compact text-muted">
+        <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
                 disabled={controller.isMutatingDraft || !controller.isEditorDirty}
                 icon={<Save />}

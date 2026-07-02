@@ -1,12 +1,12 @@
 import {
     useCallback,
+    useEffect,
     useLayoutEffect,
     useMemo,
     useRef,
     useState,
     type PointerEvent,
     type RefObject,
-    type WheelEvent,
 } from "react";
 
 import { ExternalLink } from "lucide-react";
@@ -135,7 +135,6 @@ export function TaskGraph({
                         onPointerMove={graphCamera.handlePointerMove}
                         onPointerUp={graphCamera.handlePointerUp}
                         onSelectNode={onSelectNode}
-                        onWheel={graphCamera.handleWheel}
                         selectedNodeKey={selectedGraphNodeKey}
                         svgRef={svgRef}
                     />
@@ -171,7 +170,6 @@ function GraphCanvas({
     onPointerMove,
     onPointerUp,
     onSelectNode,
-    onWheel,
     selectedNodeKey,
     svgRef,
 }: {
@@ -185,7 +183,6 @@ function GraphCanvas({
     readonly onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
     readonly onPointerUp: (event: PointerEvent<SVGSVGElement>) => void;
     readonly onSelectNode: (nodeKey: string) => void;
-    readonly onWheel: (event: WheelEvent<SVGSVGElement>) => void;
     readonly selectedNodeKey: string;
     readonly svgRef: RefObject<SVGSVGElement | null>;
 }) {
@@ -200,7 +197,6 @@ function GraphCanvas({
             onPointerLeave={onPointerLeave}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            onWheel={onWheel}
             ref={svgRef}
             role="group"
             viewBox={`0 0 ${String(layout.width)} ${String(layout.height)}`}
@@ -797,6 +793,7 @@ function useGraphCamera({
     const [camera, setCamera] = useState<CameraTransform>(() =>
         buildCameraTransform(layout, selectedNodeKey, viewport),
     );
+    const cameraRef = useRef(camera);
     const [isDragging, setIsDragging] = useState(false);
     const dragOriginRef = useRef<DragOrigin | null>(null);
     const lastFitKeyRef = useRef<string | null>(null);
@@ -806,6 +803,10 @@ function useGraphCamera({
         viewport === null
             ? "viewport-pending"
             : `${String(Math.round(viewport.width))}x${String(Math.round(viewport.height))}`;
+
+    useEffect(() => {
+        cameraRef.current = camera;
+    }, [camera]);
 
     useLayoutEffect(() => {
         const fitKey = `${layoutKey}:${viewportKey}`;
@@ -869,17 +870,26 @@ function useGraphCamera({
         [camera.scale, svgRef, zoomAround],
     );
 
-    const handleWheel = useCallback(
-        (event: WheelEvent<SVGSVGElement>) => {
+    useEffect(() => {
+        const svgElement = svgRef.current;
+        if (svgElement === null) {
+            return undefined;
+        }
+
+        const handleWheel = (event: globalThis.WheelEvent) => {
             event.preventDefault();
             zoomAround(
                 event.clientX,
                 event.clientY,
-                camera.scale * (event.deltaY < 0 ? 1.08 : 0.92),
+                cameraRef.current.scale * (event.deltaY < 0 ? 1.08 : 0.92),
             );
-        },
-        [camera.scale, zoomAround],
-    );
+        };
+
+        svgElement.addEventListener("wheel", handleWheel, { passive: false });
+        return () => {
+            svgElement.removeEventListener("wheel", handleWheel);
+        };
+    }, [svgRef, zoomAround]);
 
     const handlePointerDown = useCallback(
         (event: PointerEvent<SVGSVGElement>) => {
@@ -935,7 +945,6 @@ function useGraphCamera({
         handlePointerLeave: endDrag,
         handlePointerMove,
         handlePointerUp: endDrag,
-        handleWheel,
         isDragging,
         reset,
         zoomIn: () => {

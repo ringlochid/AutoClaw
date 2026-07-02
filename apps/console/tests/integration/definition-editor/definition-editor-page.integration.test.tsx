@@ -205,26 +205,27 @@ describe("DefinitionEditorPage", () => {
         });
 
         renderDefinitionEditorPage();
-        const editor = await screen.findByLabelText("Editable draft body");
-        const saveButton = screen.getByRole("button", { name: "Save draft" });
-        expect(saveButton).toBeVisible();
-        expect(saveButton).toBeDisabled();
+        const editor = await screen.findByLabelText("Draft body");
+        expect(screen.getByRole("button", { name: "Save draft" })).toBeDisabled();
+        expect(screen.queryByText("Editable draft body")).not.toBeInTheDocument();
+        expect(
+            screen.queryByText("Reset restores the captured stored baseline."),
+        ).not.toBeInTheDocument();
 
         await user.clear(editor);
         await user.type(editor, DEFINITION_EDITOR_UPDATED_BODY);
         expect(screen.getByText("local edits")).toBeVisible();
+        const saveButton = screen.getByRole("button", { name: "Save draft" });
         expect(saveButton).toBeEnabled();
 
         await user.click(saveButton);
         await waitFor(() => {
-            expect(screen.getByLabelText("Editable draft body")).toHaveValue(
-                DEFINITION_EDITOR_UPDATED_BODY,
-            );
+            expect(screen.getByLabelText("Draft body")).toHaveValue(DEFINITION_EDITOR_UPDATED_BODY);
         });
         expect(screen.getAllByText("clean").length).toBeGreaterThan(0);
-        expect(saveButton).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Save draft" })).toBeDisabled();
 
-        await user.type(screen.getByLabelText("Editable draft body"), "\nlocal change");
+        await user.type(screen.getByLabelText("Draft body"), "\nlocal change");
         await user.click(screen.getByRole("button", { name: "Reset draft" }));
         expect(await screen.findByRole("dialog", { name: "Reset draft" })).toBeVisible();
         await user.click(
@@ -246,6 +247,28 @@ describe("DefinitionEditorPage", () => {
         await waitFor(() => {
             expect(screen.getByDisplayValue(/Current stored revision body/)).toBeVisible();
         });
+    });
+
+    it("uses Tab and Shift+Tab for draft body indentation without leaving the editor", async () => {
+        const user = userEvent.setup();
+        installDefinitionEditorHandlers();
+
+        renderDefinitionEditorPage();
+        const editorElement = await screen.findByLabelText("Draft body");
+        expect(editorElement).toBeInstanceOf(HTMLTextAreaElement);
+        const editor = editorElement as HTMLTextAreaElement;
+        await user.clear(editor);
+        await user.type(editor, "root:\nchild: value");
+        editor.setSelectionRange("root:\n".length, "root:\nchild".length);
+
+        await user.keyboard("{Tab}");
+        expect(editor).toHaveFocus();
+        expect(editor).toHaveValue("root:\n  child: value");
+
+        editor.setSelectionRange("root:\n".length, "root:\n  child".length);
+        await user.keyboard("{Shift>}{Tab}{/Shift}");
+        expect(editor).toHaveFocus();
+        expect(editor).toHaveValue("root:\nchild: value");
     });
 
     it("shows validation, stale validation, preview, no-op apply, published apply, and auth failures", async () => {
@@ -272,7 +295,7 @@ describe("DefinitionEditorPage", () => {
         expect(screen.getByText("preview_review_recommended")).toBeVisible();
 
         await user.click(screen.getByRole("button", { name: "Edit" }));
-        await user.type(screen.getByLabelText("Editable draft body"), "\nchanged after validation");
+        await user.type(screen.getByLabelText("Draft body"), "\nchanged after validation");
         await user.click(screen.getByRole("button", { name: "Validate" }));
         expect(screen.getByText("Validation result is stale")).toBeVisible();
 

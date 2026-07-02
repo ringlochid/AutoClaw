@@ -276,7 +276,7 @@ function createTaskDetailTrace(): components["schemas"]["OperatorFlowTraceRespon
                 checkpoint_kind: "terminal",
                 outcome: "green",
                 recorded_at: "2026-06-29T13:45:00Z",
-                summary: "Task Detail contract is ready.",
+                summary: "Runtime page contract is ready.",
             },
             {
                 attempt_id: "attempt-task_detail_build",
