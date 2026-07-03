@@ -108,7 +108,7 @@ def write_workspace_file(task_root: Path, relative_path: str, body: str) -> Path
     return output_path
 
 
-async def drive_minimal_child_to_green(
+async def drive_bounded_child_to_green(
     api: RuntimeApiContext,
     *,
     task_id: str,
@@ -230,7 +230,7 @@ async def _retry_child_boundary(
 
 
 __all__ = [
-    "drive_minimal_child_to_green",
+    "drive_bounded_child_to_green",
     "retry_terminal_green_checkpoint",
     "stage_child_dispatch",
     "write_workspace_file",

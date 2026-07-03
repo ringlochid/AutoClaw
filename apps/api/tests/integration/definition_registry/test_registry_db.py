@@ -56,16 +56,16 @@ async def test_init_seeds_definition_registry_and_compiles_current_workflow(
             policy = await load_current_policy(session, "standard-worker")
             workflow, compiled_plan = await compile_current_workflow(
                 session,
-                workflow_key="normal-parent-first-release",
+                workflow_key="reviewed-change-release",
                 compiler_version="registry-seeded-test",
             )
 
             assert role.revision_no == 1
             assert policy.revision_no == 1
             assert workflow.revision_no == 1
-            assert compiled_plan.workflow_key == "normal-parent-first-release"
+            assert compiled_plan.workflow_key == "reviewed-change-release"
             assert compiled_plan.definition_revision_no == workflow.revision_no
-            assert compiled_plan.nodes[1].node_key == "implementation_subtree"
+            assert compiled_plan.nodes[1].node_key == "change_subtree"
 
 
 async def test_seed_registry_appends_seed_revision_without_clobbering_controller_current(
@@ -73,17 +73,17 @@ async def test_seed_registry_appends_seed_revision_without_clobbering_controller
 ) -> None:
     seed_root = _copy_seed_tree(tmp_path / "packaged-seed-refresh")
     updated_seed_description = (
-        "Minimal workflow that creates one implementation change artifact. packaged refresh"
+        "Bounded workflow that creates one implementation change artifact. packaged refresh"
     )
     _rewrite_workflow_seed_description(
         seed_root,
-        workflow_key="minimal-implement-change",
+        workflow_key="bounded-change",
         description=updated_seed_description,
     )
 
     async with initialized_registry(tmp_path) as session_factory:
         async with session_factory() as session:
-            current = await load_current_workflow(session, "minimal-implement-change")
+            current = await load_current_workflow(session, "bounded-change")
             updated_definition = current.definition.model_copy(
                 update={"description": f"{current.definition.description} updated"}
             )
@@ -110,15 +110,15 @@ async def test_seed_registry_appends_seed_revision_without_clobbering_controller
                 await session.commit()
 
         async with session_factory() as session:
-            current = await load_current_workflow(session, "minimal-implement-change")
+            current = await load_current_workflow(session, "bounded-change")
             revision_count = await session.scalar(
                 select(func.count()).where(
-                    WorkflowRevisionModel.workflow_key == "minimal-implement-change"
+                    WorkflowRevisionModel.workflow_key == "bounded-change"
                 )
             )
             appended_seed_revision = await session.scalar(
                 select(WorkflowRevisionModel).where(
-                    WorkflowRevisionModel.workflow_key == "minimal-implement-change",
+                    WorkflowRevisionModel.workflow_key == "bounded-change",
                     WorkflowRevisionModel.revision_no == 3,
                 )
             )
@@ -129,7 +129,7 @@ async def test_seed_registry_appends_seed_revision_without_clobbering_controller
             assert revision_count == 3
             assert appended_seed_revision.content_json["description"] == updated_seed_description
             assert appended_seed_revision.source_path == (
-                "seed://packaged/workflows/minimal_implement_change.yaml"
+                "seed://packaged/workflows/bounded_change.yaml"
             )
 
 
@@ -138,10 +138,10 @@ async def test_seed_registry_promotes_changed_packaged_workflow_revision_when_se
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     seed_root = _copy_seed_tree(tmp_path / "packaged-seed")
-    updated_description = "Minimal workflow that creates one implementation change artifact. v2"
+    updated_description = "Bounded workflow that creates one implementation change artifact. v2"
     _rewrite_workflow_seed_description(
         seed_root,
-        workflow_key="minimal-implement-change",
+        workflow_key="bounded-change",
         description=updated_description,
     )
 
@@ -149,7 +149,7 @@ async def test_seed_registry_promotes_changed_packaged_workflow_revision_when_se
         async with session_factory() as session:
             baseline_workflow = await load_current_workflow(
                 session,
-                "minimal-implement-change",
+                "bounded-change",
             )
             baseline_description = baseline_workflow.definition.description
 
@@ -163,13 +163,13 @@ async def test_seed_registry_promotes_changed_packaged_workflow_revision_when_se
             await session.commit()
 
         async with session_factory() as session:
-            current = await load_current_workflow(session, "minimal-implement-change")
+            current = await load_current_workflow(session, "bounded-change")
             revision_history_rows = await session.execute(
                 select(
                     WorkflowRevisionModel.revision_no,
                     WorkflowRevisionModel.content_json,
                 )
-                .where(WorkflowRevisionModel.workflow_key == "minimal-implement-change")
+                .where(WorkflowRevisionModel.workflow_key == "bounded-change")
                 .order_by(WorkflowRevisionModel.revision_no.asc())
             )
             revision_history = [
@@ -178,7 +178,7 @@ async def test_seed_registry_promotes_changed_packaged_workflow_revision_when_se
             ]
             current_revision = await session.scalar(
                 select(WorkflowRevisionModel).where(
-                    WorkflowRevisionModel.workflow_key == "minimal-implement-change",
+                    WorkflowRevisionModel.workflow_key == "bounded-change",
                     WorkflowRevisionModel.revision_no == current.revision_no,
                 )
             )
@@ -187,7 +187,7 @@ async def test_seed_registry_promotes_changed_packaged_workflow_revision_when_se
             assert current.revision_no == 2
             assert current.definition.description == updated_description
             assert current_revision.source_path == (
-                "seed://packaged/workflows/minimal_implement_change.yaml"
+                "seed://packaged/workflows/bounded_change.yaml"
             )
             assert revision_history == [
                 (1, baseline_description),
@@ -200,7 +200,7 @@ async def test_invalid_workflow_does_not_advance_registry_currentness(
 ) -> None:
     async with initialized_registry(tmp_path) as session_factory:
         async with session_factory() as session:
-            current = await load_current_workflow(session, "minimal-implement-change")
+            current = await load_current_workflow(session, "bounded-change")
             invalid_definition = WorkflowDefinitionInput.model_validate(
                 current.definition.model_dump()
                 | {"root": current.definition.root.model_dump() | {"role": "missing-role"}}
@@ -215,10 +215,10 @@ async def test_invalid_workflow_does_not_advance_registry_currentness(
             await session.rollback()
 
         async with session_factory() as session:
-            current = await load_current_workflow(session, "minimal-implement-change")
+            current = await load_current_workflow(session, "bounded-change")
             revision_count = await session.scalar(
                 select(func.count()).where(
-                    WorkflowRevisionModel.workflow_key == "minimal-implement-change"
+                    WorkflowRevisionModel.workflow_key == "bounded-change"
                 )
             )
 

@@ -27,7 +27,7 @@ describe("task start request mapper", () => {
                     taskKey: "  launch-from-workflow  ",
                     title: "  Launch from workflow  ",
                 },
-                "normal-parent-first-release",
+                "reviewed-change-release",
             ),
         ).toEqual({
             task: {
@@ -36,7 +36,7 @@ describe("task start request mapper", () => {
                 title: "Launch from workflow",
             },
             workflow: {
-                key: "normal-parent-first-release",
+                key: "reviewed-change-release",
             },
         });
     });

@@ -16,7 +16,7 @@ from tests.integration.bootstrap.fixtures import (
 def test_write_bootstrap_runtime_outputs_restores_stable_manifest_and_assignment_files(
     tmp_path: Path,
 ) -> None:
-    workflow_definition = load_workflow_definition("minimal_implement_change")
+    workflow_definition = load_workflow_definition("bounded_change")
     compiled_plan = compile_workflow_fixture(workflow_definition, revision_no=4)
 
     result = bootstrap_task_runtime_projection(
@@ -27,7 +27,7 @@ def test_write_bootstrap_runtime_outputs_restores_stable_manifest_and_assignment
             assignment_key="root.assign-01",
             dispatch_id="dispatch.root.01",
             task_root=tmp_path / "task-root",
-            task_compose=task_compose_payload("minimal-implement-change"),
+            task_compose=task_compose_payload("bounded-change"),
             workflow_definition=workflow_definition,
             compiled_plan=compiled_plan,
             role_policy_lookup=load_seeded_lookup(),

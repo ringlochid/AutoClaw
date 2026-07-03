@@ -33,8 +33,8 @@ async def test_render_dispatch_prompt_uses_controller_selected_checkpoint_truth(
 ) -> None:
     task_id = "task_bootstrap_controller_selected_checkpoint"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
-    selected_child_attempt_id = f"attempt.{task_id}.implementation_subtree.00"
-    current_child_attempt_id = f"attempt.{task_id}.implementation_subtree.01"
+    selected_child_attempt_id = f"attempt.{task_id}.change_subtree.00"
+    current_child_attempt_id = f"attempt.{task_id}.change_subtree.01"
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
         task_root = runtime.paths.task_root
@@ -45,7 +45,7 @@ async def test_render_dispatch_prompt_uses_controller_selected_checkpoint_truth(
                 task_id=task_id,
                 task_root=task_root,
                 compiler_version="bootstrap-controller-selected-checkpoint",
-                task_compose=task_compose_payload("normal-parent-first-release"),
+                task_compose=task_compose_payload("reviewed-change-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,
                     handoff=CheckpointHandoff(
@@ -60,7 +60,7 @@ async def test_render_dispatch_prompt_uses_controller_selected_checkpoint_truth(
             child_node = await require_dispatch_flow_node(
                 session,
                 dispatch=case.dispatch,
-                node_key="implementation_subtree",
+                node_key="change_subtree",
             )
             (
                 selected_checkpoint_path,
@@ -107,7 +107,7 @@ async def test_dispatch_manifest_ignores_selected_checkpoint_without_cutoff_vali
                 task_id=task_id,
                 task_root=task_root,
                 compiler_version="bootstrap-selected-checkpoint-cutoff-miss",
-                task_compose=task_compose_payload("normal-parent-first-release"),
+                task_compose=task_compose_payload("reviewed-change-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,
                     handoff=CheckpointHandoff(
@@ -185,7 +185,7 @@ async def test_dispatch_manifest_surfaces_release_descendant_refs_from_controlle
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
                 compiler_version="bootstrap-release-descendant-surface",
-                task_compose=task_compose_payload("normal-parent-first-release"),
+                task_compose=task_compose_payload("reviewed-change-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,
                     handoff=CheckpointHandoff(

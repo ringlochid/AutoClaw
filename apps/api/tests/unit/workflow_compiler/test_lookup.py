@@ -43,7 +43,7 @@ def test_compile_workflow_fails_for_missing_or_incompatible_roles(
     lookup_builder: Any,
     error_pattern: str,
 ) -> None:
-    payload = load_packaged_workflow_payload("minimal_implement_change")
+    payload = load_packaged_workflow_payload("bounded_change")
     payload["root"]["children"][0]["role"] = node_role
     workflow = WorkflowDefinitionFile.model_validate(payload)
 
@@ -82,7 +82,7 @@ def test_compile_workflow_fails_for_missing_or_incompatible_policies(
     node_policy: str,
     error_pattern: str,
 ) -> None:
-    payload = load_packaged_workflow_payload("minimal_implement_change")
+    payload = load_packaged_workflow_payload("bounded_change")
     payload["root"]["children"][0]["policy"] = node_policy
     workflow = WorkflowDefinitionFile.model_validate(payload)
 

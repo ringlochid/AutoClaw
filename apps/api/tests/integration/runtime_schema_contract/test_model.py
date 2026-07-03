@@ -52,7 +52,7 @@ def test_operator_support_surface_refs_emit_explicit_kinds_for_operator_carriers
         top_actionable_items=(
             TopActionableItem(
                 summary="Current runtime status is 'running'.",
-                node_key="implementation_subtree",
+                node_key="change_subtree",
                 current_paths=normalized_current_paths,
             ),
         ),

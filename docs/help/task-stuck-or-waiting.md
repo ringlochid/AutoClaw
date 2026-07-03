@@ -43,7 +43,7 @@ Fix:
 - resolve the pending human request through the control or operator surface
 - answer the request narrowly
 - do not use human requests as status updates or generic chat continuation
-- do not resolve it by editing task-root files or continuing an unrelated chat
+- do not resolve it by editing generated task files or continuing an unrelated chat
 
 ## Waiting on command run
 

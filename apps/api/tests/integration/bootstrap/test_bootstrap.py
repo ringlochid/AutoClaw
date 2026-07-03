@@ -24,7 +24,7 @@ from tests.integration.bootstrap.fixtures import (
 def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
     tmp_path: Path,
 ) -> None:
-    workflow_definition = load_workflow_definition("minimal_implement_change")
+    workflow_definition = load_workflow_definition("bounded_change")
     compiled_plan = compile_workflow_fixture(workflow_definition, revision_no=4)
 
     result = bootstrap_task_runtime_projection(
@@ -35,7 +35,7 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
             assignment_key="root.assign-01",
             dispatch_id="dispatch.root.01",
             task_root=tmp_path / "task-root",
-            task_compose=task_compose_payload("minimal-implement-change"),
+            task_compose=task_compose_payload("bounded-change"),
             workflow_definition=workflow_definition,
             compiled_plan=compiled_plan,
             role_policy_lookup=load_seeded_lookup(),
@@ -48,7 +48,7 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
     assert result.paths.outputs_path.is_dir()
     assert result.paths.transfers_path.is_dir()
     assert result.paths.runtime_path.is_dir()
-    assert result.manifest.workflow.workflow_key == "minimal-implement-change"
+    assert result.manifest.workflow.workflow_key == "bounded-change"
     assert result.assignment.node_key == "root"
     assert result.assignment.consumes == ()
     assert all(criteria.version is None for criteria in result.assignment.criteria)
@@ -100,7 +100,7 @@ def test_bootstrap_root_runtime_materializes_manifest_assignment_and_prompt(
 def test_bootstrap_renders_node_instruction_through_launch_projection(
     tmp_path: Path,
 ) -> None:
-    workflow_definition = load_workflow_definition("minimal_implement_change")
+    workflow_definition = load_workflow_definition("bounded_change")
     workflow_definition = workflow_definition.model_copy(
         update={
             "root": workflow_definition.root.model_copy(
@@ -118,7 +118,7 @@ def test_bootstrap_renders_node_instruction_through_launch_projection(
             assignment_key="root.assign-01",
             dispatch_id="dispatch.root.01",
             task_root=tmp_path / "task-root",
-            task_compose=task_compose_payload("minimal-implement-change"),
+            task_compose=task_compose_payload("bounded-change"),
             workflow_definition=workflow_definition,
             compiled_plan=compiled_plan,
             role_policy_lookup=load_seeded_lookup(),
@@ -147,7 +147,7 @@ def test_bootstrap_renders_node_instruction_through_launch_projection(
 def test_bootstrap_rejects_non_root_automatic_assignment_without_explicit_projection(
     tmp_path: Path,
 ) -> None:
-    workflow_definition = load_workflow_definition("normal_parent_first_release")
+    workflow_definition = load_workflow_definition("reviewed_change_release")
     compiled_plan = compile_workflow_fixture(workflow_definition, revision_no=7)
 
     with pytest.raises(ValueError, match="launch/root path"):
@@ -159,7 +159,7 @@ def test_bootstrap_rejects_non_root_automatic_assignment_without_explicit_projec
                 assignment_key="implement_change.assign-01",
                 dispatch_id="dispatch.implement_change.01",
                 task_root=tmp_path / "task-root",
-                task_compose=task_compose_payload("normal-parent-first-release"),
+                task_compose=task_compose_payload("reviewed-change-release"),
                 workflow_definition=workflow_definition,
                 compiled_plan=compiled_plan,
                 role_policy_lookup=load_seeded_lookup(),
@@ -171,7 +171,7 @@ def test_bootstrap_rejects_non_root_automatic_assignment_without_explicit_projec
 def test_bootstrap_manifest_preserves_declaring_owner_for_inherited_criteria(
     tmp_path: Path,
 ) -> None:
-    workflow_definition = load_workflow_definition("normal_parent_first_release")
+    workflow_definition = load_workflow_definition("reviewed_change_release")
     compiled_plan = compile_workflow_fixture(workflow_definition, revision_no=7)
 
     result = bootstrap_task_runtime_projection(
@@ -182,7 +182,7 @@ def test_bootstrap_manifest_preserves_declaring_owner_for_inherited_criteria(
             assignment_key="root.assign-01",
             dispatch_id="dispatch.root.01",
             task_root=tmp_path / "task-root",
-            task_compose=task_compose_payload("normal-parent-first-release"),
+            task_compose=task_compose_payload("reviewed-change-release"),
             workflow_definition=workflow_definition,
             compiled_plan=compiled_plan,
             role_policy_lookup=load_seeded_lookup(),
@@ -193,14 +193,14 @@ def test_bootstrap_manifest_preserves_declaring_owner_for_inherited_criteria(
     review_change_criteria = node_by_key["review_change"].criteria
 
     assert len(review_change_criteria) == 1
-    assert review_change_criteria[0].slot == "implementation_subtree_requirements"
-    assert review_change_criteria[0].owner_node_key == "implementation_subtree"
+    assert review_change_criteria[0].slot == "change_subtree_requirements"
+    assert review_change_criteria[0].owner_node_key == "change_subtree"
 
 
 def test_bootstrap_honors_custom_root_bindings_and_localizes_external_resource(
     tmp_path: Path,
 ) -> None:
-    workflow_definition = load_workflow_definition("minimal_implement_change")
+    workflow_definition = load_workflow_definition("bounded_change")
     compiled_plan = compile_workflow_fixture(workflow_definition, revision_no=4)
     shared_context = (tmp_path / "shared-context").resolve()
     shared_context.mkdir(parents=True)
@@ -214,7 +214,7 @@ def test_bootstrap_honors_custom_root_bindings_and_localizes_external_resource(
             dispatch_id="dispatch.root.01",
             task_root=tmp_path / "task-root",
             task_compose=task_compose_payload(
-                "minimal-implement-change",
+                "bounded-change",
                 workspace={
                     "mode": "ensure_host_path",
                     "host_path": str(tmp_path / "custom-workspace"),
@@ -259,7 +259,7 @@ def test_bootstrap_honors_custom_root_bindings_and_localizes_external_resource(
 
 
 def test_bootstrap_materializes_supplied_checkpoint_projection(tmp_path: Path) -> None:
-    workflow_definition = load_workflow_definition("minimal_implement_change")
+    workflow_definition = load_workflow_definition("bounded_change")
     compiled_plan = compile_workflow_fixture(workflow_definition, revision_no=4)
 
     result = bootstrap_task_runtime_projection(
@@ -270,7 +270,7 @@ def test_bootstrap_materializes_supplied_checkpoint_projection(tmp_path: Path) -
             assignment_key="root.assign-01",
             dispatch_id="dispatch.root.01",
             task_root=tmp_path / "task-root",
-            task_compose=task_compose_payload("minimal-implement-change"),
+            task_compose=task_compose_payload("bounded-change"),
             workflow_definition=workflow_definition,
             compiled_plan=compiled_plan,
             role_policy_lookup=load_seeded_lookup(),

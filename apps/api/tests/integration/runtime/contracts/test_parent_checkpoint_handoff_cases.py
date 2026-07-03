@@ -59,7 +59,7 @@ async def test_child_dispatch_after_parent_yield_does_not_surface_parent_checkpo
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("normal_parent_first_release"),
+            workflow_definition=load_workflow_definition("reviewed_change_release"),
             revision_no=7,
         )
 
@@ -85,7 +85,7 @@ async def test_child_dispatch_after_parent_yield_does_not_surface_parent_checkpo
                 api.client,
                 task_id=task_id,
                 session_key=root_session_key,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
                 active_flow_revision_id=runtime_read["active_flow_revision_id"],
             )
             assert assign.status_code == 200

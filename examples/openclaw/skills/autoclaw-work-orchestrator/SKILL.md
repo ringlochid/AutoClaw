@@ -28,10 +28,10 @@ Memory model:
 
 1. Restate the requested job in one sentence.
 2. Decide whether AutoClaw adds value. Stay local for small one-shot tasks.
-3. Read only the current docs/reference needed for the decision.
+3. Read only the current docs/reference needed for the decision, using `https://github.com/ringlochid/AutoClaw` as the public source or a matching local checkout.
 4. Inspect current registry truth through operator MCP when choosing existing definitions.
 5. Pick the smallest honest shape: reuse existing, adapt definitions, or draft new definitions.
-6. Draft task-compose only after the workflow key and root bindings are clear.
+6. Draft task-compose only after the workflow key and `roots` path bindings are clear.
 7. Ask before upload/import/apply/start unless the user clearly authorized that write.
 8. After start, route inspection/control to `autoclaw-runtime-operator`.
 
@@ -77,19 +77,19 @@ Task-compose owns one concrete launch:
 
 Keep reusable doctrine in definitions, not task-compose. Put target paths, concrete constraints, accepted deferrals, and task-specific success conditions in task-compose.
 
-Use current docs for exact root modes. Use `ensure_task_default` for isolated roots and `ensure_host_path` for an explicit host path.
+Use current docs for exact `roots` binding modes. Use `ensure_task_default` for isolated task-owned paths and `ensure_host_path` for an explicit host path.
 
 ## Clarification Pass
 
 Before asking the user, check docs, registry truth, shipped examples, task context, and obvious constraints.
 
-Ask only when the answer changes workflow shape, root binding, approval boundary, definition upload, or task start. Ask at most three concrete questions, with recommended options first.
+Ask only when the answer changes workflow shape, `roots` path binding, approval boundary, definition upload, or task start. Ask at most three concrete questions, with recommended options first.
 
 Good decision points:
 
 - draft only, upload definitions, or start now
 - reuse an existing workflow or create a custom one
-- task-local roots or host-bound roots
+- task-owned paths or host-bound paths
 - no human wait, human approval, human input, or human review
 - inline commands or command-run-enabled worker lane
 

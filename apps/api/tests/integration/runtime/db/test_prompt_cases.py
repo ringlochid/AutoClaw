@@ -40,7 +40,7 @@ async def test_rerenders_historical_dispatch_from_dispatch_lineage(
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="normal-parent-first-release",
+            workflow_key="reviewed-change-release",
             compiler_version="runtime-rerender-history",
         )
         async with context.session_factory() as session:
@@ -50,7 +50,7 @@ async def test_rerenders_historical_dispatch_from_dispatch_lineage(
         await assign_child_on_current_flow(
             context,
             task_id=task_id,
-            child_node_key="implementation_subtree",
+            child_node_key="change_subtree",
             summary="Stage only the unique child review path.",
             instruction="Do not mutate the historical root prompt.",
         )
@@ -61,13 +61,13 @@ async def test_rerenders_historical_dispatch_from_dispatch_lineage(
                 BoundaryWriteSchema(boundary=EgressBoundary.YIELD),
             )
             await session.commit()
-            assert yielded.flow.current_node_key == "implementation_subtree"
+            assert yielded.flow.current_node_key == "change_subtree"
         async with context.session_factory() as session:
             dispatch = await session.get(DispatchTurnModel, root_dispatch_id)
             assert dispatch is not None
             bundle, record = await build_dispatch_prompt(session, task_id, dispatch)
             assert record.node_key == "root"
-            assert "Investigate and fix the auth refresh regression." in bundle.full_markdown
+            assert "Make one scoped settings-loader change and publish evidence." in bundle.full_markdown
             assert "Stage only the unique child review path." not in bundle.full_markdown
 
 
@@ -134,13 +134,13 @@ async def test_parent_prompt_uses_relational_child_authority_when_shadows_drift(
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="normal-parent-first-release",
+            workflow_key="reviewed-change-release",
             compiler_version="runtime-relational-prompt",
         )
         await yield_child_assignment(
             context,
             task_id=task_id,
-            child_node_key="implementation_subtree",
+            child_node_key="change_subtree",
             summary="Open the implementation subtree.",
             instruction="Dispatch only the implementation subtree.",
         )
@@ -169,14 +169,14 @@ async def test_parent_prompt_uses_relational_child_authority_when_shadows_drift(
             summary="QA sweep completed.",
             next_step="Parent should review the QA result.",
         )
-        assert returned_parent.current_node_key == "implementation_subtree"
+        assert returned_parent.current_node_key == "change_subtree"
         async with context.session_factory() as session:
             flow = await require_flow_model(session, task_id=task_id)
             assert flow.active_flow_revision_id is not None
             root_node = await require_flow_node(
                 session,
                 flow_revision_id=flow.active_flow_revision_id,
-                node_key="implementation_subtree",
+                node_key="change_subtree",
             )
             child_node = await require_flow_node(
                 session,
@@ -191,6 +191,6 @@ async def test_parent_prompt_uses_relational_child_authority_when_shadows_drift(
             dispatch = await session.get(DispatchTurnModel, flow.current_open_dispatch_id)
             assert dispatch is not None
             bundle, record = await build_dispatch_prompt(session, task_id, dispatch)
-            assert record.node_key == "implementation_subtree"
+            assert record.node_key == "change_subtree"
             assert f"{child_attempt_id}/latest-checkpoint.md" in bundle.full_markdown
             assert "QA sweep completed." in bundle.full_markdown

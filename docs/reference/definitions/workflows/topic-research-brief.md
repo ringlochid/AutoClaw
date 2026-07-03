@@ -5,29 +5,30 @@ This example mirrors the shipped `topic-research-brief` workflow fixture.
 ```yaml
 kind: workflow
 id: topic-research-brief
-description: Turn one topic into a polished source-grounded idea brief with one researcher.
+description: Turn one topic into one concise Markdown research brief with one researcher.
 root:
     id: root
     role: root_planning_lead
     policy: standard-root
-    description: Preserve the topic-research purpose, delegate one focused research assignment, and close only when the brief is polished and evidence-backed.
+    description: Delegate one bounded research assignment and close when the Markdown brief is published.
     instruction: >-
-      Assign one researcher to turn the topic into a concise, source-grounded idea brief. Review the researcher's evidence before release. Do not expand into implementation, campaign planning, or a multi-step discovery workflow.
+      Assign exactly one researcher. Do not add children or broaden the task. Release only after the researcher publishes the research_brief artifact from workspace/research_brief.md.
     criteria:
         - slot: topic_research_brief_criteria
           description: Hard criteria for the first-run research brief.
           criteria:
-              - brief explains the topic, useful angle, evidence, tradeoffs, and next step
-              - claims are grounded in surfaced sources or clearly marked as assumptions
-              - output is polished enough for a human to read without inspecting the transcript
+              - workspace/research_brief.md exists and is published to the research_brief artifact slot
+              - brief covers the topic, useful angle, key evidence, tradeoffs, and next step
+              - evidence uses two to four surfaced sources, or the brief states source limits
+              - confidence and assumptions are visible without reading the transcript
               - no implementation or external publication is performed by this workflow
     children:
         - id: research_topic
           role: researcher
           policy: standard-worker
-          description: Research one topic and publish a polished idea brief.
+          description: Research one topic and publish one concise Markdown brief.
           instruction: >-
-            Gather only the evidence needed to turn the topic into a useful idea brief. Compare sources when claims conflict, state confidence, and produce a concise polished artifact rather than a raw note dump.
+            Do a fast bounded source scan for the assigned topic. Use two to four useful sources, compare claims only when they conflict, and write exactly one Markdown file at workspace/research_brief.md. Publish that file as the research_brief artifact and include source limits, assumptions, and confidence in the brief.
           consumes:
               criteria:
                   - slot: topic_research_brief_criteria
@@ -35,5 +36,5 @@ root:
               artifacts:
                   - slot: research_brief
                     file_hint: research_brief.md
-                    description: Polished source-grounded idea brief for the topic.
+                    description: Concise source-grounded Markdown research brief for the topic.
 ```

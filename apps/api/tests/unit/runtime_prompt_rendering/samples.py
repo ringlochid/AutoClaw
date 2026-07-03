@@ -19,7 +19,7 @@ from autoclaw.runtime import (
 )
 
 from .manifest_samples import (
-    findings_report_path,
+    change_scope_report_path,
     sample_manifest,
 )
 from .planning_samples import (
@@ -54,9 +54,9 @@ def sample_assignment(tmp_path: Path) -> AssignmentProjection:
         consumes=(
             EvidenceRef(
                 kind=EvidenceKind.ARTIFACT,
-                slot="findings_report",
+                slot="change_scope_report",
                 version=2,
-                path=findings_report_path(tmp_path),
+                path=change_scope_report_path(tmp_path),
                 description="Current findings for the scoped fix.",
             ),
         ),

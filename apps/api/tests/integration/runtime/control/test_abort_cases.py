@@ -261,7 +261,7 @@ async def test_worker_green_flips_currentness_to_parent_before_parent_redispatch
             task_id=task_id,
             task_root=task_root,
             compiler_version="runtime-worker-parent-currentness",
-            workflow_key="minimal-implement-change",
+            workflow_key="bounded-change",
         )
 
         async with runtime_api_context(config_path) as api:
@@ -324,7 +324,7 @@ async def test_parent_redispatch_reuses_latest_fenced_child_even_if_already_link
             task_id=task_id,
             task_root=task_root,
             compiler_version="runtime-parent-redispatch-latest-fenced-child",
-            workflow_key="minimal-implement-change",
+            workflow_key="bounded-change",
         )
 
         async with runtime_api_context(config_path) as api:

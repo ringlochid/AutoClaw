@@ -6,7 +6,7 @@ This page defines the canonical v1 task-root layout and the generated runtime su
 
 ## Core rule
 
-Task roots are owned by the task, not by the provider adapter.
+Task directories are owned by the task, not by the provider adapter.
 
 The controller owns runtime truth and deterministically materializes generated read surfaces under `_runtime/`. Those generated files are useful shared projections, navigation aids, and operator/debug surfaces, but controller/DB state remains the final authority.
 
@@ -94,7 +94,7 @@ Rules:
 - `_runtime/workflow-manifest.*` is the one stable whole-workflow manifest family.
 - It is regenerated in place after adopted runtime structural truth changes.
 - It is the shared workflow picture agents read; it is not authored workflow YAML and not a scope-local brief family.
-- its payload includes `manifest_version`, filesystem roots, `current_context.latest_relevant_checkpoint_path`, the top-level `structural_edit_palette`, and per-node `policy` when present
+- its payload includes `manifest_version`, filesystem path bindings, `current_context.latest_relevant_checkpoint_path`, the top-level `structural_edit_palette`, and per-node `policy` when present
 - the markdown mirror may omit an empty rendered `Structural Edit Palette` section even when the machine payload keeps an empty palette object
 - the stable manifest, attempt, and dispatch task-root projections are written by synchronous post-commit helpers so the controller can refresh the read surfaces immediately after commit
 

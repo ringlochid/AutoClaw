@@ -35,7 +35,7 @@ Inspect the real harness surface when tool behavior matters. In the OpenClaw ada
 - visual, PDF, browser, or service tools worked in the real environment
 - the model did not silently skip a required verification step
 
-This catches workflow design mistakes that task-root files alone may not reveal, such as a missing browser configuration, unavailable local tool, or unsupported provider capability.
+This catches workflow design mistakes that generated task files alone may not reveal, such as a missing browser configuration, unavailable local tool, or unsupported provider capability.
 
 ## Operator read surfaces
 

@@ -224,7 +224,7 @@ def assert_delivery_payload(
     payload: dict[str, object],
     trace_json: dict[str, object],
     *,
-    expected_node_key: str = "implementation_subtree",
+    expected_node_key: str = "change_subtree",
     expected_previous_dispatch_id: str | None = "dispatch.task_2026_0044.root.01",
     expected_transport_state: str = "accepted",
     expected_last_provider_event_kind: str | None = None,
@@ -269,7 +269,7 @@ def assert_continuity_payload(
     payload: dict[str, object],
     trace_json: dict[str, object],
     *,
-    expected_node_key: str = "implementation_subtree",
+    expected_node_key: str = "change_subtree",
     expected_session_key_present: bool = True,
     expected_invalidation_reason: str | None = None,
 ) -> None:
@@ -295,7 +295,7 @@ def assert_watchdog_payload(
     payload: dict[str, object],
     trace_json: dict[str, object],
     *,
-    expected_node_key: str = "implementation_subtree",
+    expected_node_key: str = "change_subtree",
     expected_watchdog_state: str = "clear",
     expected_previous_dispatch_id: str | None = "dispatch.task_2026_0044.root.01",
     expected_current_watchdog_kind: str | None = None,
@@ -380,7 +380,7 @@ async def assert_provider_event_payloads(
     payload: dict[str, object],
     trace_json: dict[str, object],
     *,
-    expected_node_key: str = "implementation_subtree",
+    expected_node_key: str = "change_subtree",
     expect_terminal_completion: bool = False,
 ) -> None:
     dispatch_history_entry = current_dispatch_history_entry(trace_json)

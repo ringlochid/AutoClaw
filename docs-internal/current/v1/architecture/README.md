@@ -13,14 +13,14 @@ If you are asking:
 - "How does the current control plane work?" -> [Runtime control plane](runtime-control-plane.md)
 - "What runtime/operator read surfaces exist today?" -> [Current runtime read models and operator surfaces](runtime-read-models-and-operator-surfaces.md)
 - "How does the current manifest projection work?" -> [Current workflow-manifest projection](manifest-projection-and-acknowledgement.md)
-- "How are current task roots laid out?" -> [Task roots and materialized paths](task-roots-and-materialized-paths.md)
+- "How are current task directories laid out?" -> [Task directories and materialized paths](task-roots-and-materialized-paths.md)
 
 ## Start here
 
 - [Runtime control plane](runtime-control-plane.md)
 - [Current runtime read models and operator surfaces](runtime-read-models-and-operator-surfaces.md)
 - [Current workflow-manifest projection](manifest-projection-and-acknowledgement.md)
-- [Task roots and materialized paths](task-roots-and-materialized-paths.md)
+- [Task directories and materialized paths](task-roots-and-materialized-paths.md)
 
 ## Keywords
 

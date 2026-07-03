@@ -1,55 +1,28 @@
-<p align="center">
-  <img src="docs/assets/autoclaw-mark.png" alt="AutoClaw" width="140">
-</p>
+<p align="center"> <img src="docs/assets/autoclaw-mark.png" alt="AutoClaw" width="140"> </p>
 
 <h1 align="center">AutoClaw</h1>
 
 <p align="center"><strong>Local-first orchestration for delegated AI work.</strong></p>
 
-<p align="center">
-  <a href="docs/start/getting-started.md">Get started</a> ·
-  <a href="docs/start/prepare-openclaw.md">Prepare OpenClaw</a> ·
-  <a href="docs/concepts/README.md">Concepts</a> ·
-  <a href="docs/guides/README.md">Guides</a> ·
-  <a href="docs/reference/README.md">Reference</a>
-</p>
+<p align="center"> <a href="docs/start/getting-started.md">Get started</a> · <a href="docs/start/configuration-and-settings.md">Config</a> · <a href="docs/start/prepare-openclaw.md">Prepare OpenClaw</a> · <a href="docs/concepts/README.md">Concepts</a> · <a href="docs/guides/README.md">Guides</a> · <a href="docs/reference/README.md">Reference</a> </p>
 
 ---
 
 **AutoClaw turns agent work into auditable workflow runs.** Define reusable roles, policies, and workflows; launch one task-compose file; then let the controller dispatch bounded assignments, collect checkpoints and artifacts, handle human waits and long commands, and keep the whole run inspectable and recoverable.
 
-Chat is a conversation. AutoClaw is a work-order system: agents still do the work, but the work is assigned, bounded, checked, and recorded.
-
 > ⚠️ **Early development.** AutoClaw is not production-ready yet. Interfaces, schemas, and workflows may change or break.
 
 ## Why AutoClaw?
 
-**Use AutoClaw when the work needs more than a chat transcript.**
+**AutoClaw gives delegated agent work durable state, reviewable evidence, and runtime control.**
 
-- **Bounded delegation.** Root, parent, and worker nodes each get explicit authority, budgets, and one mission at a time.
-- **Durable evidence.** Assignments, checkpoints, and artifacts survive the session and can be inspected by later nodes, operators, and humans.
-- **Real recovery.** Retry, replan, human waits, and long command runs are controller-owned states, not lost context.
-- **Controller truth.** A run is reconstructed from controller state and generated task-root files, not from hidden provider memory.
-- **Replaceable harness.** The agent loop is an adapter behind MCP tools; AutoClaw owns workflow truth above it.
-
-AutoClaw is not for every prompt. One short answer, one direct command, or one ad hoc assistant session is better served by OpenClaw alone.
-
-## AutoClaw and OpenClaw
-
-**OpenClaw is the harness. AutoClaw is the orchestration layer above it.**
-
-| Dimension                 | OpenClaw                                                 | AutoClaw                                                |
-| ------------------------- | -------------------------------------------------------- | ------------------------------------------------------- |
-| Primary role              | Agent harness and assistant runtime                      | Workflow orchestration for delegated work               |
-| User motion               | Ask an assistant                                         | Launch and supervise a structured task                  |
-| Core loop                 | Context -> model -> tools -> stream -> transcript        | Assign -> execute -> checkpoint -> boundary -> advance  |
-| State owner               | Conversation, tools, skills, sessions, channels          | Task, flow, assignment, attempt, checkpoint, artifact   |
-| Best fit                  | Personal assistance, local tool use, ad hoc coding/help  | Long work with evidence, review, retry, replan, waits   |
-| Failure mode if stretched | Long work becomes transcript-heavy                       | Small work becomes over-structured                      |
-
-OpenClaw executes agent turns. AutoClaw decides which bounded assignment runs next and whether the evidence is good enough to advance.
-
-OpenClaw Gateway is the shipped adapter today. The same MCP-tool boundary can host other capable harnesses, such as Codex or Claude Code, as future adapters.
+- **Reusable definitions.** Roles, policies, workflows, and task-compose files make repeated work launchable instead of reprompted.
+- **Controller-owned state.** Tasks, flow revisions, assignments, attempts, checkpoints, and artifacts live in AutoClaw state.
+- **Evidence-first handoff.** Nodes receive explicit criteria and publish checkpoints or artifacts for later nodes, operators, and humans.
+- **Runtime control.** Retry, replan, pause, continue, human requests, and command runs are modeled as task state.
+- **Local console.** Start tasks, inspect the workflow graph, follow events, and open artifacts from `http://127.0.0.1:<server.port>/`.
+- **Local-first storage.** Per-task directories and the default SQLite database stay in your data directory; Postgres is available for concurrent runs.
+- **Harness boundary.** OpenClaw Gateway is the shipped adapter today; AutoClaw keeps orchestration above the agent loop.
 
 ## What AutoClaw is for
 
@@ -72,17 +45,18 @@ Use OpenClaw directly for:
 
 The current shipped support is intentionally narrow:
 
-| Layer                  | Current support                                                                   |
-| ---------------------- | --------------------------------------------------------------------------------- |
-| Agent adapter          | OpenClaw Gateway only                                                              |
-| OpenClaw version       | 2026.6.10 or newer                                                                 |
-| Model/provider routing | owned by the configured OpenClaw harness                                           |
-| Gateway shape          | loopback Gateway; token auth recommended                                           |
-| Other allowed auth     | loopback password auth or explicit loopback no-auth                                |
-| Blocked Gateway shapes | non-loopback, trusted-proxy, ambiguous auth, unresolved secrets                    |
-| Managed service        | Linux `systemd --user`                                                             |
-| macOS / Windows        | foreground `autoclaw serve` proof path; native service parity is not shipped yet   |
-| Storage                | SQLite by default; Postgres extra for concurrent task runs                         |
+| Layer                  | Current support                                                                  |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| Agent adapter          | OpenClaw Gateway only                                                            |
+| OpenClaw version       | 2026.6.10 or newer                                                               |
+| Model/provider routing | owned by the configured OpenClaw harness                                         |
+| Gateway shape          | loopback Gateway; token auth recommended                                         |
+| Other allowed auth     | loopback password auth or explicit loopback no-auth                              |
+| Blocked Gateway shapes | non-loopback, trusted-proxy, ambiguous auth, unresolved secrets                  |
+| Managed service        | Linux `systemd --user`                                                           |
+| macOS / Windows        | foreground `autoclaw serve` proof path; native service parity is not shipped yet |
+| Storage                | SQLite by default; Postgres extra for concurrent task runs                       |
+| Shipped definitions    | 14 workflow fixtures, 26 roles, and 7 standard policies                          |
 
 ## Quickstart
 
@@ -120,6 +94,15 @@ autoclaw doctor
 autoclaw openclaw check
 ```
 
+Find your local console port and data directory with:
+
+```bash
+autoclaw config path
+autoclaw config show --json
+```
+
+Open the console at `http://127.0.0.1:<server.port>/`. The default AutoClaw port is `18125`.
+
 For concurrent task runs, use the Postgres extra:
 
 ```bash
@@ -146,15 +129,25 @@ Setup, the annotated OpenClaw config block, and the worker workspace `AGENTS.md`
 
 ## First task: research brief
 
+Use either the local console or a task-compose YAML file. **The fastest first run is through the local console.**
+
+Use `autoclaw config show --json` when you need the port. The same output includes `paths.data_dir`; per-task directories live under `<data_dir>/tasks/<task_id>/`.
+
+### Start from the console
+
+Open `http://127.0.0.1:<server.port>/task-start`, select `topic-research-brief`, fill the task fields, and start the task.
+
+### Start from a task-compose file
+
 Create `task-compose.yaml` in an empty working directory:
 
 ```yaml
 task:
     key: first-research-brief
     title: My first task
-    summary: Find the best restaurants.
+    summary: Produce one concise restaurant research brief.
     instruction: >-
-        Find the best restaurants in the world and produce a short evidence-backed brief.
+      Research notable restaurants and write one brief.
 workflow:
     key: topic-research-brief
 ```
@@ -165,7 +158,13 @@ Start it:
 autoclaw task-compose start --file ./task-compose.yaml --json
 ```
 
-Then watch the run. Ask the operator agent to inspect the task, or read the generated task-root files directly:
+After either method, open the task in the console:
+
+```text
+http://127.0.0.1:<server.port>/tasks/<task_id>
+```
+
+For diagnostics, read the generated files in the task directory:
 
 ```text
 _runtime/workflow-manifest.md                       # current workflow shape
@@ -174,7 +173,7 @@ _runtime/attempts/<attempt_id>/latest-checkpoint.md # durable progress or handof
 outputs/artifacts/                                  # published outputs
 ```
 
-A successful first run has a workflow manifest, a controller-issued assignment, a checkpoint, and a `research_brief.md` artifact that all match the launched topic. See [Inspect a task](docs/start/inspect-a-task.md).
+A successful first run produces `workspace/research_brief.md` and publishes it as the `research_brief` artifact. See [Inspect a task](docs/start/inspect-a-task.md).
 
 ## How AutoClaw works
 
@@ -197,33 +196,51 @@ More detail: [Orchestration model](docs/concepts/orchestration-model.md).
 
 ## Core concepts
 
-| Concept      | Definition                                                                   |
-| ------------ | ---------------------------------------------------------------------------- |
-| Workflow     | Reusable node tree, routing rules, criteria, and evidence contract           |
-| Task-compose | One launch request with task metadata, instruction, workflow key, and roots  |
-| Assignment   | Controller-owned scope, instructions, and evidence requirements for a node   |
-| Checkpoint   | Controller-recorded progress or handoff record for one assignment attempt    |
-| Artifact     | Durable output published into a workflow-declared slot                       |
+| Concept      | Definition                                                                                          |
+| ------------ | --------------------------------------------------------------------------------------------------- |
+| Workflow     | Reusable node tree, routing rules, criteria, and evidence contract                                  |
+| Task-compose | One launch request with task metadata, instruction, workflow key, and optional `roots` path mapping |
+| Assignment   | Controller-owned scope, instructions, and evidence requirements for a node                          |
+| Checkpoint   | Controller-recorded progress or handoff record for one assignment attempt                           |
+| Artifact     | Durable output published into a workflow-declared slot                                              |
 
 More concepts: [Core concepts](docs/concepts/core-concepts.md).
+
+## AutoClaw and OpenClaw
+
+**OpenClaw is the harness. AutoClaw is the orchestration layer above it.**
+
+| Dimension                 | OpenClaw                                                | AutoClaw                                               |
+| ------------------------- | ------------------------------------------------------- | ------------------------------------------------------ |
+| Primary role              | Agent harness and assistant runtime                     | Workflow orchestration for delegated work              |
+| User motion               | Ask an assistant                                        | Launch and supervise a structured task                 |
+| Core loop                 | Context -> model -> tools -> stream -> transcript       | Assign -> execute -> checkpoint -> boundary -> advance |
+| State owner               | Conversation, tools, skills, sessions, channels         | Task, flow, assignment, attempt, checkpoint, artifact  |
+| Best fit                  | Personal assistance, local tool use, ad hoc coding/help | Long work with evidence, review, retry, replan, waits  |
+| Failure mode if stretched | Long work becomes transcript-heavy                      | Small work becomes over-structured                     |
+
+OpenClaw executes agent turns. AutoClaw decides which bounded assignment runs next and whether the evidence is good enough to advance.
+
+OpenClaw Gateway is the shipped adapter today. The same MCP-tool boundary can host other capable harnesses, such as Codex or Claude Code, as future adapters.
 
 ## Compared with other agent systems
 
 AutoClaw is an orchestration layer for local-first delegated work with controller-owned evidence.
 
-| System                         | Strong at                                                         | AutoClaw contrast                                                                                                                                                                     |
-| ------------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| LangGraph                      | Low-level durable graph runtime for stateful agents               | AutoClaw decouples orchestration from the harness loop, materializes task evidence outside the graph, and treats replan as a controller-approved change after launch                 |
-| CrewAI                         | Role-based crews and approachable flow abstractions               | AutoClaw makes roles subordinate to controller-minted assignments, checkpoints, artifacts, budgets, waits, and release decisions                                                      |
-| AutoGen / AG2                  | Multi-agent conversation and group-chat patterns                  | AutoClaw is workflow/tree/evidence centered: handoff happens through controller-validated assignments, checkpoints, and artifacts                                                     |
-| OpenAI Agents SDK              | Lightweight agents, handoffs, guardrails, tracing, sandbox agents | AutoClaw keeps orchestration state, evidence, replan, and recovery outside one provider SDK or agent loop                                                                             |
-| oh-my-claudecode / oh-my-codex | Harness-side workflow layers, team modes, tmux/worktree workers   | AutoClaw makes orchestration controller-owned: assignments, checkpoints, artifacts, waits, replan, and release are legal state transitions                                            |
-| A2A                            | Interop between independent opaque agents                         | AutoClaw can use A2A at external agent boundaries later; internally, handoff records are checked and minted by the controller                                                         |
-| OpenClaw                       | Local agent harness, tools, skills, sessions, and channels        | AutoClaw adds a real orchestration layer above the harness instead of replacing the harness                                                                                           |
+| System                         | Strong at                                                         | AutoClaw contrast                                                                                                                                                    |
+| ------------------------------ | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LangGraph                      | Low-level durable graph runtime for stateful agents               | AutoClaw decouples orchestration from the harness loop, materializes task evidence outside the graph, and treats replan as a controller-approved change after launch |
+| CrewAI                         | Role-based crews and approachable flow abstractions               | AutoClaw makes roles subordinate to controller-minted assignments, checkpoints, artifacts, budgets, waits, and release decisions                                     |
+| AutoGen / AG2                  | Multi-agent conversation and group-chat patterns                  | AutoClaw is workflow/tree/evidence centered: handoff happens through controller-validated assignments, checkpoints, and artifacts                                    |
+| OpenAI Agents SDK              | Lightweight agents, handoffs, guardrails, tracing, sandbox agents | AutoClaw keeps orchestration state, evidence, replan, and recovery outside one provider SDK or agent loop                                                            |
+| oh-my-claudecode / oh-my-codex | Harness-side workflow layers, team modes, tmux/worktree workers   | AutoClaw makes orchestration controller-owned: assignments, checkpoints, artifacts, waits, replan, and release are legal state transitions                           |
+| A2A                            | Interop between independent opaque agents                         | AutoClaw can use A2A at external agent boundaries later; internally, handoff records are checked and minted by the controller                                        |
+| OpenClaw                       | Local agent harness, tools, skills, sessions, and channels        | AutoClaw adds a real orchestration layer above the harness instead of replacing the harness                                                                          |
 
 ## Documentation
 
 - [Getting started](docs/start/getting-started.md)
+- [Configuration and settings](docs/start/configuration-and-settings.md)
 - [Prepare OpenClaw first](docs/start/prepare-openclaw.md)
 - [Set up OpenClaw agents and operator skills](docs/guides/set-up-openclaw-agents-and-skills.md)
 - [Orchestration model](docs/concepts/orchestration-model.md)

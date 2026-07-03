@@ -2,19 +2,19 @@
 
 Use task-compose when you are ready to launch one concrete task from reusable AutoClaw definitions.
 
-Task-compose is not where reusable behavior lives. Put durable behavior in roles, policies, and workflows. Put the concrete launch request, selected workflow, and any explicit root bindings in task-compose.
+Task-compose is not where reusable behavior lives. Put durable behavior in roles, policies, and workflows. Put the concrete launch request, selected workflow, and any explicit path bindings in task-compose.
 
 ## Minimal shape
 
-A task-compose file needs a task and a workflow. Roots are optional; omitted roots default to task-owned `workspace` and `context` paths.
+A task-compose file needs a task and a workflow. The optional `roots` field is a mapping of named filesystem bindings; an omitted `roots` mapping defaults to task-owned `workspace` and `context` paths.
 
 ```yaml
 task:
     key: first-research-brief
     title: First research brief
-    summary: Turn one topic into a polished source-grounded idea brief.
+    summary: Turn one topic into one concise Markdown research brief.
     instruction: >-
-      Research local-first orchestration for delegated AI work and produce a concise idea brief with evidence, tradeoffs, and a recommended next step.
+      Research local-first orchestration for delegated AI work and produce one concise Markdown brief with evidence, tradeoffs, and a recommended next step.
 workflow:
     key: topic-research-brief
 ```
@@ -64,13 +64,15 @@ instruction: >-
 
 If the same instruction should apply to many tasks, move it into a role, policy, or workflow instead.
 
-## Bind roots
+## Configure `roots` path bindings
 
-Task-compose root bindings decide whether AutoClaw creates task-local paths or binds directly to existing host paths. If you omit `roots`, AutoClaw uses task-owned defaults.
+The task-compose `roots` field is not the workflow `root` node. It is a dictionary where each key names a filesystem binding such as `workspace` or `context`.
+
+These named path bindings decide whether AutoClaw creates task-local paths or binds directly to existing host paths. If you omit `roots`, AutoClaw uses task-owned defaults.
 
 ### Default task-local binding
 
-Use `ensure_task_default` when you want AutoClaw to create task-owned roots:
+Use `ensure_task_default` when you want AutoClaw to create task-owned directories:
 
 ```yaml
 roots:
@@ -80,7 +82,7 @@ roots:
         mode: ensure_task_default
 ```
 
-This is the cleanest first-run lane because every task gets isolated roots.
+This is the cleanest first-run lane because every task gets isolated directories.
 
 ### Explicit host-path binding
 
@@ -126,7 +128,7 @@ Before launch, check:
 - `workflow.key` names the intended reusable workflow
 - task summary and instruction are concrete to this run
 - secrets are not copied into task-compose
-- omitted roots or explicit root bindings match the intended workspace and context
+- omitted `roots` or explicit path bindings match the intended workspace and context
 - reusable behavior is not duplicated from role, policy, or workflow docs
 
 ## Related pages

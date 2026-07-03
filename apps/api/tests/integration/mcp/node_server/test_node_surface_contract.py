@@ -409,7 +409,7 @@ async def test_node_mcp_mutation_results_keep_direct_typed_shapes(
                     context=context,
                     tool_name="assign_child",
                     payload={
-                        "child_node_key": "implementation_subtree",
+                        "child_node_key": "change_subtree",
                         "assignment_intent": {
                             "summary": "Stage a bounded child before yielding.",
                             "instruction": "Return immediately after the child handoff.",

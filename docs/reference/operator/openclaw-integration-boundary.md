@@ -71,7 +71,7 @@ That means the current tree locally proves:
 - prompt and session continuity are dispatch-bound
 - manifest and checkpoint lineage remain controller-owned prompt and runtime truth, not caller-authored write-envelope fields
 - human-request waits and command-run waits are separate capability-driven node operations
-- worker node authority and operator authority stay separate; a node does not become an operator by writing task-root files
+- worker node authority and operator authority stay separate; a node does not become an operator by writing generated task files
 
 ## Current prompt-source rule
 

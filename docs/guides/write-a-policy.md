@@ -17,17 +17,17 @@ Do not write a new policy because the specialist role changed.
 
 ## Policy fields
 
-| Field | Required | Default | Controls | Notes |
-| --- | --- | --- | --- | --- |
-| `kind` | yes | none | file wrapper | use `policy` |
-| `id` | yes | none | stable policy key | keep it portable and descriptive |
-| `title` | no | none | display name | useful in UI/readbacks |
-| `description` | yes | none | short purpose | explain authority, not role identity |
-| `applies_to` | yes | none | compatible node kinds | use `root`, `parent`, or `worker` |
-| `budget_spec` | no | no controller budget counter | retry or child-assignment limit | do not mix budget families |
-| `capabilities` | no | deny human requests and command runs | explicit controller powers | grant narrowly |
-| `labels` | no | empty list | search/grouping metadata | optional |
-| `instruction` | no | none | extra operational rule | use sparingly |
+| Field          | Required | Default                              | Controls                        | Notes                                |
+| -------------- | -------- | ------------------------------------ | ------------------------------- | ------------------------------------ |
+| `kind`         | yes      | none                                 | file wrapper                    | use `policy`                         |
+| `id`           | yes      | none                                 | stable policy key               | keep it portable and descriptive     |
+| `title`        | no       | none                                 | display name                    | useful in UI/readbacks               |
+| `description`  | yes      | none                                 | short purpose                   | explain authority, not role identity |
+| `applies_to`   | yes      | none                                 | compatible node kinds           | use `root`, `parent`, or `worker`    |
+| `budget_spec`  | no       | no controller budget counter         | retry or child-assignment limit | do not mix budget families           |
+| `capabilities` | no       | deny human requests and command runs | explicit controller powers      | grant narrowly                       |
+| `labels`       | no       | empty list                           | search/grouping metadata        | optional                             |
+| `instruction`  | no       | none                                 | extra operational rule          | use sparingly                        |
 
 ## Set `applies_to`
 
@@ -63,9 +63,9 @@ Broad compatibility often hides budget and authority mistakes.
 
 Budget is a controller guardrail. It is not a time limit, token limit, quality target, or success criterion.
 
-| Field | Valid on | Default when omitted | What happens when present | Suggested values |
-| --- | --- | --- | --- | --- |
-| `retry_limit` | `worker` | no controller retry counter | limits additional attempts for the same assignment | `0` for no retry, `1` for ordinary work, `2` for cheap/flaky work |
+| Field                    | Valid on         | Default when omitted                   | What happens when present                          | Suggested values                                                     |
+| ------------------------ | ---------------- | -------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------- |
+| `retry_limit`            | `worker`         | no controller retry counter            | limits additional attempts for the same assignment | `0` for no retry, `1` for ordinary work, `2` for cheap/flaky work    |
 | `child_assignment_limit` | `root`, `parent` | no controller child-assignment counter | limits child assignments opened by this assignment | `3` small root, `5-8` moderate parent, higher only for batch parents |
 
 Rules:
@@ -150,15 +150,15 @@ If a workflow frequently needs long commands, put them in a dedicated worker wit
 
 Start from one of the shipped generic policies:
 
-| Policy | Use when |
-| --- | --- |
-| `standard-root` | root owns final closure without waits |
-| `standard-root-human-request` | root may need human judgment |
-| `standard-parent` | parent routes a subtree without waits |
-| `standard-parent-human-request` | parent may need human judgment while routing |
-| `standard-worker` | worker performs one bounded assignment |
-| `standard-worker-human-request` | worker may need human judgment |
-| `standard-worker-command-run` | worker may need controller-managed long command work |
+| Policy                          | Use when                                             |
+| ------------------------------- | ---------------------------------------------------- |
+| `standard-root`                 | root owns final closure without waits                |
+| `standard-root-human-request`   | root may need human judgment                         |
+| `standard-parent`               | parent routes a subtree without waits                |
+| `standard-parent-human-request` | parent may need human judgment while routing         |
+| `standard-worker`               | worker performs one bounded assignment               |
+| `standard-worker-human-request` | worker may need human judgment                       |
+| `standard-worker-command-run`   | worker may need controller-managed long command work |
 
 Write a new policy when the fields or capability-use rule differ, not when only the specialist role differs.
 
@@ -170,7 +170,7 @@ Use policy `instruction` only when the fields need an extra operational rule, us
 
 ```yaml
 instruction: >-
-  Use command_run only for commands expected to be long, asynchronous, or log-heavy enough that inline execution is the wrong surface.
+    Use command_run only for commands expected to be long, asynchronous, or log-heavy enough that inline execution is the wrong surface.
 ```
 
 Keep research, ambiguity classification, specialist behavior, and workflow routing in roles and workflow nodes unless the policy is explicitly granting the capability that handles that case.
@@ -179,7 +179,7 @@ Bad policy instruction:
 
 ```yaml
 instruction: >-
-  Review the implementation, check the tests, and write a release note.
+    Review the implementation, check the tests, and write a release note.
 ```
 
 That belongs in a role or workflow node because it describes the job, not the authority.

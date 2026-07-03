@@ -142,7 +142,7 @@ describe("DefinitionsPage", () => {
         expect(screen.queryByRole("link", { name: "Create/update draft" })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Edit in draft" })).toHaveAttribute(
             "href",
-            "/definitions/editor?key=maximal-parent-first-release&kind=workflow",
+            "/definitions/editor?key=staged-delivery-release&kind=workflow",
         );
         const taskStartLinks = screen.getAllByRole("link", { name: "Task Start" });
         expect(taskStartLinks[taskStartLinks.length - 1]).toHaveAttribute("href", "/task-start");

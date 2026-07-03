@@ -99,7 +99,7 @@ async def assert_staged_assignment_can_only_yield(
         boundary_name="yield",
     )
     assert yielded.status_code == 200
-    assert yielded.json()["flow"]["current_node_key"] == "implementation_subtree"
+    assert yielded.json()["flow"]["current_node_key"] == "change_subtree"
 
 
 @pytest.mark.asyncio
@@ -113,7 +113,7 @@ async def test_pause_revokes_callback_route_access(tmp_path: Path) -> None:
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("normal_parent_first_release"),
+            workflow_definition=load_workflow_definition("reviewed_change_release"),
             revision_no=7,
         )
 
@@ -133,7 +133,7 @@ async def test_pause_revokes_callback_route_access(tmp_path: Path) -> None:
                 api.client,
                 task_id=task_id,
                 session_key=session_key,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
                 active_flow_revision_id=runtime_read["active_flow_revision_id"],
                 summary="blocked",
                 instruction="blocked",
@@ -157,7 +157,7 @@ async def test_callback_authority_uses_live_node_session_key_not_dispatch_echo(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("normal_parent_first_release"),
+            workflow_definition=load_workflow_definition("reviewed_change_release"),
             revision_no=7,
         )
 
@@ -188,7 +188,7 @@ async def test_callback_authority_uses_live_node_session_key_not_dispatch_echo(
                 api.client,
                 task_id=task_id,
                 session_key=session_key,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
                 active_flow_revision_id=runtime_read["active_flow_revision_id"],
             )
             assert assign.status_code == 200
@@ -210,7 +210,7 @@ async def test_pause_continue_waits_for_inactivity_before_reopening_staged_child
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("normal_parent_first_release"),
+            workflow_definition=load_workflow_definition("reviewed_change_release"),
             revision_no=7,
         )
 
@@ -224,7 +224,7 @@ async def test_pause_continue_waits_for_inactivity_before_reopening_staged_child
                 api.client,
                 task_id=task_id,
                 session_key=root_session_key,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
                 active_flow_revision_id=runtime_read["active_flow_revision_id"],
             )
             assert assign.status_code == 200
@@ -291,7 +291,7 @@ async def test_checkpoint_route_rejects_undeclared_artifact_slot(tmp_path: Path)
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            workflow_definition=load_workflow_definition("bounded_change"),
             revision_no=4,
         )
 
@@ -331,7 +331,7 @@ async def test_checkpoint_transient_surface_under_task_root_is_copied_into_trans
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            workflow_definition=load_workflow_definition("bounded_change"),
             revision_no=4,
         )
 

@@ -99,6 +99,19 @@ AutoClaw requires a loopback Gateway. Token auth is the recommended shape; passw
 
 The exec/sandbox posture above is deliberately trusted and direct — full tools, gateway exec, no approval prompts, sandbox off. This is the practical "YOLO" direction for the dedicated AutoClaw agents. Use it only on a trusted local machine with a workspace you are willing to let an agent edit. AutoClaw bounds workflow authority; it does not make unsafe operating-system access safe.
 
+## Source the example files
+
+The canonical public source for the examples is `https://github.com/ringlochid/AutoClaw`.
+
+If you are inside a checkout, use the local `examples/openclaw/` files. Without a checkout, clone the public repo:
+
+```bash
+git clone https://github.com/ringlochid/AutoClaw.git
+cd AutoClaw
+```
+
+The copy commands below assume you are in a checkout.
+
 ## Give the worker workspace an AGENTS.md
 
 Worker sessions start fresh each dispatch. A short `AGENTS.md` in the worker agent's workspace keeps every session in the worker lane before the first tool call.

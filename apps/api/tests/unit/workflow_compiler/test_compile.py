@@ -11,10 +11,10 @@ from .support import (
 )
 
 
-def test_compile_minimal_workflow_smoke() -> None:
-    plan = compile_packaged_workflow_fixture("minimal_implement_change", revision_no=4)
+def test_compile_bounded_change_workflow_smoke() -> None:
+    plan = compile_packaged_workflow_fixture("bounded_change", revision_no=4)
 
-    assert plan.workflow_key == "minimal-implement-change"
+    assert plan.workflow_key == "bounded-change"
     assert plan.definition_revision_no == 4
     assert plan.compiler_version == WORKFLOW_COMPILER_TEST_VERSION
     assert [node.node_key for node in plan.nodes] == ["root", "implement_change"]
@@ -42,25 +42,25 @@ def test_compile_minimal_workflow_smoke() -> None:
     assert plan.dependency_edges == ()
 
 
-def test_compile_normal_workflow_normalizes_structure_and_edges() -> None:
-    plan = compile_packaged_workflow_fixture("normal_parent_first_release", revision_no=7)
+def test_compile_reviewed_change_release_workflow_normalizes_structure_and_edges() -> None:
+    plan = compile_packaged_workflow_fixture("reviewed_change_release", revision_no=7)
 
-    assert plan.workflow_key == "normal-parent-first-release"
+    assert plan.workflow_key == "reviewed-change-release"
     assert plan.definition_revision_no == 7
     assert plan.compiler_version == WORKFLOW_COMPILER_TEST_VERSION
 
     assert [node.node_key for node in plan.nodes] == [
         "root",
-        "implementation_subtree",
-        "investigate_issue",
+        "change_subtree",
+        "scope_change",
         "implement_change",
         "review_change",
         "release_closure",
     ]
     assert {node.node_key: node.structural_kind.value for node in plan.nodes} == {
         "root": "root",
-        "implementation_subtree": "parent",
-        "investigate_issue": "worker",
+        "change_subtree": "parent",
+        "scope_change": "worker",
         "implement_change": "worker",
         "review_change": "worker",
         "release_closure": "worker",
@@ -68,16 +68,16 @@ def test_compile_normal_workflow_normalizes_structure_and_edges() -> None:
 
     implement_change = node_by_key(plan, "implement_change")
     assert [criteria.slot for criteria in implement_change.criteria] == [
-        "implementation_subtree_requirements",
+        "change_subtree_requirements",
         "implement_change_delivery_criteria",
     ]
     assert implement_change.role_revision_no == ROLE_REVISIONS["engineer"]
     assert implement_change.policy_revision_no == POLICY_REVISIONS["standard-worker"]
 
-    investigate_issue = node_by_key(plan, "investigate_issue")
-    assert investigate_issue.policy_revision_no == POLICY_REVISIONS["standard-worker"]
-    assert [criteria.slot for criteria in investigate_issue.criteria] == [
-        "implementation_subtree_requirements"
+    scope_change = node_by_key(plan, "scope_change")
+    assert scope_change.policy_revision_no == POLICY_REVISIONS["standard-worker"]
+    assert [criteria.slot for criteria in scope_change.criteria] == [
+        "change_subtree_requirements"
     ]
 
     assert [
@@ -89,15 +89,16 @@ def test_compile_normal_workflow_normalizes_structure_and_edges() -> None:
         )
         for edge in plan.dependency_edges
     ] == [
-        ("investigate_issue", "implement_change", "artifact", "findings_report"),
+        ("scope_change", "implement_change", "artifact", "change_scope_report"),
         ("implement_change", "review_change", "artifact", "change_patch"),
         ("implement_change", "review_change", "artifact", "verification_report"),
         (
-            "implementation_subtree",
+            "change_subtree",
             "review_change",
             "criteria",
-            "implementation_subtree_requirements",
+            "change_subtree_requirements",
         ),
+        ("scope_change", "release_closure", "artifact", "change_scope_report"),
         ("implement_change", "release_closure", "artifact", "change_patch"),
         ("implement_change", "release_closure", "artifact", "verification_report"),
         ("review_change", "release_closure", "artifact", "review_report"),
@@ -105,15 +106,15 @@ def test_compile_normal_workflow_normalizes_structure_and_edges() -> None:
     ]
 
 
-def test_compile_maximal_workflow_normalizes_structure_edges_and_policy_pins() -> None:
-    plan = compile_packaged_workflow_fixture("maximal_parent_first_release", revision_no=11)
+def test_compile_staged_delivery_release_workflow_normalizes_structure_edges_and_policy_pins() -> None:
+    plan = compile_packaged_workflow_fixture("staged_delivery_release", revision_no=11)
 
     assert [node.node_key for node in plan.nodes] == [
         "root",
         "discovery",
         "gather_evidence",
-        "implementation_loop",
-        "plan_iteration",
+        "delivery_loop",
+        "plan_delivery",
         "implement_change",
         "review_change",
         "qa_sweep",
@@ -123,23 +124,23 @@ def test_compile_maximal_workflow_normalizes_structure_edges_and_policy_pins() -
         "root": "root",
         "discovery": "parent",
         "gather_evidence": "worker",
-        "implementation_loop": "parent",
-        "plan_iteration": "worker",
+        "delivery_loop": "parent",
+        "plan_delivery": "worker",
         "implement_change": "worker",
         "review_change": "worker",
         "qa_sweep": "worker",
         "release_closure": "worker",
     }
 
-    plan_iteration = node_by_key(plan, "plan_iteration")
-    assert [criteria.slot for criteria in plan_iteration.criteria] == [
-        "implementation_loop_requirements"
+    plan_delivery = node_by_key(plan, "plan_delivery")
+    assert [criteria.slot for criteria in plan_delivery.criteria] == [
+        "delivery_loop_requirements"
     ]
-    assert plan_iteration.policy_revision_no == POLICY_REVISIONS["standard-worker"]
-    assert plan_iteration.role_revision_no == ROLE_REVISIONS["planner"]
+    assert plan_delivery.policy_revision_no == POLICY_REVISIONS["standard-worker"]
+    assert plan_delivery.role_revision_no == ROLE_REVISIONS["planner"]
 
     qa_sweep = node_by_key(plan, "qa_sweep")
-    assert [criteria.slot for criteria in qa_sweep.criteria] == ["implementation_loop_requirements"]
+    assert [criteria.slot for criteria in qa_sweep.criteria] == ["delivery_loop_requirements"]
     assert qa_sweep.policy_revision_no == POLICY_REVISIONS["standard-worker"]
     assert qa_sweep.role_revision_no == ROLE_REVISIONS["architect"]
 
@@ -156,22 +157,23 @@ def test_compile_maximal_workflow_normalizes_structure_edges_and_policy_pins() -
         )
         for edge in plan.dependency_edges
     ] == [
-        ("gather_evidence", "plan_iteration", "artifact", "findings_report"),
-        ("gather_evidence", "implement_change", "artifact", "findings_report"),
-        ("plan_iteration", "implement_change", "artifact", "delivery_plan"),
+        ("gather_evidence", "plan_delivery", "artifact", "discovery_brief"),
+        ("gather_evidence", "implement_change", "artifact", "discovery_brief"),
+        ("plan_delivery", "implement_change", "artifact", "delivery_plan"),
         ("implement_change", "review_change", "artifact", "change_patch"),
         ("implement_change", "review_change", "artifact", "verification_report"),
         (
-            "implementation_loop",
+            "delivery_loop",
             "review_change",
             "criteria",
-            "implementation_review_criteria",
+            "delivery_review_criteria",
         ),
+        ("plan_delivery", "qa_sweep", "artifact", "delivery_plan"),
         ("implement_change", "qa_sweep", "artifact", "change_patch"),
         ("implement_change", "qa_sweep", "artifact", "verification_report"),
         ("review_change", "qa_sweep", "artifact", "review_report"),
-        ("gather_evidence", "release_closure", "artifact", "findings_report"),
-        ("plan_iteration", "release_closure", "artifact", "delivery_plan"),
+        ("gather_evidence", "release_closure", "artifact", "discovery_brief"),
+        ("plan_delivery", "release_closure", "artifact", "delivery_plan"),
         ("implement_change", "release_closure", "artifact", "change_patch"),
         ("implement_change", "release_closure", "artifact", "verification_report"),
         ("review_change", "release_closure", "artifact", "review_report"),

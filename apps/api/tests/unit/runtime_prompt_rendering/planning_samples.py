@@ -21,7 +21,7 @@ from autoclaw.runtime import (
 )
 
 from .manifest_samples import (
-    findings_report_path,
+    change_scope_report_path,
     investigation_checkpoint_path,
     sample_manifest,
 )
@@ -86,9 +86,9 @@ def root_assignment(tmp_path: Path) -> AssignmentProjection:
             ),
             EvidenceRef(
                 kind=EvidenceKind.ARTIFACT,
-                slot="findings_report",
+                slot="change_scope_report",
                 version=2,
-                path=findings_report_path(tmp_path),
+                path=change_scope_report_path(tmp_path),
                 description="Current investigation findings for the auth-refresh regression.",
             ),
         ),
@@ -137,9 +137,9 @@ def root_current_context(tmp_path: Path) -> ManifestCurrentContextProjection:
             ),
             EvidenceRef(
                 kind=EvidenceKind.ARTIFACT,
-                slot="findings_report",
+                slot="change_scope_report",
                 version=2,
-                path=findings_report_path(tmp_path),
+                path=change_scope_report_path(tmp_path),
                 description="Current investigation findings for the auth-refresh regression.",
             ),
             EvidenceRef(
@@ -166,15 +166,15 @@ def root_latest_checkpoint() -> CheckpointProjection:
 
 def parent_assignment(tmp_path: Path) -> AssignmentProjection:
     return AssignmentProjection(
-        assignment_key="implementation_subtree.assign-04",
-        node_key="implementation_subtree",
+        assignment_key="change_subtree.assign-04",
+        node_key="change_subtree",
         summary="Coordinate the next bounded child step for the implementation subtree.",
         instruction="Use surfaced child evidence to choose the next bounded action.",
         criteria=(
             EvidenceRef(
                 kind=EvidenceKind.CRITERIA,
-                slot="implementation_subtree_requirements",
-                path=tmp_path / "_runtime" / "criteria" / "implementation_subtree_requirements.md",
+                slot="change_subtree_requirements",
+                path=tmp_path / "_runtime" / "criteria" / "change_subtree_requirements.md",
                 description="Current subtree delivery requirements.",
             ),
         ),
@@ -214,21 +214,21 @@ def parent_assignment(tmp_path: Path) -> AssignmentProjection:
 
 def parent_current_context(tmp_path: Path) -> ManifestCurrentContextProjection:
     return ManifestCurrentContextProjection(
-        current_node_key="implementation_subtree",
-        owner_node_key="implementation_subtree",
-        active_attempt_id="attempt.implementation_subtree.01",
+        current_node_key="change_subtree",
+        owner_node_key="change_subtree",
+        active_attempt_id="attempt.change_subtree.01",
         active_assignment_path=(
             tmp_path
             / "_runtime"
             / "attempts"
-            / "attempt.implementation_subtree.01"
+            / "attempt.change_subtree.01"
             / "assignment.md"
         ),
         latest_checkpoint_path=(
             tmp_path
             / "_runtime"
             / "attempts"
-            / "attempt.implementation_subtree.01"
+            / "attempt.change_subtree.01"
             / "latest-checkpoint.md"
         ),
         latest_relevant_checkpoint_path=(
@@ -297,7 +297,7 @@ def root_node_context() -> ResolvedNodeContext:
 
 def parent_node_context() -> ResolvedNodeContext:
     return ResolvedNodeContext(
-        node_key="implementation_subtree",
+        node_key="change_subtree",
         node_kind=NodeKind.PARENT,
         node_description=(
             "Coordinate the implementation subtree and decide the next bounded child step."

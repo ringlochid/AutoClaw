@@ -1,20 +1,20 @@
-# Current task roots and materialized paths
+# Current task directories and materialized paths
 
 Status: Current
 
 Last verified: 2026-05-13
 
-This page defines the current on-host task-root behavior and the current materialized path model.
+This page defines the current on-host task directory behavior and the current materialized path model.
 
-## Current task-root owner
+## Current task directory owner
 
-Current task roots are explicit launch inputs.
+Current task directories are explicit launch inputs.
 
 The runtime does not derive a task root from `platformdirs`. Instead, `launch_task_runtime()` receives an explicit `task_root`, and `resolve_task_root_paths()` expands that into the current task-root layout.
 
 `platformdirs` still owns default config, data, state, and cache directories for the CLI, but not the per-task root path.
 
-## Current root binding model
+## Current `roots` path-binding model
 
 Current `TaskComposeInput.roots` can bind:
 
@@ -29,13 +29,13 @@ Current binding modes are:
 
 Current binding behavior is:
 
-- `ensure_task_default` -> use `<task_root>/<root_name>`
+- `ensure_task_default` -> use `<task_root>/<binding_name>`
 - `ensure_host_path` -> use `host_path` and create it if needed
 - `use_existing_host` -> use `host_path`, but it must already exist
 
-## Current materialized roots
+## Current materialized directories
 
-Current code materializes these task-root paths:
+Current code materializes these task-directory paths:
 
 - `workspace/` or the bound workspace host path
 - `context/` or the bound context host path
@@ -91,7 +91,7 @@ Current materialization writes files such as:
 Current `_runtime/workflow-manifest.*` carries the live whole-workflow payload, including:
 
 - `manifest_version`
-- current filesystem roots
+- current filesystem path bindings
 - `current_context.latest_checkpoint_path`
 - `current_context.latest_relevant_checkpoint_path`
 - top-level `structural_edit_palette`
@@ -101,11 +101,11 @@ The markdown manifest may omit a rendered `Structural Edit Palette` section when
 
 ## Current workspace-lease rule
 
-Current bootstrap persists a live workspace-root lease for a custom workspace host path.
+Current bootstrap persists a live workspace-path lease for a custom workspace host path.
 
 That means:
 
-- a live task can hold an `ensure_host_path` workspace root
+- a live task can hold an `ensure_host_path` workspace path
 - a second live task cannot reuse that same normalized workspace host path
 - terminal flow closure releases the live lease
 
@@ -153,4 +153,4 @@ Current code does not ship the older manifest-root-only or context-item-only tea
 - inspected code in `apps/api/src/autoclaw/paths.py`
 - inspected tests in `apps/api/tests/integration/bootstrap/test_bootstrap.py`
 - inspected tests in `apps/api/tests/integration/bootstrap/test_attempt_files.py`
-- inspected tests in `apps/api/tests/e2e/workflows/minimal/test_minimal_runtime_lane.py`
+- inspected tests in `apps/api/tests/e2e/workflows/bounded/test_bounded_change_lane.py`

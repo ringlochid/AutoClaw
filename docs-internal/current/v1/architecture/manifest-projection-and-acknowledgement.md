@@ -26,7 +26,7 @@ They are not:
 
 ## Current truth source
 
-Current manifest truth comes from controller-owned runtime rows plus current task-root bindings.
+Current manifest truth comes from controller-owned runtime rows plus current task-directory path bindings.
 
 The materialized files are:
 
@@ -86,7 +86,7 @@ Current `node_tree` entries include:
 
 Current manifest lifecycle is:
 
-1. launch resolves task-root paths, opens the first/root dispatch, commits controller truth, and then materializes the stable workflow-manifest, current attempt files, and opened-dispatch projections before returning
+1. launch resolves task-directory paths, opens the first root-node dispatch, commits controller truth, and then materializes the stable workflow-manifest, current attempt files, and opened-dispatch projections before returning
 2. ordinary checkpoints, boundary acceptance, retries, redispatches, and replan-driven structure changes commit controller truth and then rewrite the stable workflow-manifest before route success
 3. dispatch prompt building can also build a dispatch-scoped manifest view using the dispatch render timestamp as the current-relevant-path cutoff
 

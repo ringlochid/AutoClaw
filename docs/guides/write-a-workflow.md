@@ -248,7 +248,7 @@ instruction: >-
     Inspect current evidence before assigning the next child. Route unclear scope to a scope reviewer, weak verification to a verifier, repeated failure to failure analysis, and workflow-shape mismatch to replan. Do not force a worker to widen scope to make progress.
 ```
 
-Workers should surface ambiguity. Parents and roots should route it.
+Workers should surface ambiguity. Parent and root nodes should route it.
 
 ## Keep shipped workflows as examples
 

@@ -8,9 +8,9 @@ task:
     title: Run against a copied e2e workspace
     summary: Reuse an existing copied workspace and context path.
     instruction: >-
-      Launch the task against an already prepared copied workspace without creating new authored roots.
+      Launch the task against an already prepared copied workspace without creating new task-owned paths.
 workflow:
-    key: normal-parent-first-release
+    key: reviewed-change-release
 roots:
     workspace:
         mode: use_existing_host

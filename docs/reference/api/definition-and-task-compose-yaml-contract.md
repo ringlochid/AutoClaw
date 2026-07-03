@@ -195,12 +195,12 @@ Current fields are:
     - `workspace`
     - `context`
 
-When omitted, roots default to task-owned `workspace` and `context` paths. Each explicit root binding uses:
+When omitted, the `roots` mapping defaults to task-owned `workspace` and `context` paths. Each explicit path binding uses:
 
 - `mode`
 - `host_path`
 
-Current root modes are:
+Current path binding modes are:
 
 - `ensure_task_default`
 - `ensure_host_path`
@@ -232,16 +232,19 @@ Current removed/stale fields are rejected by schema validation, including:
 
 ## Shipped current fixtures
 
+Current shipped fixtures include 14 workflows, 26 roles, and 7 standard policies.
+
 Current shipped workflow fixtures are:
 
 - `bugfix-review-release`
 - `core-only-build`
 - `feature-implementation`
 - `idea-discovery`
-- `minimal-implement-change`
-- `normal-parent-first-release`
-- `maximal-parent-first-release`
+- `bounded-change`
+- `reviewed-change-release`
+- `staged-delivery-release`
 - `delivery-batch`
+- `frontend-feature-slice`
 - `marketing-campaign`
 - `mvp-build`
 - `planning-only`
@@ -260,29 +263,30 @@ Current shipped policy fixtures are:
 - `standard-worker-human-request`
 - `standard-worker-command-run`
 
-## Minimal shape example
+## Bounded shape example
 
 ```yaml
 kind: workflow
-id: minimal-implement-change
-description: Execute one bounded engineering change under parent ownership with explicit purpose, evidence, criteria, and verification handoff.
+id: bounded-change
+description: Execute one small scoped change with one worker and root-owned evidence review.
 root:
     id: root
     role: planning_lead
-    description: Preserve the task purpose, delegate one bounded engineering change, and release only when current evidence satisfies criteria.
+    policy: standard-root
+    description: Preserve task purpose, delegate one bounded change, and close only after current evidence satisfies criteria.
     instruction: >-
-      Read manifest, assignment, checkpoint, surfaced refs, and criteria before assigning or releasing. Verify worker evidence instead of trusting green alone.
+      Read manifest, assignment, checkpoint, surfaced refs, and criteria before assigning or closing. Keep the run to one worker unless current evidence proves the shape is wrong. Verify worker evidence instead of trusting green alone.
     criteria:
         - slot: implementation_rules
-          description: Parent acceptance criteria.
+          description: Root acceptance criteria for the bounded worker.
           criteria:
-              - keep the child inside the current bounded assignment
+              - the worker stays inside the current bounded assignment
               - root verifies current patch and verification evidence before release
     children:
         - id: implement_change
           role: engineer
           policy: standard-worker
-          description: Understand the purpose, implement the bounded change, and publish patch plus verification evidence for the current assignment.
+          description: Understand the scope, implement the bounded change, and publish patch plus verification evidence.
           instruction: >-
             Read current criteria and any surfaced refs before editing. Keep the patch scoped, verify the intended behavior, and checkpoint reasoning plus criteria status.
           produces:

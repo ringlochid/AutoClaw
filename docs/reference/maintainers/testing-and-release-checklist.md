@@ -23,9 +23,9 @@ Release-ready means:
 
 The required workflow lanes follow the progressive lane matrix:
 
-- minimal lane when prompt/runtime/bootstrap flow is viable
-- normal lane when parent/review/closure flow is viable
-- maximal lane when multi-subtree/review/replan flow is viable
+- bounded lane when prompt/runtime/bootstrap flow is viable
+- reviewed lane when parent/review/closure flow is viable
+- staged lane when multi-subtree/review/replan flow is viable
 
 ### Package, install, and DB
 

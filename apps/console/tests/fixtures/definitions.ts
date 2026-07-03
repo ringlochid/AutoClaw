@@ -6,7 +6,7 @@ export const DEFINITIONS_SCREENSHOT_DIR =
 export const ROLE_KEY = "planning_lead";
 export const SECOND_ROLE_KEY = "planner";
 export const POLICY_KEY = "standard-root-planning";
-export const WORKFLOW_KEY = "maximal-parent-first-release";
+export const WORKFLOW_KEY = "staged-delivery-release";
 
 type DefinitionSummaryRead = components["schemas"]["DefinitionSummaryRead"];
 type DefinitionRevisionDetailResponse = components["schemas"]["DefinitionRevisionDetailResponse"];
@@ -141,7 +141,7 @@ const WORKFLOW_FIXTURES: readonly {
     },
     {
         description: "Execute one bounded engineering change.",
-        key: "minimal-implement-change",
+        key: "bounded-change",
         revisionNo: 2,
         title: "Minimal Implement Change",
         updatedAt: "2026-06-18T13:10:00+10:00",
@@ -149,7 +149,7 @@ const WORKFLOW_FIXTURES: readonly {
     {
         description:
             "Execute one implementation subtree, review it, then release from current evidence.",
-        key: "normal-parent-first-release",
+        key: "reviewed-change-release",
         revisionNo: 3,
         title: "Normal Parent First Release",
         updatedAt: "2026-06-17T10:40:00+10:00",
@@ -363,7 +363,7 @@ function workflowRootForKey(
     key: string,
     description: string,
 ): components["schemas"]["RootNodeDefinition-Output"] {
-    if (key === "minimal-implement-change") {
+    if (key === "bounded-change") {
         return {
             child_defaults: null,
             children: [
@@ -386,7 +386,7 @@ function workflowRootForKey(
         };
     }
 
-    if (key === "normal-parent-first-release") {
+    if (key === "reviewed-change-release") {
         return {
             child_defaults: null,
             children: [

@@ -32,7 +32,7 @@ async def test_task_events_emit_structural_revision_adopted_for_add_and_remove_c
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="normal-parent-first-release",
+            workflow_key="reviewed-change-release",
             compiler_version="task-event-runtime-family-coverage",
         )
         original_flow_revision_id = await active_flow_revision_id(context, task_id=task_id)

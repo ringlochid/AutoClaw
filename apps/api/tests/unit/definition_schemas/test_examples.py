@@ -26,9 +26,9 @@ from .support import (
 @pytest.mark.parametrize(
     ("workflow_fixture", "example_doc"),
     [
-        ("minimal_implement_change.yaml", "minimal.md"),
-        ("normal_parent_first_release.yaml", "normal.md"),
-        ("maximal_parent_first_release.yaml", "maximal.md"),
+        ("bounded_change.yaml", "bounded-change.md"),
+        ("reviewed_change_release.yaml", "reviewed-change-release.md"),
+        ("staged_delivery_release.yaml", "staged-delivery-release.md"),
     ],
 )
 def test_packaged_workflow_seed_definitions_match_canonical_example_docs(

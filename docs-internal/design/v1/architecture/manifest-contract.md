@@ -39,7 +39,7 @@ Rules:
 
 ### Manifest versus assignment
 
-- The manifest explains the whole workflow, current node position, filesystem roots, dependency map, and currently surfaced refs.
+- The manifest explains the whole workflow, current node position, filesystem path bindings, dependency map, and currently surfaced refs.
 - The assignment explains what the current node should do now.
 - Current mission wording, selected must-read refs, and bounded transient carryover belong in `assignment.*`, not in the manifest.
 - Exact assignment field ownership lives in [Assignment contract](assignment-contract.md).
@@ -135,7 +135,7 @@ Required fields:
 - `tmp_path`
 - `runtime_path`
 
-These roots tell the agent exactly where stable surfaces live so it does not infer from messy folders.
+These path bindings tell the agent exactly where stable surfaces live so it does not infer from messy folders.
 
 ## `structural_edit_palette`
 

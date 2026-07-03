@@ -243,7 +243,7 @@ produces:
 
 ## `DeterministicMaterializationRule`
 
-All surfaced refs must point at localized task-root paths.
+All surfaced refs must point at localized task-directory paths.
 
 Rules:
 

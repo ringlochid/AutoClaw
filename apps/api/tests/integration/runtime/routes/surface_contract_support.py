@@ -19,16 +19,16 @@ async def assert_waiting_operator_surfaces(
     )
     assert snapshot.status_code == 200
     snapshot_json = snapshot.json()
-    assert snapshot_json["flow"]["current_node_key"] == "implementation_subtree"
+    assert snapshot_json["flow"]["current_node_key"] == "change_subtree"
     assert_operator_current_paths(snapshot_json["current_paths"])
 
     trace = await context.client.get(
         f"/operator/tasks/{task.task_id}/trace",
         headers=context.operator_headers,
-        params={"scope": "current", "q": "implementation_subtree", "limit": 1},
+        params={"scope": "current", "q": "change_subtree", "limit": 1},
     )
     assert trace.status_code == 200
     trace_json = trace.json()
     if trace_json["dispatch_history"]:
-        assert trace_json["dispatch_history"][0]["node_key"] == "implementation_subtree"
+        assert trace_json["dispatch_history"][0]["node_key"] == "change_subtree"
     assert_operator_current_paths(trace_json["current_paths"])

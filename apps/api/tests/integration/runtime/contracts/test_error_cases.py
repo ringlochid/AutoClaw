@@ -14,7 +14,7 @@ from autoclaw.runtime.post_commit import drive_runtime_once
 from httpx import AsyncClient, Response
 from sqlalchemy import select
 from tests.helpers.runtime_support import (
-    drive_minimal_child_to_green,
+    drive_bounded_child_to_green,
     parent_tool,
     persist_bootstrap,
     prepare_runtime_db,
@@ -55,12 +55,12 @@ async def test_release_green_uses_relational_children_and_maps_stale_checkpoint_
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            workflow_definition=load_workflow_definition("bounded_change"),
             revision_no=1,
         )
 
         async with runtime_api_context(config_path) as api:
-            root_session_key, active_flow_revision_id = await drive_minimal_child_to_green(
+            root_session_key, active_flow_revision_id = await drive_bounded_child_to_green(
                 api,
                 task_id=task_id,
                 task_root=task_root,
@@ -117,12 +117,12 @@ async def test_release_green_keeps_missing_required_publication_on_422(tmp_path:
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            workflow_definition=load_workflow_definition("bounded_change"),
             revision_no=1,
         )
 
         async with runtime_api_context(config_path) as api:
-            root_session_key, active_flow_revision_id = await drive_minimal_child_to_green(
+            root_session_key, active_flow_revision_id = await drive_bounded_child_to_green(
                 api,
                 task_id=task_id,
                 task_root=task_root,
@@ -180,12 +180,12 @@ async def test_release_green_maps_missing_child_current_publication_to_422(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            workflow_definition=load_workflow_definition("bounded_change"),
             revision_no=1,
         )
 
         async with runtime_api_context(config_path) as api:
-            root_session_key, active_flow_revision_id = await drive_minimal_child_to_green(
+            root_session_key, active_flow_revision_id = await drive_bounded_child_to_green(
                 api,
                 task_id=task_id,
                 task_root=task_root,

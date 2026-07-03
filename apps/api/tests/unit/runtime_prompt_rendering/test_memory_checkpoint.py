@@ -109,7 +109,7 @@ def test_latest_checkpoint_context_renders_stable_checkpoint_path(tmp_path: Path
 def test_latest_checkpoint_context_prefers_latest_relevant_checkpoint_path(tmp_path: Path) -> None:
     request = worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
     relevant_checkpoint_path = (
-        tmp_path / "_runtime" / "attempts" / "attempt.investigate_issue.02" / "latest-checkpoint.md"
+        tmp_path / "_runtime" / "attempts" / "attempt.scope_change.02" / "latest-checkpoint.md"
     )
     bundle = render_prompt_bundle(
         request.model_copy(

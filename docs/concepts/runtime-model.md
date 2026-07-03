@@ -9,7 +9,7 @@ Authored definitions explain reusable intent. Runtime records explain one execut
 A task usually moves through this loop:
 
 1. Task start compiles the selected workflow and pins current role and policy revisions.
-2. Launch persists the task, compiled plan, flow, nodes, root assignment, attempt, dispatch, and root bindings.
+2. Launch persists the task, compiled plan, flow, nodes, root-node assignment, attempt, dispatch, and `roots` path bindings.
 3. The current dispatch sends the node its rendered prompt, generated files, and allowed tools.
 4. The node works through the harness loop.
 5. The node records checkpoints, publishes artifacts, opens a wait, stages a child assignment, or returns a boundary.
@@ -102,7 +102,7 @@ The direction matters:
 controller truth -> materialized files/readbacks -> agent and operator inspection
 ```
 
-Do not reverse it. A task-root file can help a node or operator understand the run, but it does not legalize a state transition by itself. If a generated projection and controller readback disagree, prefer controller/runtime truth.
+Do not reverse it. A generated task file can help a node or operator understand the run, but it does not legalize a state transition by itself. If a generated projection and controller readback disagree, prefer controller/runtime truth.
 
 ## MCP node tools
 

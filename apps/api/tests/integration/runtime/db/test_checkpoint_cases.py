@@ -43,7 +43,7 @@ async def launch_minimal_worker(
     await launch_runtime_case(
         context,
         task_id=task_id,
-        workflow_key="minimal-implement-change",
+        workflow_key="bounded-change",
         compiler_version="runtime-db",
     )
     yielded = await yield_child_assignment(
@@ -333,17 +333,17 @@ async def test_record_checkpoint_rejects_parent_retry_terminal_checkpoint(
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="normal-parent-first-release",
+            workflow_key="reviewed-change-release",
             compiler_version="runtime-db",
         )
         yielded = await yield_child_assignment(
             context,
             task_id=task_id,
-            child_node_key="implementation_subtree",
+            child_node_key="change_subtree",
             summary="Start the implementation subtree.",
             instruction="Stage the current implementation subtree only.",
         )
-        assert yielded.current_node_key == "implementation_subtree"
+        assert yielded.current_node_key == "change_subtree"
         async with context.session_factory() as session:
             with pytest.raises(
                 ValueError,
@@ -368,14 +368,14 @@ async def test_retry_creates_new_attempt_with_checkpoint_consume_ref(
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="minimal-implement-change",
+            workflow_key="bounded-change",
             compiler_version="runtime-db",
         )
         yielded = await yield_child_assignment(
             context,
             task_id=task_id,
             child_node_key="implement_change",
-            summary="Repair the auth-refresh bug.",
+            summary="Repair the settings-loader bug.",
             instruction="Publish a bounded patch and retry-safe evidence.",
         )
         assert yielded.current_node_key == "implement_change"

@@ -17,7 +17,7 @@ from autoclaw.runtime import FlowStatus
 from autoclaw.runtime.contracts import TaskStartRequest, TaskStartResponse, WorkflowManifestRef
 from pydantic import ValidationError
 
-from tests.unit.definition_schemas.support import minimal_workflow_payload
+from tests.unit.definition_schemas.support import bounded_workflow_payload
 
 
 def test_definition_upload_request_requires_kind_to_match_content() -> None:
@@ -41,7 +41,7 @@ def test_definition_upload_request_requires_kind_to_match_content() -> None:
         DefinitionUploadRequest.model_validate(
             {
                 "kind": "policy",
-                "content": minimal_workflow_payload(),
+                "content": bounded_workflow_payload(),
             }
         )
 
@@ -92,7 +92,7 @@ def test_definition_summary_list_response_enforces_kind_specific_fields() -> Non
                 "kind": "workflow",
                 "items": [
                     {
-                        "key": "normal-parent-first-release",
+                        "key": "reviewed-change-release",
                         "description": "Normal launch workflow.",
                         "current_revision_no": 2,
                         "allowed_node_kinds": ["root"],
@@ -170,7 +170,7 @@ def test_task_start_request_accepts_minimal_body_and_rejects_unsupported_fields(
                 "title": "Harden auth refresh flow",
                 "summary": "Investigate and fix the auth refresh regression.",
             },
-            "workflow": {"key": "normal-parent-first-release"},
+            "workflow": {"key": "reviewed-change-release"},
         }
     )
 
@@ -185,7 +185,7 @@ def test_task_start_request_accepts_minimal_body_and_rejects_unsupported_fields(
                     "title": "Harden auth refresh flow",
                     "summary": "Investigate and fix the auth refresh regression.",
                 },
-                "workflow": {"key": "normal-parent-first-release"},
+                "workflow": {"key": "reviewed-change-release"},
                 "roots": {
                     "outputs": {
                         "mode": "ensure_task_default",
@@ -202,7 +202,7 @@ def test_task_start_request_accepts_minimal_body_and_rejects_unsupported_fields(
                     "title": "Harden auth refresh flow",
                     "summary": "Investigate and fix the auth refresh regression.",
                 },
-                "workflow": {"key": "normal-parent-first-release"},
+                "workflow": {"key": "reviewed-change-release"},
                 "initial_assignment": {
                     "summary": "This field is not part of the public task-start contract.",
                 },

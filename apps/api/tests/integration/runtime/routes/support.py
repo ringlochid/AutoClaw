@@ -96,7 +96,7 @@ def build_route_task_compose(
     task_title: str,
     task_summary: str,
 ) -> TaskComposeInput:
-    base_compose = task_compose_payload("normal-parent-first-release")
+    base_compose = task_compose_payload("reviewed-change-release")
     return base_compose.model_copy(
         update={
             "task": base_compose.task.model_copy(
@@ -164,7 +164,7 @@ async def launch_route_task(
             session,
             task_id=task_id,
             task_root=task_root,
-            task_compose=task_compose or task_compose_payload("normal-parent-first-release"),
+            task_compose=task_compose or task_compose_payload("reviewed-change-release"),
             compiler_version="runtime-route-support",
         )
     return await refresh_route_task(
@@ -251,7 +251,7 @@ async def assign_child(
         json={
             "tool_name": "assign_child",
             "payload": {
-                "child_node_key": "implementation_subtree",
+                "child_node_key": "change_subtree",
                 "assignment_intent": {
                     "summary": "Start the implementation subtree.",
                     "instruction": "Stage only the current implementation subtree.",
@@ -281,7 +281,7 @@ async def continue_into_child_dispatch(
         context,
         task_id=task.task_id,
         task_root=task.task_root,
-        expected_dispatch_node_key="implementation_subtree",
+        expected_dispatch_node_key="change_subtree",
         require_live_session=False,
     )
 

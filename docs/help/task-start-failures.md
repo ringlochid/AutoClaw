@@ -11,7 +11,7 @@ Check:
 - `workflow.key` names a current workflow definition in the registry
 - optional `roots.workspace` and `roots.context` use supported binding modes when present
 
-If `roots` is omitted, AutoClaw uses task-owned default roots. Supported explicit root binding modes are:
+If `roots` is omitted, AutoClaw uses task-owned default paths. Supported explicit path binding modes are:
 
 - `ensure_task_default`
 - `ensure_host_path`
@@ -43,7 +43,7 @@ Use the shipped schema contract:
 - role YAML owns reusable role behavior
 - policy YAML owns budgets, guardrails, and capabilities
 - workflow YAML owns the node tree, consumes, produces, and criteria
-- task-compose owns one launch request and optional root bindings
+- task-compose owns one launch request and optional `roots` path bindings
 
 Fix:
 
@@ -60,7 +60,7 @@ Likely causes:
 
 - task-compose selected an unavailable workflow key
 - workflow validation fails against current role or policy registry truth
-- a root binding points at a missing existing host path
+- a `roots` path binding points at a missing existing host path
 - the API is healthy but not ready against the configured database
 
 Check:

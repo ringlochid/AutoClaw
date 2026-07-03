@@ -2,9 +2,9 @@
 
 Status: Target
 
-This page is the canonical end-to-end explanation of maximal criteria semantics under the parent-first verification model.
+This page is the canonical end-to-end explanation of staged delivery criteria semantics under the parent-first verification model.
 
-It expands the staged maximal example without changing the frozen target behavior.
+It expands the staged delivery release example without changing the frozen target behavior.
 
 ## Declaration inventory
 
@@ -13,8 +13,8 @@ It expands the staged maximal example without changing the frozen target behavio
 | root                | criteria | `root_delivery_rules`                | delivery and escalation rules before green or replan |
 | root                | criteria | `root_closure_criteria`              | final root closure requirements                      |
 | discovery           | criteria | `discovery_requirements`             | shared discovery requirements for the subtree        |
-| implementation_loop | criteria | `implementation_loop_requirements`   | shared implementation requirements for the subtree   |
-| implementation_loop | criteria | `implementation_review_criteria`     | review-step verification criteria                    |
+| delivery_loop       | criteria | `delivery_loop_requirements`         | shared delivery requirements for the subtree         |
+| delivery_loop       | criteria | `delivery_review_criteria`           | review-step verification criteria                    |
 | implement_change    | criteria | `implement_change_delivery_criteria` | engineering delivery criteria                        |
 
 ## Projection map
@@ -47,24 +47,24 @@ If `gather_evidence` is the current worker, its assignment should surface:
 
 It should not receive hidden ancestor bundles, invisible scope summaries, or criteria projected from beyond its direct parent.
 
-## Implementation subtree
+## Delivery subtree
 
-`implementation_loop` is a parent node with local criteria and ordinary review work.
+`delivery_loop` is a parent node with local criteria and ordinary review work.
 
-The implementation subtree semantics are:
+The delivery subtree semantics are:
 
-- `implementation_loop_requirements` defines the shared subtree acceptance contract
+- `delivery_loop_requirements` defines the shared subtree acceptance contract
 - `child_defaults.criteria` projects that slot onto direct children
-- `plan_iteration` and `implement_change` therefore see both the projected subtree requirements and their own local delivery criteria
-- `review_change` sees the projected subtree requirements plus the explicitly consumed `implementation_review_criteria`
-- `implement_change` still depends on authored hard inputs such as `findings_report` and `delivery_plan`; criteria projection does not replace typed-input legality
+- `plan_delivery` and `implement_change` therefore see both the projected subtree requirements and their own local delivery criteria
+- `review_change` sees the projected subtree requirements plus the explicitly consumed `delivery_review_criteria`
+- `implement_change` still depends on authored hard inputs such as `discovery_brief` and `delivery_plan`; criteria projection does not replace typed-input legality
 
 ## Review child
 
-When `implementation_loop` reaches review:
+When `delivery_loop` reaches review:
 
 - `review_change` is an ordinary authored child node
-- it consumes the current subtree evidence and the configured `implementation_review_criteria`
+- it consumes the current subtree evidence and the configured `delivery_review_criteria`
 - parent verification still decides whether the subtree may release `green`
 
 ## Root release work
@@ -77,7 +77,7 @@ Root release work is bounded:
 
 Example surfaced release evidence for `release_closure`:
 
-- `findings_report`
+- `discovery_brief`
 - `delivery_plan`
 - `change_patch`
 - `verification_report`
@@ -109,7 +109,7 @@ Parent or root does not treat a criteria slot as satisfied merely because it was
 
 ## Related contracts
 
-- [Maximal example](examples/maximal.md)
+- [Staged delivery release example](examples/staged-delivery-release.md)
 - [Criteria and parent verification](criteria-and-parent-verification.md)
 - [Workflow schema appendix](workflow-schema-appendix.md)
 - [Review findings contract](review-findings-contract.md)

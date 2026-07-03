@@ -26,7 +26,7 @@ pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_ti
 async def test_manifest_rematerialization_keeps_workflow_description(tmp_path: Path) -> None:
     config_path = await prepare_runtime_db(tmp_path)
     task_root = tmp_path / "task-root"
-    workflow_definition = load_workflow_definition("normal_parent_first_release")
+    workflow_definition = load_workflow_definition("reviewed_change_release")
     task_id = "task_manifest_description"
 
     try:
@@ -89,7 +89,7 @@ async def test_structural_tool_failure_does_not_commit_graph_change_after_manife
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("normal_parent_first_release"),
+            workflow_definition=load_workflow_definition("reviewed_change_release"),
             revision_no=7,
         )
 
@@ -151,7 +151,7 @@ async def test_structural_manifest_write_failure_surfaces_error_after_commit(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("normal_parent_first_release"),
+            workflow_definition=load_workflow_definition("reviewed_change_release"),
             revision_no=7,
         )
 

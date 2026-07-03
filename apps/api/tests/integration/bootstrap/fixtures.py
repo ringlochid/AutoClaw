@@ -138,10 +138,10 @@ def compile_workflow_fixture(
 def task_compose_payload(workflow_key: str, **roots: Any) -> TaskComposeInput:
     payload: dict[str, Any] = {
         "task": {
-            "key": "auth-refresh-hardening",
-            "title": "Harden auth refresh flow",
-            "summary": "Investigate and fix the auth refresh regression.",
-            "instruction": "Stay scoped to the auth refresh failure path only.",
+            "key": "settings-loader-cleanup",
+            "title": "Clean up settings loader",
+            "summary": "Make one scoped settings-loader change and publish evidence.",
+            "instruction": "Stay scoped to the settings-loader path only.",
         },
         "workflow": {"key": workflow_key},
     }
@@ -167,7 +167,7 @@ async def persist_bootstrap_runtime(
 ) -> RuntimeBootstrapResult:
     workflow_key = (
         task_compose.workflow.key if task_compose is not None else None
-    ) or "minimal-implement-change"
+    ) or "bounded-change"
     snapshot = await compile_current_workflow_launch_snapshot(
         session,
         workflow_key=workflow_key,

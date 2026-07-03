@@ -78,7 +78,7 @@ async def test_launch_runtime_persists_gateway_session_run_and_node_session_trut
                 session,
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
-                task_compose=task_compose_payload("minimal-implement-change"),
+                task_compose=task_compose_payload("bounded-change"),
                 compiler_version="gateway-launch-success",
             )
 
@@ -128,7 +128,7 @@ async def test_launch_runtime_ignores_additive_session_key_in_accepted_payload(
                 session,
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
-                task_compose=task_compose_payload("minimal-implement-change"),
+                task_compose=task_compose_payload("bounded-change"),
                 compiler_version="gateway-launch-additive-session-key",
             )
 
@@ -164,7 +164,7 @@ async def test_launch_runtime_persists_transport_failure_without_fake_acceptance
                         session,
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
-                        task_compose=task_compose_payload("minimal-implement-change"),
+                        task_compose=task_compose_payload("bounded-change"),
                         compiler_version="gateway-launch-failure",
                     )
                 await session.rollback()
@@ -222,7 +222,7 @@ async def test_launch_runtime_pre_send_payload_policy_failure_stays_transport_fa
                             session,
                             task_id=task_id,
                             task_root=runtime.paths.task_root,
-                            task_compose=task_compose_payload("minimal-implement-change"),
+                            task_compose=task_compose_payload("bounded-change"),
                             compiler_version="gateway-pre-send-policy-failure",
                         )
                     await session.rollback()
@@ -276,7 +276,7 @@ async def test_launch_runtime_pre_send_transport_failure_stays_transport_failed(
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-send-failure",
                 )
             await session.rollback()
@@ -319,7 +319,7 @@ async def test_launch_runtime_post_send_normalization_failure_marks_dispatch_amb
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-post-send-failure",
                 )
             await session.rollback()
@@ -376,7 +376,7 @@ async def test_launch_runtime_post_send_transport_failure_falls_back_to_fresh_cl
                             session,
                             task_id=task_id,
                             task_root=runtime.paths.task_root,
-                            task_compose=task_compose_payload("minimal-implement-change"),
+                            task_compose=task_compose_payload("bounded-change"),
                             compiler_version="gateway-post-send-transport-failure",
                         )
                     await session.rollback()
@@ -441,7 +441,7 @@ async def test_launch_runtime_post_send_failure_still_closes_lease_when_failure_
                             session,
                             task_id=task_id,
                             task_root=runtime.paths.task_root,
-                            task_compose=task_compose_payload("minimal-implement-change"),
+                            task_compose=task_compose_payload("bounded-change"),
                             compiler_version="gateway-record-failure-cleanup",
                         )
                     await session.rollback()

@@ -9,7 +9,7 @@ AutoClaw authoring separates reusable definitions from one concrete launch. Role
 | Role | reusable performance instructions | behavior posture, evidence-reading habits, output style | one task's paths, secrets, launch details |
 | Policy | authority rules | node kind, budgets, capabilities, guardrails | specialist identity or node tree |
 | Workflow | reusable work structure | node tree, criteria, consumes, produces, routing intent | live runtime state |
-| Task-compose | one launch request | task instruction, selected workflow, optional root bindings | reusable doctrine |
+| Task-compose | one launch request | task instruction, selected workflow, optional `roots` path mapping | reusable doctrine |
 
 ## Roles
 
@@ -54,7 +54,7 @@ A workflow is not a runtime log. It does not own checkpoints, dispatch state, op
 
 ## Task-compose
 
-Task-compose names one concrete task, selects a workflow, gives task-specific instruction, and can bind roots such as `workspace` and `context`. If roots are omitted, AutoClaw uses task-owned defaults.
+Task-compose names one concrete task, selects a workflow, gives task-specific instruction, and can set a `roots` mapping for named paths such as `workspace` and `context`. If `roots` is omitted, AutoClaw uses task-owned defaults.
 
 Task-compose is intentionally separate from reusable definitions. It is the launch file passed to task start.
 

@@ -138,11 +138,11 @@ async def test_operator_mcp_exposes_runtime_support_and_definition_tools(
                 workflow_search = await call_tool_structured(
                     session,
                     "search_definitions",
-                    {"kind": "workflow", "query": "normal-parent-first-release", "limit": 5},
+                    {"kind": "workflow", "query": "reviewed-change-release", "limit": 5},
                 )
                 assert workflow_search["kind"] == "workflow"
                 assert any(
-                    item["key"] == "normal-parent-first-release"
+                    item["key"] == "reviewed-change-release"
                     for item in workflow_search["items"]
                 )
 
@@ -160,19 +160,19 @@ async def test_operator_mcp_exposes_runtime_support_and_definition_tools(
                 workflow_detail = await call_tool_structured(
                     session,
                     "get_definition",
-                    {"kind": "workflow", "key": "normal-parent-first-release"},
+                    {"kind": "workflow", "key": "reviewed-change-release"},
                 )
-                assert workflow_detail["key"] == "normal-parent-first-release"
-                assert workflow_detail["content"]["id"] == "normal-parent-first-release"
+                assert workflow_detail["key"] == "reviewed-change-release"
+                assert workflow_detail["content"]["id"] == "reviewed-change-release"
                 _assert_timestamp_has_timezone(str(workflow_detail["updated_at"]))
 
                 workflow_versions = await call_tool_structured(
                     session,
                     "list_definition_versions",
-                    {"kind": "workflow", "key": "normal-parent-first-release"},
+                    {"kind": "workflow", "key": "reviewed-change-release"},
                 )
                 assert workflow_versions["kind"] == "workflow"
-                assert workflow_versions["key"] == "normal-parent-first-release"
+                assert workflow_versions["key"] == "reviewed-change-release"
                 assert workflow_versions["current_revision_no"] >= 1
                 assert workflow_versions["items"]
                 _assert_timestamp_has_timezone(str(workflow_versions["items"][0]["updated_at"]))
@@ -198,7 +198,7 @@ def _write_role_definition(path: Path, description: str) -> None:
 def _write_task_compose(path: Path) -> None:
     path.write_text(
         yaml.safe_dump(
-            task_compose_payload("normal-parent-first-release").model_dump(mode="json"),
+            task_compose_payload("reviewed-change-release").model_dump(mode="json"),
             sort_keys=False,
         ),
         encoding="utf-8",
@@ -262,7 +262,7 @@ async def _assert_started_task(session: Any, task_compose_path: Path) -> None:
         {"task_id": started["task_id"]},
     )
     assert runtime["task_id"] == started["task_id"]
-    assert runtime["workflow_key"] == "normal-parent-first-release"
+    assert runtime["workflow_key"] == "reviewed-change-release"
 
 
 async def test_operator_mcp_uploads_definitions_and_starts_tasks(

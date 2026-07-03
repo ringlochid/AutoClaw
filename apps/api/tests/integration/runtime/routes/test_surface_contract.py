@@ -133,14 +133,14 @@ async def test_runtime_routes_surface_waiting_root_reads_after_yield(
 
         yielded = await yield_boundary(context, task)
         assert yielded.status_code == 200
-        assert yielded.json()["flow"]["current_node_key"] == "implementation_subtree"
+        assert yielded.json()["flow"]["current_node_key"] == "change_subtree"
 
         waiting_runtime_read = await context.client.get(
             f"/runtime/tasks/{task.task_id}",
             headers=context.operator_headers,
         )
         assert waiting_runtime_read.status_code == 200
-        assert waiting_runtime_read.json()["current_node_key"] == "implementation_subtree"
+        assert waiting_runtime_read.json()["current_node_key"] == "change_subtree"
 
         waiting_runtime_list = await context.client.get(
             "/runtime/tasks",
@@ -149,7 +149,7 @@ async def test_runtime_routes_surface_waiting_root_reads_after_yield(
         )
         assert waiting_runtime_list.status_code == 200
         assert (
-            waiting_runtime_list.json()["items"][0]["current_node_key"] == "implementation_subtree"
+            waiting_runtime_list.json()["items"][0]["current_node_key"] == "change_subtree"
         )
 
         await assert_waiting_operator_surfaces(context, task)
@@ -180,7 +180,7 @@ async def test_runtime_routes_surface_child_snapshot_and_trace_after_continue(
         )
         assert snapshot.status_code == 200
         snapshot_json = snapshot.json()
-        assert snapshot_json["flow"]["current_node_key"] == "implementation_subtree"
+        assert snapshot_json["flow"]["current_node_key"] == "change_subtree"
         assert snapshot_json["top_actionable_items"][0]["suggested_action"] is None
         assert (
             snapshot_json["top_actionable_items"][0]["current_paths"]
@@ -191,16 +191,16 @@ async def test_runtime_routes_surface_child_snapshot_and_trace_after_continue(
         trace = await context.client.get(
             f"/operator/tasks/{continued_task.task_id}/trace",
             headers=context.operator_headers,
-            params={"scope": "current", "q": "implementation_subtree", "limit": 1},
+            params={"scope": "current", "q": "change_subtree", "limit": 1},
         )
         assert trace.status_code == 200
         trace_json = trace.json()
         assert trace_json["scope"] == "current"
-        assert trace_json["dispatch_history"][0]["node_key"] == "implementation_subtree"
+        assert trace_json["dispatch_history"][0]["node_key"] == "change_subtree"
         assert trace_json["dispatch_history"][0]["delivery_status"] == "accepted"
         graph_nodes = {node["node_key"]: node for node in trace_json["graph_nodes"]}
-        assert "implementation_subtree" in graph_nodes["root"]["child_node_keys"]
-        assert graph_nodes["implementation_subtree"]["parent_node_key"] == "root"
+        assert "change_subtree" in graph_nodes["root"]["child_node_keys"]
+        assert graph_nodes["change_subtree"]["parent_node_key"] == "root"
         assert trace_json["dependency_edges"]
         assert all(
             edge["provider_node_key"] != edge["consumer_node_key"]

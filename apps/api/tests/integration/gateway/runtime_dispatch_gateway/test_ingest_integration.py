@@ -48,7 +48,7 @@ async def test_runtime_ingest_persists_distinct_unsequenced_provider_deltas(
                         session,
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
-                        task_compose=task_compose_payload("minimal-implement-change"),
+                        task_compose=task_compose_payload("bounded-change"),
                         compiler_version="gateway-unsequenced-provider-deltas",
                     )
 
@@ -277,7 +277,7 @@ async def test_boundary_timeout_cleanup_fences_root_dispatch_before_child_reopen
                             session,
                             task_id=task_id,
                             task_root=runtime.paths.task_root,
-                            task_compose=task_compose_payload("minimal-implement-change"),
+                            task_compose=task_compose_payload("bounded-change"),
                             compiler_version="gateway-terminal-ingest-fence",
                         )
                     async with runtime_api_context(runtime.paths.config_path) as api:

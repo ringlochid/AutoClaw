@@ -144,7 +144,7 @@ async def _assert_checkpoint_and_yield_after_recovery(
         await session.commit()
         assert checkpoint.attempt_id == replacement_dispatch.attempt_id
         assert yielded.accepted_boundary == EgressBoundary.YIELD
-        assert yielded.flow.current_node_key == "implementation_subtree"
+        assert yielded.flow.current_node_key == "change_subtree"
 
 
 @pytest.mark.asyncio
@@ -168,7 +168,7 @@ async def test_watchdog_preserves_valid_parent_staged_child_basis(
     ) as context:
         dispatch_id, staged_child_assignment_id = await _stage_parent_child_assignment(
             context,
-            child_node_key="implementation_subtree",
+            child_node_key="change_subtree",
         )
         stale_at = datetime.now(tz=UTC) - timedelta(seconds=5)
         await _seed_same_attempt_recovery_request(

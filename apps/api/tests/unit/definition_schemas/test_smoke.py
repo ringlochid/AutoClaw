@@ -4,22 +4,22 @@ import autoclaw.definitions.contracts as definition_schemas
 from autoclaw.definitions.contracts import WorkflowDefinitionFile
 
 from .support import (
-    minimal_workflow_payload,
+    bounded_workflow_payload,
     resolve_committed_seed_definitions_root,
     workflow_validation_context,
 )
 
 
-def test_minimal_workflow_fixture_validates_against_packaged_catalog() -> None:
+def test_bounded_workflow_fixture_validates_against_packaged_catalog() -> None:
     with resolve_committed_seed_definitions_root() as definitions_root:
         context = workflow_validation_context(definitions_root)
 
     validated = WorkflowDefinitionFile.model_validate(
-        {"kind": "workflow", **minimal_workflow_payload()},
+        {"kind": "workflow", **bounded_workflow_payload()},
         context=context,
     )
 
-    assert validated.id == "minimal-implement-change"
+    assert validated.id == "bounded-change"
     assert validated.root.id == "root"
     assert validated.root.children is not None
     assert [child.id for child in validated.root.children] == ["implement_change"]

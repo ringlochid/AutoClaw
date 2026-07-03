@@ -5,12 +5,12 @@ Use this example when the task should bind to a specific host path and create it
 ```yaml
 task:
     key: host-bound-review
-    title: Run a host-bound normal workflow
+    title: Run a host-bound reviewed workflow
     summary: Bind the task workspace to an explicit host path.
     instruction: >-
-      Run the normal workflow against a real host workspace and keep the task scoped to that path.
+      Run the reviewed-change workflow against a real host workspace and keep the task scoped to that path.
 workflow:
-    key: normal-parent-first-release
+    key: reviewed-change-release
 roots:
     workspace:
         mode: ensure_host_path

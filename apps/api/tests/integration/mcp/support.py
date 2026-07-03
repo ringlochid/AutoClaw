@@ -277,7 +277,7 @@ async def bootstrap_runtime_task(
     *,
     task_id: str,
     openclaw_gateway_test_server: Any,
-    workflow_key: str = "normal-parent-first-release",
+    workflow_key: str = "reviewed-change-release",
     workflow_definition: WorkflowDefinitionFile | None = None,
 ) -> tuple[Path, Path]:
     config_path = await prepare_runtime_db(tmp_path)

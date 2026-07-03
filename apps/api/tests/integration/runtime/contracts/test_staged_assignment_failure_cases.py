@@ -40,7 +40,7 @@ async def _prepare_paused_incomplete_staged_assignment(
         api.client,
         task_id=task_id,
         session_key=root_session_key,
-        child_node_key="implementation_subtree",
+        child_node_key="change_subtree",
         active_flow_revision_id=runtime_read["active_flow_revision_id"],
     )
     assert assign.status_code == 200
@@ -51,7 +51,7 @@ async def _prepare_paused_incomplete_staged_assignment(
         boundary_name="yield",
     )
     assert yielded.status_code == 200
-    assert yielded.json()["flow"]["current_node_key"] == "implementation_subtree"
+    assert yielded.json()["flow"]["current_node_key"] == "change_subtree"
     runtime_after_yield = await runtime_read_json(api.client, task_id)
     yielded_flow_revision_id = runtime_after_yield["active_flow_revision_id"]
 
@@ -116,7 +116,7 @@ async def test_parent_retry_boundary_maps_to_illegal_caller(
         config_path=config_path,
         task_id=task_id,
         task_root=task_root,
-        workflow_definition=load_workflow_definition("normal_parent_first_release"),
+        workflow_definition=load_workflow_definition("reviewed_change_release"),
         revision_no=7,
     )
 
@@ -154,7 +154,7 @@ async def test_continue_route_maps_incomplete_staged_child_assignment_to_illegal
         config_path=config_path,
         task_id=task_id,
         task_root=task_root,
-        workflow_definition=load_workflow_definition("normal_parent_first_release"),
+        workflow_definition=load_workflow_definition("reviewed_change_release"),
         revision_no=7,
     )
 
@@ -200,7 +200,7 @@ async def test_yield_maps_incomplete_staged_child_assignment_to_illegal_state(
         config_path=config_path,
         task_id=task_id,
         task_root=task_root,
-        workflow_definition=load_workflow_definition("normal_parent_first_release"),
+        workflow_definition=load_workflow_definition("reviewed_change_release"),
         revision_no=7,
     )
 
@@ -214,7 +214,7 @@ async def test_yield_maps_incomplete_staged_child_assignment_to_illegal_state(
             api.client,
             task_id=task_id,
             session_key=root_session_key,
-            child_node_key="implementation_subtree",
+            child_node_key="change_subtree",
             active_flow_revision_id=runtime_read["active_flow_revision_id"],
         )
         assert assign.status_code == 200

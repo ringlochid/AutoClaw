@@ -33,7 +33,7 @@ task:
     title: Harden auth refresh flow
     summary: Investigate and fix the auth refresh regression.
 workflow:
-    key: normal-parent-first-release
+    key: reviewed-change-release
 roots:
     workspace:
         mode: ensure_task_default
@@ -68,18 +68,20 @@ roots:
         host_path: string | required_for_host_modes
 ```
 
-`roots` may omit either authored root and accept the documented default.
+The task-compose `roots` field is a launch-time mapping of named path bindings. It is separate from the workflow `root` node.
+
+`roots` may omit either named path binding and accept the documented default.
 
 If `roots.workspace` is omitted, it defaults to `ensure_task_default`. If `roots.context` is omitted, it defaults to `ensure_task_default`.
 
-## Root-binding model
+## `roots` path-binding model
 
-Canonical authored roots are:
+Canonical user-authored path binding names are:
 
 - `workspace`
 - `context`
 
-Generated roots are not human-authored root bindings:
+Generated runtime directories are not human-authored `roots` bindings:
 
 - `outputs`
 - `tmp`
@@ -94,8 +96,8 @@ That record binds:
 - `workflow.key`
 - the current workflow revision chosen at start
 - the launch-time `compiled_plan_id`
-- `workspace` and `context` root placement
-- controller-owned generated-root placement under the task root
+- `workspace` and `context` path placement
+- controller-owned generated-directory placement under the task directory
 
 V1 rules:
 
@@ -133,7 +135,7 @@ task:
     instruction: >-
       Stay scoped to the auth refresh failure path and publish patch, verification, and closure evidence only through declared produce slots.
 workflow:
-    key: normal-parent-first-release
+    key: reviewed-change-release
 roots:
     workspace:
         mode: ensure_host_path
@@ -168,25 +170,25 @@ roots:
 - authored fields named `inputs`
 - authored fields named `context_refs`
 - authored fields named `notes`, `details`, `description`, or `constraints`
-- authored generated roots such as `outputs`, `tmp`, or `_runtime`
+- authored generated directories such as `outputs`, `tmp`, or `_runtime`
 - `host_path` on `ensure_task_default`
 - host-bound modes without `host_path`
 
-## Root creation rule
+## Path creation rule
 
-Controller-owned task roots are created idempotently only where the selected mode allows creation.
+Controller-owned task directories are created idempotently only where the selected mode allows creation.
 
 That means:
 
 - the canonical task folder always exists
-- generated roots always materialize under that task folder
-- `workspace` and `context` use `ensure_task_default` or `ensure_host_path` to create the bound root when needed
+- generated directories always materialize under that task folder
+- `workspace` and `context` use `ensure_task_default` or `ensure_host_path` to create the bound path when needed
 - `use_existing_host` never creates the path and rejects if it is missing
 - custom host placement is canonical only for `workspace` and `context`
 
-## Root host-path concurrency rule
+## Host-path concurrency rule
 
-- `ensure_task_default` roots are naturally concurrent because each task gets its own task folder
+- `ensure_task_default` bindings are naturally concurrent because each task gets its own task folder
 - concurrent live tasks must not share the same `workspace.host_path`
 - concurrent live tasks may share the same `context.host_path` when it is treated as read-mostly source/reference material
 - start rejects when a new live task attempts to bind a `workspace.host_path` already held by another live task
@@ -266,7 +268,7 @@ These projections must remain absent until their backing truth exists:
 - `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
 - `_runtime/dispatch/<dispatch_id>/provider-events.ndjson`
 
-`outputs/`, `tmp/`, and `_runtime/` are generated roots. Only `workspace` and `context` are user-authored root bindings in task compose.
+`outputs/`, `tmp/`, and `_runtime/` are generated directories. Only `workspace` and `context` are user-authored entries in the task-compose `roots` mapping.
 
 Projection rules:
 
@@ -353,5 +355,5 @@ After start succeeds, the fastest way to understand the live task is:
 - [Workflow schema appendix](workflow-schema-appendix.md)
 - [Prompt contract](../prompt-layer/contract.md)
 - [Compiler contract and launch materialization](compiler-contract-and-launch-materialization.md)
-- [Task compose root binding and host placement](../architecture/task-compose-root-binding-and-host-placement.md)
+- [Task compose path binding and host placement](../architecture/task-compose-root-binding-and-host-placement.md)
 - [API schema appendix](../interfaces/api-schema-appendix.md)

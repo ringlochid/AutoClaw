@@ -43,7 +43,7 @@ async def test_callback_http_accepts_explicit_session_key_query(
                 json={
                     "tool_name": "assign_child",
                     "payload": {
-                        "child_node_key": "implementation_subtree",
+                        "child_node_key": "change_subtree",
                         "assignment_intent": {
                             "summary": "Stage via explicit callback session_key query.",
                             "instruction": "Keep the callback lane explicit.",

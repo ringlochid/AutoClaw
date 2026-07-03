@@ -2,7 +2,7 @@
 
 Status: Target
 
-This page defines the canonical v1 task-root roots and what each root means.
+This page defines the canonical v1 task directory and materialized path bindings.
 
 ## Core rule
 
@@ -10,7 +10,7 @@ The task root is filesystem-first and path-first.
 
 Agents read and write local task-root files. Controller-generated runtime projections and monitoring files live under `_runtime/`. Surfaced refs are path-only in v1.
 
-## Canonical task roots
+## Canonical task-directory paths
 
 - `workspace/`
 - `context/`
@@ -18,9 +18,9 @@ Agents read and write local task-root files. Controller-generated runtime projec
 - `tmp/`
 - `_runtime/`
 
-`workspace/` and `context/` are the human-authored task roots.
+`workspace/` and `context/` are user-authored entries in the task-compose `roots` mapping.
 
-`outputs/`, `tmp/`, and `_runtime/` are controller-owned runtime roots.
+`outputs/`, `tmp/`, and `_runtime/` are controller-owned runtime directories.
 
 Trusted OpenClaw session-binding proof is not part of the task root. Callback authorization material remains transport/runtime-private and does not belong in surfaced task-root context.
 
@@ -94,7 +94,7 @@ V1 surfaced refs are path-only.
 
 Rules:
 
-- Runtime surfaces local task-root paths, not remote URLs, in assignments, checkpoints, manifests, artifact refs, and transient refs.
+- Runtime surfaces local task-directory paths, not remote URLs, in assignments, checkpoints, manifests, artifact refs, and transient refs.
 - If an external resource is needed, runtime must first localize or mirror it into `tmp/transfers/localized/` under the task root and then surface the localized `path`.
 - Runtime must not treat a host-bound `context/` root as the surfaced localization destination for imported external files.
 - Agents must not infer meaning from filenames alone. Durable surfaced refs should also carry descriptions from authored workflow metadata.

@@ -1,10 +1,10 @@
-# Run the current real minimal, normal, and maximal e2e workflow lanes
+# Run the current real bounded, reviewed, and staged e2e workflow lanes
 
 Status: Current
 
 Last verified: 2026-05-21
 
-This page describes the current manual operator runbook for exercising the shipped minimal, normal, and maximal workflow fixtures against a real local `autoclaw serve` process.
+This page describes the current manual operator runbook for exercising the shipped bounded, reviewed, and staged workflow fixtures against a real local `autoclaw serve` process.
 
 Use this page when you want a real current-service e2e check instead of an in-process pytest helper.
 
@@ -12,7 +12,7 @@ Use this page when you want a real current-service e2e check instead of an in-pr
 
 - start a fresh local service on the shipped CLI path
 - optionally upload or update definitions
-- start a real task run for the shipped minimal, normal, and maximal workflow fixtures
+- start a real task run for the shipped bounded, reviewed, and staged workflow fixtures
 - inspect runtime status, operator snapshot, operator trace, and observability refs
 - locate the current criteria files and decide whether the lane satisfied them
 
@@ -25,11 +25,11 @@ For the current bridge-facing callback and node-MCP surfaces, see [Use the curre
 
 ## Current lane keys
 
-| Lane    | Workflow key                   | Current proving goal                                                                     |
-| ------- | ------------------------------ | ---------------------------------------------------------------------------------------- |
-| minimal | `minimal-implement-change`     | one bounded implementation child plus parent or root release                             |
-| normal  | `normal-parent-first-release`  | parent-owned implementation subtree, parent-first verification, and bounded root closure |
-| maximal | `maximal-parent-first-release` | multiple subtrees, bounded review or QA aggregation, and final root release              |
+| Lane     | Workflow key                | Current proving goal                                                            |
+| -------- | --------------------------- | ------------------------------------------------------------------------------- |
+| bounded  | `bounded-change`            | one bounded implementation child plus root release                              |
+| reviewed | `reviewed-change-release`   | parent-owned change subtree, review, and bounded root closure                   |
+| staged   | `staged-delivery-release`   | discovery, delivery planning, implementation, review, QA, and final root release |
 
 These workflow keys are shipped seed fixtures.
 
@@ -77,7 +77,7 @@ curl -s "$API/readyz"
 
 ## Optional definition upload
 
-The shipped seed definitions are enough for the stock minimal, normal, and maximal lanes.
+The shipped seed definitions are enough for the stock bounded, reviewed, and staged lanes.
 
 Only upload definitions when you want to exercise definition ingest itself or override the current seed-backed truth before launch.
 
@@ -112,19 +112,19 @@ The current public task-start route is `POST /tasks/start`.
 
 It reuses the `TaskComposeInput` body and waits for initial runtime effects before returning.
 
-### Minimal
+### Bounded
 
 ```bash
-cat >/tmp/task-compose-minimal.json <<'JSON'
+cat >/tmp/task-compose-bounded.json <<'JSON'
 {
   "task": {
-    "key": "auth-refresh-hardening",
-    "title": "Harden auth refresh flow",
-    "summary": "Investigate and fix the auth refresh regression.",
-    "instruction": "Stay scoped to the auth refresh failure path only."
+    "key": "settings-loader-cleanup",
+    "title": "Clean up settings loader",
+    "summary": "Make one scoped settings-loader change and publish evidence.",
+    "instruction": "Stay scoped to the settings-loader path and publish patch plus verification evidence."
   },
   "workflow": {
-    "key": "minimal-implement-change"
+    "key": "bounded-change"
   }
 }
 JSON
@@ -133,23 +133,23 @@ curl -sS \
   -H "X-AutoClaw-API-Key: $API_KEY" \
   -H "Content-Type: application/json" \
   -X POST "$API/tasks/start" \
-  -d @/tmp/task-compose-minimal.json
+  -d @/tmp/task-compose-bounded.json
 ```
 
-### Normal
+### Reviewed
 
 Use the same payload and change only the workflow key:
 
 ```json
-"workflow": { "key": "normal-parent-first-release" }
+"workflow": { "key": "reviewed-change-release" }
 ```
 
-### Maximal
+### Staged
 
 Use the same payload and change only the workflow key:
 
 ```json
-"workflow": { "key": "maximal-parent-first-release" }
+"workflow": { "key": "staged-delivery-release" }
 ```
 
 ## Capture the current task id and manifest path
@@ -161,7 +161,7 @@ curl -sS \
   -H "X-AutoClaw-API-Key: $API_KEY" \
   -H "Content-Type: application/json" \
   -X POST "$API/tasks/start" \
-  -d @/tmp/task-compose-minimal.json \
+  -d @/tmp/task-compose-bounded.json \
   >/tmp/task-start.json
 
 TASK_ID="$(jq -r '.task_id' /tmp/task-start.json)"
@@ -217,22 +217,22 @@ Treat the observability `get_*_ref` lane as support-only reread. It returns file
 
 Expected node progression for the stock lanes:
 
-- minimal:
+- bounded:
     - `root`
     - `implement_change`
-- normal:
+- reviewed:
     - `root`
-    - `implementation_subtree`
-    - `investigate_issue`
+    - `change_subtree`
+    - `scope_change`
     - `implement_change`
     - `review_change`
     - `release_closure`
-- maximal:
+- staged:
     - `root`
     - `discovery`
     - `gather_evidence`
-    - `implementation_loop`
-    - `plan_iteration`
+    - `delivery_loop`
+    - `plan_delivery`
     - `implement_change`
     - `review_change`
     - `qa_sweep`
@@ -342,7 +342,7 @@ That page owns the current callback and mounted node-MCP write surfaces.
 - inspected current read-model docs in `../architecture/runtime-read-models-and-operator-surfaces.md`
 - inspected e2e fixtures in `apps/api/tests/helpers/seeded_runtime_support.py`
 - inspected e2e flows in:
-    - `apps/api/tests/e2e/workflows/minimal/minimal_runtime_lane_support.py`
-    - `apps/api/tests/e2e/workflows/normal/flow.py`
-    - `apps/api/tests/e2e/workflows/maximal/flow.py`
+    - `apps/api/tests/e2e/workflows/bounded/bounded_runtime_lane_support.py`
+    - `apps/api/tests/e2e/workflows/reviewed/flow.py`
+    - `apps/api/tests/e2e/workflows/staged/flow.py`
 - did not execute the commands documented on this page

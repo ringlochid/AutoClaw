@@ -81,13 +81,13 @@ async def test_runtime_routes_trace_boundary_queries(tmp_path: Path) -> None:
         boundary_history_entry = boundary_trace_json["boundary_history"][0]
         assert boundary_history_entry["boundary"] == "yield"
         assert boundary_history_entry["previous_node_key"] == "root"
-        assert boundary_history_entry["next_node_key"] == "implementation_subtree"
+        assert boundary_history_entry["next_node_key"] == "change_subtree"
         assert boundary_history_entry["next_attempt_id"] == assign_payload["target_attempt_id"]
         assert boundary_history_entry["resulting_flow_status"] == "running"
         assert boundary_history_entry["requires_reopen_after_inactivity"] is True
         graph_nodes = {node["node_key"]: node for node in boundary_trace_json["graph_nodes"]}
-        assert "implementation_subtree" in graph_nodes["root"]["child_node_keys"]
-        assert graph_nodes["implementation_subtree"]["parent_node_key"] == "root"
+        assert "change_subtree" in graph_nodes["root"]["child_node_keys"]
+        assert graph_nodes["change_subtree"]["parent_node_key"] == "root"
         assert boundary_trace_json["dependency_edges"]
         assert all(
             edge["provider_node_key"] != edge["consumer_node_key"]

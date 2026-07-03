@@ -108,7 +108,7 @@ Do not copy the whole role or policy instruction into the node. If many nodes ne
 
 ## Write task instructions as launch detail
 
-Task-compose is for one concrete run. It can mention the real target, accepted constraints, local roots, and user-request detail.
+Task-compose is for one concrete run. It can mention the real target, accepted constraints, `roots` path bindings, and user-request detail.
 
 Do not put reusable doctrine in task-compose. If the sentence should apply to many future tasks, move it into a role, policy, or workflow.
 

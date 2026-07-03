@@ -10,7 +10,7 @@ from tests.integration.public_surfaces.support import public_api_context
 async def test_definition_authoring_updates_existing_definition_draft(tmp_path: Path) -> None:
     async with public_api_context(tmp_path) as context:
         opened = await context.client.get(
-            "/authoring/definitions/workflow/minimal-implement-change/draft",
+            "/authoring/definitions/workflow/bounded-change/draft",
             headers=context.operator_headers,
         )
         assert opened.status_code == 200
@@ -24,7 +24,7 @@ async def test_definition_authoring_updates_existing_definition_draft(tmp_path: 
             "Revised workflow description from a flat draft.",
         )
         saved = await context.client.put(
-            "/authoring/definitions/workflow/minimal-implement-change/draft",
+            "/authoring/definitions/workflow/bounded-change/draft",
             headers=context.operator_headers,
             json={"body": edited_body, "body_format": "yaml"},
         )
@@ -38,17 +38,17 @@ async def test_definition_authoring_updates_existing_definition_draft(tmp_path: 
             headers=context.operator_headers,
         )
         assert listed.status_code == 200
-        assert listed.json()["items"][0]["key"] == "minimal-implement-change"
+        assert listed.json()["items"][0]["key"] == "bounded-change"
 
         validated = await context.client.post(
-            "/authoring/definitions/workflow/minimal-implement-change/draft/validate",
+            "/authoring/definitions/workflow/bounded-change/draft/validate",
             headers=context.operator_headers,
         )
         assert validated.status_code == 200
         assert validated.json()["status"] == "valid"
 
         published = await context.client.post(
-            "/authoring/definitions/workflow/minimal-implement-change/draft/publish",
+            "/authoring/definitions/workflow/bounded-change/draft/publish",
             headers=context.operator_headers,
         )
         assert published.status_code == 200
@@ -57,7 +57,7 @@ async def test_definition_authoring_updates_existing_definition_draft(tmp_path: 
         assert published_json["published_revision"]["kind"] == "workflow"
 
         detail = await context.client.get(
-            "/definitions/workflow/minimal-implement-change",
+            "/definitions/workflow/bounded-change",
             headers=context.operator_headers,
         )
         assert detail.status_code == 200

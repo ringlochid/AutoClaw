@@ -16,9 +16,9 @@ Usage:
   run_api_pytest_groups.sh list
   run_api_pytest_groups.sh integration
   run_api_pytest_groups.sh integration-local
-  run_api_pytest_groups.sh e2e-minimal
-  run_api_pytest_groups.sh e2e-normal
-  run_api_pytest_groups.sh e2e-maximal
+  run_api_pytest_groups.sh e2e-bounded
+  run_api_pytest_groups.sh e2e-reviewed
+  run_api_pytest_groups.sh e2e-staged
   run_api_pytest_groups.sh e2e-all
 EOF
 }
@@ -64,19 +64,23 @@ list_suite() {
       describe_group "watchdog" tests/integration/watchdog
       describe_group "public-surfaces" tests/integration/public_surfaces
       ;;
-    e2e-minimal)
-      describe_group "workflow-minimal" tests/e2e/workflows/minimal/test_minimal_runtime_lane.py
+    e2e-bounded)
+      describe_group "workflow-bounded" tests/e2e/workflows/bounded/test_bounded_change_lane.py
       ;;
-    e2e-normal)
-      describe_group "workflow-normal" tests/e2e/workflows/normal/test_normal_lane.py
+    e2e-reviewed)
+      describe_group \
+        "workflow-reviewed" \
+        tests/e2e/workflows/reviewed/test_reviewed_change_release_lane.py
       ;;
-    e2e-maximal)
-      describe_group "workflow-maximal" tests/e2e/workflows/maximal/test_maximal_lane.py
+    e2e-staged)
+      describe_group \
+        "workflow-staged" \
+        tests/e2e/workflows/staged/test_staged_delivery_release_lane.py
       ;;
     e2e-all)
-      list_suite e2e-minimal
-      list_suite e2e-normal
-      list_suite e2e-maximal
+      list_suite e2e-bounded
+      list_suite e2e-reviewed
+      list_suite e2e-staged
       ;;
     *)
       print_usage >&2
@@ -109,19 +113,23 @@ run_integration_groups() {
 run_e2e_suite() {
   suite="$1"
   case "$suite" in
-    e2e-minimal)
-      run_group "workflow-minimal" tests/e2e/workflows/minimal/test_minimal_runtime_lane.py
+    e2e-bounded)
+      run_group "workflow-bounded" tests/e2e/workflows/bounded/test_bounded_change_lane.py
       ;;
-    e2e-normal)
-      run_group "workflow-normal" tests/e2e/workflows/normal/test_normal_lane.py
+    e2e-reviewed)
+      run_group \
+        "workflow-reviewed" \
+        tests/e2e/workflows/reviewed/test_reviewed_change_release_lane.py
       ;;
-    e2e-maximal)
-      run_group "workflow-maximal" tests/e2e/workflows/maximal/test_maximal_lane.py
+    e2e-staged)
+      run_group \
+        "workflow-staged" \
+        tests/e2e/workflows/staged/test_staged_delivery_release_lane.py
       ;;
     e2e-all)
-      run_e2e_suite e2e-minimal
-      run_e2e_suite e2e-normal
-      run_e2e_suite e2e-maximal
+      run_e2e_suite e2e-bounded
+      run_e2e_suite e2e-reviewed
+      run_e2e_suite e2e-staged
       ;;
     *)
       print_usage >&2
@@ -146,7 +154,7 @@ main() {
     integration|integration-local)
       run_integration_groups
       ;;
-    e2e-minimal|e2e-normal|e2e-maximal|e2e-all)
+    e2e-bounded|e2e-reviewed|e2e-staged|e2e-all)
       run_e2e_suite "$1"
       ;;
     *)

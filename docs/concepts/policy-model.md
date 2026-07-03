@@ -35,7 +35,7 @@ There is no separate `leaf` policy value. A leaf is a `worker` node with no chil
 | Field | Valid on | What it controls | Suggested starting value |
 | --- | --- | --- | --- |
 | `retry_limit` | `worker` | additional attempts for the same worker assignment | `1` for ordinary work, `0` for no retry, `2` only when failure analysis is cheap |
-| `child_assignment_limit` | `root`, `parent` | child assignments opened by this assignment | `3` for small roots, `5-8` for moderate routing, higher only for batch parents |
+| `child_assignment_limit` | `root`, `parent` | child assignments opened by this assignment | `3` for small root nodes, `5-8` for moderate routing, higher only for batch parents |
 
 Rules:
 

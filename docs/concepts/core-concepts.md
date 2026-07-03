@@ -7,14 +7,14 @@ AutoClaw separates reusable design, one launch request, controller-owned runtime
 | Plane     | Owns                             | Example nouns                                                                              |
 | --------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
 | Authoring | reusable definitions             | role, policy, workflow, node, criteria, consumes, produces                                 |
-| Launch    | one concrete task request        | task-compose, task instruction, workspace root, context root                               |
+| Launch    | one concrete task request        | task-compose, task instruction, `roots` path mapping, workspace path, context path         |
 | Runtime   | controller-owned execution state | task, flow, assignment, attempt, dispatch, checkpoint, artifact, boundary, wait, replan    |
 | Operator  | trusted inspection and control   | snapshot, trace, human request resolution, command-run inspection, pause, continue, cancel |
 
 ## Launch concepts
 
 - **Workflow:** reusable node tree, routing rules, criteria, and evidence contract.
-- **Task-compose:** one launch request with task metadata, instruction, workflow key, and optional roots.
+- **Task-compose:** one launch request with task metadata, instruction, workflow key, and optional `roots` path mapping.
 - **Assignment:** controller-owned scope, instructions, and evidence requirements for an active node.
 - **Checkpoint:** controller-recorded progress or handoff record for one assignment attempt.
 - **Artifact:** durable output published into a workflow-declared slot.
@@ -45,7 +45,7 @@ Runtime nouns describe one launched task:
 - **Wait:** controller pause caused by a human request or command run.
 - **Replan:** controller-approved structural change to the active flow.
 
-Generated task-root files such as manifest, assignment, checkpoint, and artifacts are materialized projections over controller-owned runtime records. They make runtime truth readable; they do not replace controller truth.
+Generated task files such as manifest, assignment, checkpoint, and artifacts are materialized projections over controller-owned runtime records. They make runtime truth readable; they do not replace controller truth.
 
 ## Node kinds
 

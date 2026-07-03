@@ -64,11 +64,11 @@ def _assert_snapshot_plan_node_alignment(
     policy_revision_no: int,
 ) -> None:
     plan_nodes_by_key = {node.node_key: node for node in snapshot.compiled_plan.nodes}
-    implementation_plan_node = plan_nodes_by_key["implementation_subtree"]
+    implementation_plan_node = plan_nodes_by_key["change_subtree"]
     assert implementation_plan_node.role_revision_no == role_revision_no
     assert implementation_plan_node.policy_revision_no == policy_revision_no
     assert implementation_plan_node.parent_node_key == "root"
-    assert "implementation_subtree" in plan_nodes_by_key["root"].child_node_keys
+    assert "change_subtree" in plan_nodes_by_key["root"].child_node_keys
     assert snapshot.compiled_plan.dependency_edges
     first_plan_edge = snapshot.compiled_plan.dependency_edges[0]
     assert (
@@ -87,7 +87,7 @@ async def test_launch_snapshot_rejects_corrupt_stored_workflow_id(
     workflow_key = "corrupt-launch-snapshot-proof"
     async with initialized_registry(tmp_path) as session_factory:
         async with session_factory() as session:
-            workflow = await load_current_workflow(session, "minimal-implement-change")
+            workflow = await load_current_workflow(session, "bounded-change")
             cloned_workflow = workflow.definition.model_copy(update={"id": workflow_key})
             workflow_revision = await upsert_workflow_definition(
                 session,
@@ -158,17 +158,18 @@ async def test_launch_snapshot_ignores_corrupt_unused_current_policy_rows(
         async with session_factory() as session:
             snapshot = await compile_current_workflow_launch_snapshot(
                 session,
-                workflow_key="minimal-implement-change",
+                workflow_key="bounded-change",
                 compiler_version="referenced-only-proof",
             )
 
-            assert snapshot.compiled_plan.workflow_key == "minimal-implement-change"
+            assert snapshot.compiled_plan.workflow_key == "bounded-change"
             assert snapshot.role_policy_lookup.get_role("planning_lead") is not None
             assert snapshot.role_policy_lookup.get_role("engineer") is not None
+            assert snapshot.role_policy_lookup.get_policy("standard-root") is not None
             assert snapshot.role_policy_lookup.get_policy("standard-worker") is not None
             assert snapshot.role_policy_lookup.get_policy(unused_policy_key) is None
             assert {node.policy for node in snapshot.compiled_plan.nodes} == {
-                None,
+                "standard-root",
                 "standard-worker",
             }
 
@@ -198,14 +199,14 @@ async def test_launch_snapshot_pins_current_registry_workflow_role_and_policy_re
                 source_path="test://standard-parent-v2",
             )
 
-            workflow = await load_current_workflow(session, "normal-parent-first-release")
+            workflow = await load_current_workflow(session, "reviewed-change-release")
             updated_workflow = workflow.definition.model_copy(
                 update={"description": f"{workflow.definition.description} v2"}
             )
             workflow_revision = await upsert_workflow_definition(
                 session,
                 updated_workflow,
-                source_path="test://normal-parent-first-release-v2",
+                source_path="test://reviewed-change-release-v2",
             )
             await session.commit()
 
@@ -213,7 +214,7 @@ async def test_launch_snapshot_pins_current_registry_workflow_role_and_policy_re
             workflow_definition = await session.scalar(
                 select(WorkflowDefinitionModel)
                 .options(joinedload(WorkflowDefinitionModel.current_revision))
-                .where(WorkflowDefinitionModel.workflow_key == "normal-parent-first-release")
+                .where(WorkflowDefinitionModel.workflow_key == "reviewed-change-release")
             )
             role_definition = await session.scalar(
                 select(RoleDefinitionModel)
@@ -227,7 +228,7 @@ async def test_launch_snapshot_pins_current_registry_workflow_role_and_policy_re
             )
             snapshot = await compile_current_workflow_launch_snapshot(
                 session,
-                workflow_key="normal-parent-first-release",
+                workflow_key="reviewed-change-release",
                 compiler_version="registry-pin-proof",
             )
             lookup = await build_role_policy_lookup(session)

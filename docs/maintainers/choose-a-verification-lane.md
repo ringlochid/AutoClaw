@@ -51,9 +51,9 @@ make check-api
 make test-api-unit
 make test-api-integration
 make test-api-db
-make test-api-e2e-minimal
-make test-api-e2e-normal
-make test-api-e2e-maximal
+make test-api-e2e-bounded
+make test-api-e2e-reviewed
+make test-api-e2e-staged
 ```
 
 Do not claim full backend completion from `make check-api` alone.

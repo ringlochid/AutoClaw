@@ -104,15 +104,15 @@ def runtime_flow_read() -> RuntimeFlowRead:
         task_id="task_2026_0042",
         task_title="Schema contract task",
         task_summary="Schema contract runtime flow",
-        workflow_key="normal-parent-first-release",
+        workflow_key="reviewed-change-release",
         status=FlowStatus.RUNNING,
         active_flow_revision_id="flow-revision.task_2026_0042.01",
         workflow_manifest_ref=WorkflowManifestRef(
             path=Path("/tmp/task/_runtime/workflow-manifest.md"),
             description="Whole-workflow visible contract for the current task.",
         ),
-        current_node_key="implementation_subtree",
-        active_attempt_id="attempt.implementation_subtree.01",
+        current_node_key="change_subtree",
+        active_attempt_id="attempt.change_subtree.01",
         updated_at=datetime(2026, 5, 5, tzinfo=UTC),
     )
 

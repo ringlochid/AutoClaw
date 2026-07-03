@@ -20,7 +20,7 @@ from autoclaw.runtime import (
 )
 
 __all__ = [
-    "findings_report_path",
+    "change_scope_report_path",
     "investigation_checkpoint_path",
     "sample_manifest",
 ]
@@ -40,7 +40,7 @@ def sample_manifest(tmp_path: Path) -> ManifestProjection:
             instruction="Stay scoped to the auth refresh failure path only.",
         ),
         workflow=ManifestWorkflowProjection(
-            workflow_key="normal-parent-first-release",
+            workflow_key="reviewed-change-release",
             description="Execute one implementation subtree and close only after review.",
         ),
         filesystem_roots=ManifestFilesystemRootsProjection(
@@ -72,9 +72,9 @@ def sample_manifest(tmp_path: Path) -> ManifestProjection:
                 ),
                 EvidenceRef(
                     kind=EvidenceKind.ARTIFACT,
-                    slot="findings_report",
+                    slot="change_scope_report",
                     version=2,
-                    path=findings_report_path(tmp_path),
+                    path=change_scope_report_path(tmp_path),
                     description="Current findings for the scoped fix.",
                 ),
                 EvidenceRef(
@@ -95,20 +95,20 @@ def sample_manifest(tmp_path: Path) -> ManifestProjection:
     )
 
 
-def findings_report_path(tmp_path: Path) -> Path:
+def change_scope_report_path(tmp_path: Path) -> Path:
     return (
         tmp_path
         / "outputs"
         / "artifacts"
-        / "investigate_issue"
-        / "findings_report"
-        / "findings_report.v02.md"
+        / "scope_change"
+        / "change_scope_report"
+        / "change_scope_report.v02.md"
     )
 
 
 def investigation_checkpoint_path(tmp_path: Path) -> Path:
     return (
-        tmp_path / "_runtime" / "attempts" / "attempt.investigate_issue.02" / "latest-checkpoint.md"
+        tmp_path / "_runtime" / "attempts" / "attempt.scope_change.02" / "latest-checkpoint.md"
     )
 
 

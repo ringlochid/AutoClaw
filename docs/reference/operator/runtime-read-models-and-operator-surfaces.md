@@ -124,11 +124,11 @@ That fallback is limited to the task-scoped `/observability/...` file-ref routes
 
 Those observability support refs may therefore diverge from semantic currentness such as `current_node_key` or the next resumable attempt. They remain operator/readback aids only.
 
-These GET surfaces are pure rereads. They resolve task-root bindings, reference the current manifest/dispatch files if present, and do not `mkdir()` or rematerialize deleted projections inline.
+These GET surfaces are pure rereads. They resolve task-directory path bindings, reference the current manifest/dispatch files if present, and do not `mkdir()` or rematerialize deleted projections inline.
 
 ## Current read-model rule
 
-Read models are not runtime truth. They are assembled views over controller-owned runtime records and generated task-root projections.
+Read models are not runtime truth. They are assembled views over controller-owned runtime records and generated task-directory projections.
 
 That means:
 

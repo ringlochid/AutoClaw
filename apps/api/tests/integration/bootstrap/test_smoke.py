@@ -35,10 +35,10 @@ __all__ = [
 
 
 def test_task_compose_payload_smoke() -> None:
-    payload = task_compose_payload("minimal-implement-change")
+    payload = task_compose_payload("bounded-change")
 
-    assert payload.workflow.key == "minimal-implement-change"
-    assert payload.task.key == "auth-refresh-hardening"
+    assert payload.workflow.key == "bounded-change"
+    assert payload.task.key == "settings-loader-cleanup"
 
 
 @pytest.mark.asyncio

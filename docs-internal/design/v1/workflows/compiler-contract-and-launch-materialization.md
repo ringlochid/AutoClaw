@@ -117,7 +117,7 @@ Internal launch and materialization occur in this exact order:
 6. atomically commit:
     - `Task`
     - one immutable `TaskCompose`
-    - bound task roots
+    - `roots` path bindings
     - the initial active structural revision and runtime graph
     - the first generated current assignment
     - the first current attempt
@@ -135,7 +135,7 @@ The launch compiler stops at committed launch truth plus projections backed by t
 flowchart TD
     A["current workflow + role/policy revisions + task compose"] --> B["validate authored structure and compatibility"]
     B --> C["normalize immutable compiled plan"]
-    C --> D["commit Task, immutable TaskCompose, roots, graph, assignment, attempt"]
+    C --> D["commit Task, immutable TaskCompose, path bindings, graph, assignment, attempt"]
     D --> E["regenerate manifest, assignment, and opened-dispatch projections"]
     E --> F["return TaskStartResponse after projections are readable"]
 ```

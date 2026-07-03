@@ -88,7 +88,7 @@ Before success is returned, launch must have committed:
 
 - `Task`
 - one immutable `TaskCompose`
-- bound task roots
+- `roots` path bindings
 - one launch-time `CompiledPlan`
 - one initial active structural revision/runtime graph
 - first current `Assignment`

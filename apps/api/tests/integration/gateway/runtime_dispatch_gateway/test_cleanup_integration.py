@@ -96,7 +96,7 @@ async def test_launch_runtime_post_acceptance_persistence_failure_cleans_up_remo
                         session,
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
-                        task_compose=task_compose_payload("minimal-implement-change"),
+                        task_compose=task_compose_payload("bounded-change"),
                         compiler_version="gateway-post-acceptance-failure",
                     )
 
@@ -167,7 +167,7 @@ async def test_launch_runtime_post_acceptance_timeout_stays_ambiguous_and_blocks
                         session,
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
-                        task_compose=task_compose_payload("minimal-implement-change"),
+                        task_compose=task_compose_payload("bounded-change"),
                         compiler_version="gateway-post-acceptance-timeout",
                     )
 

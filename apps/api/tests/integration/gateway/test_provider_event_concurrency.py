@@ -71,7 +71,7 @@ async def test_concurrent_provider_event_appends_use_unique_monotonic_event_numb
                 session,
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
-                task_compose=task_compose_payload("minimal-implement-change"),
+                task_compose=task_compose_payload("bounded-change"),
                 compiler_version="gateway-provider-event-concurrency",
             )
             await session.commit()

@@ -10,7 +10,7 @@ from tests.helpers.runtime_support import (
     RuntimeApiContext,
     boundary,
     current_session_key_after_dispatch_progress_for_node,
-    drive_minimal_child_to_green,
+    drive_bounded_child_to_green,
     parent_tool,
     persist_bootstrap,
     prepare_runtime_db,
@@ -111,12 +111,12 @@ async def test_yield_after_release_green_maps_to_boundary_precondition_failed(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            workflow_definition=load_workflow_definition("bounded_change"),
             revision_no=7,
         )
 
         async with runtime_api_context(config_path) as api:
-            root_session_key, active_flow_revision_id = await drive_minimal_child_to_green(
+            root_session_key, active_flow_revision_id = await drive_bounded_child_to_green(
                 api,
                 task_id=task_id,
                 task_root=task_root,
@@ -163,7 +163,7 @@ async def test_worker_green_missing_required_publication_is_rejected_before_chec
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            workflow_definition=load_workflow_definition("bounded_change"),
             revision_no=7,
         )
 
@@ -199,7 +199,7 @@ async def test_worker_green_requires_current_artifact_file_not_pending_copy(
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            workflow_definition=load_workflow_definition("bounded_change"),
             revision_no=7,
         )
 

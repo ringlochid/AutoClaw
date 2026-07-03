@@ -1,8 +1,10 @@
 # Recover or replan a task
 
-Use recovery when runtime state needs operator action. Use replan when the current workflow shape no longer fits the work.
+Use this guide when you need to operate a task that stopped making useful progress, or when you are designing a workflow that may need structural recovery.
 
-## Start with inspection
+Recovery starts with runtime truth. Replan belongs in workflow instructions only when a parent or root node is allowed to change the running node tree.
+
+## Inspect first
 
 Before changing anything, inspect:
 
@@ -13,57 +15,114 @@ Before changing anything, inspect:
 - operator snapshot and trace
 - pending human requests or command runs
 
-Do not treat a quiet dispatch as proof that the task is stuck. Read controller state first.
+Do not treat a quiet dispatch as proof that the task is stuck. A task may be waiting on a controller-owned human request, command run, or provider handoff.
 
-## Retry when
+## Operator recovery
 
-- the assignment shape is still correct
-- the failure is recoverable
-- a new attempt can make progress with the same criteria and expected outputs
+Use operator recovery when the running task state needs human action:
 
-Retry is another attempt at the same shape.
+- resolve a pending human request
+- inspect or cancel a command run
+- pause, continue, or cancel a task
+- diagnose weak, missing, or contradictory evidence
+- decide whether a follow-up task or workflow change is needed
 
-## Replan when
+Do not recover by editing generated task files. Use the console, operator read surfaces, and task-control commands so controller state stays authoritative.
 
-- the current node tree is missing needed work
-- the dependency path is wrong
-- repeated failures show the assignment shape is wrong
-- a parent/root cannot honestly release or block with the current structure
+## Replan in workflow design
 
-Replan changes shape. It is not a substitute for ordinary retry.
+Mention replan in a workflow only when the node owns routing or closure judgment.
 
-Good replan triggers:
+Good places:
 
-- fixed workflow evidence shows a required step is missing
-- dynamic parent keeps assigning the same failing child shape
-- review or verification proves the current criteria are judging the wrong thing
-- intent mismatch appears between the user purpose and current node tree
-- a failure analyst identifies workflow-shape mismatch rather than weak execution
+- root node instruction for whole-task purpose mismatch
+- parent node instruction for subtree shape mismatch
+- failure-analysis worker instruction that asks for a replan recommendation
+- reviewer or verifier instruction that asks them to flag wrong criteria or missing stages
 
-## Block when
+Bad places:
 
-- required facts, permissions, tools, or external state are unavailable
-- the workflow cannot make honest progress from current evidence
-- retrying would repeat the same failure
+- ordinary worker instructions
+- fixed one-worker workflows with no alternate shape
+- generic role text shared by unrelated workers
+- filler such as "retry or replan if stuck"
 
-Blocked closure should have a terminal checkpoint explaining the evidence and blocker.
+Workers can report that the workflow shape is wrong. Parent and root nodes decide whether to change the structure.
 
-## Do not use recovery as design
+## Good replan triggers
 
-Recovery and replan are runtime controls. Good definitions should still include the expected ambiguity route:
+Use replan when current evidence shows the workflow shape is wrong:
 
-- workers surface material gaps
-- parents route weak evidence to focused children
-- roots compare whole-flow evidence with the original purpose
-- human requests handle human judgment
-- command runs handle long command work
+- required work is missing from the node tree
+- dependencies force work in the wrong order
+- review or verification criteria judge the wrong output
+- repeated child failures show assignment shape mismatch, not weak execution
+- user intent and the current node tree no longer match
+- a needed specialist, review step, or failure-analysis step is absent
 
-If the same recovery pattern happens often, update the workflow or policy so future runs reach the right route directly.
+Replan changes structure. It is not another attempt at the same assignment.
+
+## Do not replan for this
+
+Do not use replan when the current shape is still honest:
+
+- one worker failed because of a small fixable mistake
+- evidence is weak and needs review or verification
+- a human decision is missing
+- a long command is still running
+- a required external fact, permission, or tool is unavailable
+- the workflow should close as blocked from current evidence
+
+Use retry for another attempt at the same assignment shape. Use human request for human judgment. Use command-run capability for long command work. Use blocked closure when progress depends on unavailable external state.
+
+## Instruction patterns
+
+Good parent/root instruction:
+
+```yaml
+instruction: >-
+    Inspect child checkpoints, surfaced refs, criteria, and artifacts before
+    assigning the next child. If the current subtree cannot produce honest closure
+    evidence, use structural replan to add, update, or remove the smallest needed
+    child inside the owned subtree, then reread the manifest before assigning work.
+    Do not replan for weak execution when review, verification, or failure analysis
+    can answer the gap.
+```
+
+Good worker instruction:
+
+```yaml
+instruction: >-
+    Stay inside the current assignment. If the workflow shape appears wrong,
+    record the evidence and recommend the smallest replan; do not edit the node
+    tree yourself.
+```
+
+Bad instruction:
+
+```yaml
+instruction: >-
+    If anything goes wrong, retry, replan, or block.
+```
+
+That does not say who owns the decision, what evidence proves shape mismatch, or what smaller recovery path should be tried first.
+
+## Design checklist
+
+Before shipping a workflow that mentions replan, check:
+
+- only parent/root nodes are told to perform structural replan
+- workers are told to report or recommend, not mutate the node tree
+- criteria say what evidence can block release
+- failure-analysis or review nodes exist when repeated failure is likely
+- human request capability is used for human judgment, not workflow shape
+- command-run capability is used for long command work, not ordinary retry
+- blocked closure is reserved for unavailable facts, permissions, tools, or external state
 
 ## Related pages
 
-- [Runtime model](../concepts/runtime-model.md)
-- [Capability model](../concepts/capability-model.md)
-- [Design workflows and instructions](design-workflows-and-instructions.md)
-- [Handle ambiguity and incidents](handle-ambiguity-and-incidents.md)
 - [Inspect and control a task](inspect-and-control-a-task.md)
+- [Handle ambiguity and incidents](handle-ambiguity-and-incidents.md)
+- [Design workflows and instructions](design-workflows-and-instructions.md)
+- [Write a workflow](write-a-workflow.md)
+- [Runtime model](../concepts/runtime-model.md)

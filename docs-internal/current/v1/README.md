@@ -24,12 +24,12 @@ If you are asking:
 - "What happened to the old OpenClaw bridge strings?" -> [Current exact OpenClaw bridge prompt strings](interfaces/current-openclaw-bridge-prompt-strings.md)
 - "What YAML contracts ship today?" -> [Definition and task-compose YAML contract](interfaces/definition-and-task-compose-yaml-contract.md)
 - "How are current definitions compiled and launched?" -> [Definitions compiler and launch](interfaces/definitions-compiler-and-launch.md)
-- "How do I run real minimal, normal, and maximal e2e workflow lanes?" -> [Run real e2e workflow lanes](operations/run-real-e2e-workflow-lanes.md)
+- "How do I run real bounded, reviewed, and staged e2e workflow lanes?" -> [Run real e2e workflow lanes](operations/run-real-e2e-workflow-lanes.md)
 - "Where does current definition truth live?" -> [Definition registry and publish lifecycle](interfaces/definition-registry-and-publish-lifecycle.md)
 - "How does the current runtime control plane work?" -> [Runtime control plane](architecture/runtime-control-plane.md)
 - "What runtime/operator read surfaces exist today?" -> [Current runtime read models and operator surfaces](architecture/runtime-read-models-and-operator-surfaces.md)
 - "How does the current manifest projection work?" -> [Current workflow-manifest projection](architecture/manifest-projection-and-acknowledgement.md)
-- "How are current task roots laid out?" -> [Task roots and materialized paths](architecture/task-roots-and-materialized-paths.md)
+- "How are current task directories laid out?" -> [Task directories and materialized paths](architecture/task-roots-and-materialized-paths.md)
 - "How do I run the stronger DB-backed verification lane?" -> [Run Docker Postgres verification](operations/run-docker-postgres-verification.md)
 
 ## Surface map

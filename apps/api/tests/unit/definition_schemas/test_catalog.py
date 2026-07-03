@@ -115,11 +115,11 @@ def test_packaged_seed_tree_contains_expected_definition_files() -> None:
         "workflows/feature_implementation.yaml",
         "workflows/frontend_feature_slice.yaml",
         "workflows/idea_discovery.yaml",
-        "workflows/maximal_parent_first_release.yaml",
-        "workflows/minimal_implement_change.yaml",
+        "workflows/bounded_change.yaml",
         "workflows/marketing_campaign.yaml",
         "workflows/mvp_build.yaml",
-        "workflows/normal_parent_first_release.yaml",
+        "workflows/reviewed_change_release.yaml",
+        "workflows/staged_delivery_release.yaml",
         "workflows/delivery_batch.yaml",
         "workflows/planning_only.yaml",
         "workflows/project_management_delivery.yaml",
@@ -129,9 +129,9 @@ def test_packaged_seed_tree_contains_expected_definition_files() -> None:
 
 def test_reference_definition_pages_mirror_packaged_seed_definitions() -> None:
     workflow_page_stems_by_seed_stem = {
-        "maximal_parent_first_release": "maximal",
-        "minimal_implement_change": "minimal",
-        "normal_parent_first_release": "normal",
+        "bounded_change": "bounded-change",
+        "reviewed_change_release": "reviewed-change-release",
+        "staged_delivery_release": "staged-delivery-release",
     }
 
     with resolve_committed_seed_definitions_root() as definitions_root:

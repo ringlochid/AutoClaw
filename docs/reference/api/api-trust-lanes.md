@@ -20,7 +20,7 @@ Operator is defined by authority and allowed actions, not by embodiment alone. T
 
 ## User and operator roles
 
-- `user` supplies task intent, task root, or surrounding product inputs
+- `user` supplies task intent, task directory, or surrounding product inputs
 - `operator agent` starts tasks, inspects runtime state, resolves waits, and steers live runtime control through operator MCP or equivalent trusted operator tools
 - `human operator` uses UI surfaces to review state, make decisions, approve or reject actions, resolve waits, and request recovery
 
@@ -110,7 +110,7 @@ This lane is explicitly non-operator. It is scoped to the currently live dispatc
 
 The current implementation validates that the presented session key still matches live `NodeSession`, the live dispatch, and the persisted current assignment and attempt basis for that task before a callback write can commit. The callback route requires explicit `session_key` request input.
 
-Most callback writes now return only after controller truth commits and the owned task-root file surfaces are refreshed synchronously. That includes manifest, attempt, dispatch, artifact-pointer, and observability projections for the cases that expose or return those refs.
+Most callback writes now return only after controller truth commits and the owned generated task-file surfaces are refreshed synchronously. That includes manifest, attempt, dispatch, artifact-pointer, and observability projections for the cases that expose or return those refs.
 
 Structural callback tools are stricter. `add_child`, `update_child`, and `remove_child` stage stable-manifest rewrites for the selected task. `commit_runtime_session()` commits controller truth first and then applies the owned `_runtime/workflow-manifest.*` writes synchronously before route success, so tool success still means the taught reread path is already refreshed. If the commit fails, `rollback_runtime_session()` clears the staged writes and preserves the last committed stable manifest.
 
@@ -192,7 +192,7 @@ Current code does not ship the older flow, approval, or legacy registry route fa
 ## Mutation timing
 
 - runtime writes, checkpoint writes, boundary writes, callback writes, node-tool writes, definition uploads, definition draft publish writes, and task-start writes commit controller-owned rows first
-- the same request then applies the owned task-root file writes synchronously before returning when that route family owns those projections
+- the same request then applies the owned generated task-file writes synchronously before returning when that route family owns those projections
 - launch returns only after the stable root workflow-manifest, root attempt files, and opened-dispatch projections are readable
 - structural callback and node-tool writes return only after the stable manifest reread path is current
 - operator and observability GET routes do not recreate deleted projection files inline

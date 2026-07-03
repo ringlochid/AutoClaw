@@ -85,7 +85,7 @@ test("renders Definitions browse detail, versions, focus, and accessibility at d
     const editDraftLink = page.getByRole("link", { name: "Edit in draft" });
     const editDraftHref = await editDraftLink.getAttribute("href");
     expect(editDraftHref).toContain("kind=workflow");
-    expect(editDraftHref).toContain("key=maximal-parent-first-release");
+    expect(editDraftHref).toContain("key=staged-delivery-release");
 
     const revisionButton = page.getByRole("button", { name: "Revision 5" });
     await revisionButton.click();

@@ -29,10 +29,10 @@ sandbox:
 
 Rules:
 
-- the exact managed workspace root is the OpenClaw workspace lane under the operator's home directory rather than an arbitrary detached temp path
+- the exact managed workspace directory is the OpenClaw workspace lane under the operator's home directory rather than an arbitrary detached temp path
 - `sandbox.mode: off` is a real compatibility rule for the AutoClaw-managed OpenClaw provider lane
 - `tools.profile: full` plus `tools.exec.ask: off` is the operator-facing equivalent of the informal `YOLO mode` description, but the canonical contract should use the real field names
-- support docs should freeze the actual managed workspace root rather than paraphrasing it loosely as "some workdir under `~/`"
+- support docs should freeze the actual managed workspace directory rather than paraphrasing it loosely as "some workdir under `~/`"
 
 ## Gateway and setup ownership
 

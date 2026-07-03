@@ -88,7 +88,7 @@ Use each authored object for one kind of truth.
 | Role | reusable specialist lens and mode posture | one task's scope, paths, secrets, or launch detail |
 | Policy | authority, budgets, capabilities, retry and closure guardrails | role identity or node tree |
 | Workflow | node tree, evidence path, criteria, node missions, stable artifacts | hidden runtime state or live registry truth |
-| Task-compose | one concrete task launch, selected workflow, optional roots, task instruction | reusable doctrine |
+| Task-compose | one concrete task launch, selected workflow, optional `roots` path mapping, task instruction | reusable doctrine |
 
 The simple memory model:
 
@@ -167,7 +167,7 @@ Pilot goals:
 - checkpoints contain real progress and risk
 - artifacts are published where expected
 - the reviewer can decide from evidence without rereading the whole transcript
-- operator readbacks and task-root files explain the run
+- operator readbacks and generated task files explain the run
 
 Embed the pattern in a larger workflow after the pilot has clear assignment size, evidence path, and review behavior.
 
@@ -328,5 +328,5 @@ Check the definition set:
 - [Write a role](write-a-role.md)
 - [Write a policy](write-a-policy.md)
 - [Write a workflow](write-a-workflow.md)
-- [Use guide examples](examples/README.md)
+- [Definition reference examples](../reference/definitions/README.md)
 - [Inspect and control a task](inspect-and-control-a-task.md)

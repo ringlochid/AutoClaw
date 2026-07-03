@@ -55,7 +55,7 @@ async def test_live_materialization_localizes_external_surfaced_refs(
                 task_root=task_root,
                 compiler_version="bootstrap-live-localization",
                 task_compose=task_compose_payload(
-                    "minimal-implement-change",
+                    "bounded-change",
                     workspace={
                         "mode": "ensure_host_path",
                         "host_path": str(tmp_path / "custom-workspace"),
@@ -125,7 +125,7 @@ async def test_materialize_manifest_preserves_declaring_owner_for_inherited_crit
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
                 compiler_version="bootstrap-manifest-criteria-owner",
-                task_compose=task_compose_payload("normal-parent-first-release"),
+                task_compose=task_compose_payload("reviewed-change-release"),
             )
             manifest = await materialize_manifest(session, task_id)
 
@@ -139,9 +139,9 @@ async def test_materialize_manifest_preserves_declaring_owner_for_inherited_crit
         node for node in manifest_payload["node_tree"] if node["node_key"] == "review_change"
     )
 
-    assert review_change.criteria[0].slot == "implementation_subtree_requirements"
-    assert review_change.criteria[0].owner_node_key == "implementation_subtree"
-    assert review_change_payload["criteria"][0]["owner_node_key"] == "implementation_subtree"
+    assert review_change.criteria[0].slot == "change_subtree_requirements"
+    assert review_change.criteria[0].owner_node_key == "change_subtree"
+    assert review_change_payload["criteria"][0]["owner_node_key"] == "change_subtree"
 
 
 async def test_manifest_palette_skips_corrupt_unused_current_policy_rows(
@@ -157,7 +157,7 @@ async def test_manifest_palette_skips_corrupt_unused_current_policy_rows(
                 task_id=task_id,
                 task_root=runtime.paths.task_root,
                 compiler_version="bootstrap-manifest-policy-palette",
-                task_compose=task_compose_payload("minimal-implement-change"),
+                task_compose=task_compose_payload("bounded-change"),
             )
             policy_definition = await session.scalar(
                 select(PolicyDefinitionModel)
@@ -210,13 +210,13 @@ async def test_parent_dispatch_surfaces_current_child_artifact_refs_from_current
                 task_id=task_id,
                 task_root=task_root,
                 compiler_version="bootstrap-child-artifact-refs",
-                task_compose=task_compose_payload("normal-parent-first-release"),
+                task_compose=task_compose_payload("reviewed-change-release"),
             )
             state = await current_runtime_state(session, task_id)
             child_node = await require_flow_node_by_key(
                 session,
                 flow_revision_id=state.flow_revision.flow_revision_id,
-                node_key="implementation_subtree",
+                node_key="change_subtree",
             )
             artifact_path = await seed_child_artifact_publication(
                 session,
@@ -282,7 +282,7 @@ async def test_materialize_manifest_matches_open_dispatch_release_descendant_tru
                 task_id=task_id,
                 task_root=task_root,
                 compiler_version="bootstrap-stable-manifest-release-parity",
-                task_compose=task_compose_payload("normal-parent-first-release"),
+                task_compose=task_compose_payload("reviewed-change-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,
                     handoff=CheckpointHandoff(

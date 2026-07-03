@@ -1,15 +1,15 @@
 # Workspace model
 
-Task start resolves authored roots into real host paths. Explicit bindings are part of task-compose launch input, but roots are optional.
+Task start resolves the task-compose `roots` mapping into real host paths. This mapping is launch input and is separate from the workflow `root` node.
 
-## Root kinds
+## Named path bindings
 
-Current task-compose input can bind two authored roots:
+Current task-compose input can bind two named paths:
 
 - `workspace`
 - `context`
 
-If roots are omitted, AutoClaw uses task-owned default paths for both roots. Each explicit root can choose one of three modes:
+If `roots` is omitted, AutoClaw uses task-owned default paths for both names. Each explicit binding can choose one of three modes:
 
 - `ensure_task_default`
 - `ensure_host_path`
@@ -17,7 +17,7 @@ If roots are omitted, AutoClaw uses task-owned default paths for both roots. Eac
 
 ## What the modes mean
 
-- `ensure_task_default`: create the root inside the task-owned default path
+- `ensure_task_default`: create the named path inside the task-owned default path
 - `ensure_host_path`: use an explicit host path and create it if needed
 - `use_existing_host`: use an explicit host path and fail if it does not already exist
 
@@ -27,4 +27,4 @@ The workspace model decides whether the controller creates task-local directorie
 
 ## Next step
 
-See [write a task-compose file](../guides/write-a-task-compose.md) for concrete root binding examples.
+See [write a task-compose file](../guides/write-a-task-compose.md) for concrete `roots` mapping examples.

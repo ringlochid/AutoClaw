@@ -117,8 +117,8 @@ Current CLI uses a layered config, env, and flag model.
 
 Important current behaviors include:
 
-- config path can be overridden
-- `AUTOCLAW_CONFIG` can redirect config loading
+- config path can be overridden with `--config <path>` on shipped CLI commands
+- `AUTOCLAW_CONFIG` can redirect config loading in service, shell, and integration contexts
 - explicit CLI flags override config-derived values for the active command
 - SQLite path derives from the configured or default data dir
 - `AUTOCLAW_*` env vars override TOML config through the shared `autoclaw.config` settings loader

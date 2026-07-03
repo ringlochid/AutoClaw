@@ -75,7 +75,7 @@ async def test_pre_send_launch_failure_retries_after_backoff(
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-pre-send-launch-retry",
                 )
             await session.rollback()
@@ -173,7 +173,7 @@ async def test_pre_send_retry_failure_does_not_shadow_previous_boundary(
             await stage_child_yield(
                 api,
                 task_id=task_id,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
             )
             await drive_runtime_until(
                 lambda: _child_retry_dispatch_accepted(
@@ -226,7 +226,7 @@ async def test_post_send_no_run_id_ambiguity_does_not_blind_retry(
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-post-send-no-run-id-no-retry",
                 )
             await session.rollback()
@@ -284,7 +284,7 @@ async def _child_retry_dispatch_accepted(
 ) -> bool:
     dispatches = await _dispatches_for_task(session_factory, task_id=task_id)
     child_dispatches = [
-        dispatch for dispatch in dispatches if dispatch.node_key == "implementation_subtree"
+        dispatch for dispatch in dispatches if dispatch.node_key == "change_subtree"
     ]
     return any(
         dispatch.gateway_run_id is not None and dispatch.previous_dispatch_id == root_dispatch_id
@@ -329,13 +329,13 @@ def _assert_child_retry_reused_boundary(
     failed_child_dispatches = [
         dispatch
         for dispatch in dispatches
-        if dispatch.node_key == "implementation_subtree"
+        if dispatch.node_key == "change_subtree"
         and dispatch.delivery_status == "transport_failed"
     ]
     accepted_child_dispatches = [
         dispatch
         for dispatch in dispatches
-        if dispatch.node_key == "implementation_subtree" and dispatch.gateway_run_id is not None
+        if dispatch.node_key == "change_subtree" and dispatch.gateway_run_id is not None
     ]
     assert failed_agent_sends == 1
     assert len(failed_child_dispatches) == 1

@@ -48,7 +48,7 @@ async def release_green_and_return(
     )
 
 
-async def run_minimal_implement_return_root(
+async def run_bounded_implement_return_root(
     context: RuntimeDatabaseContext,
     *,
     task_id: str,
@@ -64,7 +64,7 @@ async def run_minimal_implement_return_root(
         assignment_summary="Implement the bounded change.",
         assignment_instruction="Publish the patch and verification evidence only.",
         outcome=CheckpointOutcome.GREEN,
-        handoff_summary="Minimal implementation completed.",
+        handoff_summary="Bounded implementation completed.",
         next_step="Root should verify the bounded change and close the flow.",
         artifacts=[
             (
@@ -240,28 +240,28 @@ async def stage_release_blocked_precondition(
         return root_dispatch_id
 
 
-async def test_minimal_root_closure_remains_readable(tmp_path: Path) -> None:
+async def test_bounded_root_closure_remains_readable(tmp_path: Path) -> None:
     async with runtime_database_context(tmp_path, task_root_name="task-root") as context:
         task_id = "task_2026_0045"
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="minimal-implement-change",
+            workflow_key="bounded-change",
             compiler_version="runtime-db",
         )
-        returned_root = await run_minimal_implement_return_root(
+        returned_root = await run_bounded_implement_return_root(
             context,
             task_id=task_id,
-            patch_path="workspace/minimal_change_patch.diff",
+            patch_path="workspace/bounded_change_patch.diff",
             patch_content="diff --git c d",
-            verification_path="workspace/minimal_verification_report.md",
-            verification_content="minimal verification ok",
+            verification_path="workspace/bounded_verification_report.md",
+            verification_content="bounded verification ok",
         )
         assert returned_root.current_node_key == "root"
         completed = await release_green_and_return(
             context,
             task_id=task_id,
-            summary="Root verified the minimal bounded evidence.",
+            summary="Root verified the bounded evidence.",
             next_step="Close the flow.",
         )
         async with context.session_factory() as session:
@@ -280,10 +280,10 @@ async def test_release_precondition_is_dispatch_local_not_continuation_state(
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="minimal-implement-change",
+            workflow_key="bounded-change",
             compiler_version="runtime-db",
         )
-        returned_root = await run_minimal_implement_return_root(
+        returned_root = await run_bounded_implement_return_root(
             context,
             task_id=task_id,
             patch_path="workspace/dispatch_local_patch.diff",
@@ -300,7 +300,7 @@ async def test_release_precondition_is_dispatch_local_not_continuation_state(
             context,
             task_id=task_id,
             outcome=CheckpointOutcome.GREEN,
-            summary="Root verified the minimal bounded evidence.",
+            summary="Root verified the bounded evidence.",
             next_step="Close the flow.",
         )
         async with context.session_factory() as session:

@@ -36,29 +36,29 @@ async def test_structural_replan_uses_relational_parent_child_authority(
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="normal-parent-first-release",
+            workflow_key="reviewed-change-release",
             compiler_version="runtime-relational-replan",
         )
         yielded = await yield_child_assignment(
             context,
             task_id=task_id,
-            child_node_key="implementation_subtree",
+            child_node_key="change_subtree",
             summary="Open the implementation subtree.",
             instruction="Dispatch only the implementation subtree.",
         )
-        assert yielded.current_node_key == "implementation_subtree"
+        assert yielded.current_node_key == "change_subtree"
         async with context.session_factory() as session:
             flow = await require_flow_model(session, task_id=task_id)
             assert flow.active_flow_revision_id is not None
             subtree_node = await require_flow_node(
                 session,
                 flow_revision_id=flow.active_flow_revision_id,
-                node_key="implementation_subtree",
+                node_key="change_subtree",
             )
             child_node = await require_flow_node(
                 session,
                 flow_revision_id=flow.active_flow_revision_id,
-                node_key="investigate_issue",
+                node_key="scope_change",
             )
             child_node.parent_node_key = "root"
             subtree_node.child_node_keys_json = ["shadow_only_child"]
@@ -75,14 +75,14 @@ async def test_structural_replan_uses_relational_parent_child_authority(
             updated_subtree_node = await require_flow_node(
                 session,
                 flow_revision_id=revision_id,
-                node_key="implementation_subtree",
+                node_key="change_subtree",
             )
             updated_child_node = await require_flow_node(
                 session,
                 flow_revision_id=revision_id,
                 node_key="implement_change",
             )
-            assert updated_child_node.parent_node_key == "implementation_subtree"
+            assert updated_child_node.parent_node_key == "change_subtree"
             assert "shadow_only_child" not in updated_subtree_node.child_node_keys_json
             relational_child_keys = list(
                 await session.scalars(
@@ -163,7 +163,7 @@ async def test_structural_replan_rebinds_child_assignment_budget_counter(
             assignment_summary="Implement the bounded change.",
             assignment_instruction="Publish the patch and verification evidence only.",
             outcome=CheckpointOutcome.GREEN,
-            handoff_summary="Minimal implementation completed.",
+            handoff_summary="Bounded implementation completed.",
             next_step="Return to root for structural refresh.",
             artifacts=[
                 (

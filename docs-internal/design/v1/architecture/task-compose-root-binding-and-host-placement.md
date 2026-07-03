@@ -1,12 +1,12 @@
-# Task compose root binding and host placement
+# Task compose path binding and host placement
 
 Status: Target
 
-This page defines the exact root-binding and host-placement semantics for v1 task compose.
+This page defines the exact task-compose `roots` mapping and host-placement semantics for v1 task compose.
 
-## Human-authored roots
+## User-authored path bindings
 
-Task compose may bind only:
+Task compose may bind only these `roots` mapping keys:
 
 - `workspace`
 - `context`
@@ -19,11 +19,11 @@ Each may use:
 
 Semantics:
 
-- `ensure_task_default` = controller-managed task-local authored root
+- `ensure_task_default` = controller-managed task-local path
 - `ensure_host_path` = create if missing at explicit host path
 - `use_existing_host` = fail if the explicit host path does not already exist
 
-When an authored root binding is omitted, the single default-root rule is owned by [task-compose-schema](../workflows/task-compose-schema.md).
+When an authored path binding is omitted, the single default rule is owned by [task-compose-schema](../workflows/task-compose-schema.md).
 
 ## Launch-bound placement facts
 
@@ -42,29 +42,29 @@ V1 rules:
 - runtime structural CRUD, retry, checkpoint writes, redispatch, monitoring updates, and durable publication do not mutate or supersede `TaskCompose`
 - no `TaskCompose` current/superseded family exists in v1
 
-## Generated roots
+## Generated directories
 
-The controller materializes these generated roots under the task folder:
+The controller materializes these generated directories under the task folder:
 
 - `outputs`
 - `tmp`
 - `_runtime`
 
-They are not human-authored root bindings.
+They are not human-authored `roots` bindings.
 
-## Exact generated-root meanings
+## Exact generated-directory meanings
 
 - `outputs/` controller-owned durable publication area, including `outputs/artifacts/`
 - `tmp/` controller-owned transient carryover area, including `tmp/transfers/`
 - `_runtime/` controller-owned runtime projections and monitoring surfaces
 
-These generated roots are deterministic consequences of task start and runtime evolution, not authored placement choices.
+These generated directories are deterministic consequences of task start and runtime evolution, not authored placement choices.
 
 ## Host-placement rule
 
-- Authored root binding controls where `workspace/` and `context/` live.
-- Generated roots are placed under the task root the controller owns for that task.
-- Generated roots are not rebound by runtime structural edits or retry.
+- Authored `roots` bindings control where `workspace/` and `context/` live.
+- Generated directories are placed under the task directory the controller owns for that task.
+- Generated directories are not rebound by runtime structural edits or retry.
 - Surfaced refs are path-only in v1.
 - If an external resource must be surfaced, runtime must localize it into `<task-root>/tmp/transfers/localized/` before surfacing it to agents.
 - Runtime must not reuse a host-bound `context/` path as the surfaced localization destination just because `context` was authored outside the task root.

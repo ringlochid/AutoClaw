@@ -13,7 +13,7 @@ TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_OPENCLA
 TEST_COMPOSE := COMPOSE_PROJECT_NAME=autoclaw-test-db $(TEST_COMPOSE_ENV) $(COMPOSE)
 TREE_IGNORE := .git|.venv|node_modules|dist|build|tmp|.pytest_cache|.mypy_cache|.ruff_cache|.coverage|coverage|htmlcov|__pycache__|*.egg-info|*.pyc
 
-.PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-minimal test-api-e2e-normal test-api-e2e-maximal docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api console-install console-dev console-format console-format-check console-lint console-typecheck console-openapi-generate console-openapi-check console-test console-test-integration console-e2e console-build console-package-assets check-console package-build install-user-service
+.PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-bounded test-api-e2e-reviewed test-api-e2e-staged docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api console-install console-dev console-format console-format-check console-lint console-typecheck console-openapi-generate console-openapi-check console-test console-test-integration console-e2e console-build console-package-assets check-console package-build install-user-service
 
 tree:
 	@tree -a -L 6 --dirsfirst --prune --gitignore -I '$(TREE_IGNORE)'
@@ -65,14 +65,14 @@ test-api-db:
 test-api-e2e: $(PYTHON)
 	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-all
 
-test-api-e2e-minimal: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-minimal
+test-api-e2e-bounded: $(PYTHON)
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-bounded
 
-test-api-e2e-normal: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-normal
+test-api-e2e-reviewed: $(PYTHON)
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-reviewed
 
-test-api-e2e-maximal: $(PYTHON)
-	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-maximal
+test-api-e2e-staged: $(PYTHON)
+	PYTEST_BIN=$(PYTEST) PYTHONPATH=$(CURDIR)/apps/api/src sh scripts/testing/run_api_pytest_groups.sh e2e-staged
 
 lint-api: $(PYTHON)
 	cd apps/api && $(RUFF) check .

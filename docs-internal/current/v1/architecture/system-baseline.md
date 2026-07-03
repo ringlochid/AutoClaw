@@ -12,7 +12,7 @@ AutoClaw currently owns:
 
 - workflow, role, policy, and skill registry records
 - compile-time workflow resolution
-- runtime truth for tasks, task roots, flows, revisions, nodes, attempts, checkpoints, approvals, replans, sessions, context items, and manifests
+- runtime truth for tasks, task directories, flows, revisions, nodes, attempts, checkpoints, approvals, replans, sessions, context items, and manifests
 - operator and API read models
 - packaged CLI, service-unit render/install, and bootstrap behavior
 

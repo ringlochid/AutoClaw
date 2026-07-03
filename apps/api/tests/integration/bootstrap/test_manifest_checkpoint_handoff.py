@@ -59,8 +59,8 @@ async def test_materialize_manifest_matches_open_dispatch_checkpoint_truth(
 ) -> None:
     task_id = "task_bootstrap_stable_manifest_checkpoint_parity"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
-    selected_child_attempt_id = f"attempt.{task_id}.implementation_subtree.00"
-    current_child_attempt_id = f"attempt.{task_id}.implementation_subtree.01"
+    selected_child_attempt_id = f"attempt.{task_id}.change_subtree.00"
+    current_child_attempt_id = f"attempt.{task_id}.change_subtree.01"
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
         task_root = runtime.paths.task_root
@@ -71,7 +71,7 @@ async def test_materialize_manifest_matches_open_dispatch_checkpoint_truth(
                 task_id=task_id,
                 task_root=task_root,
                 compiler_version="bootstrap-stable-manifest-checkpoint-parity",
-                task_compose=task_compose_payload("normal-parent-first-release"),
+                task_compose=task_compose_payload("reviewed-change-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,
                     handoff=CheckpointHandoff(
@@ -89,7 +89,7 @@ async def test_materialize_manifest_matches_open_dispatch_checkpoint_truth(
             child_node = await require_dispatch_flow_node(
                 session,
                 dispatch=case.dispatch,
-                node_key="implementation_subtree",
+                node_key="change_subtree",
             )
             selected_checkpoint_path, _ = await seed_controller_selected_checkpoint_pair(
                 session,
@@ -129,8 +129,8 @@ async def test_materialize_manifest_uses_controller_selected_checkpoint_without_
 ) -> None:
     task_id = "task_bootstrap_stable_manifest_selected_without_open_dispatch"
     dispatch_id = dispatch_id_for_task(task_id, "root", 1)
-    selected_child_attempt_id = f"attempt.{task_id}.implementation_subtree.selected"
-    current_child_attempt_id = f"attempt.{task_id}.implementation_subtree.current"
+    selected_child_attempt_id = f"attempt.{task_id}.change_subtree.selected"
+    current_child_attempt_id = f"attempt.{task_id}.change_subtree.current"
 
     async with runtime_bootstrap_context(tmp_path) as runtime:
         task_root = runtime.paths.task_root
@@ -141,7 +141,7 @@ async def test_materialize_manifest_uses_controller_selected_checkpoint_without_
                 task_id=task_id,
                 task_root=task_root,
                 compiler_version=("bootstrap-stable-manifest-selected-without-open-dispatch"),
-                task_compose=task_compose_payload("normal-parent-first-release"),
+                task_compose=task_compose_payload("reviewed-change-release"),
                 latest_checkpoint=CheckpointProjection(
                     checkpoint_kind=CheckpointKind.PROGRESS,
                     handoff=CheckpointHandoff(
@@ -156,7 +156,7 @@ async def test_materialize_manifest_uses_controller_selected_checkpoint_without_
             child_node = await require_dispatch_flow_node(
                 session,
                 dispatch=case.dispatch,
-                node_key="implementation_subtree",
+                node_key="change_subtree",
             )
             (
                 selected_checkpoint_path,

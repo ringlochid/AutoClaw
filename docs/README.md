@@ -8,11 +8,12 @@ AutoClaw is a local-first orchestration tool for delegated AI work. Use these do
 
 1. [Prepare OpenClaw first](start/prepare-openclaw.md)
 2. [Get started](start/getting-started.md)
-3. [Start a task](start/start-a-task.md)
-4. [Inspect a task](start/inspect-a-task.md)
-5. [Set up OpenClaw agents and operator skills](guides/set-up-openclaw-agents-and-skills.md)
-6. [Read the orchestration model](concepts/orchestration-model.md)
-7. [Design your first workflow](guides/design-workflows-and-instructions.md)
+3. [Check configuration and settings](start/configuration-and-settings.md)
+4. [Start a task](start/start-a-task.md)
+5. [Inspect a task](start/inspect-a-task.md)
+6. [Set up OpenClaw agents and operator skills](guides/set-up-openclaw-agents-and-skills.md)
+7. [Read the orchestration model](concepts/orchestration-model.md)
+8. [Design your first workflow](guides/design-workflows-and-instructions.md)
 
 ## Model
 
@@ -43,7 +44,7 @@ Use these guides when writing real definitions:
 - [Write a policy](guides/write-a-policy.md)
 - [Write a workflow](guides/write-a-workflow.md)
 - [Write a task-compose file](guides/write-a-task-compose.md)
-- [Use guide examples](guides/examples/README.md)
+- [Definition examples](reference/definitions/README.md)
 
 Use these guides to set up and operate the OpenClaw side:
 

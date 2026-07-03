@@ -1,10 +1,34 @@
 # Inspect a task
 
-After a task starts, inspect generated runtime files and operator read surfaces before reading logs or transcripts.
+After a task starts, inspect the console task detail page first. Use generated files and operator read surfaces when you need exact evidence or diagnostics.
 
-## Generated task-root surfaces
+## Console
 
-AutoClaw materializes these files under the task root:
+Find the port:
+
+```bash
+autoclaw config show --json
+```
+
+Open:
+
+```text
+http://127.0.0.1:<server.port>/tasks/<task_id>
+```
+
+The task detail page shows the current node, execution graph, and event stream. A successful first research task publishes the `research_brief` artifact from `workspace/research_brief.md`.
+
+## Task directory
+
+`autoclaw config show --json` also prints `paths.data_dir`. Per-task directories live under:
+
+```text
+<data_dir>/tasks/<task_id>/
+```
+
+## Generated task files
+
+AutoClaw materializes these files under the task directory:
 
 - `_runtime/workflow-manifest.md`
 - `_runtime/attempts/<attempt_id>/assignment.md`
@@ -30,7 +54,7 @@ Dispatch-local support files can help debug transport and recovery, but they are
 - `_runtime/dispatch/<dispatch_id>/continuity-state.json`
 - `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
 
-Use them after reading task-root evidence and operator readbacks.
+Use them after reading generated task evidence and operator readbacks.
 
 ## Operator read surfaces
 

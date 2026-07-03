@@ -27,7 +27,7 @@ async def test_public_definition_routes_require_operator_auth_and_validate_queri
         assert invalid_limit.json()["code"] == "invalid_request_shape"
 
         invalid_cursor = await context.client.get(
-            "/definitions/workflow/minimal-implement-change/versions",
+            "/definitions/workflow/bounded-change/versions",
             headers=context.operator_headers,
             params={"cursor": "bad-offset"},
         )
@@ -91,7 +91,7 @@ async def test_public_definition_routes_surface_current_detail_and_history(
 ) -> None:
     async with public_api_context(tmp_path) as context:
         async with context.session_factory() as session:
-            current = await load_current_workflow(session, "minimal-implement-change")
+            current = await load_current_workflow(session, "bounded-change")
             updated = current.definition.model_copy(
                 update={"description": f"{current.definition.description} v2"}
             )
@@ -103,19 +103,19 @@ async def test_public_definition_routes_surface_current_detail_and_history(
             await session.commit()
 
         detail = await context.client.get(
-            "/definitions/workflow/minimal-implement-change",
+            "/definitions/workflow/bounded-change",
             headers=context.operator_headers,
         )
         assert detail.status_code == 200
         detail_json = detail.json()
-        assert detail_json["key"] == "minimal-implement-change"
+        assert detail_json["key"] == "bounded-change"
         assert detail_json["revision_no"] == 2
         assert "recorded_by" in detail_json
         assert detail_json["recorded_by"] is None
         assert detail_json["content"]["description"].endswith("v2")
 
         history = await context.client.get(
-            "/definitions/workflow/minimal-implement-change/versions",
+            "/definitions/workflow/bounded-change/versions",
             headers=context.operator_headers,
             params={"sort": "revision_no_desc", "limit": 1},
         )
@@ -129,7 +129,7 @@ async def test_public_definition_routes_surface_current_detail_and_history(
         assert history_json["next_cursor"] == "1"
 
         second_page = await context.client.get(
-            "/definitions/workflow/minimal-implement-change/versions",
+            "/definitions/workflow/bounded-change/versions",
             headers=context.operator_headers,
             params={"sort": "revision_no_desc", "limit": 1, "cursor": "1"},
         )

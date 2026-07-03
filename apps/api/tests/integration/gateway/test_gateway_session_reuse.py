@@ -154,7 +154,7 @@ async def test_resolve_gateway_session_key_skips_parent_dispatch_outside_assignm
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-assignment-lineage-guard",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
@@ -214,7 +214,7 @@ async def test_resolve_gateway_session_key_falls_back_when_parent_continuity_is_
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-invalid-parent-continuity",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
@@ -273,7 +273,7 @@ async def test_resolve_gateway_session_key_ignores_missing_continuity_row(
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-missing-parent-continuity-basis",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
@@ -329,7 +329,7 @@ async def test_resolve_gateway_session_key_falls_back_when_newest_parent_continu
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-invalid-parent-continuity-chain",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
@@ -380,7 +380,7 @@ async def test_resolve_gateway_session_key_reuses_latest_lawful_parent_continuit
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-latest-lawful-parent-continuity",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
@@ -468,7 +468,7 @@ async def test_resolve_gateway_session_key_keeps_worker_dispatches_on_fresh_sess
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-worker-dispatch-fresh-session",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)
@@ -519,7 +519,7 @@ async def test_resolve_gateway_session_key_reuses_worker_session_after_external_
                     session,
                     task_id=task_id,
                     task_root=runtime.paths.task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="gateway-worker-external-wait-session",
                 )
                 snapshot = await load_latest_dispatch_snapshot(session, task_id=task_id)

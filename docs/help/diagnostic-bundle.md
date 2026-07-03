@@ -11,11 +11,12 @@ Collect:
 ```bash
 autoclaw --version
 autoclaw config path
+autoclaw config show --json
 autoclaw doctor --json
 autoclaw openclaw check --json
 ```
 
-If you include `autoclaw config show --json`, redact:
+`autoclaw config show --json` redacts known local secrets. Before sharing output, still check for:
 
 - `security.api_key`
 - `openclaw.gateway_token`
@@ -40,7 +41,7 @@ For a started task, collect:
 
 - task id
 - workflow key
-- task root path
+- task directory path
 - current runtime readback
 - operator snapshot
 - operator trace
@@ -87,7 +88,7 @@ curl -sS -H "X-AutoClaw-API-Key: <redacted>" \
   "http://127.0.0.1:18125/observability/tasks/<task_id>/watchdog-state"
 ```
 
-The returned paths point at local task-root files. Controller/runtime reads remain the authority when support files disagree.
+The returned paths point at generated task files. Controller/runtime reads remain the authority when support files disagree.
 
 ## Maintainer bundle
 

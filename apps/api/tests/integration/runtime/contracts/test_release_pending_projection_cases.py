@@ -46,7 +46,7 @@ async def test_release_green_rejects_missing_child_projections_when_current_file
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            workflow_definition=load_workflow_definition("bounded_change"),
             revision_no=1,
         )
 

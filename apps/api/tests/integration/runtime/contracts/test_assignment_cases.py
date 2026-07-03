@@ -119,7 +119,7 @@ async def test_launch_makes_root_manifest_and_assignment_readable_before_effect_
                     session,
                     task_id=task_id,
                     task_root=task_root,
-                    task_compose=task_compose_payload("minimal-implement-change"),
+                    task_compose=task_compose_payload("bounded-change"),
                     compiler_version="runtime-launch-readability",
                 )
 

@@ -26,6 +26,15 @@ autoclaw doctor
 autoclaw openclaw check
 ```
 
+Then read the resolved config and open the local console:
+
+```bash
+autoclaw config path
+autoclaw config show --json
+```
+
+Open `http://127.0.0.1:<server.port>/`. The default port is `18125`.
+
 This guide is written for the shipped Linux path. The fully supported v1 managed-service path is Linux with `systemd --user`, which covers common systemd user-service distros such as Ubuntu, Debian, Fedora, and Arch when Python 3.12 and the normal user-service environment are available.
 
 On macOS or Windows, use `autoclaw serve` as the foreground local-proof path. Native `launchd` and Windows Scheduled Task service parity are later work.
@@ -84,6 +93,8 @@ Compatibility checks run after the ports are chosen. Use `--port`, `--openclaw-g
 - `autoclaw onboard` is the guided first-run path
 - `autoclaw doctor` checks local AutoClaw state plus the AutoClaw-owned OpenClaw integration slice
 - `autoclaw openclaw check` verifies the OpenClaw side without writing
+- `autoclaw config path` prints the local `config.toml` path
+- `autoclaw config show --json` prints redacted effective settings, including `server.port` and `paths.data_dir`
 - `autoclaw service install` writes the Linux managed-service entry when it was not installed during onboarding
 - `autoclaw service start` starts the managed Linux user service after that service exists
 - `autoclaw serve` is the foreground fallback for host proof and debugging
@@ -92,7 +103,8 @@ Compatibility checks run after the ports are chosen. Use `--port`, `--openclaw-g
 
 After the install path is healthy:
 
-1. Run [start a task](start-a-task.md).
-2. Read the generated runtime-output map in [inspect a task](inspect-a-task.md).
-3. Install the operator skills in [set up OpenClaw agents and operator skills](../guides/set-up-openclaw-agents-and-skills.md).
-4. Use [install and start locally](../reference/cli/install-and-start-local.md) for the exact support boundary and the contributor/dev repo-checkout path.
+1. Check [configuration and settings](configuration-and-settings.md).
+2. Run [start a task](start-a-task.md).
+3. Read the generated runtime-output map in [inspect a task](inspect-a-task.md).
+4. Install the operator skills in [set up OpenClaw agents and operator skills](../guides/set-up-openclaw-agents-and-skills.md).
+5. Use [install and start locally](../reference/cli/install-and-start-local.md) for the exact support boundary and the contributor/dev repo-checkout path.

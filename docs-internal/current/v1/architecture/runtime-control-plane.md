@@ -23,7 +23,7 @@ The current authoritative runtime spine includes these controller-owned record f
 
 - task and compose rows
 - task resource bindings and manifest root rows
-- workspace root lease rows
+- workspace path lease rows
 - compiled-plan rows
 - flow, flow revision, flow node, and flow edge rows
 - assignment, attempt, checkpoint, consumed-ref, produced-ref, and criteria-ref rows

@@ -353,7 +353,7 @@ async def test_runtime_ingest_commits_provider_progress_from_current_openclaw_ev
                         session,
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
-                        task_compose=task_compose_payload("minimal-implement-change"),
+                        task_compose=task_compose_payload("bounded-change"),
                         compiler_version="gateway-current-openclaw-event-progress",
                     )
 
@@ -477,7 +477,7 @@ async def test_runtime_ingest_prunes_tool_events_that_do_not_refresh_provider_si
                         session,
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
-                        task_compose=task_compose_payload("minimal-implement-change"),
+                        task_compose=task_compose_payload("bounded-change"),
                         compiler_version="gateway-drops-tool-delta",
                     )
 
@@ -544,7 +544,7 @@ async def test_runtime_ingest_keeps_stale_replay_out_of_provider_freshness(
                         session,
                         task_id=task_id,
                         task_root=runtime.paths.task_root,
-                        task_compose=task_compose_payload("minimal-implement-change"),
+                        task_compose=task_compose_payload("bounded-change"),
                         compiler_version="gateway-stale-replay-no-freshness",
                     )
 

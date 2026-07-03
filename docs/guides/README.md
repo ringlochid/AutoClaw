@@ -13,9 +13,9 @@ Use guides for practical authoring and operator workflows.
 3. [Write a policy](write-a-policy.md)
 4. [Write a workflow](write-a-workflow.md)
 5. [Write a task-compose file](write-a-task-compose.md)
-6. [Use guide examples](examples/README.md)
+6. [Use definition reference examples](../reference/definitions/README.md)
 
-Start with the design guide when you are writing reusable definitions. Use the individual write guides when you already know which object you are authoring.
+Start with the design guide when you are writing reusable definitions. Use the individual write guides when you already know which object you are authoring. Use the definitions reference for exact copyable YAML.
 
 ## Runtime operation
 

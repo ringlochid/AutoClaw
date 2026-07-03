@@ -2,7 +2,7 @@
 
 Use this guide when a workflow must survive missing facts, unclear scope, contradictory evidence, unexpected failures, or intent mismatch.
 
-AutoClaw should not make every worker improvise. Workers surface uncertainty. Parents and roots route it through focused children, replan, human requests, or honest blocked closure.
+AutoClaw should not make every worker improvise. Workers surface uncertainty. Parent and root nodes route it through focused children, replan, human requests, or honest blocked closure.
 
 ## Classify the uncertainty
 
@@ -47,7 +47,7 @@ Workers can recommend the next shape. Parent/root nodes own the control action.
 
 ## Parent and root behavior
 
-Parents and roots are the routing layer.
+Parent and root nodes are the routing layer.
 
 Their instructions should say how to choose among:
 
@@ -122,7 +122,7 @@ Before saving a workflow that may hit ambiguity, check:
 
 - workers know what uncertainty to report
 - parents know how to route gaps
-- roots know when intent mismatch requires replan
+- root nodes know when intent mismatch requires replan
 - review and verification nodes treat unclear criteria as gaps
 - incident paths preserve evidence before retry
 - human request kinds match real decision points

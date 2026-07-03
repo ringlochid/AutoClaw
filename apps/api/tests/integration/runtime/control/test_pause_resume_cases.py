@@ -231,7 +231,7 @@ async def test_continue_rejects_yield_history_without_semantic_currentness(
             active_flow_revision_id = await stage_child_yield(
                 api,
                 task_id=task_id,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
             )
             paused = await pause_flow(
                 api.client,

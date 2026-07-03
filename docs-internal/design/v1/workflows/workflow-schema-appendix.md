@@ -205,9 +205,9 @@ Only after those checks pass may runtime adopt one new structural revision and r
 
 | Example                        | Main teaching purpose               | Key features                                                                                 |
 | ------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------------- |
-| [Minimal](examples/minimal.md) | smallest runnable authored flow     | one worker leaf, simple produce slot, root verification                                      |
-| [Normal](examples/normal.md)   | ordinary parent-review-release flow | parent subtree, root criteria, ordinary release child, consumes/produces only                |
-| [Maximal](examples/maximal.md) | richer staged flow                  | multiple parents, child defaults, typed consumes, ordinary reviewer, QA, and release workers |
+| [Bounded change](examples/bounded-change.md)                   | smallest runnable authored flow     | one worker leaf, simple produce slot, root verification                                      |
+| [Reviewed change release](examples/reviewed-change-release.md) | ordinary parent-review-release flow | parent subtree, root criteria, ordinary release child, consumes/produces only                |
+| [Staged delivery release](examples/staged-delivery-release.md) | richer staged flow                  | multiple parents, child defaults, typed consumes, ordinary reviewer, QA, and release workers |
 
 ## Related contracts
 

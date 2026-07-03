@@ -29,17 +29,17 @@ async def start_parent_worker_flow(context: RuntimeDatabaseContext) -> None:
     await launch_runtime_case(
         context,
         task_id=task_id,
-        workflow_key="normal-parent-first-release",
+        workflow_key="reviewed-change-release",
         compiler_version="runtime-db",
     )
     yielded = await yield_child_assignment(
         context,
         task_id=task_id,
-        child_node_key="implementation_subtree",
+        child_node_key="change_subtree",
         summary="Start the implementation subtree.",
         instruction="Stage the current implementation subtree only.",
     )
-    assert yielded.current_node_key == "implementation_subtree"
+    assert yielded.current_node_key == "change_subtree"
 
 
 async def run_subtree_child_outcome(
@@ -67,7 +67,7 @@ async def run_subtree_child_outcome(
         next_step=next_step,
         artifacts=artifacts,
     )
-    assert returned.current_node_key == "implementation_subtree"
+    assert returned.current_node_key == "change_subtree"
     return returned
 
 
@@ -118,17 +118,17 @@ async def assert_root_requires_release_closure(
 async def run_investigation_step(context: RuntimeDatabaseContext) -> None:
     await run_subtree_child_outcome(
         context,
-        child_node_key="investigate_issue",
-        assignment_summary="Investigate the auth refresh regression.",
+        child_node_key="scope_change",
+        assignment_summary="Investigate the settings-loader cleanup.",
         assignment_instruction="Publish only the current findings report.",
         handoff_summary="Investigation completed.",
         next_step="Parent should review the findings.",
         artifacts=[
             (
-                "findings_report",
+                "change_scope_report",
                 write_task_file(
                     context.paths.task_root,
-                    "workspace/findings_report.md",
+                    "workspace/change_scope_report.md",
                     "bounded findings",
                 ),
             )
@@ -138,8 +138,8 @@ async def run_investigation_step(context: RuntimeDatabaseContext) -> None:
         context.paths.task_root
         / "outputs"
         / "artifacts"
-        / "investigate_issue"
-        / "findings_report"
+        / "scope_change"
+        / "change_scope_report"
         / "current.json"
     ).is_file()
 
@@ -148,7 +148,7 @@ async def run_implementation_step(context: RuntimeDatabaseContext) -> None:
     await run_subtree_child_outcome(
         context,
         child_node_key="implement_change",
-        assignment_summary="Implement the scoped auth-refresh fix.",
+        assignment_summary="Implement the scoped settings-loader change.",
         assignment_instruction="Publish only the patch and verification report.",
         handoff_summary="Implementation completed.",
         next_step="Parent should review the current patch and verification evidence.",

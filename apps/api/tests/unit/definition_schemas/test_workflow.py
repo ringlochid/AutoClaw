@@ -7,7 +7,7 @@ import pytest
 from autoclaw.definitions.contracts import WorkflowDefinitionFile, WorkflowNodeInput
 from pydantic import ValidationError
 
-from .support import minimal_workflow_payload
+from .support import bounded_workflow_payload
 
 
 @pytest.mark.parametrize(
@@ -22,7 +22,7 @@ def test_workflow_schema_rejects_removed_top_level_fields(
     field_name: str,
     field_value: Any,
 ) -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload[field_name] = field_value
 
     with pytest.raises(ValidationError, match=field_name):
@@ -30,7 +30,7 @@ def test_workflow_schema_rejects_removed_top_level_fields(
 
 
 def test_workflow_schema_rejects_root_consumes() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["consumes"] = {"artifacts": [{"slot": "change_patch"}]}
 
     with pytest.raises(ValidationError, match="consumes"):
@@ -38,7 +38,7 @@ def test_workflow_schema_rejects_root_consumes() -> None:
 
 
 def test_workflow_schema_rejects_duplicate_node_ids() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["children"].append(
         {
             "id": "implement_change",
@@ -52,7 +52,7 @@ def test_workflow_schema_rejects_duplicate_node_ids() -> None:
 
 
 def test_workflow_schema_rejects_duplicate_artifact_slots() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["children"].append(
         {
             "id": "review_change",
@@ -74,7 +74,7 @@ def test_workflow_schema_rejects_duplicate_artifact_slots() -> None:
 
 
 def test_workflow_schema_rejects_duplicate_criteria_slots() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["children"][0]["criteria"].append(
         {
             "slot": "implementation_rules",
@@ -88,7 +88,7 @@ def test_workflow_schema_rejects_duplicate_criteria_slots() -> None:
 
 
 def test_workflow_schema_rejects_missing_consume_selector_targets_even_when_optional() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["children"][0]["consumes"] = {
         "artifacts": [{"slot": "findings_report", "required": False}],
         "criteria": [{"slot": "missing_criteria", "required": False}],
@@ -99,7 +99,7 @@ def test_workflow_schema_rejects_missing_consume_selector_targets_even_when_opti
 
 
 def test_workflow_schema_rejects_illegal_child_default_criteria_references() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["child_defaults"] = {"criteria": ["missing_root_rule"]}
 
     with pytest.raises(ValidationError, match=r"child_defaults\.criteria"):
@@ -107,7 +107,7 @@ def test_workflow_schema_rejects_illegal_child_default_criteria_references() -> 
 
 
 def test_child_defaults_consumes_participate_in_dependency_validation() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["children"].append(
         {
             "id": "review_change",
@@ -122,7 +122,7 @@ def test_child_defaults_consumes_participate_in_dependency_validation() -> None:
 
 
 def test_workflow_schema_rejects_cyclic_dependency_graph() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["children"] = [
         {
             "id": "first_child",
@@ -159,7 +159,7 @@ def test_workflow_schema_rejects_cyclic_dependency_graph() -> None:
 
 
 def test_removed_fields_are_rejected_on_nested_nodes() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     nested_child = deepcopy(payload["root"]["children"][0])
     nested_child["skill_refs"] = ["legacy-child-skill"]
     payload["root"]["children"][0] = nested_child
@@ -169,7 +169,7 @@ def test_removed_fields_are_rejected_on_nested_nodes() -> None:
 
 
 def test_removed_skill_refs_are_rejected_on_root_node() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["skill_refs"] = ["legacy-root-skill"]
 
     with pytest.raises(ValidationError, match="skill_refs"):
@@ -177,7 +177,7 @@ def test_removed_skill_refs_are_rejected_on_root_node() -> None:
 
 
 def test_workflow_nodes_accept_portable_provider_preference() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["provider_preference"] = "codex"
     payload["root"]["children"][0]["provider_preference"] = "openclaw"
 
@@ -189,7 +189,7 @@ def test_workflow_nodes_accept_portable_provider_preference() -> None:
 
 
 def test_workflow_nodes_accept_authored_node_instruction() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["instruction"] = "Coordinate the current task lineage."
     payload["root"]["children"][0]["instruction"] = "Patch only the bounded slice."
 
@@ -201,7 +201,7 @@ def test_workflow_nodes_accept_authored_node_instruction() -> None:
 
 
 def test_workflow_nodes_reject_unknown_provider_preference() -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["children"][0]["provider_preference"] = "local-shell"
 
     with pytest.raises(ValidationError, match="provider_preference"):
@@ -220,7 +220,7 @@ def test_workflow_nodes_reject_provider_local_configuration(
     field_name: str,
     field_value: Any,
 ) -> None:
-    payload = minimal_workflow_payload()
+    payload = bounded_workflow_payload()
     payload["root"]["children"][0][field_name] = field_value
 
     with pytest.raises(ValidationError, match=field_name):

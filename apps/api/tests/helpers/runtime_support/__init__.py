@@ -23,7 +23,7 @@ from .bootstrap_support import (
     runtime_bootstrap_paths,
 )
 from .child_dispatch_support import (
-    drive_minimal_child_to_green,
+    drive_bounded_child_to_green,
     retry_terminal_green_checkpoint,
     stage_child_dispatch,
     write_workspace_file,
@@ -74,7 +74,7 @@ __all__ = [
     "current_session_key",
     "current_session_key_after_dispatch_progress",
     "current_session_key_after_dispatch_progress_for_node",
-    "drive_minimal_child_to_green",
+    "drive_bounded_child_to_green",
     "ensure_runtime_init_template",
     "initialize_runtime_from_template",
     "live_node_session_key_for_dispatch",

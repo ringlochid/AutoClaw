@@ -17,7 +17,7 @@ Read [orchestration model](orchestration-model.md) before memorizing runtime nou
 | Concept | Definition | Why it matters |
 | --- | --- | --- |
 | Workflow | reusable node tree, routing, criteria, and evidence contract | gives the task shape and closure requirements |
-| Task-compose | one launch request | binds the workflow to the task instruction and optional roots |
+| Task-compose | one launch request | binds the workflow to the task instruction and optional `roots` path mapping |
 | Assignment | controller-owned scope, instructions, and evidence requirements for the active node | keeps delegation explicit |
 | Checkpoint | controller-recorded progress or handoff for one assignment attempt | lets another node or operator inspect current evidence |
 | Artifact | durable output published into a declared slot | gives later nodes and operators a stable output to consume |

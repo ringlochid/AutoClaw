@@ -53,7 +53,7 @@ def build_sample_manifest(
             instruction="Stay scoped to the auth refresh failure path only.",
         ),
         workflow=ManifestWorkflowProjection(
-            workflow_key="normal-parent-first-release",
+            workflow_key="reviewed-change-release",
             description="Execute one implementation subtree and close only after review.",
         ),
         filesystem_roots=ManifestFilesystemRootsProjection(

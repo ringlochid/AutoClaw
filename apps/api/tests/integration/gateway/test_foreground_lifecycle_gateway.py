@@ -210,7 +210,7 @@ async def test_gateway_wait_timeout_transitions_boundary_dispatch_to_abort_reque
             await stage_child_yield(
                 api,
                 task_id=task_id,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
             )
             await stop_runtime_effect_runner()
             async with api.session_factory() as session:
@@ -235,7 +235,7 @@ async def test_gateway_wait_timeout_transitions_boundary_dispatch_to_abort_reque
                 )
                 assert flow is not None
                 assert dispatch is not None
-                assert flow.current_node_key == "implementation_subtree"
+                assert flow.current_node_key == "change_subtree"
                 if initial_control_state == "live":
                     assert dispatch.control_state == "abort_requested"
                     assert dispatch.control_state_reason == "boundary:yield:abort_requested"
@@ -394,7 +394,7 @@ async def test_parent_redispatch_reuses_gateway_session_after_worker_green(
             task_id=task_id,
             task_root=task_root,
             compiler_version="gateway-parent-same-session-redispatch",
-            workflow_key="minimal-implement-change",
+            workflow_key="bounded-change",
         )
 
         async with runtime_api_context(config_path) as api:

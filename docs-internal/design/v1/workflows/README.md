@@ -18,7 +18,7 @@ If you are asking:
 - "How does runtime local replan work?" -> [Runtime structural replan](runtime-structural-replan.md)
 - "Where is exhaustive authored-shape, patch, and example coverage?" -> [Workflow schema appendix](workflow-schema-appendix.md)
 - "What replaces current `skill_refs`?" -> [Workflow definition schema](workflow-definition-schema.md), [Typed dependency selectors and produce slots](typed-dependency-selectors-and-produce-slots.md), and [Plugin tool reference](../interfaces/plugin-tool-reference.md)
-- "Which example should I read?" -> [Minimal example](examples/minimal.md), [Normal example](examples/normal.md), or [Maximal example](examples/maximal.md)
+- "Which example should I read?" -> [Bounded change example](examples/bounded-change.md), [Reviewed change release example](examples/reviewed-change-release.md), or [Staged delivery release example](examples/staged-delivery-release.md)
 
 ## Start here
 
@@ -32,9 +32,9 @@ If you are asking:
 - [Criteria projection and consumption example](criteria-projection-and-consumption-example.md)
 - [Parent/root release and closure](parent-root-release-and-closure.md)
 - [Runtime structural replan](runtime-structural-replan.md)
-- [Minimal example](examples/minimal.md) for the smallest teaching subgraph
-- [Normal example](examples/normal.md) for the smallest workflow with ordinary release work
-- [Maximal example](examples/maximal.md) for the richest staged reference flow
+- [Bounded change example](examples/bounded-change.md) for the smallest teaching subgraph
+- [Reviewed change release example](examples/reviewed-change-release.md) for the smallest workflow with ordinary release work
+- [Staged delivery release example](examples/staged-delivery-release.md) for the richest staged reference flow
 
 ## Supplemental orientation
 

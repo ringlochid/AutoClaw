@@ -4,7 +4,7 @@ Status: Target
 
 This walkthrough shows the detailed staged flow from launch to final closure under the live runtime model.
 
-It mirrors the canonical authored and runtime shapes in `../workflows/examples/maximal.md`.
+It mirrors the canonical authored and runtime shapes in `../workflows/examples/staged-delivery-release.md`.
 
 ```mermaid
 flowchart TD

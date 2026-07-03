@@ -71,6 +71,6 @@ def test_packaged_seed_definitions_are_available() -> None:
     assert definitions_root.joinpath("policies").joinpath("standard_worker.yaml").is_file()
     assert (
         definitions_root.joinpath("workflows")
-        .joinpath("normal_parent_first_release.yaml")
+        .joinpath("reviewed_change_release.yaml")
         .is_file()
     )

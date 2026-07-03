@@ -11,15 +11,17 @@ This is an AutoClaw usage skill. It is not for developing AutoClaw internals.
 
 ## Source Order
 
-Use the current AutoClaw docs when available:
+Use the public AutoClaw docs from `https://github.com/ringlochid/AutoClaw` as the stable source. When the agent is inside a matching checkout, local docs are equivalent and faster.
 
-1. docs/guides/design-workflows-and-instructions.md
-2. docs/guides/write-layered-instructions.md
-3. docs/guides/write-a-role.md
-4. docs/guides/write-a-policy.md
-5. docs/guides/write-a-workflow.md
-6. docs/guides/write-a-task-compose.md
-7. docs/reference/definitions/**
+Read only the pages needed for the current definition:
+
+1. `docs/guides/design-workflows-and-instructions.md`
+2. `docs/guides/write-layered-instructions.md`
+3. `docs/guides/write-a-role.md`
+4. `docs/guides/write-a-policy.md`
+5. `docs/guides/write-a-workflow.md`
+6. `docs/guides/write-a-task-compose.md`
+7. `docs/reference/definitions/**`
 8. operator MCP registry reads when live controller truth matters
 
 Treat shipped definitions as examples, not a closed menu.
@@ -44,11 +46,11 @@ Layer split:
 ## Authoring Flow
 
 1. State the job in one sentence.
-2. Identify closure evidence, non-goals, human decisions, long command needs, and root bindings.
+2. Identify closure evidence, non-goals, human decisions, long command needs, and `roots` path bindings.
 3. Reuse current registry/seed definitions only when purpose, evidence path, capability gates, and closure match.
 4. Write or adapt definitions when those differ.
 5. Keep task-specific paths, constraints, deferrals, and launch instructions in task-compose.
-6. Validate role/policy references, node-kind compatibility, policy presence, artifact slots, criteria slots, and root bindings.
+6. Validate role/policy references, node-kind compatibility, policy presence, artifact slots, criteria slots, and `roots` path bindings.
 7. Ask before upload/import/apply/start unless the user already authorized that write.
 
 ## Role Rules

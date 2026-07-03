@@ -37,12 +37,12 @@ async def _launch_minimal_change_case(
     await launch_runtime_case(
         context,
         task_id=task_id,
-        workflow_key="minimal-implement-change",
+        workflow_key="bounded-change",
         compiler_version=compiler_version,
     )
 
 
-async def _run_minimal_implement_return_root(
+async def _run_bounded_implement_return_root(
     context: RuntimeDatabaseContext,
     *,
     task_id: str,
@@ -56,7 +56,7 @@ async def _run_minimal_implement_return_root(
         assignment_summary="Implement the bounded change.",
         assignment_instruction="Publish the patch and verification evidence only.",
         outcome=CheckpointOutcome.GREEN,
-        handoff_summary="Minimal implementation completed.",
+        handoff_summary="Bounded implementation completed.",
         next_step="Root should verify the bounded change and close the flow.",
         artifacts=[
             (
@@ -203,7 +203,7 @@ async def test_root_terminal_green_checkpoint_requires_release_green_preflight(
             task_id=task_id,
             compiler_version="runtime-root-green-preflight",
         )
-        await _run_minimal_implement_return_root(
+        await _run_bounded_implement_return_root(
             context,
             task_id=task_id,
             patch_path="workspace/preflight_patch.diff",
@@ -236,7 +236,7 @@ async def test_terminal_checkpoint_supersession_resets_incompatible_release_prec
             task_id=task_id,
             compiler_version="runtime-root-terminal-supersession",
         )
-        await _run_minimal_implement_return_root(
+        await _run_bounded_implement_return_root(
             context,
             task_id=task_id,
             patch_path="workspace/supersession_patch.diff",

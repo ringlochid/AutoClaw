@@ -8,7 +8,7 @@ A human can also act as an operator, but through a different surface: humans use
 
 An operator is not the worker, parent/root node, or controller. Operator authority is for trusted runtime steering, not for ordinary node execution.
 
-This distinction matters because node tools and operator tools have different authority. A worker cannot become an operator by writing a note, and a human operator should not act like a hidden worker by manually editing task-root files.
+This distinction matters because node tools and operator tools have different authority. A worker cannot become an operator by writing a note, and a human operator should not act like a hidden worker by manually editing generated task files.
 
 ## Operator forms
 
@@ -23,7 +23,7 @@ Operator agents usually inspect through operator MCP/readback tools. Human opera
 Both surfaces read from:
 
 - runtime task list and task readbacks
-- task-root files such as workflow manifest, assignment, checkpoints, and artifacts
+- generated task files such as workflow manifest, assignment, checkpoints, and artifacts
 - operator snapshot for current state and top actionable items
 - operator trace for dispatch, checkpoint, boundary, and event history
 - control reads for human requests and command runs

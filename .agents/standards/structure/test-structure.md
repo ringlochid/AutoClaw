@@ -16,7 +16,7 @@ Use this guide when adding tests, reorganizing test trees, or deciding what coun
 - `make test-api-integration`: canonical repo-native SQLite and runtime-template integration behavior
 - `make test-api-integration-local`: compatibility alias for the same local integration lane
 - `make test-api-db`: specialized Docker/Postgres-backed integration behavior using shipped schema/setup paths
-- `make test-api-e2e-minimal|normal|maximal`: progressive end-to-end behavior
+- `make test-api-e2e-bounded|reviewed|staged`: progressive end-to-end behavior
 - `make console-test`: frontend unit and component behavior under `apps/console/tests/unit` and `apps/console/tests/component`
 - `make console-test-integration`: MSW-backed frontend flow behavior under `apps/console/tests/integration`
 - `make console-e2e`: browser end-to-end behavior under `apps/console/tests/e2e`

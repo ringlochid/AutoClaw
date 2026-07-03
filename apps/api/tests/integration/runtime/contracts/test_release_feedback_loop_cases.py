@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from autoclaw.persistence.session import dispose_db_engine
 from tests.helpers.runtime_support import (
-    drive_minimal_child_to_green,
+    drive_bounded_child_to_green,
     parent_tool,
     persist_bootstrap,
     prepare_runtime_db,
@@ -29,11 +29,11 @@ async def test_assign_child_rejects_same_child_supplemental_artifact_feedback_lo
             config_path=config_path,
             task_id=task_id,
             task_root=task_root,
-            workflow_definition=load_workflow_definition("minimal_implement_change"),
+            workflow_definition=load_workflow_definition("bounded_change"),
             revision_no=1,
         )
         async with runtime_api_context(config_path) as api:
-            root_session_key, active_flow_revision_id = await drive_minimal_child_to_green(
+            root_session_key, active_flow_revision_id = await drive_bounded_child_to_green(
                 api,
                 task_id=task_id,
                 task_root=task_root,

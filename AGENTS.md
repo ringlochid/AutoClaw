@@ -182,7 +182,7 @@ Rules:
 - `make test-api-integration` runs the canonical repo-native SQLite and runtime-template integration groups
 - `make test-api-integration-local` remains a compatibility alias for `make test-api-integration`
 - `make test-api-db` runs the Docker/Postgres-backed integration groups only
-- `make test-api-e2e-minimal`, `make test-api-e2e-normal`, and `make test-api-e2e-maximal` are the progressive e2e lanes
+- `make test-api-e2e-bounded`, `make test-api-e2e-reviewed`, and `make test-api-e2e-staged` are the progressive e2e lanes
 - `make console-format-check`, `make console-lint`, `make console-typecheck`, `make console-openapi-check`, `make console-test`, `make console-test-integration`, and `make console-build` are the console proof lanes
 - `make console-e2e` runs browser e2e when Playwright browser dependencies are available
 - `make check-console` runs the non-browser console gate: format check, lint, typecheck, generated OpenAPI drift check, unit/component tests, MSW-backed integration tests, and production build

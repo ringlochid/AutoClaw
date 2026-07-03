@@ -289,7 +289,7 @@ async def test_structural_replan_and_assign_child_persist_lineage(
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="normal-parent-first-release",
+            workflow_key="reviewed-change-release",
             compiler_version="runtime-lineage",
         )
         async with context.session_factory() as session:
@@ -319,14 +319,14 @@ async def test_structural_replan_and_assign_child_persist_lineage(
                 session,
                 task_id=task_id,
                 expected_structural_revision_id=removed_revision_id,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
                 summary="Stage the implementation subtree.",
                 instruction="Publish only the subtree assignment basis.",
             )
             implementation_node = await require_flow_node(
                 session,
                 flow_revision_id=removed_revision_id,
-                node_key="implementation_subtree",
+                node_key="change_subtree",
             )
             staged_assignment = await session.scalar(
                 select(AssignmentModel).where(

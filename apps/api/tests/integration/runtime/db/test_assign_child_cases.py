@@ -34,7 +34,7 @@ from tests.integration.runtime.db.context import (
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
 
-async def open_implementation_subtree(
+async def open_change_subtree(
     context: RuntimeDatabaseContext,
     *,
     task_id: str,
@@ -42,7 +42,7 @@ async def open_implementation_subtree(
     await yield_child_assignment(
         context,
         task_id=task_id,
-        child_node_key="implementation_subtree",
+        child_node_key="change_subtree",
         summary="Open the implementation subtree.",
         instruction="Dispatch only the implementation subtree.",
     )
@@ -144,10 +144,10 @@ async def test_assign_child_uses_relational_direct_child_authority(
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="normal-parent-first-release",
+            workflow_key="reviewed-change-release",
             compiler_version="runtime-relational-assign-child",
         )
-        await open_implementation_subtree(context, task_id=task_id)
+        await open_change_subtree(context, task_id=task_id)
         async with context.session_factory() as session:
             flow = await require_flow_model(session, task_id=task_id)
             assert flow.active_flow_revision_id is not None
@@ -162,7 +162,7 @@ async def test_assign_child_uses_relational_direct_child_authority(
         assign_success = await assign_child_on_current_flow(
             context,
             task_id=task_id,
-            child_node_key="investigate_issue",
+            child_node_key="scope_change",
             summary="Investigate the scoped issue.",
             instruction="Publish the investigation findings.",
         )
@@ -173,7 +173,7 @@ async def test_assign_child_uses_relational_direct_child_authority(
                 )
             )
             assert assignment is not None
-            assert assignment.node_key == "investigate_issue"
+            assert assignment.node_key == "scope_change"
 
 
 async def test_assign_child_blocks_open_overwrite_and_supersedes_closed_assignment(
@@ -187,10 +187,10 @@ async def test_assign_child_blocks_open_overwrite_and_supersedes_closed_assignme
         await launch_runtime_case(
             context,
             task_id=task_id,
-            workflow_key="normal-parent-first-release",
+            workflow_key="reviewed-change-release",
             compiler_version="runtime-assign-child-overwrite",
         )
-        await open_implementation_subtree(context, task_id=task_id)
+        await open_change_subtree(context, task_id=task_id)
         async with context.session_factory() as session:
             flow = await require_flow_model(session, task_id=task_id)
             assert flow.active_flow_revision_id is not None
@@ -198,7 +198,7 @@ async def test_assign_child_blocks_open_overwrite_and_supersedes_closed_assignme
                 session,
                 task_id=task_id,
                 expected_structural_revision_id=flow.active_flow_revision_id,
-                child_node_key="investigate_issue",
+                child_node_key="scope_change",
                 summary="Investigate the scoped issue.",
                 instruction="Publish the investigation findings.",
             )
@@ -218,7 +218,7 @@ async def test_assign_child_blocks_open_overwrite_and_supersedes_closed_assignme
                     session,
                     task_id=task_id,
                     expected_structural_revision_id=flow.active_flow_revision_id,
-                    child_node_key="investigate_issue",
+                    child_node_key="scope_change",
                     summary="Retry the same child while it is still open.",
                     instruction="This must be rejected.",
                 )
@@ -238,7 +238,7 @@ async def test_assign_child_blocks_open_overwrite_and_supersedes_closed_assignme
                 session,
                 task_id=task_id,
                 expected_structural_revision_id=flow.active_flow_revision_id,
-                child_node_key="investigate_issue",
+                child_node_key="scope_change",
                 summary="Stage a legal superseding child assignment.",
                 instruction="Publish the new investigation findings.",
             )

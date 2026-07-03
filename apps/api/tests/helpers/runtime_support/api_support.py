@@ -10,7 +10,7 @@ from autoclaw.persistence.session import get_session_factory
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from tests.helpers.runtime_support.child_dispatch_support import (
-    drive_minimal_child_to_green,
+    drive_bounded_child_to_green,
     stage_child_dispatch,
     write_workspace_file,
 )
@@ -110,7 +110,7 @@ async def bootstrap_parent_runtime(
     task_id: str,
     task_root: Path,
     compiler_version: str,
-    workflow_key: str = "normal-parent-first-release",
+    workflow_key: str = "reviewed-change-release",
 ) -> None:
     with cli.command_env(config_path=config_path):
         get_settings.cache_clear()
@@ -168,7 +168,7 @@ __all__ = [
     "current_session_key",
     "current_session_key_after_dispatch_progress",
     "current_session_key_after_dispatch_progress_for_node",
-    "drive_minimal_child_to_green",
+    "drive_bounded_child_to_green",
     "parent_tool",
     "pause_flow",
     "persist_bootstrap",

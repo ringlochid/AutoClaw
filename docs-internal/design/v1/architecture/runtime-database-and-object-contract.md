@@ -62,7 +62,7 @@ The v1 table constitution is closed to the following families. If a table family
 | Family                         | Canonical meaning                                                                                                           | Concrete table closure                                                                                                                           |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | registry definitions           | current and historical authored definitions                                                                                 | `workflow_definitions`, `workflow_revisions`, `role_definitions`, `role_revisions`, `policy_definitions`, `policy_revisions`                     |
-| task/launch support            | task identity and root binding                                                                                              | `tasks`, `workspace_roots`, `context_spaces`, `manifest_roots`, `task_resource_bindings`, `task_composes`                                        |
+| task/launch support            | task identity and `roots` path binding                                                                                      | `tasks`, `workspace_roots`, `context_spaces`, `manifest_roots`, `task_resource_bindings`, `task_composes`                                        |
 | compiled plan                  | launch-time normalized plan                                                                                                 | `compiled_plans`, `compiled_plan_nodes`, `compiled_plan_edges`                                                                                   |
 | runtime graph                  | active runtime execution object and adopted graph history                                                                   | `flows`, `flow_revisions`, `flow_nodes`, `flow_edges`, `node_plan_revisions`                                                                     |
 | execution                      | current mission contracts, execution tries, checkpoint history, consumed/produced refs, and controller ingress/egress turns | `assignments`, `assignment_criteria_refs`, `attempts`, `attempt_checkpoints`, `attempt_consumed_refs`, `attempt_produced_refs`, `dispatch_turns` |
@@ -369,8 +369,8 @@ Required semantic fields:
 Rules:
 
 - concurrent live tasks must not hold the same live workspace-root lease
-- default per-task roots do not require this lease family
-- shared `context` roots are outside this lease family because they remain read-mostly source/reference material in v1
+- default per-task paths do not require this lease family
+- shared `context` path bindings are outside this lease family because they remain read-mostly source/reference material in v1
 
 ### `CompiledPlan`
 

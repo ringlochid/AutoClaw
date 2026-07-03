@@ -1,0 +1,159 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from autoclaw.main import create_app
+from httpx import ASGITransport, AsyncClient
+from tests.e2e.workflows.reviewed.readback import assert_final_readback
+from tests.e2e.workflows.reviewed.support import (
+    ReviewedLaneArtifacts,
+    materialize_artifacts,
+)
+from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
+from tests.helpers.seeded_runtime_support import launch_seeded_runtime, task_compose_payload
+from tests.helpers.workflow_lane_driver import (
+    OPERATOR_HEADERS,
+    JsonMap,
+    ParentFirstLaneDriver,
+    json_map,
+    release_current_parent,
+    run_child_cycle,
+    start_child_from_parent,
+    wait_for_auto_progress,
+    workflow_lane_runtime_context,
+)
+
+
+async def run_reviewed_change_release_lane(
+    tmp_path: Path,
+    openclaw_gateway_test_server: LocalGatewayTestServer,
+) -> None:
+    task_id = "task_reviewed_e2e"
+
+    async with workflow_lane_runtime_context(tmp_path) as runtime:
+        artifacts = materialize_artifacts(runtime.paths.task_root)
+        async with runtime.session_factory() as session:
+            await launch_seeded_runtime(
+                session,
+                task_id=task_id,
+                task_root=runtime.paths.task_root,
+                task_compose=task_compose_payload("reviewed-change-release"),
+                compiler_version="reviewed-e2e",
+            )
+
+        app = create_app()
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as client:
+            driver = ParentFirstLaneDriver(
+                client=client,
+                session_factory=runtime.session_factory,
+                task_id=task_id,
+                gateway_server=openclaw_gateway_test_server,
+            )
+            final_green = await _run_reviewed_lane(driver, artifacts)
+            await assert_final_readback(driver, final_green)
+
+
+async def _run_reviewed_lane(
+    driver: ParentFirstLaneDriver,
+    artifacts: ReviewedLaneArtifacts,
+) -> JsonMap:
+    runtime = json_map(
+        await driver.client.get(
+            f"/runtime/tasks/{driver.task_id}",
+            headers=OPERATOR_HEADERS,
+        )
+    )
+    assert runtime["status"] == "running"
+    assert runtime["current_node_key"] == "root"
+
+    subtree_flow = await start_child_from_parent(
+        driver,
+        parent_node_key="root",
+        child_node_key="change_subtree",
+        expected_flow_revision_id=str(runtime["active_flow_revision_id"]),
+        summary="Start the reviewed change subtree.",
+        instruction="Scope, implement, and review the bounded change only.",
+    )
+    subtree_flow = await _run_subtree_children(driver, subtree_flow, artifacts)
+
+    await release_current_parent(
+        driver,
+        expected_node_key="change_subtree",
+        expected_flow_revision_id=str(subtree_flow["active_flow_revision_id"]),
+        summary="Change subtree verified current scope, patch, verification, and review evidence.",
+        next_step="Return release-ready subtree evidence to root.",
+    )
+    root_flow = await wait_for_auto_progress(
+        driver,
+        expected_node_key="root",
+    )
+    root_flow = await run_child_cycle(
+        driver,
+        parent_flow=root_flow,
+        parent_node_key="root",
+        child_node_key="release_closure",
+        summary="Run the bounded release closure step.",
+        instruction="Use only the current surfaced release inputs.",
+        checkpoint_summary="Release closure completed from current surfaced evidence.",
+        checkpoint_next_step="Return closure evidence to root for final release.",
+        produced_artifacts=[{"slot": "closure_report", "path": str(artifacts.closure_report)}],
+    )
+
+    final_green = await release_current_parent(
+        driver,
+        expected_node_key="root",
+        expected_flow_revision_id=str(root_flow["active_flow_revision_id"]),
+        summary="Root verified the current scope, patch, review, and closure evidence.",
+        next_step="Close the workflow successfully.",
+    )
+    assert final_green["status"] == "succeeded"
+    assert final_green["current_node_key"] == "root"
+    return final_green
+
+
+async def _run_subtree_children(
+    driver: ParentFirstLaneDriver,
+    subtree_flow: JsonMap,
+    artifacts: ReviewedLaneArtifacts,
+) -> JsonMap:
+    subtree_flow = await run_child_cycle(
+        driver,
+        parent_flow=subtree_flow,
+        parent_node_key="change_subtree",
+        child_node_key="scope_change",
+        summary="Scope the bounded settings-loader cleanup.",
+        instruction="Publish only the scope, constraints, risks, and downstream implications.",
+        checkpoint_summary="Scoping completed with a bounded change scope report.",
+        checkpoint_next_step="Return scope evidence to the change subtree parent.",
+        produced_artifacts=[
+            {"slot": "change_scope_report", "path": str(artifacts.change_scope_report)}
+        ],
+    )
+    subtree_flow = await run_child_cycle(
+        driver,
+        parent_flow=subtree_flow,
+        parent_node_key="change_subtree",
+        child_node_key="implement_change",
+        summary="Implement the scoped settings-loader cleanup.",
+        instruction="Use the current scope report and publish patch plus verification.",
+        checkpoint_summary="Implementation completed with patch and verification evidence.",
+        checkpoint_next_step="Return to the change subtree for bounded review.",
+        produced_artifacts=[
+            {"slot": "change_patch", "path": str(artifacts.change_patch)},
+            {"slot": "verification_report", "path": str(artifacts.verification_report)},
+        ],
+    )
+    return await run_child_cycle(
+        driver,
+        parent_flow=subtree_flow,
+        parent_node_key="change_subtree",
+        child_node_key="review_change",
+        summary="Review the scoped settings-loader patch.",
+        instruction="Use the current patch and verification evidence only.",
+        checkpoint_summary="Review completed with a bounded review report.",
+        checkpoint_next_step="Return review evidence to the change subtree parent.",
+        produced_artifacts=[{"slot": "review_report", "path": str(artifacts.review_report)}],
+    )

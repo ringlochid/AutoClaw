@@ -6,16 +6,16 @@ AutoClaw currently runs delegated agent work through OpenClaw Gateway. Prepare a
 
 Current AutoClaw packages support the OpenClaw Gateway adapter.
 
-| Requirement | Supported path |
-| --- | --- |
-| OpenClaw binary | installed and discoverable from AutoClaw config, env, or `PATH` |
-| OpenClaw version | 2026.6.10 or newer |
-| Gateway bind | loopback Gateway |
-| Recommended auth | token auth |
-| Other supported auth | password auth, or explicit no-auth loopback |
-| Blocked auth/connect modes | non-loopback, trusted-proxy, ambiguous auth, unresolved token/password refs |
-| Worker/operator profiles | separate OpenClaw agents managed or reconciled by AutoClaw |
-| Execution posture | trusted local profile with full tool access for the selected AutoClaw agents |
+| Requirement                | Supported path                                                               |
+| -------------------------- | ---------------------------------------------------------------------------- |
+| OpenClaw binary            | installed and discoverable from AutoClaw config, env, or `PATH`              |
+| OpenClaw version           | 2026.6.10 or newer                                                           |
+| Gateway bind               | loopback Gateway                                                             |
+| Recommended auth           | token auth                                                                   |
+| Other supported auth       | password auth, or explicit no-auth loopback                                  |
+| Blocked auth/connect modes | non-loopback, trusted-proxy, ambiguous auth, unresolved token/password refs  |
+| Worker/operator profiles   | separate OpenClaw agents managed or reconciled by AutoClaw                   |
+| Execution posture          | trusted local profile with full tool access for the selected AutoClaw agents |
 
 Token auth is the default documentation path because it is explicit and easy to diagnose. Password auth and explicit no-auth loopback are supported compatibility shapes, but they are not the clearest first-run story.
 

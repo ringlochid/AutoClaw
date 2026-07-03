@@ -9,7 +9,7 @@ import {
 export const TASK_START_SCREENSHOT_DIR =
     "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity/06-task-start/screenshots";
 
-export const TASK_START_WORKFLOW_KEY = "normal-parent-first-release";
+export const TASK_START_WORKFLOW_KEY = "reviewed-change-release";
 export const SECOND_TASK_START_WORKFLOW_KEY = WORKFLOW_KEY;
 
 const TASK_START_WORKFLOW_OVERRIDES = new Map<
@@ -25,7 +25,7 @@ const TASK_START_WORKFLOW_OVERRIDES = new Map<
         },
     ],
     [
-        "minimal-implement-change",
+        "bounded-change",
         {
             description: "Execute one bounded engineering change under parent ownership.",
             updated_at: "2026-06-18T09:26:00Z",

@@ -25,7 +25,7 @@ async def assert_boundary_wait_state(
         assert flow is not None
         assert prior_dispatch is not None
         assert flow.current_open_dispatch_id == dispatch_id
-        assert flow_read.current_node_key == "implementation_subtree"
+        assert flow_read.current_node_key == "change_subtree"
         assert flow_read.active_attempt_id is not None
         assert flow_read.active_attempt_id != root_attempt_id
         assert prior_dispatch.control_state == "live"
@@ -111,7 +111,7 @@ async def assert_boundary_ambiguous_wait_state(
         assert flow.current_open_dispatch_id == dispatch_id
         assert dispatch.control_state == "ambiguous"
         assert dispatch.control_deadline_at is None
-        assert flow_read.current_node_key == "implementation_subtree"
+        assert flow_read.current_node_key == "change_subtree"
         delivery_state = read_json(
             delivery_state_path(task_root=task_root, dispatch_id=dispatch_id)
         )

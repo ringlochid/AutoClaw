@@ -2,9 +2,9 @@
 
 Status: Target
 
-This tutorial is the short bugfix walkthrough for the canonical `normal-parent-first-release` workflow shape.
+This tutorial is the short bugfix walkthrough for the canonical `reviewed-change-release` workflow shape.
 
-It mirrors `../workflows/examples/normal.md` rather than the richer staged `maximal` reference.
+It mirrors `../workflows/examples/reviewed-change-release.md` rather than the richer staged delivery reference.
 
 ## Walkthrough
 

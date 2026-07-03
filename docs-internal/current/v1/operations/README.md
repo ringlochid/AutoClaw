@@ -10,7 +10,7 @@ These pages describe the shipped verification procedures that this checkout supp
 
 If you are asking:
 
-- "How do I run real minimal, normal, and maximal workflow lanes against a local service?" -> [Run real e2e workflow lanes](run-real-e2e-workflow-lanes.md)
+- "How do I run real bounded, reviewed, and staged workflow lanes against a local service?" -> [Run real e2e workflow lanes](run-real-e2e-workflow-lanes.md)
 - "How do I run the stronger DB-backed verification lane?" -> [Run Docker Postgres verification](run-docker-postgres-verification.md)
 
 ## Start here
@@ -21,9 +21,9 @@ If you are asking:
 ## Keywords
 
 - real e2e
-- minimal lane
-- normal lane
-- maximal lane
+- bounded lane
+- reviewed lane
+- staged lane
 - task start
 - operator trace
 - criteria files

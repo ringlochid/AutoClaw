@@ -68,8 +68,7 @@ Current shipped authoring facts are:
 
 - one saved draft may exist for each `(kind, key)` under `drafts/definitions/{roles|policies|workflows}/{key}.yaml`
 - draft metadata and normalized shadows live under `drafts/definitions/_metadata/` and `drafts/definitions/_normalized/`
-- the YAML draft body is the editable draft truth; authoring readback still lists and opens a
-  body-only draft before the next save rewrites canonical metadata
+- the YAML draft body is the editable draft truth; authoring readback still lists and opens a body-only draft before the next save rewrites canonical metadata
 - `GET /authoring/definitions/{kind}/{key}/draft` returns a saved draft or a transient current-definition update draft when no saved draft exists
 - draft save/delete writes mutate only backend-owned local draft state, not registry truth
 - `POST /authoring/definitions/{kind}/{key}/draft/publish` publishes through the same DB-backed registry truth used elsewhere

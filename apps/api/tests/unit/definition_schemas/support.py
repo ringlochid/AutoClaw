@@ -34,18 +34,18 @@ ROLE_POLICY_SCHEMA_DOC = (
 
 EXPECTED_WORKFLOW_IDS = {
     "bugfix-review-release",
+    "bounded-change",
     "core-only-build",
     "feature-implementation",
     "frontend-feature-slice",
     "idea-discovery",
-    "minimal-implement-change",
-    "normal-parent-first-release",
-    "maximal-parent-first-release",
     "delivery-batch",
     "marketing-campaign",
     "mvp-build",
     "planning-only",
     "project-management-delivery",
+    "reviewed-change-release",
+    "staged-delivery-release",
     "topic-research-brief",
 }
 EXPECTED_ROLE_IDS = {
@@ -94,23 +94,22 @@ type RoleOrPolicyDefinitionModel = (
 )
 
 
-def minimal_workflow_payload() -> dict[str, Any]:
+def bounded_workflow_payload() -> dict[str, Any]:
     return {
-        "id": "minimal-implement-change",
-        "description": "Execute one bounded engineering change under parent ownership.",
+        "id": "bounded-change",
+        "description": "Execute one small scoped change with one worker and root-owned evidence review.",
         "root": {
             "id": "root",
             "role": "planning_lead",
             "description": (
-                "Verify one bounded engineering worker and release only when current "
-                "evidence is sufficient."
+                "Verify one bounded worker and close only when current evidence is sufficient."
             ),
             "criteria": [
                 {
                     "slot": "implementation_rules",
-                    "description": "Parent acceptance criteria for the bounded engineering child.",
+                    "description": "Root acceptance criteria for the bounded worker.",
                     "criteria": [
-                        "keep the child inside the current bounded assignment",
+                        "the worker stays inside the current bounded assignment",
                         "publish patch and verification evidence only through declared "
                         "produce slots",
                     ],

@@ -145,7 +145,7 @@ async def test_main_app_node_mcp_rejects_mismatched_parent_tool_discriminator_pa
         (
             "add_child",
             {
-                "child_node_key": "implementation_subtree",
+                "child_node_key": "change_subtree",
                 "assignment_intent": {
                     "summary": "Wrong payload family for add_child.",
                     "instruction": "Keep the mounted MCP validation strict.",

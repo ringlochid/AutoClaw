@@ -236,7 +236,7 @@ async def test_control_task_event_stream_delivers_live_child_assignment_staged_e
         assert frames[0]["id"] == frames[0]["data"]["event_id"]
         assert frames[0]["data"]["dispatch_id"] == task.current_open_dispatch_id
         payload = frames[0]["data"]["payload"]
-        assert payload["target_node_key"] == "implementation_subtree"
+        assert payload["target_node_key"] == "change_subtree"
         assert payload["target_assignment_key"]
         assert payload["target_attempt_id"]
         assert payload["assignment_summary"] == "Start the implementation subtree."

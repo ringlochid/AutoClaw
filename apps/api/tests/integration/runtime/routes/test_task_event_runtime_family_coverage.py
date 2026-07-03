@@ -52,8 +52,8 @@ async def test_control_task_events_include_launch_event_families_on_task_launch(
         assert task_started["event_source"] == "controller"
         assert task_started["flow_revision_id"] == task.active_flow_revision_id
         assert task_started["dispatch_id"] is None
-        assert task_started_payload["task_title"] == "Harden auth refresh flow"
-        assert task_started_payload["workflow_key"] == "normal-parent-first-release"
+        assert task_started_payload["task_title"] == "Clean up settings loader"
+        assert task_started_payload["workflow_key"] == "reviewed-change-release"
         assert task_started_payload["initial_node_key"] == "root"
         assert workflow_manifest_name(task_started_payload) == "workflow-manifest.md"
 
@@ -155,7 +155,7 @@ async def test_control_task_events_include_child_assignment_committed_after_acce
 
         assert yield_boundary_event["event_seq"] < committed_event["event_seq"]
         assert yield_payload["previous_node_key"] == "root"
-        assert yield_payload["next_node_key"] == "implementation_subtree"
+        assert yield_payload["next_node_key"] == "change_subtree"
         assert yield_payload["next_attempt_id"] == assign_payload["target_attempt_id"]
         assert yield_payload["resulting_flow_status"] == "running"
         assert yield_payload["requires_reopen_after_inactivity"] is True
@@ -163,9 +163,9 @@ async def test_control_task_events_include_child_assignment_committed_after_acce
         assert committed_event["event_source"] == "controller"
         assert committed_event["dispatch_id"] == task.current_open_dispatch_id
         assert committed_event["attempt_id"] == assign_payload["target_attempt_id"]
-        assert committed_event["node_key"] == "implementation_subtree"
+        assert committed_event["node_key"] == "change_subtree"
         assert committed_payload == {
-            "target_node_key": "implementation_subtree",
+            "target_node_key": "change_subtree",
             "target_assignment_key": assign_payload["target_assignment_key"],
             "target_attempt_id": assign_payload["target_attempt_id"],
             "parent_node_key": "root",
@@ -192,7 +192,7 @@ async def test_control_task_events_include_structural_revision_adopted_for_updat
             json={
                 "tool_name": "update_child",
                 "payload": {
-                    "child_node_key": "implementation_subtree",
+                    "child_node_key": "change_subtree",
                     "patch": {"description": "Updated child description for task-event coverage."},
                 },
                 "expected_structural_revision_id": task.active_flow_revision_id,
@@ -223,9 +223,9 @@ async def test_control_task_events_include_structural_revision_adopted_for_updat
             structural_payload["active_flow_revision_id"]
             == update_child_payload["flow"]["active_flow_revision_id"]
         )
-        assert structural_payload["target_node_key"] == "implementation_subtree"
-        assert structural_payload["affected_node_keys"] == ["implementation_subtree"]
-        assert structural_payload["summary"] == "Updated workflow node 'implementation_subtree'."
+        assert structural_payload["target_node_key"] == "change_subtree"
+        assert structural_payload["affected_node_keys"] == ["change_subtree"]
+        assert structural_payload["summary"] == "Updated workflow node 'change_subtree'."
         assert workflow_manifest_name(structural_payload) == "workflow-manifest.md"
 
         await cancel_route_task(

@@ -40,9 +40,9 @@ make test-api-db
 Use the e2e lanes when DB changes can affect launched workflow execution:
 
 ```bash
-make test-api-e2e-minimal
-make test-api-e2e-normal
-make test-api-e2e-maximal
+make test-api-e2e-bounded
+make test-api-e2e-reviewed
+make test-api-e2e-staged
 ```
 
 Choose the smallest e2e lane that proves the changed surface; use heavier lanes when parent-first or multi-subtree behavior is affected.

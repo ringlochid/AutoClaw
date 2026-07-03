@@ -244,7 +244,7 @@ async def _build_workflow_concurrency_fixture(
     definition_key: str | None,
     same_key_update: bool,
 ) -> DefinitionConcurrencyFixture:
-    current_workflow = await load_current_workflow(session, "minimal-implement-change")
+    current_workflow = await load_current_workflow(session, "bounded-change")
     original_description = current_workflow.definition.description
     key = definition_key or current_workflow.definition.id
     first_definition = current_workflow.definition.model_copy(

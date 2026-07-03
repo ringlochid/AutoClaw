@@ -39,7 +39,7 @@ def test_manifest_markdown_renders_source_disambiguated_node_instruction(
         update={
             "node_tree": (
                 ManifestNodeProjection(
-                    node_key="implementation_subtree",
+                    node_key="change_subtree",
                     node_kind=NodeKind.PARENT,
                     role="planning_lead",
                     policy="standard-parent",
@@ -73,7 +73,7 @@ def test_current_assignment_renders_reduced_claims_and_consumed_refs_keep_exact_
         maxsplit=1,
     )[1]
 
-    assert "findings_report.v02.md" not in assignment_section
+    assert "change_scope_report.v02.md" not in assignment_section
     assert "fix_acceptance.v01.md" not in assignment_section
     assert "version: 2" not in assignment_section
     assert "Current findings for the scoped fix." in assignment_section
@@ -84,11 +84,11 @@ def test_current_assignment_renders_reduced_claims_and_consumed_refs_keep_exact_
     assert "    - slot: fix_acceptance" not in assignment_section
     assert "    - description: Bounded fix acceptance criteria." not in assignment_section
 
-    assert "findings_report.v02.md" in consumed_refs_section
+    assert "change_scope_report.v02.md" in consumed_refs_section
     assert "fix_acceptance.v01.md" in consumed_refs_section
     assert "version: 2" in consumed_refs_section
     assert "auth-refresh-notes.md" in consumed_refs_section
-    assert "attempt.investigate_issue.02/latest-checkpoint.md" in consumed_refs_section
+    assert "attempt.scope_change.02/latest-checkpoint.md" in consumed_refs_section
     assert "  slot: fix_acceptance" in consumed_refs_section
     assert "  description: Bounded fix acceptance criteria." in consumed_refs_section
     assert "  - slot: fix_acceptance" not in consumed_refs_section
@@ -119,7 +119,7 @@ def test_consumed_durable_refs_follow_turn_surface_not_only_assignment_claims(
     )
 
     assert "fix_acceptance.v01.md" in consumed_refs_section
-    assert "findings_report.v02.md" in consumed_refs_section
+    assert "change_scope_report.v02.md" in consumed_refs_section
     assert "auth-refresh-notes.md" in consumed_refs_section
     assert "repro-commands.txt" not in consumed_refs_section
 
@@ -149,10 +149,10 @@ def test_worker_prompt_keeps_consumed_durable_refs_when_turn_surface_is_empty(
     )
 
     assert "fix_acceptance.v01.md" in consumed_refs_section
-    assert "findings_report.v02.md" in consumed_refs_section
+    assert "change_scope_report.v02.md" in consumed_refs_section
     assert "version: 2" in consumed_refs_section
     assert "auth-refresh-notes.md" not in consumed_refs_section
-    assert "attempt.investigate_issue.02/latest-checkpoint.md" not in consumed_refs_section
+    assert "attempt.scope_change.02/latest-checkpoint.md" not in consumed_refs_section
 
 
 def test_worker_prompt_surfaces_terminal_command_run_context_without_raw_logs(
@@ -294,16 +294,16 @@ def test_parent_prompt_surfaces_current_decision_criteria_and_artifact_refs(
         "### Transient Refs",
     )
 
-    assert "attempt.investigate_issue.02/latest-checkpoint.md" in checkpoint_section
+    assert "attempt.scope_change.02/latest-checkpoint.md" in checkpoint_section
     assert "root_release_rule.md" in consumed_refs_section
     assert "Root completion and release criteria." in consumed_refs_section
-    assert "findings_report.v02.md" in consumed_refs_section
+    assert "change_scope_report.v02.md" in consumed_refs_section
     assert "Current investigation findings for the auth-refresh regression." in (
         consumed_refs_section
     )
     assert "version: 2" in consumed_refs_section
     assert "investigation-compare-grid.md" not in consumed_refs_section
-    assert "attempt.investigate_issue.02/latest-checkpoint.md" not in consumed_refs_section
+    assert "attempt.scope_change.02/latest-checkpoint.md" not in consumed_refs_section
 
 
 def test_parent_prompt_surfaces_current_child_artifact_refs_from_manifest_context(

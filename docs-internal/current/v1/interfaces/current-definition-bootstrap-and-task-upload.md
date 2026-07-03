@@ -1,4 +1,4 @@
-# Current definition ingest, task start, and task-root binding
+# Current definition ingest, task start, and task path binding
 
 Status: Current
 
@@ -7,7 +7,7 @@ Last verified: 2026-05-18
 This page owns the current split between:
 
 - public guarded definition ingest plus registry bootstrap ingest
-- public task start plus runtime launch/task-root binding
+- public task start plus runtime launch path binding
 
 They are not the same surface.
 
@@ -16,7 +16,7 @@ They are not the same surface.
 Use this page for the current split between:
 
 - public definition ingest and registry/bootstrap definition ingest
-- public task start and task-root bootstrap placement under a task root
+- public task start and bootstrap placement under a task directory
 
 Use `definition-registry-and-publish-lifecycle.md` for current draft, validate, publish, and registry lifecycle behavior.
 
@@ -47,9 +47,9 @@ Current shipped task-start surfaces are:
 
 Current public task start uses `TaskStartRequest`, which reuses the authored `TaskComposeInput` body shape over the public route.
 
-Current runtime launch uses `TaskComposeInput.roots` plus an explicit `task_root` path.
+Current runtime launch uses the `TaskComposeInput.roots` mapping plus an explicit `task_root` directory path.
 
-Bootstrap persistence then resolves and stores bindings for workspace, context, criteria, wiki, outputs, artifacts, tmp, transfers, runtime, attempts, and dispatch roots.
+Bootstrap persistence then resolves and stores bindings for workspace, context, criteria, wiki, outputs, artifacts, tmp, transfers, runtime, attempts, and dispatch paths.
 
 This is current launch/bootstrap placement, not a separate task-file upload API.
 
@@ -67,10 +67,10 @@ Older docs that describe staged task-file upload surfaces are historical, not cu
 
 ## Current bootstrap path-safety rule
 
-Current launch/bootstrap placement still enforces explicit root ownership:
+Current launch/bootstrap placement still enforces explicit path ownership:
 
-- `TaskComposeInput.roots` may bind only the shipped `workspace` and `context` roots
-- each root uses an explicit mode such as `ensure_task_default`, `ensure_host_path`, or `use_existing_host`
+- `TaskComposeInput.roots` may bind only the shipped `workspace` and `context` path names
+- each path binding uses an explicit mode such as `ensure_task_default`, `ensure_host_path`, or `use_existing_host`
 - the task-root resolver expands those bindings into `TaskRootPaths`
 - runtime materialization stays under the resolved task-owned binding set
 
@@ -109,7 +109,7 @@ task start today
   -> request body parses as `TaskStartRequest`
   -> launch resolves `TaskComposeInput.roots`
   -> explicit `task_root`
-  -> launch/bootstrap persists resource bindings and materialized roots
+  -> launch/bootstrap persists resource bindings and materialized paths
 ```
 
 ## Expanded example
@@ -118,7 +118,7 @@ task start today
 task start and launch bootstrap
   -> parse `TaskStartRequest`
   -> resolve `TaskComposeInput.roots`
-  -> localize task-root paths
+  -> localize task-directory paths
   -> persist task, task-compose, and binding rows
   -> materialize `_runtime/`, `workspace/`, `context/`, and `outputs/`
      support paths

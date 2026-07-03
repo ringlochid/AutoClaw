@@ -66,7 +66,7 @@ async def _assert_semantic_current_paths_after_close(context: Any, *, continued_
     trace = await context.client.get(
         f"/operator/tasks/{continued_task.task_id}/trace",
         headers=context.operator_headers,
-        params={"scope": "current", "q": "implementation_subtree", "limit": 1},
+        params={"scope": "current", "q": "change_subtree", "limit": 1},
     )
     assert trace.status_code == 200
     trace_json = trace.json()
@@ -74,7 +74,7 @@ async def _assert_semantic_current_paths_after_close(context: Any, *, continued_
         trace_json["current_paths"],
         include_dispatch_support=False,
     )
-    assert trace_json["dispatch_history"][0]["node_key"] == "implementation_subtree"
+    assert trace_json["dispatch_history"][0]["node_key"] == "change_subtree"
 
 
 async def test_runtime_routes_materialize_observability_files_from_dispatch_rows(
@@ -98,7 +98,7 @@ async def test_runtime_routes_materialize_observability_files_from_dispatch_rows
         trace = await context.client.get(
             f"/operator/tasks/{continued_task.task_id}/trace",
             headers=context.operator_headers,
-            params={"scope": "current", "q": "implementation_subtree", "limit": 1},
+            params={"scope": "current", "q": "change_subtree", "limit": 1},
         )
         assert trace.status_code == 200
         trace_json = trace.json()
@@ -194,11 +194,11 @@ async def test_runtime_routes_keep_current_paths_semantic_when_no_open_dispatch(
         latest_trace = await context.client.get(
             f"/operator/tasks/{continued_task.task_id}/trace",
             headers=context.operator_headers,
-            params={"scope": "current", "q": "implementation_subtree", "limit": 1},
+            params={"scope": "current", "q": "change_subtree", "limit": 1},
         )
         assert latest_trace.status_code == 200
         latest_trace_json = latest_trace.json()
-        assert latest_trace_json["dispatch_history"][0]["node_key"] == "implementation_subtree"
+        assert latest_trace_json["dispatch_history"][0]["node_key"] == "change_subtree"
         async with context.session_factory() as session:
             flow = await session.get(FlowModel, f"flow.{continued_task.task_id}")
             assert flow is not None

@@ -57,7 +57,7 @@ The sequence is:
 4. Open the current assignment for a root, parent, or worker node.
 5. Let the harness run the agent turn with the node's prompt and tools.
 6. Commit progress through checkpoints, artifacts, boundaries, waits, or structural changes.
-7. Inspect and recover the run from controller state and generated task-root files.
+7. Inspect and recover the run from controller state and generated task files.
 
 ## Why the layers exist
 

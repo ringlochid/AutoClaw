@@ -48,7 +48,7 @@ Write your own workflow when the automation has its own purpose, evidence path, 
 
 A workflow is reusable definition truth. It owns the node tree, durable inputs, outputs, and criteria.
 
-Task-compose is one launch input. It names one task, selects a workflow, provides task-specific instruction, and can bind roots such as `workspace` and `context`. If roots are omitted, AutoClaw uses task-owned defaults.
+Task-compose is one launch input. It names one task, selects a workflow, provides task-specific instruction, and can set a `roots` mapping for named paths such as `workspace` and `context`. If `roots` is omitted, AutoClaw uses task-owned defaults.
 
 ## Why does task start use `POST /tasks/start` instead of a separate task-compose route?
 

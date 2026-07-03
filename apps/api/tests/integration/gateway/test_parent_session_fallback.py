@@ -86,7 +86,7 @@ async def test_parent_redispatch_falls_back_to_fresh_session_after_continuity_lo
             task_id=task_id,
             task_root=task_root,
             compiler_version="gateway-parent-fresh-session-fallback",
-            workflow_key="minimal-implement-change",
+            workflow_key="bounded-change",
         )
 
         async with runtime_api_context(config_path) as api:

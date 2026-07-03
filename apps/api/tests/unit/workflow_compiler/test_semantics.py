@@ -107,7 +107,7 @@ def test_compile_preserves_criteria_owner_for_inherited_and_local_slots() -> Non
                 "description": "Root coordinator.",
                 "children": [
                     {
-                        "id": "implementation_subtree",
+                        "id": "change_subtree",
                         "role": "planning_lead",
                         "policy": "standard-parent",
                         "description": "Parent subtree.",
@@ -154,10 +154,10 @@ def test_compile_preserves_criteria_owner_for_inherited_and_local_slots() -> Non
 
     child = node_by_key(plan, "implement_change")
     assert [(criteria.slot, criteria.owner_node_key) for criteria in child.criteria] == [
-        ("shared_rules", "implementation_subtree"),
+        ("shared_rules", "change_subtree"),
         ("local_delivery", "implement_change"),
     ]
-    parent = node_by_key(plan, "implementation_subtree")
+    parent = node_by_key(plan, "change_subtree")
     assert [(criteria.slot, criteria.owner_node_key) for criteria in parent.criteria] == [
-        ("shared_rules", "implementation_subtree"),
+        ("shared_rules", "change_subtree"),
     ]

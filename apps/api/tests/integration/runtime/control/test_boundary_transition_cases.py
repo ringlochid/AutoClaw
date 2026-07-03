@@ -106,7 +106,7 @@ async def test_boundary_auto_opens_replacement_dispatch_after_inactivity_is_prov
             active_flow_revision_id = await stage_child_yield(
                 api,
                 task_id=task_id,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
             )
             async with api.session_factory() as session:
                 with pytest.raises(ValueError, match="legal only for paused flows"):
@@ -137,10 +137,10 @@ async def test_boundary_auto_opens_replacement_dispatch_after_inactivity_is_prov
             )
             async with api.session_factory() as session:
                 flow_read = await runtime_flow_read(session, task_id)
-                assert flow_read.current_node_key == "implementation_subtree"
+                assert flow_read.current_node_key == "change_subtree"
                 assert flow_read.active_attempt_id == replacement.attempt_id
             assert replacement.previous_dispatch_id == dispatch_id
-            assert replacement.node_key == "implementation_subtree"
+            assert replacement.node_key == "change_subtree"
     finally:
         await dispose_db_engine()
 
@@ -175,7 +175,7 @@ async def test_boundary_timeout_transitions_to_abort_requested_and_blocks_replac
             await stage_child_yield(
                 api,
                 task_id=task_id,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
             )
             await stop_runtime_effect_runner()
             await force_dispatch_deadline_to_closed_at(
@@ -198,7 +198,7 @@ async def test_boundary_timeout_transitions_to_abort_requested_and_blocks_replac
                 )
                 assert delivery_state["transport_state"] == "accepted"
                 assert "controller_observation_state" not in delivery_state
-                assert current_flow_read.current_node_key == "implementation_subtree"
+                assert current_flow_read.current_node_key == "change_subtree"
     finally:
         await dispose_db_engine()
 
@@ -230,7 +230,7 @@ async def test_boundary_abort_timeout_force_fences_and_opens_replacement_dispatc
             await stage_child_yield(
                 api,
                 task_id=task_id,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
             )
             await stop_runtime_effect_runner()
             await force_dispatch_deadline_to_closed_at(
@@ -275,7 +275,7 @@ async def test_boundary_abort_timeout_force_fences_and_opens_replacement_dispatc
                 assert dispatch.control_state == "fenced"
                 assert dispatch.delivery_status == "transport_ambiguous"
                 assert dispatch.control_deadline_at is None
-                assert current_flow_read.current_node_key == "implementation_subtree"
+                assert current_flow_read.current_node_key == "change_subtree"
 
                 replacement_dispatch = await session.get(
                     DispatchTurnModel,
@@ -320,7 +320,7 @@ async def test_background_timeout_force_fences_and_rematerializes_dispatch_files
             await stage_child_yield(
                 api,
                 task_id=task_id,
-                child_node_key="implementation_subtree",
+                child_node_key="change_subtree",
             )
             await stop_runtime_effect_runner()
             await force_dispatch_deadline_to_closed_at(
