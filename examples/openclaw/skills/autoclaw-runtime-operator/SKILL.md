@@ -1,6 +1,6 @@
 ---
 name: "autoclaw-runtime-operator"
-description: "Operate AutoClaw tasks through operator MCP: inspect runtime state, resolve human requests, handle command runs, control tasks, and read or start definitions when explicitly asked."
+description: "Operate existing AutoClaw tasks through operator MCP: inspect runtime state, resolve human requests, handle command runs, control tasks, and read or start definitions when explicitly asked. Use when the user mentions a task id or a running/waiting/stuck/paused AutoClaw task, asks why a task is waiting, or wants a task paused, continued, cancelled, or recovered. Not the entry point for new 'use AutoClaw to do X' requests — route those to autoclaw-task-interview and autoclaw-work-orchestrator."
 ---
 
 # autoclaw-runtime-operator
@@ -8,6 +8,8 @@ description: "Operate AutoClaw tasks through operator MCP: inspect runtime state
 Use this skill when the user asks you to inspect, monitor, control, recover, or launch AutoClaw tasks as an operator.
 
 This is an AutoClaw usage skill. Do not turn routine operation into implementation debugging unless the user explicitly asks for that different job.
+
+Scope guard: this skill operates tasks that already exist. When the user asks to use AutoClaw for new work ("use AutoClaw to build X"), that is intake, not operation — route to `autoclaw-task-interview` and `autoclaw-work-orchestrator`.
 
 ## Operating Model
 
@@ -39,6 +41,8 @@ Use operator MCP for:
 Do not use node MCP. Node MCP tools such as `record_checkpoint`, `return_boundary`, `assign_child`, `release_green`, and `release_blocked` belong to the current node dispatch, require dispatch-local `session_key` plus `task_id`, and are not operator control.
 
 ## Inspection Order
+
+Answer every status question from a fresh read, never from conversation memory — task state moves between turns. When the user names a task loosely ("the MVP task"), resolve it with `list_runtime_tasks` instead of assuming an id.
 
 When the user gives a `task_id`, inspect before changing anything:
 
@@ -120,9 +124,14 @@ Before `upload_definition` or `start_task`:
 - check that the user has asked to upload/start, or ask for explicit approval
 - prefer task-compose launch for one run; do not put reusable behavior in task-compose
 
-After `start_task`, capture the task id and inspect with operator MCP.
+After `start_task`, capture the task id, confirm the task is running with one readback, report it to the user, and stop. Do not keep polling, watching, or resolving waits on your own; the user will ask for status or results when they want them. Supervise continuously only when the user explicitly asked for that.
+
+## Status And Result Queries
+
+When the user later asks how a task is going or what it produced, answer from a fresh read: `get_runtime_task` and `get_operator_snapshot` for status, then artifact refs and the task workspace paths for results. Report open waits (human requests, command runs) as part of status, but act on them only when the user says to.
 
 ## Related Skills
 
+- Use `autoclaw-task-interview` when the user asks for new AutoClaw work and scope, workflow shape, or `roots` paths are unconfirmed.
 - Use `autoclaw-work-orchestrator` when the question is how to shape a user request into AutoClaw work.
 - Use `autoclaw-definition-author` when the task requires role, policy, workflow, or task-compose YAML.

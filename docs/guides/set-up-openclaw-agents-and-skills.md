@@ -131,9 +131,12 @@ The operator skills teach an OpenClaw agent how to drive AutoClaw well: when to 
 
 | Skill | Job |
 | --- | --- |
+| [`autoclaw-task-interview`](../../examples/openclaw/skills/autoclaw-task-interview/SKILL.md) | intake interview for new work: confirm intent, scope, workflow shape, and `roots` workspace/context paths before anything is drafted or launched |
 | [`autoclaw-work-orchestrator`](../../examples/openclaw/skills/autoclaw-work-orchestrator/SKILL.md) | decide whether AutoClaw fits, choose or adapt a workflow, draft task-compose, launch |
 | [`autoclaw-runtime-operator`](../../examples/openclaw/skills/autoclaw-runtime-operator/SKILL.md) | inspect running tasks, resolve human requests, handle command runs, control and recover |
 | [`autoclaw-definition-author`](../../examples/openclaw/skills/autoclaw-definition-author/SKILL.md) | write roles, policies, workflows, and task-compose YAML |
+
+The interview skill is the intake gate: "use AutoClaw to build me an MVP" means launching AutoClaw work, and the skill makes the operator confirm scope, workflow shape, and real `roots` directories instead of guessing — or misreading the request as integrating AutoClaw into an app.
 
 Copy them into the operator agent's workspace skills directory:
 
@@ -151,7 +154,7 @@ With the skills installed, you can drive AutoClaw conversationally: "start a res
 You can also let an existing personal OpenClaw agent act as the AutoClaw operator instead of chatting with `autoclaw-operator` directly. Give that agent the same two guardrails:
 
 - deny `autoclaw-node__*` so it can never act as a node
-- install the three operator skills in its workspace
+- install the four operator skills in its workspace
 
 The operator MCP server entry is global in the OpenClaw config, so any agent whose tool policy allows `autoclaw-operator__*` can operate tasks. Keep that set small: an operator is a trusted lane, and its Authorization header is the AutoClaw API key.
 

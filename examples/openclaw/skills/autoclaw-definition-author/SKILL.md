@@ -1,6 +1,6 @@
 ---
 name: "autoclaw-definition-author"
-description: "Write, revise, review, or explain AutoClaw roles, policies, workflows, task-compose files, and definition drafts."
+description: "Write, revise, review, or explain AutoClaw roles, policies, workflows, task-compose files, and definition drafts. Use when the user asks for AutoClaw definition YAML or asks how an AutoClaw role, policy, workflow, node, criteria, or roots binding should be written. Not for developing AutoClaw internals; when the underlying scope or paths are unconfirmed, run autoclaw-task-interview first."
 ---
 
 # autoclaw-definition-author
@@ -45,12 +45,12 @@ Layer split:
 
 ## Authoring Flow
 
-1. State the job in one sentence.
+1. State the job in one sentence. When scope, workflow shape, or `roots` paths are still unconfirmed, get them from `autoclaw-task-interview` instead of inventing them.
 2. Identify closure evidence, non-goals, human decisions, long command needs, and `roots` path bindings.
 3. Reuse current registry/seed definitions only when purpose, evidence path, capability gates, and closure match.
 4. Write or adapt definitions when those differ.
 5. Keep task-specific paths, constraints, deferrals, and launch instructions in task-compose.
-6. Validate role/policy references, node-kind compatibility, policy presence, artifact slots, criteria slots, and `roots` path bindings.
+6. Validate against current truth, not memory: resolve every referenced role and policy key with `search_definitions`/`get_definition`, check node-kind compatibility, policy presence, artifact slots, criteria slots, and confirm `roots` host paths exist on disk before `use_existing_host`.
 7. Ask before upload/import/apply/start unless the user already authorized that write.
 
 ## Role Rules
@@ -120,5 +120,6 @@ Operator MCP registry tools read current truth. `upload_definition` and `start_t
 
 ## Related Skills
 
+- Use `autoclaw-task-interview` when the scope, workflow shape, or `roots` paths behind a definition request are unconfirmed.
 - Use `autoclaw-work-orchestrator` for use/reuse/write/start decisions.
 - Use `autoclaw-runtime-operator` after a task starts.

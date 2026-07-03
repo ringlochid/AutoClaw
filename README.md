@@ -127,8 +127,9 @@ Onboarding creates two dedicated OpenClaw agents:
 - **`autoclaw-worker`** executes bounded assignments through node MCP tools.
 - **`autoclaw-operator`** is a trusted agent that inspects tasks, resolves human requests, launches work, and authors definitions through operator MCP tools.
 
-Install the operator skills so you can drive AutoClaw from an OpenClaw chat — "start a research task", "why is task X waiting?", "write me a bugfix workflow":
+Install the operator skills so you can drive AutoClaw from an OpenClaw chat — "use AutoClaw to build an MVP", "why is task X waiting?", "write me a bugfix workflow":
 
+- [`autoclaw-task-interview`](examples/openclaw/skills/autoclaw-task-interview/SKILL.md) — confirm intent, scope, workflow shape, and `roots` paths before new work is shaped or launched
 - [`autoclaw-work-orchestrator`](examples/openclaw/skills/autoclaw-work-orchestrator/SKILL.md) — decide whether AutoClaw fits, pick a workflow, draft task-compose, launch
 - [`autoclaw-runtime-operator`](examples/openclaw/skills/autoclaw-runtime-operator/SKILL.md) — inspect, resolve waits, control, and recover running tasks
 - [`autoclaw-definition-author`](examples/openclaw/skills/autoclaw-definition-author/SKILL.md) — write roles, policies, workflows, and task-compose files
