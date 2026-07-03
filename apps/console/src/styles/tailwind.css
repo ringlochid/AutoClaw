@@ -119,6 +119,19 @@ textarea {
     overscroll-behavior-y: contain;
 }
 
+.definition-list-state-body {
+    align-items: center;
+    display: flex;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 11rem;
+    padding: 1rem;
+}
+
+.definition-list-state-body > * {
+    width: 100%;
+}
+
 .definition-row {
     border-left: 0 !important;
     box-shadow:

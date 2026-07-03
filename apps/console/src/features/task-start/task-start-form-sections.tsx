@@ -2,14 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 import { X } from "lucide-react";
 
-import {
-    Button,
-    FormField,
-    IdRefText,
-    PropertyGrid,
-    StatePanel,
-    StatusChip,
-} from "../../components/ui";
+import { Button, FormField, IdRefText, StatePanel } from "../../components/ui";
 import { classNames } from "../../lib/classNames";
 import type { TaskStartController } from "./task-start-controller";
 import { isAuthError } from "./task-start-data";
@@ -20,7 +13,6 @@ import {
     shouldShowHostPath,
     type TaskRootMode,
     type TaskStartPreview,
-    type TaskStartResultView,
 } from "./task-start-model";
 import { controlClassName, textAreaClassName } from "./task-start-ui";
 
@@ -427,18 +419,11 @@ export function ResultPanel({ controller }: { readonly controller: TaskStartCont
             onClose={() => {
                 controller.setResultOpen(false);
             }}
-            result={controller.submitState.result}
         />
     );
 }
 
-function TaskStartResult({
-    onClose,
-    result,
-}: {
-    readonly onClose: () => void;
-    readonly result: TaskStartResultView;
-}) {
+function TaskStartResult({ onClose }: { readonly onClose: () => void }) {
     return (
         <TaskStartDialog
             footer={
@@ -450,27 +435,11 @@ function TaskStartResult({
             onClose={onClose}
             title="Result"
         >
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-                <StatePanel
-                    summary="Initial runtime effects were accepted and the task handoff is ready for the Tasks surface."
-                    title="Task start accepted"
-                    tone="success"
-                />
-                <PropertyGrid
-                    items={[
-                        {
-                            label: "Flow status",
-                            value: (
-                                <StatusChip tone={result.flowStatusTone} withDot>
-                                    {result.flowStatusLabel}
-                                </StatusChip>
-                            ),
-                        },
-                        { label: "Handoff", value: "Open Tasks to inspect runtime detail." },
-                        { label: "Manifest", value: result.manifestDescription },
-                    ]}
-                />
-            </div>
+            <StatePanel
+                summary="Initial runtime effects were accepted and the task is ready for the Tasks surface."
+                title="Task start accepted"
+                tone="success"
+            />
         </TaskStartDialog>
     );
 }

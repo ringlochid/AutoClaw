@@ -85,8 +85,12 @@ test("starts a task from stored workflow truth at desktop width", async ({ page 
 
     await previewDialog.getByRole("button", { name: "Start Task" }).click();
     await expect(page.getByText("Task start accepted")).toBeVisible();
-    await expect(page.getByRole("dialog", { name: "Result" })).toBeVisible();
-    await expect(page.getByText("Running")).toBeVisible();
+    const resultDialog = page.getByRole("dialog", { name: "Result" });
+    await expect(resultDialog).toBeVisible();
+    await expect(resultDialog.getByText("Flow status")).toHaveCount(0);
+    await expect(resultDialog.getByText("Handoff")).toHaveCount(0);
+    await expect(resultDialog.getByText("Manifest")).toHaveCount(0);
+    await expect(resultDialog.getByText("Running")).toHaveCount(0);
     await expect(page.getByText("task-console-fixture")).toHaveCount(0);
     await expect(page.getByText("compiled-plan-001")).toHaveCount(0);
     await expect(page.getByText("flow-revision-001")).toHaveCount(0);

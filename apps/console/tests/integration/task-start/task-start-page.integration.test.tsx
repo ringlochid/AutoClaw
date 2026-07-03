@@ -120,7 +120,10 @@ describe("TaskStartPage", () => {
         await user.click(preview.getByRole("button", { name: "Start Task" }));
         expect(await screen.findByText("Task start accepted")).toBeVisible();
         expect(screen.getByRole("dialog", { name: "Result" })).toBeVisible();
-        expect(screen.getByText("Running")).toBeVisible();
+        expect(screen.queryByText("Flow status")).not.toBeInTheDocument();
+        expect(screen.queryByText("Handoff")).not.toBeInTheDocument();
+        expect(screen.queryByText("Manifest")).not.toBeInTheDocument();
+        expect(screen.queryByText("Running")).not.toBeInTheDocument();
         expect(screen.queryByText(TEST_TASK_ID)).not.toBeInTheDocument();
         expect(screen.queryByText("compiled-plan-001")).not.toBeInTheDocument();
         expect(screen.queryByText("flow-revision-001")).not.toBeInTheDocument();

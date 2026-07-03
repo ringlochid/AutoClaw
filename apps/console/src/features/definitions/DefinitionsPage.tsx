@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { ChevronDown, ExternalLink, Search, X } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -236,47 +236,55 @@ function DefinitionList({ controller }: { readonly controller: DefinitionsContro
 
     if (listState.isLoading) {
         return (
-            <StatePanel
-                summary="Reading stored registry rows from the selected definition route."
-                title="Loading Definitions"
-                tone="loading"
-            />
+            <DefinitionListStateShell controller={controller}>
+                <StatePanel
+                    summary="Reading stored registry rows from the selected definition route."
+                    title="Loading Definitions"
+                    tone="loading"
+                />
+            </DefinitionListStateShell>
         );
     }
 
     if (listState.error !== null) {
         return (
-            <StatePanel
-                action={<Button onClick={controller.refresh}>Retry</Button>}
-                summary={listState.error.summary}
-                title={
-                    isAuthError(listState.error)
-                        ? "Access to Definitions failed"
-                        : "Definitions could not load"
-                }
-                tone={isAuthError(listState.error) ? "auth" : "error"}
-            />
+            <DefinitionListStateShell controller={controller}>
+                <StatePanel
+                    action={<Button onClick={controller.refresh}>Retry</Button>}
+                    summary={listState.error.summary}
+                    title={
+                        isAuthError(listState.error)
+                            ? "Access to Definitions failed"
+                            : "Definitions could not load"
+                    }
+                    tone={isAuthError(listState.error) ? "auth" : "error"}
+                />
+            </DefinitionListStateShell>
         );
     }
 
     if (listState.rows.length === 0) {
         if (controller.hasActiveNarrowing) {
             return (
-                <StatePanel
-                    action={<Button onClick={controller.clearFilters}>Clear filters</Button>}
-                    summary={`No ${listLabelForKind(controller.kind)} match the current search or ${controller.activeFilterSummary.toLowerCase()}.`}
-                    title={`No matching ${listLabelForKind(controller.kind)}`}
-                    tone="empty"
-                />
+                <DefinitionListStateShell controller={controller}>
+                    <StatePanel
+                        action={<Button onClick={controller.clearFilters}>Clear filters</Button>}
+                        summary={`No ${listLabelForKind(controller.kind)} match the current search or ${controller.activeFilterSummary.toLowerCase()}.`}
+                        title={`No matching ${listLabelForKind(controller.kind)}`}
+                        tone="empty"
+                    />
+                </DefinitionListStateShell>
             );
         }
 
         return (
-            <StatePanel
-                summary={`The controller did not return stored ${listLabelForKind(controller.kind)}.`}
-                title={`No stored ${listLabelForKind(controller.kind)}`}
-                tone="empty"
-            />
+            <DefinitionListStateShell controller={controller}>
+                <StatePanel
+                    summary={`The controller did not return stored ${listLabelForKind(controller.kind)}.`}
+                    title={`No stored ${listLabelForKind(controller.kind)}`}
+                    tone="empty"
+                />
+            </DefinitionListStateShell>
         );
     }
 
@@ -300,6 +308,23 @@ function DefinitionList({ controller }: { readonly controller: DefinitionsContro
                 ))}
             </ol>
             <DefinitionListFooter controller={controller} />
+        </div>
+    );
+}
+
+function DefinitionListStateShell({
+    children,
+    controller,
+}: {
+    readonly children: ReactNode;
+    readonly controller: DefinitionsController;
+}) {
+    return (
+        <div className="definition-list-shell">
+            <span className="sr-only" id="definitions-list-heading">
+                {kindLabel(controller.singularKind)}s
+            </span>
+            <div className="definition-list-state-body">{children}</div>
         </div>
     );
 }

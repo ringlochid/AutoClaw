@@ -132,6 +132,59 @@ test("keeps Definitions kind switch, list, detail, and versions usable at mobile
     await expect(revisionButton).toBeFocused();
 });
 
+test("centers the Definitions loading state inside the list container", async ({
+    page,
+}, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "desktop proof is captured once");
+
+    let releaseRoles!: () => void;
+    const rolesDelay = new Promise<void>((resolve) => {
+        releaseRoles = resolve;
+    });
+
+    await page.route("**/definitions/roles**", async (route) => {
+        await rolesDelay;
+        await fulfillJson(route, createDefinitionSummaryList("role", [], null));
+    });
+
+    await page.goto("/definitions", { waitUntil: "domcontentloaded" });
+
+    const listSection = page.locator('section[aria-labelledby="definitions-list-heading"]');
+    await expect(listSection.getByText("Loading Definitions")).toBeVisible();
+
+    const loadingMetrics = await listSection.evaluate((section) => {
+        const stateBody = section.querySelector(".definition-list-state-body");
+        const panel = section.querySelector('[role="status"]');
+        const stateBodyStyle = stateBody === null ? null : window.getComputedStyle(stateBody);
+        const stateBodyBox = stateBody?.getBoundingClientRect();
+        const panelBox = panel?.getBoundingClientRect();
+
+        return {
+            alignItems: stateBodyStyle?.alignItems ?? null,
+            justifyContent: stateBodyStyle?.justifyContent ?? null,
+            panelWidth: Math.round(panelBox?.width ?? 0),
+            stateBodyWidth: Math.round(stateBodyBox?.width ?? 0),
+            verticalCenterOffset:
+                stateBodyBox === undefined || panelBox === undefined
+                    ? null
+                    : Math.abs(
+                          panelBox.top +
+                              panelBox.height / 2 -
+                              (stateBodyBox.top + stateBodyBox.height / 2),
+                      ),
+        };
+    });
+
+    expect(loadingMetrics.alignItems).toBe("center");
+    expect(loadingMetrics.justifyContent).toBe("center");
+    expect(loadingMetrics.stateBodyWidth).toBeGreaterThan(0);
+    expect(loadingMetrics.panelWidth).toBe(loadingMetrics.stateBodyWidth - 32);
+    expect(loadingMetrics.verticalCenterOffset).not.toBeNull();
+    expect(loadingMetrics.verticalCenterOffset ?? 999).toBeLessThanOrEqual(1);
+
+    releaseRoles();
+});
+
 function definitionRow(page: Page, key: string) {
     return page.getByRole("button", { name: new RegExp(`^${key}\\b`) });
 }
