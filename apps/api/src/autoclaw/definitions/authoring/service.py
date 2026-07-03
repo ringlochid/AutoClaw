@@ -203,6 +203,43 @@ async def write_definition_draft(
     return await read_definition_draft(session, data_dir=data_dir, kind=kind, key=key)
 
 
+async def replace_definition_draft_with_current_revision(
+    session: AsyncSession,
+    *,
+    data_dir: Path,
+    kind: DefinitionKind,
+    key: str,
+) -> DefinitionDraftDetailResponse:
+    draft = read_stored_definition_draft(data_dir, kind=kind, key=key)
+    if draft.metadata.mode != DefinitionDraftMode.UPDATE:
+        raise invalid_request_shape_error("replace-current requires an update draft")
+
+    current_snapshot = await require_current_definition_snapshot(session, kind=kind, key=key)
+    body = serialize_definition_content(kind, current_snapshot.content)
+    normalized_content = normalize_definition_content(current_snapshot.content)
+    metadata = build_definition_draft_metadata(
+        kind=kind,
+        key=key,
+        mode=DefinitionDraftMode.UPDATE,
+        body=body,
+        based_on=StoredDraftBaseline(
+            revision_no=current_snapshot.revision_no,
+            content_hash=current_snapshot.content_hash,
+            source_path=current_snapshot.source_path,
+        ),
+        baseline_body=body,
+        baseline_normalized_content=normalized_content,
+        created_at=draft.metadata.created_at,
+    )
+    write_stored_definition_draft(
+        data_dir,
+        metadata=metadata,
+        body=body,
+        normalized_content=normalized_content,
+    )
+    return await read_definition_draft(session, data_dir=data_dir, kind=kind, key=key)
+
+
 async def read_definition_draft(
     session: AsyncSession,
     *,
@@ -285,6 +322,7 @@ __all__ = [
     "list_definition_drafts",
     "publish_definition_draft",
     "read_definition_draft",
+    "replace_definition_draft_with_current_revision",
     "validate_saved_definition_draft",
     "write_definition_draft",
 ]

@@ -234,6 +234,68 @@ async def test_definition_authoring_publish_blocks_stale_update(tmp_path: Path) 
         )
 
 
+async def test_definition_authoring_replace_current_refreshes_saved_update_draft(
+    tmp_path: Path,
+) -> None:
+    async with public_api_context(tmp_path) as context:
+        created = await context.client.post(
+            "/authoring/definition-drafts",
+            headers=context.operator_headers,
+            json={"kind": "role", "key": "engineer", "mode": "update"},
+        )
+        assert created.status_code == 200
+        draft_body = cast(str, created.json()["draft"]["body"])
+
+        edited = await context.client.put(
+            "/authoring/definitions/role/engineer/draft",
+            headers=context.operator_headers,
+            json={
+                "body": _replace_description(
+                    draft_body,
+                    "Discarded local draft edits.",
+                ),
+                "body_format": "yaml",
+            },
+        )
+        assert edited.status_code == 200
+        assert edited.json()["draft"]["is_saved"] is True
+        assert edited.json()["draft"]["status"] == "modified"
+
+        advanced = await context.client.post(
+            "/definitions",
+            headers=context.operator_headers,
+            json={
+                "kind": "role",
+                "content": {
+                    **cast(dict[str, Any], created.json()["draft"]["normalized_content"]),
+                    "description": "Current stored revision wins replace-current.",
+                },
+            },
+        )
+        assert advanced.status_code == 201
+        advanced_revision_no = advanced.json()["revision_no"]
+
+        replaced = await context.client.post(
+            "/authoring/definitions/role/engineer/draft/replace-current",
+            headers=context.operator_headers,
+        )
+        assert replaced.status_code == 200
+        replaced_draft = replaced.json()["draft"]
+        assert replaced_draft["is_saved"] is True
+        assert replaced_draft["mode"] == "update"
+        assert replaced_draft["status"] == "clean"
+        assert replaced_draft["based_on"]["revision_no"] == advanced_revision_no
+        assert "Current stored revision wins replace-current." in replaced_draft["body"]
+        assert "Discarded local draft edits." not in replaced_draft["body"]
+
+        listed = await context.client.get(
+            "/authoring/definition-drafts",
+            headers=context.operator_headers,
+        )
+        assert listed.status_code == 200
+        assert [item["key"] for item in listed.json()["items"]] == ["engineer"]
+
+
 async def test_definition_authoring_publish_blocks_create_race_collision(tmp_path: Path) -> None:
     async with public_api_context(tmp_path) as context:
         body = _role_body("race-reviewer", "Draft created before another writer wins.")

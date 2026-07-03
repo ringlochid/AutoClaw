@@ -38,6 +38,32 @@ test("renders flat Definition Editor draft workflow at desktop width", async ({
     await expect(page.getByRole("button", { name: "Save draft" })).toBeDisabled();
     await expectDraftRowsStayStacked(page);
 
+    await page.getByRole("button", { name: "Reset draft" }).click();
+    const resetDialog = page.getByRole("dialog", { name: "Reset draft" });
+    await expect(resetDialog).toBeVisible();
+    await expect(
+        resetDialog.getByText(/restores the selected file to its captured draft baseline/i),
+    ).toBeVisible();
+    await resetDialog.getByRole("button", { name: "Cancel" }).click();
+
+    await page.getByRole("button", { name: "Replace with current stored revision" }).click();
+    const replaceDialog = page.getByRole("dialog", {
+        name: "Replace with current stored revision",
+    });
+    await expect(replaceDialog).toBeVisible();
+    await expect(
+        replaceDialog.getByText(/reads the current stored registry revision/i),
+    ).toBeVisible();
+    await replaceDialog.getByRole("button", { name: "Cancel" }).click();
+
+    await page.getByRole("button", { name: "Discard saved draft" }).click();
+    const discardDialog = page.getByRole("dialog", { name: "Discard saved draft" });
+    await expect(discardDialog).toBeVisible();
+    await expect(
+        discardDialog.getByText(/permanently removes the saved draft file/i),
+    ).toBeVisible();
+    await discardDialog.getByRole("button", { name: "Cancel" }).click();
+
     const validateButton = page.getByRole("button", { name: "Validate" });
     await validateButton.focus();
     await expect(validateButton).toBeFocused();

@@ -158,6 +158,12 @@ export function definitionDraftPublishRoute(kind: string, key: string): ApiRoute
     };
 }
 
+export function definitionDraftReplaceCurrentRoute(kind: string, key: string): ApiRoute {
+    return {
+        path: `${definitionDraftRoute(kind, key).path}/replace-current`,
+    };
+}
+
 export function taskStartRoute(): ApiRoute {
     return {
         path: "/tasks/start",

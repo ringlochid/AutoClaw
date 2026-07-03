@@ -58,6 +58,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/authoring/definitions/{kind}/{key}/draft/replace-current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Definition Draft Replace Current */
+        post: operations["post_definition_draft_replace_current_authoring_definitions__kind___key__draft_replace_current_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/authoring/definitions/{kind}/{key}/draft/validate": {
         parameters: {
             query?: never;
@@ -2416,6 +2433,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DefinitionDraftPublishResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_definition_draft_replace_current_authoring_definitions__kind___key__draft_replace_current_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-AutoClaw-API-Key"?: string | null;
+            };
+            path: {
+                kind: components["schemas"]["DefinitionKind"];
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefinitionDraftDetailResponse"];
                 };
             };
             /** @description Validation Error */

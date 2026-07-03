@@ -19,6 +19,7 @@ from autoclaw.definitions.authoring import (
     list_definition_drafts,
     publish_definition_draft,
     read_definition_draft,
+    replace_definition_draft_with_current_revision,
     validate_saved_definition_draft,
     write_definition_draft,
 )
@@ -118,6 +119,26 @@ async def delete_definition_draft_route(
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/definitions/{kind}/{key}/draft/replace-current",
+    response_model=DefinitionDraftDetailResponse,
+)
+async def post_definition_draft_replace_current(
+    kind: DefinitionKind,
+    key: str,
+    session: DBSession,
+) -> DefinitionDraftDetailResponse:
+    try:
+        return await replace_definition_draft_with_current_revision(
+            session,
+            data_dir=get_settings().data_dir,
+            kind=kind,
+            key=key,
+        )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
 
 
 @router.post(

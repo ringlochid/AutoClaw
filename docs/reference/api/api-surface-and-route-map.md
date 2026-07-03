@@ -84,6 +84,7 @@ Current authoring routes on the same trusted operator lane are:
 - `GET /authoring/definitions/{kind}/{key}/draft`
 - `PUT /authoring/definitions/{kind}/{key}/draft`
 - `DELETE /authoring/definitions/{kind}/{key}/draft`
+- `POST /authoring/definitions/{kind}/{key}/draft/replace-current`
 - `POST /authoring/definitions/{kind}/{key}/draft/validate`
 - `POST /authoring/definitions/{kind}/{key}/draft/publish`
 

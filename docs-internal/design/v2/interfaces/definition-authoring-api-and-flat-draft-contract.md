@@ -66,6 +66,7 @@ Canonical route families are:
 - `GET /authoring/definitions/{kind}/{key}/draft`
 - `PUT /authoring/definitions/{kind}/{key}/draft`
 - `DELETE /authoring/definitions/{kind}/{key}/draft`
+- `POST /authoring/definitions/{kind}/{key}/draft/replace-current`
 - `POST /authoring/definitions/{kind}/{key}/draft/validate`
 - `POST /authoring/definitions/{kind}/{key}/draft/publish`
 
@@ -77,6 +78,8 @@ Rules:
 - `DELETE` returns `204 No Content`
 - `GET /authoring/definitions/{kind}/{key}/draft` may return a transient unsaved update draft over current registry truth when no saved draft exists
 - `PUT` saves a YAML body and creates a saved draft if one does not already exist
+- resetting a draft to its baseline is a `PUT` of the captured `baseline_body`; it keeps the saved draft
+- `POST /authoring/definitions/{kind}/{key}/draft/replace-current` refreshes a saved update draft from current registry truth and keeps the saved draft
 - `POST /authoring/definition-drafts` creates explicit `create` or `update` drafts and fails on saved-draft or registry name collisions
 - validation and publish read saved draft state; clients should save local edits first
 - stale publish and name collisions return structured non-published results or 409 operation failures depending on when the conflict is detected

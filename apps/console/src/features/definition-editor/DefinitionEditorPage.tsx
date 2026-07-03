@@ -33,6 +33,7 @@ import {
     publishDraft,
     readDraft,
     readDrafts,
+    replaceDraftWithCurrent,
     saveDraft,
     toErrorView,
     validateDraft,
@@ -68,7 +69,10 @@ interface NewDraftFormState {
     readonly mode: DefinitionDraftMode;
 }
 
-type DraftOperation = "deleting" | "publishing" | "saving" | "validating" | null;
+type DraftOperation =
+    "discarding" | "publishing" | "replacing" | "resetting" | "saving" | "validating" | null;
+
+type DraftConfirmation = "discard" | "replace" | "reset";
 
 type DraftActionDialog =
     | {
@@ -118,6 +122,7 @@ export function DefinitionEditorPage() {
     const [operation, setOperation] = useState<DraftOperation>(null);
     const [operationError, setOperationError] = useState<ConsoleErrorView | null>(null);
     const [draftActionDialog, setDraftActionDialog] = useState<DraftActionDialog>(null);
+    const [draftConfirmation, setDraftConfirmation] = useState<DraftConfirmation | null>(null);
     const [refreshToken, setRefreshToken] = useState(0);
     const selectedKey = selection === null ? "" : draftIdentityKey(selection);
     const currentDraft = detailState.draft;
@@ -148,6 +153,7 @@ export function DefinitionEditorPage() {
             setEditorBody(draft.body);
             if (clearOutcome) {
                 setDraftActionDialog(null);
+                setDraftConfirmation(null);
                 setOperationError(null);
             }
             if (includeInList) {
@@ -208,6 +214,7 @@ export function DefinitionEditorPage() {
             setDetailState(initialDetailState);
             setEditorBody("");
             setDraftActionDialog(null);
+            setDraftConfirmation(null);
             setOperationError(null);
             return;
         }
@@ -215,6 +222,7 @@ export function DefinitionEditorPage() {
         const abortController = new AbortController();
         setDetailState({ draft: null, error: null, isLoading: true });
         setDraftActionDialog(null);
+        setDraftConfirmation(null);
         setOperationError(null);
 
         void readDraft({ ...selection, signal: abortController.signal })
@@ -415,10 +423,11 @@ export function DefinitionEditorPage() {
         const remainingRows = listState.rows.filter(
             (row) => !draftIdentityEquals(draftIdentityFromSummary(row), identity),
         );
-        setOperation("deleting");
+        setOperation("discarding");
         setOperationError(null);
         try {
             await deleteDraft(identity);
+            setDraftConfirmation(null);
             removeListSummary(identity);
             if (currentDraft.mode === "update") {
                 const response = await readDraft(identity);
@@ -439,13 +448,15 @@ export function DefinitionEditorPage() {
         if (currentDraft?.mode !== "update" || !currentDraft.is_saved) {
             return;
         }
-        setOperation("deleting");
+        setOperation("replacing");
         setOperationError(null);
         try {
-            await deleteDraft({ key: currentDraft.key, kind: currentDraft.kind });
-            removeListSummary(currentDraft);
-            const response = await readDraft({ key: currentDraft.key, kind: currentDraft.kind });
-            applyDraftDetail(response.draft, { includeInList: response.draft.is_saved });
+            const response = await replaceDraftWithCurrent({
+                key: currentDraft.key,
+                kind: currentDraft.kind,
+            });
+            applyDraftDetail(response.draft);
+            setDraftConfirmation(null);
         } catch (error) {
             setOperationError(toErrorView(error));
         } finally {
@@ -462,14 +473,36 @@ export function DefinitionEditorPage() {
         }));
     }
 
-    function resetToBaseline(): void {
-        const baselineBody = currentDraft?.baseline_body;
+    async function handleResetDraft(): Promise<void> {
+        if (!currentDraft?.is_saved) {
+            return;
+        }
+        const baselineBody = currentDraft.baseline_body;
         if (baselineBody === null || baselineBody === undefined) {
             return;
         }
-        setEditorBody(baselineBody);
+
+        setOperation("resetting");
+        setOperationError(null);
+        try {
+            const response = await saveDraft({
+                body: baselineBody,
+                key: currentDraft.key,
+                kind: currentDraft.kind,
+            });
+            applyDraftDetail(response.draft);
+            setDraftConfirmation(null);
+        } catch (error) {
+            setOperationError(toErrorView(error));
+        } finally {
+            setOperation(null);
+        }
+    }
+
+    function openDraftConfirmation(action: DraftConfirmation): void {
         setDraftActionDialog(null);
         setOperationError(null);
+        setDraftConfirmation(action);
     }
 
     function handleDraftBodyKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
@@ -517,14 +550,14 @@ export function DefinitionEditorPage() {
                     detailState={detailState}
                     editorBody={editorBody}
                     handleDiscardDraft={() => {
-                        void handleDiscardDraft();
+                        openDraftConfirmation("discard");
                     }}
                     handleDraftBodyKeyDown={handleDraftBodyKeyDown}
                     handlePublishDraft={() => {
                         void handlePublishDraft();
                     }}
                     handleReplaceWithCurrent={() => {
-                        void handleReplaceWithCurrent();
+                        openDraftConfirmation("replace");
                     }}
                     handleSaveDraft={() => {
                         void handleSaveDraft();
@@ -541,7 +574,9 @@ export function DefinitionEditorPage() {
                             setSelection({ ...selection });
                         }
                     }}
-                    resetToBaseline={resetToBaseline}
+                    resetToBaseline={() => {
+                        openDraftConfirmation("reset");
+                    }}
                     setEditorBody={setEditorBody}
                 />
             </div>
@@ -561,6 +596,32 @@ export function DefinitionEditorPage() {
                     onClose={() => {
                         setDraftActionDialog(null);
                     }}
+                />
+            )}
+            {draftConfirmation === null || currentDraft === null ? null : (
+                <DraftActionConfirmDialog
+                    action={draftConfirmation}
+                    draft={currentDraft}
+                    isBusy={isBusy}
+                    onCancel={() => {
+                        if (!isBusy) {
+                            setDraftConfirmation(null);
+                            setOperationError(null);
+                        }
+                    }}
+                    onConfirm={() => {
+                        if (draftConfirmation === "discard") {
+                            void handleDiscardDraft();
+                            return;
+                        }
+                        if (draftConfirmation === "replace") {
+                            void handleReplaceWithCurrent();
+                            return;
+                        }
+                        void handleResetDraft();
+                    }}
+                    operation={operation}
+                    operationError={operationError}
                 />
             )}
         </PageFrame>
@@ -745,6 +806,7 @@ function DraftEditorPanel({
 
     const canSave = !isBusy && (!currentDraft.is_saved || isDirty);
     const canDiscard = !isBusy && currentDraft.is_saved;
+    const canReset = canDiscard && currentDraft.baseline_body !== null;
     const canReplaceWithCurrent = canDiscard && currentDraft.mode === "update";
 
     return (
@@ -816,12 +878,12 @@ function DraftEditorPanel({
                 </label>
                 <div className="flex flex-wrap justify-end gap-2 border-t border-outline-soft pt-4">
                     <Button
-                        disabled={isBusy || currentDraft.baseline_body === null}
+                        disabled={!canReset}
                         icon={<RotateCcw className="size-4" />}
                         onClick={resetToBaseline}
                         variant="secondary"
                     >
-                        Reset draft
+                        {operation === "resetting" ? "Resetting" : "Reset draft"}
                     </Button>
                     <Button
                         disabled={!canReplaceWithCurrent}
@@ -829,7 +891,9 @@ function DraftEditorPanel({
                         onClick={handleReplaceWithCurrent}
                         variant="secondary"
                     >
-                        Replace with current stored revision
+                        {operation === "replacing"
+                            ? "Replacing"
+                            : "Replace with current stored revision"}
                     </Button>
                     <Button
                         disabled={!canDiscard}
@@ -837,7 +901,7 @@ function DraftEditorPanel({
                         onClick={handleDiscardDraft}
                         variant="danger"
                     >
-                        Discard saved draft
+                        {operation === "discarding" ? "Discarding" : "Discard saved draft"}
                     </Button>
                 </div>
             </div>
@@ -895,6 +959,119 @@ function PublishPanel({ result }: { readonly result: DraftPublishResponse }) {
             title={`Publish ${statusLabel(result.status)}`}
             tone={tone}
         />
+    );
+}
+
+function DraftActionConfirmDialog({
+    action,
+    draft,
+    isBusy,
+    onCancel,
+    onConfirm,
+    operation,
+    operationError,
+}: {
+    readonly action: DraftConfirmation;
+    readonly draft: DraftDetail;
+    readonly isBusy: boolean;
+    readonly onCancel: () => void;
+    readonly onConfirm: () => void;
+    readonly operation: DraftOperation;
+    readonly operationError: ConsoleErrorView | null;
+}) {
+    useEffect(() => {
+        const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+            if (event.key === "Escape" && !isBusy) {
+                event.preventDefault();
+                onCancel();
+            }
+        };
+
+        document.body.classList.add("overflow-hidden");
+        document.addEventListener("keydown", handleKeyDown, true);
+        return () => {
+            document.body.classList.remove("overflow-hidden");
+            document.removeEventListener("keydown", handleKeyDown, true);
+        };
+    }, [isBusy, onCancel]);
+
+    const copy = draftConfirmationCopy(action);
+    const busyOperation = draftConfirmationOperation(action);
+    const isActionBusy = operation === busyOperation;
+
+    return (
+        <div
+            className="fixed inset-0 z-50 grid place-items-center bg-foreground/35 p-4 backdrop-blur-[2px]"
+            role="presentation"
+        >
+            <section
+                aria-labelledby="definition-draft-confirm-title"
+                aria-modal="true"
+                className="max-h-[calc(100vh-4rem)] w-full max-w-xl overflow-hidden rounded-shell border border-outline-soft bg-surface shadow-popover"
+                role="dialog"
+            >
+                <header className="flex items-start justify-between gap-4 border-b border-outline-soft px-5 py-4">
+                    <div className="min-w-0">
+                        <p className="font-mono text-label font-medium uppercase text-muted">
+                            Draft action
+                        </p>
+                        <h2
+                            className="mt-1 font-display text-[20px] font-semibold leading-6 text-foreground"
+                            id="definition-draft-confirm-title"
+                        >
+                            {copy.title}
+                        </h2>
+                    </div>
+                    <button
+                        aria-label="Close draft action"
+                        className="inline-flex size-icon-control shrink-0 items-center justify-center rounded-control border border-outline bg-surface-low text-muted transition-colors hover:border-primary/45 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-55"
+                        disabled={isBusy}
+                        onClick={onCancel}
+                        type="button"
+                    >
+                        <X aria-hidden="true" className="size-4" />
+                    </button>
+                </header>
+                <div className="grid max-h-[calc(100vh-14rem)] gap-4 overflow-y-auto px-5 py-5">
+                    <p className="text-compact leading-6 text-muted">{copy.description}</p>
+                    <div className="rounded-card border border-outline-soft bg-surface-low px-4 py-3">
+                        <dl className="grid gap-3 sm:grid-cols-2">
+                            <div className="min-w-0">
+                                <dt className="font-mono text-label font-medium uppercase text-muted">
+                                    Selected draft
+                                </dt>
+                                <dd className="mt-1 break-words font-mono text-utility text-foreground">
+                                    {draft.kind}/{draft.key}
+                                </dd>
+                            </div>
+                            <div className="min-w-0">
+                                <dt className="font-mono text-label font-medium uppercase text-muted">
+                                    Baseline
+                                </dt>
+                                <dd className="mt-1 font-mono text-utility text-foreground">
+                                    {draftBaselineLabel(draft)}
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+                    {operationError === null ? null : (
+                        <StatePanel
+                            summary={operationError.summary}
+                            title={operationError.title}
+                            tone="error"
+                        />
+                    )}
+                </div>
+                <footer className="flex justify-end gap-2 border-t border-outline-soft px-5 py-4">
+                    <Button disabled={isBusy} onClick={onCancel} variant="secondary">
+                        Cancel
+                    </Button>
+                    <Button disabled={isBusy} onClick={onConfirm} variant="danger">
+                        {isActionBusy ? copy.busyLabel : copy.confirmLabel}
+                    </Button>
+                </footer>
+            </section>
+        </div>
     );
 }
 
@@ -1234,6 +1411,59 @@ function statusTone(status: DraftDetail["status"]): StatusTone {
         case "invalid":
             return "danger";
     }
+}
+
+function draftConfirmationCopy(action: DraftConfirmation): {
+    readonly busyLabel: string;
+    readonly confirmLabel: string;
+    readonly description: string;
+    readonly title: string;
+} {
+    switch (action) {
+        case "discard":
+            return {
+                busyLabel: "Discarding",
+                confirmLabel: "Discard saved draft",
+                description:
+                    "This permanently removes the saved draft file. It does not change current stored registry truth or publish changes.",
+                title: "Discard saved draft",
+            };
+        case "replace":
+            return {
+                busyLabel: "Replacing",
+                confirmLabel: "Replace draft",
+                description:
+                    "This discards draft edits, reads the current stored registry revision, and updates the draft baseline. It does not apply or launch anything.",
+                title: "Replace with current stored revision",
+            };
+        case "reset":
+            return {
+                busyLabel: "Resetting",
+                confirmLabel: "Reset draft",
+                description:
+                    "This discards draft edits and restores the selected file to its captured draft baseline. It does not read current stored truth or publish changes.",
+                title: "Reset draft",
+            };
+    }
+}
+
+function draftConfirmationOperation(action: DraftConfirmation): Exclude<DraftOperation, null> {
+    switch (action) {
+        case "discard":
+            return "discarding";
+        case "replace":
+            return "replacing";
+        case "reset":
+            return "resetting";
+    }
+}
+
+function draftBaselineLabel(draft: DraftDetail): string {
+    const revisionNo = draft.based_on.revision_no;
+    if (revisionNo !== null && revisionNo !== undefined) {
+        return `rev ${String(revisionNo)}`;
+    }
+    return draft.mode === "create" ? "template" : "current";
 }
 
 function starterBodyForKind(kind: DefinitionDraftKind, key: string, description: string): string {

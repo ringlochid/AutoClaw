@@ -395,6 +395,15 @@ function createDraftAuthoringHandlers(scenario: ConsoleMockScenario): readonly H
                 draftDetailForRequest(params.kind, params.key, scenario, body.body),
             );
         }),
+        http.post(
+            "*/authoring/definitions/:kind/:key/draft/replace-current",
+            ({ params, request }) =>
+                guardedJson(
+                    request,
+                    scenario,
+                    draftDetailForRequest(params.kind, params.key, scenario),
+                ),
+        ),
         http.delete("*/authoring/definitions/:kind/:key/draft", ({ request }) =>
             guardedEmpty(request, scenario),
         ),

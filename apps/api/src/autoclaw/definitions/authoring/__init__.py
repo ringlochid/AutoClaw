@@ -20,6 +20,7 @@ from autoclaw.definitions.authoring.service import (
     list_definition_drafts,
     publish_definition_draft,
     read_definition_draft,
+    replace_definition_draft_with_current_revision,
     validate_saved_definition_draft,
     write_definition_draft,
 )
@@ -44,6 +45,7 @@ __all__ = [
     "list_definition_drafts",
     "publish_definition_draft",
     "read_definition_draft",
+    "replace_definition_draft_with_current_revision",
     "validate_saved_definition_draft",
     "write_definition_draft",
 ]

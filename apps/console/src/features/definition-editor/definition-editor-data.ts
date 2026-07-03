@@ -3,6 +3,7 @@ import type { components } from "../../api/generated/openapi";
 import {
     definitionDraftPublishRoute,
     definitionDraftRoute,
+    definitionDraftReplaceCurrentRoute,
     definitionDraftsRoute,
     definitionDraftValidateRoute,
     type DefinitionDraftsQuery,
@@ -116,6 +117,17 @@ export async function validateDraft({
 export async function publishDraft({ key, kind }: DraftIdentity): Promise<DraftPublishResponse> {
     const route = definitionDraftPublishRoute(kind, key);
     return requestJson<DraftPublishResponse>({
+        method: "POST",
+        path: route.path,
+    });
+}
+
+export async function replaceDraftWithCurrent({
+    key,
+    kind,
+}: DraftIdentity): Promise<DraftDetailResponse> {
+    const route = definitionDraftReplaceCurrentRoute(kind, key);
+    return requestJson<DraftDetailResponse>({
         method: "POST",
         path: route.path,
     });
