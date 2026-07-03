@@ -62,6 +62,14 @@ The current shipped support is intentionally narrow:
 
 Prepare OpenClaw first. AutoClaw fails fast when the OpenClaw shape is unsupported, so inspect it before onboarding:
 
+If you already have a trusted OpenClaw agent with shell access, you can ask it to do the setup:
+
+```text
+Go to https://github.com/ringlochid/AutoClaw. Read the README and docs/start/getting-started.md, then set up AutoClaw on this machine. Use the documented published-package path unless the repo says otherwise. Run the setup and health checks. Install or copy every operator skill from examples/openclaw/skills into the AutoClaw operator agent's skills directory, and copy examples/openclaw/worker-workspace/AGENTS.md into the AutoClaw worker workspace. Do not print secrets. Report the config path, console URL, data directory, installed skills, and any blocked step.
+```
+
+Manual setup:
+
 ```bash
 # Run or repair OpenClaw's own first-run setup (Gateway, auth, workspace).
 openclaw onboard
@@ -147,7 +155,7 @@ task:
     title: My first task
     summary: Produce one concise restaurant research brief.
     instruction: >-
-      Research notable restaurants and write one brief.
+        Research notable restaurants and write one brief.
 workflow:
     key: topic-research-brief
 ```
