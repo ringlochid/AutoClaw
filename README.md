@@ -145,6 +145,8 @@ Use `autoclaw config show --json` when you need the port. The same output includ
 
 Open `http://127.0.0.1:<server.port>/task-start`, select `topic-research-brief`, fill the task fields, and start the task.
 
+![Start the topic-research-brief workflow from the local console](docs/assets/first-task-console.gif)
+
 ### Start from a task-compose file
 
 Create `task-compose.yaml` in an empty working directory:
@@ -155,7 +157,7 @@ task:
     title: My first task
     summary: Produce one concise restaurant research brief.
     instruction: >-
-        Research notable restaurants and write one brief.
+      Research notable restaurants and write one brief.
 workflow:
     key: topic-research-brief
 ```
@@ -181,7 +183,21 @@ _runtime/attempts/<attempt_id>/latest-checkpoint.md # durable progress or handof
 outputs/artifacts/                                  # published outputs
 ```
 
-A successful first run produces `workspace/research_brief.md` and publishes it as the `research_brief` artifact. See [Inspect a task](docs/start/inspect-a-task.md).
+A successful first run produces `workspace/research_brief.md` and publishes it as the `research_brief` artifact. The task-owned workspace file is:
+
+```text
+<data_dir>/tasks/<task_id>/workspace/research_brief.md
+```
+
+On Linux with defaults, that is:
+
+```text
+~/.local/share/autoclaw/tasks/<task_id>/workspace/research_brief.md
+```
+
+![Example first-task research brief result](docs/assets/first-task-result.png)
+
+See [Inspect a task](docs/start/inspect-a-task.md).
 
 ## How AutoClaw works
 

@@ -56,6 +56,12 @@ Per-task directories live under:
 
 The first-run topic research workflow writes `workspace/research_brief.md` in the task directory and publishes it as the `research_brief` artifact.
 
+The full task-owned workspace path is:
+
+```text
+<data_dir>/tasks/<task_id>/workspace/research_brief.md
+```
+
 ## Annotated config example
 
 Generated config files are comment-free, and AutoClaw rewrites can remove comments. This example explains the fields; do not rely on comments staying in your local file.

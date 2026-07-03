@@ -18,12 +18,26 @@ http://127.0.0.1:<server.port>/tasks/<task_id>
 
 The task detail page shows the current node, execution graph, and event stream. A successful first research task publishes the `research_brief` artifact from `workspace/research_brief.md`.
 
+![Example first-task research brief result](../assets/first-task-result.png)
+
 ## Task directory
 
 `autoclaw config show --json` also prints `paths.data_dir`. Per-task directories live under:
 
 ```text
 <data_dir>/tasks/<task_id>/
+```
+
+For the first research task, check the task-owned workspace file at:
+
+```text
+<data_dir>/tasks/<task_id>/workspace/research_brief.md
+```
+
+On Linux with defaults:
+
+```text
+~/.local/share/autoclaw/tasks/<task_id>/workspace/research_brief.md
 ```
 
 ## Generated task files

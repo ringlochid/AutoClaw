@@ -31,6 +31,8 @@ In Task Start:
 - enter the research topic in the task instruction
 - start the task
 
+![Start the topic-research-brief workflow from the local console](../assets/first-task-console.gif)
+
 Open the returned task detail page at:
 
 ```text
@@ -75,6 +77,20 @@ This starts a task from the YAML file instead of the Task Start page.
 - the run advances through `root` and `research_topic`
 - the final output is `workspace/research_brief.md`
 - the `research_brief` artifact is published
+
+The task-owned workspace file is:
+
+```text
+<data_dir>/tasks/<task_id>/workspace/research_brief.md
+```
+
+On Linux with defaults:
+
+```text
+~/.local/share/autoclaw/tasks/<task_id>/workspace/research_brief.md
+```
+
+![Example first-task research brief result](../assets/first-task-result.png)
 
 ## Next step
 
