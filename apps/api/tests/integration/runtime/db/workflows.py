@@ -95,11 +95,11 @@ def root_replan_publication_workflow() -> WorkflowDefinitionFile:
     )
 
 
-def root_budget_rebind_workflow() -> WorkflowDefinitionFile:
+def parent_budget_rebind_workflow() -> WorkflowDefinitionFile:
     return WorkflowDefinitionFile.model_validate(
         {
             "kind": "workflow",
-            "id": "root-budget-rebind-review",
+            "id": "parent-budget-rebind-review",
             "description": "Validate child-assignment budget rebinding after structural adopt.",
             "root": {
                 "id": "root",
@@ -108,21 +108,29 @@ def root_budget_rebind_workflow() -> WorkflowDefinitionFile:
                 "description": "Root coordinator.",
                 "children": [
                     {
-                        "id": "implement_change",
-                        "role": "researcher",
-                        "description": "Implement the bounded change.",
-                        "produces": {
-                            "artifacts": [
-                                {
-                                    "slot": "change_patch",
-                                    "description": "Bounded code patch for the task.",
+                        "id": "implementation_parent",
+                        "role": "planning_lead",
+                        "policy": "standard-parent",
+                        "description": "Coordinate the bounded implementation subtree.",
+                        "children": [
+                            {
+                                "id": "implement_change",
+                                "role": "researcher",
+                                "description": "Implement the bounded change.",
+                                "produces": {
+                                    "artifacts": [
+                                        {
+                                            "slot": "change_patch",
+                                            "description": "Bounded code patch for the task.",
+                                        },
+                                        {
+                                            "slot": "verification_report",
+                                            "description": "Verification report for the patch.",
+                                        },
+                                    ]
                                 },
-                                {
-                                    "slot": "verification_report",
-                                    "description": "Verification report for the patch.",
-                                },
-                            ]
-                        },
+                            }
+                        ],
                     }
                 ],
             },

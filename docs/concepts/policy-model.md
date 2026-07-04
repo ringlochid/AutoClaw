@@ -28,7 +28,7 @@ If only the job changes, keep the policy and change the role or node instruction
 
 There is no separate `leaf` policy value. A leaf is a `worker` node with no children.
 
-## Budget spec
+## Budget
 
 `budget_spec` is a controller guardrail. It is not a time limit, token limit, quality target, or acceptance criterion.
 

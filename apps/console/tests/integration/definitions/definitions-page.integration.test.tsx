@@ -116,7 +116,17 @@ describe("DefinitionsPage", () => {
         expect(policyRow.textContent.trim().startsWith(POLICY_KEY)).toBe(true);
         expect(screen.getByLabelText("Applies to")).toBeVisible();
         expect(screen.queryByLabelText("Allowed node kind")).not.toBeInTheDocument();
-        expect(screen.getByText(/3 child assignments; retry limit not reported/)).toBeVisible();
+        expect(screen.getByText("Budget")).toBeVisible();
+        expect(screen.getByText("No controller budget limit")).toBeVisible();
+        expect(screen.queryByText(/not reported/)).not.toBeInTheDocument();
+
+        await user.click(policyRows.getByRole("button", { name: /^standard-parent-planning\b/ }));
+        expect(screen.getByText("4 child assignments")).toBeVisible();
+        expect(screen.queryByText(/not reported/)).not.toBeInTheDocument();
+
+        await user.click(policyRows.getByRole("button", { name: /^standard-worker\b/ }));
+        expect(screen.getByText("1 retry")).toBeVisible();
+        expect(screen.queryByText(/not reported/)).not.toBeInTheDocument();
 
         await user.selectOptions(screen.getByLabelText("Applies to"), "worker");
         await waitFor(() => {

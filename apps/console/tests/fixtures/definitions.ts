@@ -76,7 +76,7 @@ const POLICY_FIXTURES: readonly {
 }[] = [
     {
         appliesTo: ["root"],
-        childAssignmentLimit: 3,
+        childAssignmentLimit: null,
         description: "Default root planning and closure behavior.",
         instruction:
             "Root owns final closure.\nCommit release_green only when current whole-flow evidence is sufficient.\nCommit release_blocked only when whole-flow terminal blocked state is explicit and current.",
@@ -186,10 +186,7 @@ export function createPolicyDefinitionRows(): readonly DefinitionSummaryRead[] {
     return POLICY_FIXTURES.map((policy) => ({
         allowed_node_kinds: null,
         applies_to: [...policy.appliesTo],
-        budget_spec: {
-            child_assignment_limit: policy.childAssignmentLimit,
-            retry_limit: policy.retryLimit,
-        },
+        budget_spec: policyBudgetSpec(policy),
         current_revision_no: policy.revisionNo,
         description: policy.description,
         key: policy.key,
@@ -236,10 +233,7 @@ export function createPolicyDefinitionDetail(key = POLICY_KEY): DefinitionRevisi
     return {
         content: {
             applies_to: [...policy.appliesTo],
-            budget_spec: {
-                child_assignment_limit: policy.childAssignmentLimit,
-                retry_limit: policy.retryLimit,
-            },
+            budget_spec: policyBudgetSpec(policy),
             capabilities: {
                 command_run: "deny",
                 human_request: {
@@ -357,6 +351,21 @@ export function createDefinitionVersionsMap(): Record<
             ]),
         ),
     };
+}
+
+function policyBudgetSpec(policy: {
+    readonly childAssignmentLimit: number | null;
+    readonly retryLimit: number | null;
+}): components["schemas"]["BudgetSpec"] | null {
+    const budgetSpec: components["schemas"]["BudgetSpec"] = {};
+    if (policy.childAssignmentLimit !== null) {
+        budgetSpec.child_assignment_limit = policy.childAssignmentLimit;
+    }
+    if (policy.retryLimit !== null) {
+        budgetSpec.retry_limit = policy.retryLimit;
+    }
+
+    return Object.keys(budgetSpec).length === 0 ? null : budgetSpec;
 }
 
 function workflowRootForKey(

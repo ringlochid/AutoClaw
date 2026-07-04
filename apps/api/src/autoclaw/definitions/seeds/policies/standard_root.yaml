@@ -4,8 +4,6 @@ title: Standard Root
 description: Guardrails for root orchestration and final closure.
 applies_to:
     - root
-budget_spec:
-    child_assignment_limit: 3
 capabilities:
     human_request:
         mode: deny

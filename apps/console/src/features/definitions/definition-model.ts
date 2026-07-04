@@ -15,7 +15,7 @@ export type WorkflowRootDefinition = components["schemas"]["RootNodeDefinition-O
 export type WorkflowNodeDefinition = components["schemas"]["NodeDefinitionInput-Output"];
 
 type RoleContent = components["schemas"]["RoleDefinitionInput"];
-type PolicyContent = components["schemas"]["PolicyDefinitionInput-Output"];
+type PolicyContent = components["schemas"]["PolicyDefinitionInput"];
 type WorkflowContent = components["schemas"]["WorkflowDefinitionInput-Output"];
 
 export interface DefinitionKindOption {
@@ -227,20 +227,28 @@ export function mapDefinitionVersionRow(
 
 export function formatBudgetSpec(budgetSpec: BudgetSpec | null): string {
     if (budgetSpec === null) {
-        return "Not configured";
+        return "No controller budget limit";
     }
 
-    const childAssignmentLimit =
-        budgetSpec.child_assignment_limit === null ||
-        budgetSpec.child_assignment_limit === undefined
-            ? "child assignment limit not reported"
-            : `${String(budgetSpec.child_assignment_limit)} child assignments`;
-    const retryLimit =
-        budgetSpec.retry_limit === null || budgetSpec.retry_limit === undefined
-            ? "retry limit not reported"
-            : `${String(budgetSpec.retry_limit)} retries`;
+    const budgetParts: string[] = [];
+    if (
+        budgetSpec.child_assignment_limit !== null &&
+        budgetSpec.child_assignment_limit !== undefined
+    ) {
+        const assignmentLabel =
+            budgetSpec.child_assignment_limit === 1 ? "child assignment" : "child assignments";
+        budgetParts.push(`${String(budgetSpec.child_assignment_limit)} ${assignmentLabel}`);
+    }
+    if (budgetSpec.retry_limit !== null && budgetSpec.retry_limit !== undefined) {
+        const retryLabel = budgetSpec.retry_limit === 1 ? "retry" : "retries";
+        budgetParts.push(`${String(budgetSpec.retry_limit)} ${retryLabel}`);
+    }
 
-    return `${childAssignmentLimit}; ${retryLimit}`;
+    if (budgetParts.length === 0) {
+        return "No controller budget limit";
+    }
+
+    return budgetParts.join("; ");
 }
 
 export function formatOptionalInstruction(instruction: string | null): string {

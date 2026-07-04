@@ -67,7 +67,10 @@ async def test_rerenders_historical_dispatch_from_dispatch_lineage(
             assert dispatch is not None
             bundle, record = await build_dispatch_prompt(session, task_id, dispatch)
             assert record.node_key == "root"
-            assert "Make one scoped settings-loader change and publish evidence." in bundle.full_markdown
+            assert (
+                "Make one scoped settings-loader change and publish evidence."
+                in bundle.full_markdown
+            )
             assert "Stage only the unique child review path." not in bundle.full_markdown
 
 

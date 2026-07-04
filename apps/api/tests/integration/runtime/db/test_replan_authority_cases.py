@@ -20,7 +20,7 @@ from tests.integration.runtime.db.context import (
     runtime_database_context,
     write_task_file,
 )
-from tests.integration.runtime.db.workflows import root_budget_rebind_workflow
+from tests.integration.runtime.db.workflows import parent_budget_rebind_workflow
 
 pytestmark = [pytest.mark.requires_openclaw_gateway, pytest.mark.gateway_wait_timeout_default]
 
@@ -100,25 +100,29 @@ async def test_structural_replan_uses_relational_parent_child_authority(
 async def assert_budget_counter_rebound(
     context: RuntimeDatabaseContext,
     *,
+    node_key: str,
     task_id: str,
 ) -> None:
     async with context.session_factory() as session:
         flow = await require_flow_model(session, task_id=task_id)
         assert flow.active_flow_revision_id is not None
-        root_node = await require_flow_node(
+        budgeted_node = await require_flow_node(
             session,
             flow_revision_id=flow.active_flow_revision_id,
-            node_key="root",
+            node_key=node_key,
         )
-        assert root_node.current_assignment_id is not None
-        root_assignment = await session.get(AssignmentModel, root_node.current_assignment_id)
-        assert root_assignment is not None
+        assert budgeted_node.current_assignment_id is not None
+        budgeted_assignment = await session.get(
+            AssignmentModel,
+            budgeted_node.current_assignment_id,
+        )
+        assert budgeted_assignment is not None
         budget_counter = await session.get(
             BudgetCounterModel,
-            f"budget.child_assignment.{root_assignment.assignment_id}",
+            f"budget.child_assignment.{budgeted_assignment.assignment_id}",
         )
         assert budget_counter is not None
-        assert budget_counter.flow_node_id == root_node.flow_node_id
+        assert budget_counter.flow_node_id == budgeted_node.flow_node_id
         updated = await update_child(
             session,
             task_id=task_id,
@@ -127,26 +131,26 @@ async def assert_budget_counter_rebound(
             description="Refresh the implementation step after child return.",
         )
         await session.commit()
-        updated_root_node = await require_flow_node(
+        updated_budgeted_node = await require_flow_node(
             session,
             flow_revision_id=updated.flow.active_flow_revision_id,
-            node_key="root",
+            node_key=node_key,
         )
         rebound = await session.get(
             BudgetCounterModel,
-            f"budget.child_assignment.{root_assignment.assignment_id}",
+            f"budget.child_assignment.{budgeted_assignment.assignment_id}",
         )
         assert rebound is not None
-        assert rebound.flow_node_id == updated_root_node.flow_node_id
+        assert rebound.flow_node_id == updated_budgeted_node.flow_node_id
 
 
-async def test_structural_replan_rebinds_child_assignment_budget_counter(
+async def test_structural_replan_rebinds_parent_child_assignment_budget_counter(
     tmp_path: Path,
 ) -> None:
-    workflow_definition = root_budget_rebind_workflow()
+    workflow_definition = parent_budget_rebind_workflow()
     async with runtime_database_context(
         tmp_path,
-        task_root_name="task-root-budget-rebind",
+        task_root_name="task-parent-budget-rebind",
     ) as context:
         task_id = "task_budget_rebind"
         await launch_runtime_case(
@@ -156,6 +160,14 @@ async def test_structural_replan_rebinds_child_assignment_budget_counter(
             compiler_version="runtime-budget-rebind",
             workflow_definition=workflow_definition,
         )
+        yielded = await yield_child_assignment(
+            context,
+            task_id=task_id,
+            child_node_key="implementation_parent",
+            summary="Open the implementation subtree.",
+            instruction="Dispatch only the implementation subtree.",
+        )
+        assert yielded.current_node_key == "implementation_parent"
         returned_root = await run_child_outcome(
             context,
             task_id=task_id,
@@ -184,5 +196,9 @@ async def test_structural_replan_rebinds_child_assignment_budget_counter(
                 ),
             ],
         )
-        assert returned_root.current_node_key == "root"
-        await assert_budget_counter_rebound(context, task_id=task_id)
+        assert returned_root.current_node_key == "implementation_parent"
+        await assert_budget_counter_rebound(
+            context,
+            node_key="implementation_parent",
+            task_id=task_id,
+        )

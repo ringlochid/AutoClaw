@@ -930,20 +930,14 @@ export interface components {
             transient_surfaces: components["schemas"]["TransientSurfaceWrite"][];
         };
         /** ChildDefaults */
-        "ChildDefaults-Input": {
-            consumes?: components["schemas"]["ConsumeBuckets"] | null;
-            /** Criteria */
-            criteria?: string[] | null;
-        };
-        /** ChildDefaults */
-        "ChildDefaults-Output": {
+        ChildDefaults: {
             consumes?: components["schemas"]["ConsumeBuckets"] | null;
             /** Criteria */
             criteria?: string[] | null;
         };
         /** ChildNodeDraft */
         ChildNodeDraft: {
-            child_defaults?: components["schemas"]["ChildDefaults-Input"] | null;
+            child_defaults?: components["schemas"]["ChildDefaults"] | null;
             /** Children */
             children?: components["schemas"]["ChildNodeDraft"][] | null;
             consumes?: components["schemas"]["ConsumeBuckets"] | null;
@@ -965,7 +959,7 @@ export interface components {
         };
         /** ChildNodePatch */
         ChildNodePatch: {
-            child_defaults?: components["schemas"]["ChildDefaults-Input"] | null;
+            child_defaults?: components["schemas"]["ChildDefaults"] | null;
             /** Children */
             children?: components["schemas"]["ChildNodeDraft"][] | null;
             consumes?: components["schemas"]["ConsumeBuckets"] | null;
@@ -1121,8 +1115,8 @@ export interface components {
             /** Slot */
             slot: string;
         };
-        "DefinitionContent-Input": components["schemas"]["RoleDefinitionInput"] | components["schemas"]["PolicyDefinitionInput-Input"] | components["schemas"]["WorkflowDefinitionInput-Input"];
-        "DefinitionContent-Output": components["schemas"]["RoleDefinitionInput"] | components["schemas"]["PolicyDefinitionInput-Output"] | components["schemas"]["WorkflowDefinitionInput-Output"];
+        "DefinitionContent-Input": components["schemas"]["RoleDefinitionInput"] | components["schemas"]["PolicyDefinitionInput"] | components["schemas"]["WorkflowDefinitionInput-Input"];
+        "DefinitionContent-Output": components["schemas"]["RoleDefinitionInput"] | components["schemas"]["PolicyDefinitionInput"] | components["schemas"]["WorkflowDefinitionInput-Output"];
         /** DefinitionDraftBaselineRead */
         DefinitionDraftBaselineRead: {
             /** Content Hash */
@@ -1555,7 +1549,7 @@ export interface components {
         };
         /** NodeDefinitionInput */
         "NodeDefinitionInput-Input": {
-            child_defaults?: components["schemas"]["ChildDefaults-Input"] | null;
+            child_defaults?: components["schemas"]["ChildDefaults"] | null;
             /** Children */
             children?: components["schemas"]["NodeDefinitionInput-Input"][] | null;
             consumes?: components["schemas"]["ConsumeBuckets"] | null;
@@ -1578,7 +1572,7 @@ export interface components {
         };
         /** NodeDefinitionInput */
         "NodeDefinitionInput-Output": {
-            child_defaults?: components["schemas"]["ChildDefaults-Output"] | null;
+            child_defaults?: components["schemas"]["ChildDefaults"] | null;
             /** Children */
             children?: components["schemas"]["NodeDefinitionInput-Output"][] | null;
             consumes?: components["schemas"]["ConsumeBuckets"] | null;
@@ -1714,40 +1708,17 @@ export interface components {
             title: string;
         };
         /** PolicyCapabilitiesInput */
-        "PolicyCapabilitiesInput-Input": {
-            /** @default deny */
-            command_run: components["schemas"]["CapabilityDecision"];
-            human_request?: components["schemas"]["HumanRequestCapabilityInput"];
-        };
-        /** PolicyCapabilitiesInput */
-        "PolicyCapabilitiesInput-Output": {
+        PolicyCapabilitiesInput: {
             /** @default deny */
             command_run: components["schemas"]["CapabilityDecision"];
             human_request?: components["schemas"]["HumanRequestCapabilityInput"];
         };
         /** PolicyDefinitionInput */
-        "PolicyDefinitionInput-Input": {
+        PolicyDefinitionInput: {
             /** Applies To */
             applies_to: components["schemas"]["NodeKind"][];
             budget_spec?: components["schemas"]["BudgetSpec"] | null;
-            capabilities?: components["schemas"]["PolicyCapabilitiesInput-Input"];
-            /** Description */
-            description: string;
-            /** Id */
-            id: string;
-            /** Instruction */
-            instruction?: string | null;
-            /** Labels */
-            labels?: string[];
-            /** Title */
-            title?: string | null;
-        };
-        /** PolicyDefinitionInput */
-        "PolicyDefinitionInput-Output": {
-            /** Applies To */
-            applies_to: components["schemas"]["NodeKind"][];
-            budget_spec?: components["schemas"]["BudgetSpec"] | null;
-            capabilities?: components["schemas"]["PolicyCapabilitiesInput-Output"];
+            capabilities?: components["schemas"]["PolicyCapabilitiesInput"];
             /** Description */
             description: string;
             /** Id */
@@ -1865,7 +1836,7 @@ export interface components {
         };
         /** RootNodeDefinition */
         "RootNodeDefinition-Input": {
-            child_defaults?: components["schemas"]["ChildDefaults-Input"] | null;
+            child_defaults?: components["schemas"]["ChildDefaults"] | null;
             /** Children */
             children?: components["schemas"]["NodeDefinitionInput-Input"][] | null;
             /** Criteria */
@@ -1890,7 +1861,7 @@ export interface components {
         };
         /** RootNodeDefinition */
         "RootNodeDefinition-Output": {
-            child_defaults?: components["schemas"]["ChildDefaults-Output"] | null;
+            child_defaults?: components["schemas"]["ChildDefaults"] | null;
             /** Children */
             children?: components["schemas"]["NodeDefinitionInput-Output"][] | null;
             /** Criteria */

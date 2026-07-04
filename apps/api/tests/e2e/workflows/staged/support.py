@@ -53,7 +53,10 @@ def materialize_artifacts(task_root: Path) -> StagedLaneArtifacts:
         delivery_plan=write_lane_artifact(
             task_root,
             "plan_delivery/delivery_plan.md",
-            "Plan: patch the settings loader, add regression checks, then verify release evidence.\n",
+            (
+                "Plan: patch the settings loader, add regression checks, "
+                "then verify release evidence.\n"
+            ),
         ),
         change_patch=write_lane_artifact(
             task_root,

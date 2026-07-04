@@ -122,10 +122,18 @@ test("keeps Definitions kind switch, list, detail, and versions usable at mobile
 
     await page.getByRole("button", { name: "Policies" }).click();
     await expect(definitionRow(page, POLICY_KEY)).toBeVisible();
-    await expect(page.getByText(/3 child assignments; retry limit not reported/)).toBeVisible();
+    await expect(page.getByText("Budget")).toBeVisible();
+    await expect(page.getByText("No controller budget limit")).toBeVisible();
+    await expect(page.getByText(/not reported/)).toHaveCount(0);
+    await definitionRow(page, "standard-parent-planning").click();
+    await expect(page.getByText("4 child assignments")).toBeVisible();
+    await expect(page.getByText(/not reported/)).toHaveCount(0);
+    await definitionRow(page, "standard-worker").click();
+    await expect(page.getByText("1 retry")).toBeVisible();
+    await expect(page.getByText(/not reported/)).toHaveCount(0);
     await expectNoDocumentOverflow(page);
 
-    const revisionButton = page.getByRole("button", { name: "Revision 3" });
+    const revisionButton = page.getByRole("button", { name: "Revision 2" });
     await revisionButton.click();
     await expect(page.getByText("Single current revision recorded.")).toBeVisible();
     await page.keyboard.press("Escape");

@@ -41,6 +41,18 @@ def test_packaged_role_and_policy_seed_definitions_validate() -> None:
     assert_expected_role_and_policy_ids(roles, policies)
 
 
+def test_standard_root_seed_policies_are_unbounded_by_default() -> None:
+    with resolve_committed_seed_definitions_root() as definitions_root:
+        _, policies = load_registry_catalog(definitions_root)
+
+    assert policies["standard-root"].budget_spec is None
+    assert policies["standard-root-human-request"].budget_spec is None
+    assert policies["standard-parent"].budget_spec is not None
+    assert policies["standard-parent"].budget_spec.child_assignment_limit == 20
+    assert policies["standard-worker"].budget_spec is not None
+    assert policies["standard-worker"].budget_spec.retry_limit == 1
+
+
 def test_packaged_workflow_seed_definitions_validate_against_packaged_catalog() -> None:
     with resolve_committed_seed_definitions_root() as definitions_root:
         roles, policies = load_registry_catalog(definitions_root)

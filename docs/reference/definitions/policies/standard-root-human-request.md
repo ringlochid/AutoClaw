@@ -9,8 +9,6 @@ title: Standard Root Human Request
 description: Guardrails for root orchestration that may wait for human judgment.
 applies_to:
     - root
-budget_spec:
-    child_assignment_limit: 15
 capabilities:
     human_request:
         mode: allow

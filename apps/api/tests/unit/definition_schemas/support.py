@@ -97,7 +97,9 @@ type RoleOrPolicyDefinitionModel = (
 def bounded_workflow_payload() -> dict[str, Any]:
     return {
         "id": "bounded-change",
-        "description": "Execute one small scoped change with one worker and root-owned evidence review.",
+        "description": (
+            "Execute one small scoped change with one worker and root-owned evidence review."
+        ),
         "root": {
             "id": "root",
             "role": "planning_lead",

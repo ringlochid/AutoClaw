@@ -575,7 +575,7 @@ function DefinitionKindDetail({ detail }: { readonly detail: DefinitionDetailVie
                     values={detail.appliesTo.map(formatNodeKind)}
                 />
                 <PropertyGrid
-                    items={[{ label: "Budget spec", value: formatBudgetSpec(detail.budgetSpec) }]}
+                    items={[{ label: "Budget", value: formatBudgetSpec(detail.budgetSpec) }]}
                 />
                 <InstructionSection instruction={detail.instruction} />
             </div>

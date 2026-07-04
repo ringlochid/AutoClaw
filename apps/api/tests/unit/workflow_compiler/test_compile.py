@@ -76,9 +76,7 @@ def test_compile_reviewed_change_release_workflow_normalizes_structure_and_edges
 
     scope_change = node_by_key(plan, "scope_change")
     assert scope_change.policy_revision_no == POLICY_REVISIONS["standard-worker"]
-    assert [criteria.slot for criteria in scope_change.criteria] == [
-        "change_subtree_requirements"
-    ]
+    assert [criteria.slot for criteria in scope_change.criteria] == ["change_subtree_requirements"]
 
     assert [
         (
@@ -106,7 +104,7 @@ def test_compile_reviewed_change_release_workflow_normalizes_structure_and_edges
     ]
 
 
-def test_compile_staged_delivery_release_workflow_normalizes_structure_edges_and_policy_pins() -> None:
+def test_compile_staged_delivery_release_normalizes_edges_and_policy_pins() -> None:
     plan = compile_packaged_workflow_fixture("staged_delivery_release", revision_no=11)
 
     assert [node.node_key for node in plan.nodes] == [
@@ -133,9 +131,7 @@ def test_compile_staged_delivery_release_workflow_normalizes_structure_edges_and
     }
 
     plan_delivery = node_by_key(plan, "plan_delivery")
-    assert [criteria.slot for criteria in plan_delivery.criteria] == [
-        "delivery_loop_requirements"
-    ]
+    assert [criteria.slot for criteria in plan_delivery.criteria] == ["delivery_loop_requirements"]
     assert plan_delivery.policy_revision_no == POLICY_REVISIONS["standard-worker"]
     assert plan_delivery.role_revision_no == ROLE_REVISIONS["planner"]
 

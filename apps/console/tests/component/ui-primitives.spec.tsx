@@ -268,4 +268,14 @@ describe("ui primitives", () => {
         expect(screen.getByText("Definitions")).toBeVisible();
         expect(screen.getByLabelText("Route")).toHaveTextContent("GET /definitions/workflows");
     });
+
+    it("renders single-item property grids without empty column dividers", () => {
+        render(<PropertyGrid items={[{ label: "Budget", value: "No controller budget limit" }]} />);
+
+        const budgetCell = screen.getByText("Budget").closest("div");
+        expect(budgetCell).not.toBeNull();
+        expect(budgetCell).toHaveClass("sm:col-span-2");
+        expect(budgetCell).toHaveClass("lg:col-span-3");
+        expect(budgetCell).not.toHaveClass("sm:border-r");
+    });
 });

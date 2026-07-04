@@ -13,6 +13,8 @@ export interface PropertyGridProps {
 }
 
 export function PropertyGrid({ className, items }: PropertyGridProps) {
+    const isSingleItem = items.length === 1;
+
     return (
         <dl
             className={classNames(
@@ -22,7 +24,12 @@ export function PropertyGrid({ className, items }: PropertyGridProps) {
         >
             {items.map((item) => (
                 <div
-                    className="min-w-0 border-b border-outline-soft px-4 py-3 last:border-b-0 sm:border-r sm:[&:nth-child(2n)]:border-r-0 lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(3n)]:border-r-0"
+                    className={classNames(
+                        "min-w-0 border-b border-outline-soft px-4 py-3 last:border-b-0",
+                        isSingleItem
+                            ? "sm:col-span-2 lg:col-span-3"
+                            : "sm:border-r sm:[&:nth-child(2n)]:border-r-0 lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(3n)]:border-r-0",
+                    )}
                     key={item.label}
                 >
                     <dt className="font-mono text-label font-medium uppercase text-muted">
