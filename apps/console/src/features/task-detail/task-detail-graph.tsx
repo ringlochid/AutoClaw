@@ -59,6 +59,13 @@ interface GraphViewport {
     readonly width: number;
 }
 
+interface GraphBounds {
+    readonly maxX: number;
+    readonly maxY: number;
+    readonly minX: number;
+    readonly minY: number;
+}
+
 type GraphTone = "active" | "amber" | "gray" | "green" | "root";
 
 const GRAPH_LABEL_FONT_SIZE = 13;
@@ -70,9 +77,13 @@ const GRAPH_MIN_HEIGHT = 580;
 const GRAPH_MIN_WIDTH = 1180;
 const GRAPH_TOP_PAD = 84;
 const GRAPH_MANUAL_ZOOM_STEP = 1.1;
-const GRAPH_MAX_AUTO_SCALE = 2.45;
-const GRAPH_MAX_VISUAL_SCALE = 3;
+const GRAPH_MAX_AUTO_SCALE = 5;
+const GRAPH_MAX_VISUAL_SCALE = 5;
 const GRAPH_MIN_VISUAL_SCALE = 0.7;
+const GRAPH_AUTO_FALLBACK_SCALE = 1.85;
+const GRAPH_AUTO_FIT_X_PAD = 104;
+const GRAPH_AUTO_FIT_Y_PAD = 32;
+const GRAPH_AUTO_VERTICAL_FILL = 0.88;
 const GRAPH_READABLE_LABEL_PX = 12.5;
 const GRAPH_READABLE_LABEL_PX_MAX = 15.2;
 
@@ -703,10 +714,10 @@ function buildCameraTransform(
     selectedNodeKey: string,
     viewport: GraphViewport | null,
 ): CameraTransform {
-    const bounds = graphFocusBounds(layout, selectedNodeKey);
+    const bounds = graphAutoFitBounds(layout, selectedNodeKey);
     const centerX = (bounds.maxX + bounds.minX) / 2;
     const centerY = (bounds.maxY + bounds.minY) / 2;
-    const scale = readableGraphScale(layout, viewport);
+    const scale = autoFitGraphScale(layout, viewport, bounds);
 
     return {
         scale,
@@ -766,11 +777,11 @@ function zoomCameraAroundPoint({
 
 function readableGraphScale(layout: GraphLayout, viewport: GraphViewport | null): number {
     if (viewport === null) {
-        return 1.85;
+        return GRAPH_AUTO_FALLBACK_SCALE;
     }
-    const baseScale = Math.min(viewport.width / layout.width, viewport.height / layout.height);
+    const baseScale = graphViewportBaseScale(layout, viewport);
     if (!Number.isFinite(baseScale) || baseScale <= 0) {
-        return 1.85;
+        return GRAPH_AUTO_FALLBACK_SCALE;
     }
     const widthPressure = layout.width / Math.max(viewport.width, 1);
     const heightPressure = layout.height / Math.max(viewport.height, 1);
@@ -783,9 +794,39 @@ function readableGraphScale(layout: GraphLayout, viewport: GraphViewport | null)
 
     return clamp(
         readableLabelPx / (GRAPH_LABEL_FONT_SIZE * baseScale),
-        1.16,
+        GRAPH_MIN_VISUAL_SCALE,
         readableGraphScaleLimit(layout),
     );
+}
+
+function autoFitGraphScale(
+    layout: GraphLayout,
+    viewport: GraphViewport | null,
+    bounds: GraphBounds,
+): number {
+    if (viewport === null) {
+        return readableGraphScale(layout, viewport);
+    }
+
+    const baseScale = graphViewportBaseScale(layout, viewport);
+    const focusHeight = Math.max(bounds.maxY - bounds.minY, GRAPH_NODE_HEIGHT);
+    const verticalFitScale =
+        (viewport.height * GRAPH_AUTO_VERTICAL_FILL) / (focusHeight * baseScale);
+    const readableScale = readableGraphScale(layout, viewport);
+
+    if (!Number.isFinite(verticalFitScale) || verticalFitScale <= 0) {
+        return readableScale;
+    }
+
+    return clamp(
+        Math.max(verticalFitScale, readableScale),
+        GRAPH_MIN_VISUAL_SCALE,
+        GRAPH_MAX_AUTO_SCALE,
+    );
+}
+
+function graphViewportBaseScale(layout: GraphLayout, viewport: GraphViewport): number {
+    return Math.min(viewport.width / layout.width, viewport.height / layout.height);
 }
 
 function readableGraphScaleLimit(layout: GraphLayout): number {
@@ -1028,23 +1069,10 @@ function isGraphNodeTarget(target: EventTarget): boolean {
     return target instanceof Element && target.closest('[data-graph-node="true"]') !== null;
 }
 
-function graphFocusBounds(
-    layout: GraphLayout,
-    selectedNodeKey: string,
-): {
-    readonly maxX: number;
-    readonly maxY: number;
-    readonly minX: number;
-    readonly minY: number;
-} {
+function graphFocusBounds(layout: GraphLayout, selectedNodeKey: string): GraphBounds {
     const selectedPosition = layout.positionByNodeKey.get(selectedNodeKey);
     if (selectedPosition === undefined) {
-        return {
-            maxX: layout.width,
-            maxY: layout.height,
-            minX: 0,
-            minY: 0,
-        };
+        return fullGraphBounds(layout);
     }
 
     return {
@@ -1052,6 +1080,72 @@ function graphFocusBounds(
         maxY: selectedPosition.y + selectedPosition.height / 2 + 88,
         minX: selectedPosition.x - selectedPosition.width / 2 - 104,
         minY: selectedPosition.y - selectedPosition.height / 2 - 88,
+    };
+}
+
+function graphAutoFitBounds(layout: GraphLayout, selectedNodeKey: string): GraphBounds {
+    const nodeKeys = new Set<string>();
+    let cursor: string | undefined = selectedNodeKey;
+
+    while (cursor !== undefined && !nodeKeys.has(cursor)) {
+        nodeKeys.add(cursor);
+        cursor = layout.parentByNodeKey.get(cursor);
+    }
+
+    for (const node of layout.nodes) {
+        if (layout.parentByNodeKey.get(node.nodeKey) === selectedNodeKey) {
+            nodeKeys.add(node.nodeKey);
+        }
+    }
+
+    return graphBoundsForNodeKeys(layout, nodeKeys, {
+        x: GRAPH_AUTO_FIT_X_PAD,
+        y: GRAPH_AUTO_FIT_Y_PAD,
+    });
+}
+
+function graphBoundsForNodeKeys(
+    layout: GraphLayout,
+    nodeKeys: ReadonlySet<string>,
+    padding: {
+        readonly x: number;
+        readonly y: number;
+    },
+): GraphBounds {
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+
+    for (const nodeKey of nodeKeys) {
+        const position = layout.positionByNodeKey.get(nodeKey);
+        if (position === undefined) {
+            continue;
+        }
+        maxX = Math.max(maxX, position.x + position.width / 2 + padding.x);
+        maxY = Math.max(maxY, position.y + position.height / 2 + padding.y);
+        minX = Math.min(minX, position.x - position.width / 2 - padding.x);
+        minY = Math.min(minY, position.y - position.height / 2 - padding.y);
+    }
+
+    if (
+        !Number.isFinite(maxX) ||
+        !Number.isFinite(maxY) ||
+        !Number.isFinite(minX) ||
+        !Number.isFinite(minY)
+    ) {
+        return fullGraphBounds(layout);
+    }
+
+    return { maxX, maxY, minX, minY };
+}
+
+function fullGraphBounds(layout: GraphLayout): GraphBounds {
+    return {
+        maxX: layout.width,
+        maxY: layout.height,
+        minX: 0,
+        minY: 0,
     };
 }
 

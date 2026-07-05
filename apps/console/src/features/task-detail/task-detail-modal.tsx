@@ -266,7 +266,7 @@ function DetailTab({
     if (rows.length === 0) {
         return (
             <StatePanel
-                summary="No controller-backed details were exposed."
+                summary="No controller-backed details are available."
                 title={emptyTitle}
                 tone="empty"
             />
@@ -410,7 +410,7 @@ function ArtifactRefs({ refs }: { readonly refs: readonly TaskDetailRef[] }) {
     if (refs.length === 0) {
         return (
             <StatePanel
-                summary="No controller-backed refs were exposed for the selected context."
+                summary="No controller-backed refs are available for the selected context."
                 title="No artifact refs"
                 tone="empty"
             />

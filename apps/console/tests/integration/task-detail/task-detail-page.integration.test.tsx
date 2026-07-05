@@ -16,6 +16,7 @@ import {
 import {
     TASK_DETAIL_STREAM_HEAD,
     TASK_DETAIL_TASK_ID,
+    createTaskDetailEventRecords,
     createTaskDetailMockScenario,
 } from "../../fixtures/task-detail";
 import { installTestConsoleConfig } from "../../fixtures/console-config";
@@ -184,6 +185,78 @@ describe("TaskDetailPage", () => {
         expect(await screen.findByText("Task cancelled")).toBeVisible();
         expect(snapshotReads).toBeGreaterThanOrEqual(2);
         expect(streamCursors).toEqual([TASK_DETAIL_STREAM_HEAD, null]);
+    });
+
+    it("omits unavailable detail fields instead of rendering placeholders", async () => {
+        const user = userEvent.setup();
+        const events = createTaskDetailEventRecords().map((event) => {
+            if (event.event_type === "checkpoint_recorded") {
+                const { next_step: _nextStep, ...payload } = event.payload ?? {};
+                void _nextStep;
+                return { ...event, payload };
+            }
+            if (event.event_type === "boundary_accepted") {
+                return {
+                    ...event,
+                    payload: {
+                        ...(event.payload ?? {}),
+                        next_node_key: null,
+                    },
+                };
+            }
+            return event;
+        });
+        const scenario = createTaskDetailMockScenario({ events });
+        const trace: components["schemas"]["OperatorFlowTraceResponse"] = {
+            ...scenario.trace,
+            boundary_history: scenario.trace.boundary_history.map((boundary, index) =>
+                index === 0
+                    ? {
+                          ...boundary,
+                          next_attempt_id: null,
+                          next_node_key: null,
+                      }
+                    : boundary,
+            ),
+        };
+        server.use(...createConsoleApiHandlers({ ...scenario, trace }));
+
+        renderTaskDetailPage();
+
+        await screen.findByRole("heading", { name: "Refresh runtime route copy" });
+        await screen.findByText("Task cancelled");
+        expect(screen.queryByText("not exposed")).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: /Open detail/i }));
+        let dialog = await screen.findByRole("dialog");
+        await user.click(within(dialog).getByRole("tab", { name: "Checkpoint" }));
+        expect(within(dialog).getByText("No selected detail")).toBeVisible();
+        expect(within(dialog).queryByText("Task control state changed.")).not.toBeInTheDocument();
+        await user.click(within(dialog).getByRole("button", { name: "Close node detail" }));
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+
+        await user.click(screen.getByRole("button", { name: /Checkpoint recorded/i }));
+        await user.click(screen.getByRole("button", { name: /Open detail/i }));
+        dialog = await screen.findByRole("dialog");
+        await user.click(within(dialog).getByRole("tab", { name: "Checkpoint" }));
+        expect(within(dialog).getByText("Checkpoint recorded.")).toBeVisible();
+        expect(within(dialog).queryByText("Next step")).not.toBeInTheDocument();
+        expect(within(dialog).queryByText("not exposed")).not.toBeInTheDocument();
+
+        await user.click(within(dialog).getByRole("button", { name: "Close node detail" }));
+        await waitFor(() => {
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+
+        await user.click(screen.getByRole("button", { name: /Boundary accepted/i }));
+        await user.click(screen.getByRole("button", { name: /Open detail/i }));
+        dialog = await screen.findByRole("dialog");
+        await user.click(within(dialog).getByRole("tab", { name: "Boundary" }));
+        expect(within(dialog).getByText("Previous node")).toBeVisible();
+        expect(within(dialog).queryByText("Next node")).not.toBeInTheDocument();
+        expect(within(dialog).queryByText("not exposed")).not.toBeInTheDocument();
     });
 
     it("submits guarded task actions and keeps stale action errors near the controls", async () => {

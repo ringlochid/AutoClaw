@@ -149,7 +149,7 @@ export function buildSelectedContext({
         assignmentRows: buildAssignmentRows(view, node, event),
         artifactRefs: selectedArtifactRefs.length === 0 ? view.artifactRefs : selectedArtifactRefs,
         boundaryRows: buildBoundaryRows(view, node, event),
-        checkpointRows: buildCheckpointRows(view, event),
+        checkpointRows: buildCheckpointRows(view, node, event),
         event,
         node,
         overviewRows: buildOverviewRows(view, node, event),
@@ -412,40 +412,39 @@ function buildOverviewRows(
     event: TaskEventRow | null,
 ): readonly DetailRow[] {
     return compactRows([
-        { label: "Task", value: view.task.title },
-        { label: "Status", value: view.task.status },
-        { label: "Workflow", value: view.task.workflowKey ?? "not exposed" },
-        { label: "Current node", value: view.task.currentNodeKey ?? "not exposed" },
-        { label: "Selected node", value: node?.nodeKey ?? "none selected" },
-        { label: "Selected event", value: event?.eventType ?? "none selected" },
-        { label: "Stream head", value: view.snapshot.streamHeadEventId ?? "live-only" },
+        detailRow("Task", view.task.title),
+        detailRow("Status", view.task.status),
+        detailRow("Workflow", view.task.workflowKey),
+        detailRow("Current node", view.task.currentNodeKey),
+        detailRow("Selected node", node?.nodeKey ?? "none selected"),
+        detailRow("Selected event", event?.eventType ?? "none selected"),
+        detailRow("Stream head", view.snapshot.streamHeadEventId ?? "live-only"),
     ]);
 }
 
 function buildCheckpointRows(
     view: TaskDetailView,
+    node: TaskGraphNode | null,
     event: TaskEventRow | null,
 ): readonly DetailRow[] {
-    const payload = event?.record.payload;
+    const payload = event?.eventType === "checkpoint_recorded" ? event.record.payload : null;
     const checkpointId = readString(payload, "checkpoint_id");
     const checkpointKind = readString(payload, "checkpoint_kind");
     const outcome = readString(payload, "outcome");
     const summary = readString(payload, "summary");
     const nextStep = readString(payload, "next_step");
-    const latestCheckpoint = view.trace.checkpoints.at(-1);
+    const selectedAttemptId = event?.attemptId ?? node?.attemptId ?? null;
+    const checkpoint = findCheckpointEntry(view.trace.checkpoints, {
+        attemptId: selectedAttemptId,
+        checkpointId,
+    });
 
     return compactRows([
-        {
-            label: "Checkpoint id",
-            value: checkpointId ?? latestCheckpoint?.checkpoint_id ?? "not exposed",
-        },
-        {
-            label: "Kind",
-            value: checkpointKind ?? latestCheckpoint?.checkpoint_kind ?? "not exposed",
-        },
-        { label: "Outcome", value: outcome ?? latestCheckpoint?.outcome ?? "none" },
-        { label: "Summary", value: summary ?? latestCheckpoint?.summary ?? "not exposed" },
-        { label: "Next step", value: nextStep ?? "not exposed" },
+        detailRow("Checkpoint id", checkpointId ?? checkpoint?.checkpoint_id),
+        detailRow("Kind", checkpointKind ?? checkpoint?.checkpoint_kind),
+        detailRow("Outcome", outcome ?? checkpoint?.outcome),
+        detailRow("Summary", summary ?? checkpoint?.summary),
+        detailRow("Next step", nextStep),
     ]);
 }
 
@@ -454,28 +453,24 @@ function buildAssignmentRows(
     node: TaskGraphNode | null,
     event: TaskEventRow | null,
 ): readonly DetailRow[] {
-    const payload = event?.record.payload;
+    const payload = isAssignmentDetailEvent(event) ? event.record.payload : null;
     const selectedNodeKey = node?.nodeKey ?? event?.nodeKey ?? null;
     const dispatch = [...view.trace.dispatches]
         .reverse()
         .find((candidate) => candidate.node_key === selectedNodeKey);
 
     return compactRows([
-        { label: "Node", value: node?.nodeKey ?? event?.nodeKey ?? "not exposed" },
-        {
-            label: "Assignment key",
-            value:
-                readString(payload, "assignment_key") ?? dispatch?.assignment_key ?? "not exposed",
-        },
-        { label: "Attempt", value: dispatch?.attempt_id ?? event?.attemptId ?? "not exposed" },
-        { label: "Delivery status", value: dispatch?.delivery_status ?? "not exposed" },
-        {
-            label: "Assignment summary",
-            value:
-                readString(payload, "assignment_summary") ??
-                dispatch?.assignment_summary ??
-                "not exposed",
-        },
+        detailRow("Node", node?.nodeKey ?? event?.nodeKey),
+        detailRow(
+            "Assignment key",
+            readString(payload, "assignment_key") ?? dispatch?.assignment_key,
+        ),
+        detailRow("Attempt", dispatch?.attempt_id ?? event?.attemptId),
+        detailRow("Delivery status", dispatch?.delivery_status),
+        detailRow(
+            "Assignment summary",
+            readString(payload, "assignment_summary") ?? dispatch?.assignment_summary,
+        ),
     ]);
 }
 
@@ -484,35 +479,60 @@ function buildBoundaryRows(
     node: TaskGraphNode | null,
     event: TaskEventRow | null,
 ): readonly DetailRow[] {
-    const payload = event?.record.payload;
+    const payload = event?.eventType === "boundary_accepted" ? event.record.payload : null;
     const boundary = findBoundaryEntry(view.trace.boundaries, node, event);
 
     return compactRows([
-        {
-            label: "Boundary",
-            value: readString(payload, "boundary") ?? boundary?.boundary ?? "not exposed",
-        },
-        {
-            label: "Previous node",
-            value:
-                readString(payload, "previous_node_key") ??
+        detailRow("Boundary", readString(payload, "boundary") ?? boundary?.boundary),
+        detailRow(
+            "Previous node",
+            readString(payload, "previous_node_key") ??
                 boundary?.previous_node_key ??
-                boundary?.node_key ??
-                "not exposed",
-        },
-        {
-            label: "Next node",
-            value: readString(payload, "next_node_key") ?? boundary?.next_node_key ?? "not exposed",
-        },
-        {
-            label: "Resulting status",
-            value:
-                readString(payload, "resulting_flow_status") ??
-                boundary?.resulting_flow_status ??
-                "not exposed",
-        },
-        { label: "Occurred", value: boundary?.occurred_at ?? event?.occurredAt ?? "not exposed" },
+                boundary?.node_key,
+        ),
+        detailRow("Next node", readString(payload, "next_node_key") ?? boundary?.next_node_key),
+        detailRow(
+            "Resulting status",
+            readString(payload, "resulting_flow_status") ?? boundary?.resulting_flow_status,
+        ),
+        detailRow(
+            "Occurred",
+            readString(payload, "boundary") !== null || boundary !== undefined
+                ? (boundary?.occurred_at ?? event?.occurredAt)
+                : null,
+        ),
     ]);
+}
+
+function findCheckpointEntry(
+    checkpoints: readonly components["schemas"]["CheckpointHistoryEntry"][],
+    {
+        attemptId,
+        checkpointId,
+    }: {
+        readonly attemptId: string | null;
+        readonly checkpointId: string | null;
+    },
+): components["schemas"]["CheckpointHistoryEntry"] | undefined {
+    if (checkpointId !== null) {
+        return [...checkpoints]
+            .reverse()
+            .find((checkpoint) => checkpoint.checkpoint_id === checkpointId);
+    }
+
+    if (attemptId !== null) {
+        return [...checkpoints].reverse().find((checkpoint) => checkpoint.attempt_id === attemptId);
+    }
+
+    return undefined;
+}
+
+function isAssignmentDetailEvent(event: TaskEventRow | null): event is TaskEventRow {
+    return (
+        event?.eventType === "dispatch_opened" ||
+        event?.eventType === "child_assignment_staged" ||
+        event?.eventType === "child_assignment_committed"
+    );
 }
 
 function findBoundaryEntry(
@@ -520,7 +540,7 @@ function findBoundaryEntry(
     node: TaskGraphNode | null,
     event: TaskEventRow | null,
 ): BoundaryHistoryEntry | undefined {
-    const payload = event?.record.payload;
+    const payload = event?.eventType === "boundary_accepted" ? event.record.payload : null;
     const payloadBoundary = readString(payload, "boundary");
     const payloadPrevious = readString(payload, "previous_node_key");
     const payloadNext = readString(payload, "next_node_key");
@@ -551,7 +571,7 @@ function findBoundaryEntry(
         }
     }
 
-    return boundaries.at(-1);
+    return undefined;
 }
 
 function buildActionMode(status: components["schemas"]["FlowStatus"]): TaskActionMode {
@@ -560,7 +580,7 @@ function buildActionMode(status: components["schemas"]["FlowStatus"]): TaskActio
             canCancel: false,
             canContinue: false,
             canPause: false,
-            note: "Terminal tasks do not expose task-level controls.",
+            note: "Terminal tasks have no task-level controls.",
         };
     }
 
@@ -695,6 +715,13 @@ function dedupeRefs(refs: readonly TaskDetailRef[]): readonly TaskDetailRef[] {
 
 function compactRows(rows: readonly DetailRow[]): readonly DetailRow[] {
     return rows.filter((row) => row.value.trim().length > 0);
+}
+
+function detailRow(label: string, value: string | null | undefined): DetailRow {
+    return {
+        label,
+        value: value ?? "",
+    };
 }
 
 function readString(value: unknown, key: string): string | null {

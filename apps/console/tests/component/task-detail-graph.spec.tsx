@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TaskGraph } from "../../src/features/task-detail/task-detail-graph";
@@ -47,6 +47,7 @@ const cyclicEdges: readonly TaskGraphEdge[] = [
 
 afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
 });
 
 describe("task detail graph", () => {
@@ -68,7 +69,7 @@ describe("task detail graph", () => {
         ).toBeVisible();
     });
 
-    it("centers the camera on the selected node itself", () => {
+    it("centers the initial fallback camera on the selected lineage", () => {
         render(
             <TaskGraph
                 edges={[
@@ -125,7 +126,90 @@ describe("task detail graph", () => {
             /^translate\((?<translateX>-?\d+(?:\.\d+)?) /.exec(transform)?.groups?.translateX,
         );
 
-        expect(translateX).toBeGreaterThan(250);
+        expect(translateX).toBeGreaterThan(100);
+        expect(translateX).toBeLessThan(250);
         expect(transform).toContain("scale(1.85)");
     });
+
+    it("fits a shallow root branch up to the 500 percent visual ceiling", async () => {
+        mockGraphViewport({ height: 620, width: 320 });
+
+        render(
+            <TaskGraph
+                edges={[{ fromNodeKey: "root", kind: "structural", toNodeKey: "charter_phase" }]}
+                nodes={[
+                    {
+                        attemptId: "attempt.root.01",
+                        checkpointSummary: null,
+                        eventCount: 1,
+                        isActive: true,
+                        isCurrent: true,
+                        nodeKey: "root",
+                        order: 0,
+                        status: "active",
+                        summary: "Root task.",
+                    },
+                    {
+                        attemptId: "attempt.charter.01",
+                        checkpointSummary: null,
+                        eventCount: 1,
+                        isActive: false,
+                        isCurrent: false,
+                        nodeKey: "charter_phase",
+                        order: 1,
+                        status: "quiet",
+                        summary: "Charter phase.",
+                    },
+                ]}
+                onOpenDetail={vi.fn()}
+                onSelectNode={vi.fn()}
+                selectedNodeKey="root"
+            />,
+        );
+
+        await waitFor(() => {
+            expect(screen.getByText("500%")).toBeVisible();
+        });
+
+        for (let index = 0; index < 6; index += 1) {
+            fireEvent.click(screen.getByRole("button", { name: "Zoom in graph" }));
+        }
+
+        expect(screen.getByText("500%")).toBeVisible();
+    });
 });
+
+function mockGraphViewport({ height, width }: { readonly height: number; readonly width: number }) {
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+        this: Element,
+    ) {
+        if (
+            this instanceof SVGSVGElement &&
+            this.getAttribute("aria-label") === "Execution graph"
+        ) {
+            return {
+                bottom: height,
+                height,
+                left: 0,
+                right: width,
+                top: 0,
+                width,
+                x: 0,
+                y: 0,
+                toJSON: () => ({}),
+            };
+        }
+
+        return {
+            bottom: 0,
+            height: 0,
+            left: 0,
+            right: 0,
+            top: 0,
+            width: 0,
+            x: 0,
+            y: 0,
+            toJSON: () => ({}),
+        };
+    });
+}

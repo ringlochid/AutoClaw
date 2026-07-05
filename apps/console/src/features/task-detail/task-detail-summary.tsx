@@ -9,11 +9,9 @@ import { flowStatusTone, type TaskDetailView } from "./task-detail-model";
 export function TaskSummaryHeader({ view }: { readonly view: TaskDetailView }) {
     return (
         <div className="contents">
-            <HeaderFact label="Node">
-                {view.task.currentNodeKey === null
-                    ? "not exposed"
-                    : titleCaseNodeLabel(view.task.currentNodeKey)}
-            </HeaderFact>
+            {view.task.currentNodeKey === null ? null : (
+                <HeaderFact label="Node">{titleCaseNodeLabel(view.task.currentNodeKey)}</HeaderFact>
+            )}
             <HeaderFact label="Updated">
                 <TaskDetailTimestamp value={view.task.updatedAt} />
             </HeaderFact>

@@ -47,11 +47,22 @@ test("renders the API-backed Task Detail control room at desktop width", async (
     });
 
     const initialZoom = await readGraphZoom(page);
-    expect(initialZoom).toBe(215);
+    expect(initialZoom).toBeGreaterThanOrEqual(340);
+    expect(initialZoom).toBeLessThanOrEqual(500);
     await expectGraphWheelZoomWithoutPageScroll(page, initialZoom);
     await page.getByRole("button", { name: "Reset graph zoom" }).click();
-    expect(await readGraphZoom(page)).toBe(215);
-    for (let index = 0; index < 9; index += 1) {
+    const resetZoom = await readGraphZoom(page);
+    expect(resetZoom).toBeGreaterThanOrEqual(initialZoom);
+    expect(resetZoom).toBeLessThanOrEqual(500);
+    for (let index = 0; index < 16; index += 1) {
+        await page.getByRole("button", { name: "Zoom in graph" }).click();
+    }
+    expect(await readGraphZoom(page)).toBe(500);
+    await page.getByRole("button", { name: "Reset graph zoom" }).click();
+    const refitZoom = await readGraphZoom(page);
+    expect(refitZoom).toBeGreaterThanOrEqual(initialZoom);
+    expect(refitZoom).toBeLessThanOrEqual(500);
+    for (let index = 0; index < 18; index += 1) {
         await page.getByRole("button", { name: "Zoom out graph" }).click();
     }
     expect(await readGraphZoom(page)).toBeLessThan(100);
