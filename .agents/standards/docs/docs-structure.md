@@ -41,7 +41,8 @@ Default rule for internal canon:
 The current layout is:
 
 - public docs under `docs/**`
-- target design truth under `docs-internal/design/v1/**`
+- V2 target design truth under `docs-internal/design/v2/**`
+- V1 target baseline under `docs-internal/design/v1/**` for surfaces V2 has not superseded
 - shipped-behavior contrast under `docs-internal/current/v1/**`
 - durable accepted decisions under `docs-internal/adr/**`
 

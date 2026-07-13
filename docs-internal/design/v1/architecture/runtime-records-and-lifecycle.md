@@ -2,6 +2,8 @@
 
 Status: Target
 
+> **V2 supersession notice:** This page remains the frozen V1 record baseline. For V2 dispatch, plan, provider-control, reset, and deleted-record truth, use [Runtime records and control state](../../v2/architecture/runtime-records-and-control-state.md).
+
 This page defines the canonical v1 runtime lifecycle around controller-owned truth, assignment and attempt lineage, explicit currentness owners, and deterministic regeneration of shared projections.
 
 The controller owns runtime truth. Generated manifests, assignments, checkpoints, artifact pointers, and dispatch observability files are persisted projections over that truth, not competing authorities.

@@ -8,11 +8,11 @@ Use this guide to decide which checks prove a change. Start from the surface cha
 
 | Changed surface                                                                         | Minimum verification                                                                                         |
 | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| public docs only                                                                        | markdown unwrap check, docs freeze validate, stale-link scan, `git diff --check`                             |
-| internal docs only                                                                      | markdown unwrap check, docs freeze validate, `git diff --check`                                              |
+| public docs only                                                                        | `make check-docs`, plus a stale-term scan after moves or deletions                                            |
+| internal docs only                                                                      | `make check-docs`                                                                                            |
 | docs scripts                                                                            | docs script focused tests when present, `ruff check scripts/docs`, `mypy scripts/docs`                       |
 | prompt assets or prompt catalog                                                         | prompt catalog generate when inputs changed, prompt catalog validate, focused prompt rendering tests         |
-| role, policy, workflow, or task-compose examples                                        | definition schema/catalog focused tests, docs freeze validate, reference link scan                           |
+| role, policy, workflow, or task-compose examples                                        | definition schema/catalog focused tests, `make docs-contract-check`, reference link scan                     |
 | Python backend logic                                                                    | focused pytest while iterating, `make check-api`, applicable unit/integration lanes                          |
 | CLI setup, config, OpenClaw, service, or package behavior                               | CLI focused tests, install/start reference checks, `make check-api`, package or service smoke when practical |
 | runtime, registry, DB, or task launch behavior                                          | focused tests, `make check-api`, `make test-api-unit`, `make test-api-integration`                           |
@@ -27,9 +27,7 @@ Use the heavier lane when a change crosses surfaces. Record skipped lanes with t
 Run:
 
 ```bash
-./.venv/bin/python -m scripts.docs.format_markdown --check
-./.venv/bin/python -m scripts.docs.docs_freeze.cli validate
-git diff --check
+make check-docs
 ```
 
 After moving or deleting public docs, also scan for stale links and redirect-only page language:
@@ -63,8 +61,8 @@ Do not claim full backend completion from `make check-api` alone.
 When prompt catalog inputs or generated prompt pages change, run:
 
 ```bash
-./.venv/bin/python -m scripts.docs.prompt_catalog.cli generate
-./.venv/bin/python -m scripts.docs.prompt_catalog.cli validate
+make docs-prompt-generate
+make docs-prompt-check
 ./.venv/bin/ruff check scripts/docs
 ./.venv/bin/mypy scripts/docs
 ```

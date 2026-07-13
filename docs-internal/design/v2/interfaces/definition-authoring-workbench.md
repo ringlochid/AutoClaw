@@ -74,5 +74,5 @@ This contract does not define:
 - [Definition authoring API and flat draft contract](definition-authoring-api-and-flat-draft-contract.md)
 - [Role and policy definition schema](role-and-policy-definition-schema.md)
 - [Provider preference and runtime config](provider-selection-and-runtime-config.md)
-- [Control UI runtime and authoring surfaces](control-ui-runtime-and-authoring-surfaces.md)
+- [Console runtime surfaces](console-runtime-surfaces.md)
 - [V1 definition registry and upload contract](../../v1/interfaces/definition-registry-and-upload-contract.md)

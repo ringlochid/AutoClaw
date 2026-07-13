@@ -2,6 +2,8 @@
 
 Status: Target
 
+> **V2 supersession notice:** This page remains the frozen V1 watchdog baseline. The V2 watchdog and recovery state machine are superseded by [Runtime lifecycle and watchdog](../../v2/architecture/runtime-lifecycle-and-watchdog.md).
+
 ## Purpose
 
 This page freezes the lean v1 watchdog classification and controller recovery model.

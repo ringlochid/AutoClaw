@@ -1,76 +1,53 @@
-# AutoClaw Console Contract
+# Console target
 
-Date: 2026-06-30
+Status: Reference
 
-This directory is the locked frontend contract for the AutoClaw console design
-parity rebuild. It is scoped to planning and implementation review for the
-React console under `apps/console`.
+This directory is the V2 implementation-facing console contract for runtime state, task chronology, provider control, recovery, and external waits.
 
-## Contract Docs
+The primary product owner is [Console runtime surfaces](../interfaces/console-runtime-surfaces.md). The pages here translate that product contract into frontend data boundaries, page states, and component semantics without redefining backend truth.
 
-- `frontend_contract_docs.md`: inventory and non-negotiable planning rules.
-- `feature-behavior.md`: required page behavior and state matrices.
-- `api-view-model-contract.md`: backend/API, SSE, error, fixture, and
-  view-model boundaries.
-- `component-system.md`: shell, tokens, components, icons, active states, and
-  responsive behavior.
-- `environment-and-runtime-config.md`: local runtime config and deployment
-  assumptions.
-- `validation-and-evidence.md`: validation commands, browser comparison,
-  accessibility/focus, review, and commit gates.
-- `ambiguity-and-debt-log.md`: open decisions, blockers, risks, and next
-  actions.
+## Pages
 
-## Source Precedence
+- [API and view-model boundary](api-and-view-model-boundary.md) owns source-row, event, mapping, error, and cursor-reset boundaries.
+- [Page state contracts](page-state-contracts.md) owns the required runtime page states and lawful transitions.
+- [Component system](component-system.md) owns shared visual, interaction, responsive, and accessibility semantics.
 
-Backend/OpenAPI truth wins for schemas, route names, action legality, auth,
-currentness, and state names. Design references win for layout, spacing, color,
-shadow, typography, component shape, active states, icon usage, visual density,
-and responsive hierarchy.
+This README is the only console subtree router. The four files in this directory are the complete live V2 console target set.
 
-Backend schema wins over visual mock data when they conflict. Do not invent
-icons, fake metrics, task counts, ETAs, progress, unsupported states,
-support-file truth, backend routes, or user-facing labels.
+## Authority order
 
-## Required Browser Source
+Console implementation follows this order:
 
-Design pages must be served through `python3 -m http.server` for browser
-inspection:
+1. Control API source-row contracts for current state and mutation legality
+2. task event contracts for chronology and live updates
+3. human-request and command-run source owners for complete external-wait detail
+4. console runtime surface rules for product composition
+5. console page and component contracts for presentation
 
-```sh
-cd /home/ubuntu/leo/projects/autoclaw/references/frontend_design/pages
-python3 -m http.server 18773 --bind 127.0.0.1
-```
+Generated OpenAPI types remain the TypeScript wire source. Explicit mappers may shape render-ready views, but they must preserve controller names and states.
 
-The mirror directory `/home/ubuntu/leo/design/autoclaw-v2-ui/pages` may be used
-the same way if the repo copy is unavailable. Record the source, port, viewport,
-URL, screenshot path, and observed state in each scope evidence directory.
+## Scope
 
-## Current Implementation Status
+This subtree covers:
 
-The current console is not placeholder-only. It already has app routes, shell
-navigation, API config, route helpers, a JSON client, fetch-based SSE,
-view-model mappers, feature pages, MSW handlers, fixtures, integration tests,
-and e2e tests for required pages.
+- current attempt plan and plan revision history
+- `last_progress_at`
+- requested and resolved provider provenance
+- provider-control operation, retry, countdown, error, and reason presentation
+- watchdog restart count and exhausted-recovery pause
+- ordinary continue after provider repair
+- human-request and command-run waits
+- source-row refresh, task-event chronology, and cursor reset
 
-That does not make the implementation accepted. Each scope must inspect current
-source/config, compare against served design pages and PNG references in
-browser, run applicable commands, pass strict review, and be committed before
-the next scope starts.
+It does not own definition authoring, provider onboarding, backend routes or schemas, runtime behavior, task-file projections, or implementation evidence programs.
 
-Implementation reviews must inspect actual app config/source before judging
-active-state behavior, including router, nav, token/style files, component
-variants, fixtures, state mappers, and active-route config.
+## Non-negotiable exclusions
 
-## Required Page Targets
+The console does not invent backend fields, lifecycle states, counts, progress percentages, ETA, provider health, or action legality. Ordinary product views never expose raw provider events, credentials, `provider_session_hint`, raw provider output, or raw provider logs.
 
-- Tasks.
-- Task Detail.
-- Human Requests.
-- Command Runs.
-- Definitions.
-- Task Start.
-- Definition Editor.
+## Related contracts
 
-Implementation scope order and gates are defined in
-`references/frontend/frontend_delivery_plan.md`.
+- [Console runtime surfaces](../interfaces/console-runtime-surfaces.md)
+- [Control API](../interfaces/control-api.md)
+- [Task event stream](../interfaces/task-event-stream.md)
+- [Runtime lifecycle and watchdog](../architecture/runtime-lifecycle-and-watchdog.md)

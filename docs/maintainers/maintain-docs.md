@@ -47,10 +47,10 @@ Open with the page's main claim or task. Keep headings descriptive and links hum
 For docs-only changes, run:
 
 ```bash
-./.venv/bin/python -m scripts.docs.format_markdown --check
-./.venv/bin/python -m scripts.docs.docs_freeze.cli validate
-git diff --check
+make check-docs
 ```
+
+Use `make docs-format` to rewrite maintained Markdown before rerunning the gate.
 
 After deleting, renaming, or moving pages, scan for stale links:
 

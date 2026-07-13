@@ -24,7 +24,8 @@ allowed_node_kinds:
     - root | parent | worker
 labels:
     - string
-instruction: string | optional
+instruction: >-
+  string | optional
 ```
 
 Field meaning:
@@ -57,7 +58,8 @@ capabilities:
     command_run: deny | allow
 labels:
     - string
-instruction: string | optional
+instruction: >-
+  string | optional
 ```
 
 Field meaning:

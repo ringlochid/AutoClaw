@@ -22,6 +22,18 @@ If you are asking:
 - [Current workflow-manifest projection](manifest-projection-and-acknowledgement.md)
 - [Task directories and materialized paths](task-roots-and-materialized-paths.md)
 
+## Background contrast
+
+These shipped-behavior notes remain reachable for migration and implementation contrast. They are not additional target-design owners.
+
+- [Current architecture at a glance](current-architecture.md)
+- [Current system baseline](system-baseline.md)
+- [Current OpenClaw and bridge-plugin baseline](openclaw-and-bridge-plugin.md)
+- [Current OpenClaw dispatch and session contract](openclaw-dispatch-and-session-contract.md)
+- [Current parent, retry, and operator control](parent-retry-and-operator-control.md)
+- [Current watchdog and OpenClaw bridge](watchdog-and-openclaw-bridge.md)
+- [Current watchdog and runtime monitoring](watchdog-and-runtime-monitoring.md)
+
 ## Keywords
 
 - runtime control plane

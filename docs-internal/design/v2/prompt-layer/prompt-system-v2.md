@@ -2,184 +2,223 @@
 
 Status: Target
 
-This page defines the V2 prompt-system direction.
+This page owns the V2 provider-neutral dispatch prompt, worker operating policy, continuation context, and prompt persistence contract.
 
 ## Core rule
 
-V2 keeps the current asset-backed prompt system and its render-and-persist model.
+Every dispatch receives a complete prompt regenerated from current controller truth. Provider conversation continuity may help, but hidden transcript memory, provider events, and native filesystem assumptions are never required for correctness.
 
-It does not replace that model with UI-owned preview text, adapter-owned wrapper text, support-file-derived summaries, or a separate prompt preview/diff/regression lane.
+V2 keeps two prompt families:
 
-## Base prompt families
+- worker dispatch
+- parent/root dispatch
 
-Unless a later owner page freezes additional families, V2 keeps the same base prompt-family model as V1:
+It does not create provider-specific prompt families.
 
-- worker dispatch prompt
-- parent/root dispatch prompt
+## Transport and persistence
 
-V2 keeps prompt generation as one controller-derived render path that writes canonical dispatch artifacts for each dispatch or redispatch.
+The controller renders and commits this request before adapter start:
 
-## Current-model preservation
+```yaml
+prompt_transport_request:
+    dispatch_id: string
+    instructions_text: string
+    input_text: string
+    created_at: timestamp
+```
 
-Rules:
-
-- prompt generation stays asset-backed and controller-truth-derived
-- render still produces `instructions_text`, `input_text`, `full_markdown`, and `content_hash`
-- `instructions_text` remains the provider-role-ready AutoClaw instruction layer, while `input_text` remains the dispatch input layer
-- `full_markdown` is the readable combined readback of those two layers, headed `# AutoClaw Dispatch Prompt` with `## Instructions` and `## Dispatch Input`
-- adapter paths that can send separate provider roles should preserve the split; the current OpenClaw Gateway adapter sends `instructions_text` as `extraSystemPrompt` and `input_text` as `message`; one-message transports may flatten through the same combined readback shape
-- dispatch-local prompt artifacts remain the canonical persisted prompt read surface
-- prompt text must not fork into UI-owned shadow variants
-- exact current render/persist paths remain defined by the V1 current prompt-layer contract until implementation deliberately changes them
-
-## Dispatch capability overlay
-
-When the controller opens a dispatch, the prompt must surface the effective capability set for that execution as controller-derived truth.
-
-The instructions layer must teach:
-
-- the controller-owned effective capability set for this dispatch is authoritative
-- `human_request` and `command_run` are controller capabilities, not generic adapter approval prompts
-- adapter, local-tool, or UI restrictions may narrow the effective set further, but they must not silently widen it
-
-The rendered prompt must expose a compact `Capabilities Now` block that includes:
-
-- `human_request.direction`
-- `human_request.approval`
-- `human_request.input`
-- `human_request.review`
-- `command_run`
-- a stable deny explanation string when a capability is denied or narrowed
-- the next legal action when one exists
+`instructions_text` is the stable AutoClaw instruction layer. `input_text` is the current dispatch input assembled from assignment, attempt, plan, checkpoint, continuation, and allowed-action truth.
 
 Rules:
 
-- omitted or denied capabilities render explicitly as `deny`; they do not disappear silently from the prompt
-- `Allowed Actions Now` remains the bounded next-step lane; `Capabilities Now` explains capability authority and restrictions rather than replacing that action section
-- capability-use instruction overlays stay independent: a node may receive human-request guidance, command-run guidance, both, or neither, based only on the current effective capability set
-- human-request guidance teaches typed direction, approval, input, and review requests; command-run guidance teaches only controller-managed long command execution
-- controller may materialize dispatch-local capability readbacks such as `_runtime/dispatch/<dispatch_id>/capabilities.json` or `_runtime/dispatch/<dispatch_id>/capabilities.md`, but those files are read-only projections over the same controller-owned effective capability snapshot
-- prompt text must not ask the node to infer capability from tool absence, adapter wording, or missing UI controls
+- adapters preserve the two fields when the provider supports separate system or developer instructions and user input
+- a one-message adapter may flatten the fields only at its private transport edge
+- retries for one dispatch reuse its committed request
+- replacement dispatches regenerate a new request from current controller truth
+- a readable `_runtime/dispatch/<dispatch_id>/prompt.md` and structured `prompt-request.json` are deterministic projections, not prompt authority
+- content hashes and combined Markdown are optional derived readbacks
+- provider, model, adapter, authentication, and session-hint data are not prompt content
 
-## Workflow and prompting doctrine overlay
+The adapter always sends both fields again when starting from a prior provider session hint. If a provider cannot reliably apply the current instruction layer on resume, the adapter starts a fresh provider session and returns the replacement hint.
 
-V2 keeps purpose, mode, role, policy, workflow, criteria, consumes, produces, refs, checkpoints, and boundaries inside the existing definition and prompt fields rather than adding a new workflow schema layer for them.
+## Provider-neutral vocabulary
 
-Rules:
+Prompt text names logical AutoClaw operations, including:
 
-- root and parent dispatches are purpose-first and mode-aware: preserve task intent, constraints, quality bar, current evidence, and criteria before choosing assign, review, verify, replan, release, or block
-- root and parent dispatches lead through iteration rather than one-shot solo completion: assign focused children, audit their plans and evidence, ask sharper follow-up questions, and route the next child from improved judgment
-- root and parent dispatches must not quietly perform worker-heavy planning, implementation, review, and verification when those parts can be assigned to specialist children
-- root and parent prompts should teach interface mapping, test-scene mapping, and documentation navigation as delegation criteria: identify owners, public contracts, state, side effects, callers, proof lanes, and the smallest docs that help the next human or agent
-- root and parent prompts should teach the current parent/root assignment separately from child assignment writing: the current assignment is the scope contract for the owned subtree, while the child assignment guide is only the packaging guide for `assign_child`
-- for non-root parents, the higher-parent assignment constrains the owned subtree; parent prompts should not imply the parent may widen upward or borrow sibling scope
-- worker dispatches are mode-first but purpose-aware: orient on purpose and constraints, then complete the assigned plan, research, implementation, review, verification, failure-analysis, or release mode
-- planner, architect, and project-management workers may be purpose-first inside a bounded assignment, but they publish plans or recommendations rather than performing unassigned heavy work
-- reviewer and verifier workers are criteria/evidence-first and must publish reasoning, gaps, residual risks, and pass/fail disposition for parent/root to audit
-- parent/root assignment text should be a mission packet containing purpose, current state, mode, refs to read first, prior child outputs, interface concerns, test-scene expectations, documentation expectations, constraints, criteria, required evidence, known failure history, and untouched scope
-- boundary-specific guidance is rendered as controller-derived prompt context over the existing base prompt families, not as new prompt families
+- `get_current_context`
+- `list_files`
+- `read_file`
+- `update_plan`
+- `record_checkpoint`
+- `open_human_request`
+- `start_command_run`
+- `return_boundary`
 
-## Human request redispatch prompt
+It does not teach provider-specific tool prefixes. The adapter may expose a provider-specific model-visible wrapper, but the prompt and controller schemas keep one logical name.
 
-When a human request reaches a terminal resolution and the controller continues the same task lineage, the redispatch must use a full regenerated canonical prompt package.
+There is no prompt dependency on provider event streams, native provider status, or transport connection state.
 
-The prompt must include the normalized human-request context as controller-derived truth:
+## Worker opening sequence
 
-- original request title, summary, kind, and requester node
-- request items, each item prompt, each item's options and recommended option
-- item-scoped selected option or freeform answer when provided
-- item-scoped extra notes and validated response payload when provided
-- timeout/default behavior when the request timed out
-- current assignment, latest checkpoint context, effective capability set, and allowed actions now
+Every worker, including a one-step worker, follows this sequence:
 
-Rules:
+1. Call `get_current_context` before planning or acting.
+2. If `checkpoint_to_resume_from` is present, call `read_file` for that logical task-relative path before replanning or acting.
+3. Review the assignment, attempt, continuation context, allowed actions, effective capabilities, slots, and current plan returned by the controller.
+4. Call `update_plan` with the current meaningful plan.
+5. Begin the one `in_progress` step.
 
-- provider chat continuation may be reused as transport continuity, but the prompt must not depend on provider memory to recover human-request truth
-- timeout redispatch uses the same prompt path as answered redispatch, with `resolution_kind: timed_out` and the request's timeout/default behavior included
-- raw logs, support files, or provider histories stay out of the ordinary prompt unless represented as deliberate refs or compact summaries
-- full canonical prompt here means the full semantic prompt package for the dispatch, not raw dumping every artifact or log
+The first accepted changed plan normally proves semantic startup. There is no start checkpoint.
 
-## Command-run terminal redispatch prompt
+When missing human direction is the first task action, the worker still creates a one-step plan for opening that request. The required progress checkpoint then precedes the request.
 
-When a command run reaches a terminal state and the controller continues the same task lineage, the redispatch must also use a full regenerated canonical prompt package.
+## Plan policy
 
-The prompt must include the normalized command-run context as controller-derived truth:
+Worker plans follow the `AttemptPlan` contract:
 
-- original command and description
-- run id
-- terminal state
-- workdir when present
-- created, started, and ended timestamps
-- timeout when declared
-- latest bounded progress/update summary when persisted
-- normalized terminal summary
-- exit code or signal when present
-- log ref when surfaced
-- current assignment, latest checkpoint context, effective capability set, and allowed actions now
+- one to nine meaningful ordered steps
+- exactly one `in_progress` step unless every step is `completed`
+- a one-step assignment still has one step
+- each update replaces the current plan snapshot
+- replanning includes a compact explanation
+- update after a meaningful step transition or changed execution approach
+- never update after every shell command, file read, provider tool call, or low-level subaction
+- an identical no-op plan update is not progress
 
-Rules:
+Plans are the ordinary visible progress surface. They are not checkpoints and do not contain durable artifact claims or terminal evidence.
 
-- the prompt must tell the next dispatch what command ran and why it existed, not only how it ended
-- command-like jobs such as `pytest` must carry exit status in normalized controller fields rather than forcing the model to inspect raw logs
-- raw logs stay out of ordinary prompt truth by default
-- the prompt may include a deliberate `log_ref` when the controller intentionally surfaces it
-- redispatch correctness depends on normalized controller truth plus surfaced refs, not provider-native history or runner-local state
+## Checkpoint policy
 
-## Provider independence rule
+Worker progress checkpoints are allowed only immediately before:
 
-Prompt text is provider-independent.
+- yielding work to a child
+- opening a human request
+- starting a controller-managed command run
 
-Rules:
+Each progress checkpoint captures the completed evidence, current plan state, handoff reason, and concrete next step needed after continuation.
 
-- the same stored role, policy, and workflow truth must render the same prompt content regardless of `openclaw`, `codex`, or `claude`
-- requested or resolved provider is runtime provenance, not prompt content
-- prompt text must not contain provider selection, default-provider resolution, or fallback explanation
-- if control surfaces want to show provider provenance beside a task or prompt artifact, that provenance must stay outside the prompt text itself
+The worker does not:
 
-## Capability overlay rule
+- record a start checkpoint
+- checkpoint after each plan step
+- checkpoint after commands or provider tool calls
+- use checkpoints as generic heartbeat traffic
 
-Prompt text must surface whether the current node may:
+Immediately before terminal `green`, `retry`, or `blocked`, the worker records one terminal checkpoint with outcome, evidence, artifact claims, and next-action truth. It then calls `return_boundary` and stops.
 
-- request human direction
-- request human approval
-- request human input
-- request human review
-- start a long-running command run when command work is expected to exceed about two minutes
+Parent/root checkpoint and orchestration behavior stays unchanged. V2 does not add a worker plan requirement or a time-limit instruction to parent/root prompts.
 
-These capability overlays are derived from effective controller capabilities, not from raw UI toggles or adapter permissions.
+## Human-request behavior
 
-They must render as separate instruction overlays. Do not bundle human request and command run teaching together; some nodes may have one capability and not the other.
+When the worker needs human direction, approval, input, or review:
 
-## Source-disambiguated instruction rule
+1. ensure the current capability permits the request kind
+2. record the required progress checkpoint
+3. call `open_human_request` with the typed request
+4. after success, stop the response immediately
 
-Authored reusable guidance keeps the local field name `instruction` on the object that owns it.
+After success the worker must not:
 
-Rules:
+- record a terminal checkpoint
+- call `return_boundary`
+- continue acting or polling
+- wait for provider-native UI input
 
-- workflow-node authored `instruction` compiles and projects as `node_instruction`
-- role authored `instruction` resolves and projects as `role_instruction`
-- policy authored `instruction` resolves and projects as `policy_instruction`
-- task-compose task instruction and runtime assignment instruction keep their existing task and assignment ownership
-- prompt labels must preserve that source boundary as `node instruction`, `role instruction`, and `policy instruction`
-- node `description` remains node-purpose text and must not be overloaded as imperative execution guidance
+The next dispatch receives the original request and its answered, timed-out, or cancelled resolution as normalized controller continuation context.
 
-## Truth boundary
+## Command-run behavior
 
-V2 prompt artifacts must not treat these as ordinary prompt truth:
+For command work expected to exceed about two minutes or requiring controller-owned timeout, logs, or cancellation:
 
-- support-state files
-- raw provider or adapter event streams
-- machine-local provider-config file contents
-- generic operator notes that were not normalized into controller truth
-- provider choice, default-provider config, or fallback provenance
+1. record the required progress checkpoint
+2. call `start_command_run`
+3. after success, stop the response immediately
+
+The worker does not poll, sleep, record a terminal checkpoint, or call `return_boundary`. A new same-attempt dispatch is prepared only after the command source row reaches `succeeded`, `failed`, `timed_out`, or `cancelled`.
+
+The continuation context includes the original command and description, bounded updates, terminal summary, exit code or signal, timing, and a surfaced log path when one is intentionally available. Raw logs are not dumped into the prompt.
+
+## Watchdog-recovery behavior
+
+A watchdog replacement dispatch stays on the same assignment, attempt, and plan. Its regenerated input identifies the recovery and provides `checkpoint_to_resume_from` when a durable checkpoint exists.
+
+The worker:
+
+1. rereads current context
+2. reads the checkpoint path when present
+3. calls `update_plan`, normally explaining which step is being resumed or changed after recovery
+4. continues from controller evidence
+
+Correctness does not depend on whether the adapter reused provider conversation context or returned a replacement session hint.
+
+The prompt does not mention the watchdog timeout. The operating rule is semantic plan progress and explicit handoff, not model-managed lease renewal.
+
+## Capability and interaction policy
+
+`get_current_context` is the capability readback. The prompt teaches the worker to obey its effective human-request and command-run decisions and currently allowed actions.
+
+No capability file is part of the dispatch contract. Prompt text, tool presence, provider wording, and local UI controls do not authorize an operation.
+
+Provider-native questions, approvals, and permission waits are disabled by the adapter. A provider-native operation is allowed, denied, or failed noninteractively according to machine policy. Intentional human interaction uses the AutoClaw human-request tool only.
+
+## Task-file behavior
+
+The prompt teaches one logical task namespace:
+
+- call `get_current_context` for controller currentness
+- call `list_files(directory)` for one non-recursive task-relative directory
+- call `read_file(path)` for bounded task-relative text
+- use provider-native tools for mutable work inside `workspace/`
+- publish declared durable artifacts through checkpoint claims and controller copying
+
+The prompt does not teach:
+
+- a native `_runtime` read-order ritual before context lookup
+- generic resource references or caller-selected roots
+- a task-file search or write MCP tool
+- the removed `context/` or `context/wiki/` trees
+- removed delivery, continuity, watchdog, or provider-event monitor files
+
+Generated `_runtime` files remain readable evidence when their logical paths are surfaced through controller context or task-file listing.
+
+## Parent and root prompts
+
+Parent/root keeps the existing purpose-first orchestration contract:
+
+- inspect controller truth
+- assign focused child work
+- review evidence and criteria
+- adopt lawful structural revisions
+- release, retry, block, or complete through explicit boundaries
+
+This V2 slice does not require parent/root to call `update_plan`, record ordinary progress checkpoints, or reason about the watchdog timeout. Parent/root still uses the same provider-neutral Node MCP surface and explicit boundary model.
+
+## Rendering and conformance
+
+Prompt validation must prove:
+
+- `instructions_text` and `input_text` remain separately persisted
+- every worker is told to call `get_current_context` first
+- checkpoint reread precedes replanning when a path is present
+- every worker, including one-step work, is told to call `update_plan`
+- plan and checkpoint rules do not contradict each other
+- external-wait success tells the worker to stop without a boundary
+- terminal work requires terminal checkpoint then `return_boundary`
+- parent/root receives none of the worker-only plan or time-limit obligations
+- logical operation names are provider-neutral
+- removed task trees, monitor files, and native read-order rules do not render
+- provider-native interactive prompts are disabled
+- the same semantic prompt package works with provider output/event ingestion turned off
+
+These requirements belong to the prompt renderer and adapter conformance suites. V2 does not maintain a separate inactive prompt-regression design surface.
 
 ## Related contracts
 
-- [Role and policy definition schema](../interfaces/role-and-policy-definition-schema.md)
-- [Provider preference and runtime config](../interfaces/provider-selection-and-runtime-config.md)
+- [Runtime records and control state](../architecture/runtime-records-and-control-state.md)
+- [Attempt plan and checkpoint contract](../architecture/attempt-plan-and-checkpoint-contract.md)
+- [Task root and file access](../architecture/task-root-and-file-access.md)
+- [Node and operator MCP surface contract](../interfaces/node-and-operator-mcp-surface-contract.md)
 - [Human request and approval contract](../interfaces/human-request-and-approval-contract.md)
-- [Command run and long-running boundary](../architecture/command-run-and-long-running-boundary.md)
+- [Command run and external wait](../architecture/command-run-and-external-wait.md)
 - [Capability, security, and audit](../interfaces/capability-security-and-audit.md)
-- [Control UI runtime and authoring surfaces](../interfaces/control-ui-runtime-and-authoring-surfaces.md)
-- [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)
 - [V1 prompt-layer front door](../../v1/prompt-layer/README.md)

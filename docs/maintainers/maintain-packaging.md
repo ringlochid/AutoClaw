@@ -60,7 +60,7 @@ Useful checks:
 
 ```bash
 ./.venv/bin/pytest apps/api/tests/unit/definition_schemas
-./.venv/bin/python -m scripts.docs.docs_freeze.cli validate
+make docs-contract-check
 ```
 
 ## When changing service resources
@@ -101,7 +101,7 @@ For packaging changes, use at least:
 ```bash
 make check-api
 make check-console
-./.venv/bin/python -m scripts.docs.docs_freeze.cli validate
+make check-docs
 make package-build
 git diff --check
 ```

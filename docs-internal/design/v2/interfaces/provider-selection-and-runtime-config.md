@@ -1,97 +1,100 @@
-# Provider preference and runtime config
+# Provider selection and runtime config
 
 Status: Target
 
-This page defines the V2 current-shape contract for node-level provider preference and machine-local provider configuration.
+This page defines provider selection, sparse machine-local configuration, and launch provenance for the local V2 runtime.
 
 ## Core rule
 
-Provider preference should stay explicit and simple:
+Provider selection is a launch decision made before a dispatch is committed. It is not a runtime state machine and never contributes watchdog truth.
 
-- workflow nodes may optionally express a provider preference
-- machine-local config owns provider setup details plus one default provider
-- fallback may use only the default provider
-- fallback may happen only before dispatch acceptance
+One committed dispatch has one resolved provider. Start and stop retries never switch that provider.
 
-Portable authored definitions must not embed host paths, auth material, or provider-local transport details as reusable registry truth.
+## Authored provider preference
 
-## Authored node field
-
-V2 authored workflow nodes may include:
+V2 workflow nodes may carry one optional portable selector:
 
 ```yaml
-provider_preference: openclaw | codex | claude | optional
+provider_preference: openclaw | codex | claude | null
+```
+
+When omitted, the machine-local default provider is requested. The field belongs to a workflow node, not a role or policy definition, and may appear on root, parent, or worker nodes.
+
+The field must not contain model names, executable paths, endpoint URLs, credentials, sandbox objects, or provider-native session ids.
+
+## Resolution before dispatch commit
+
+Resolution proceeds in this order:
+
+1. Use the node preference when present; otherwise request `runtime.default_provider`.
+2. Check whether that provider is enabled and ready on this host.
+3. When a non-default requested provider is unavailable, try the one configured default provider.
+4. Commit the dispatch only after one provider is resolved and its readiness preflight passes.
+5. Persist requested and resolved provider provenance on the dispatch readback.
+
+There is no multi-hop fallback chain. If neither candidate is ready, no dispatch opens. Resolution and readiness preflight do not call adapter `start()`: the controller commits the dispatch, prompt, and `NodeSession` first, then the central manager performs provider I/O.
+
+After commit:
+
+- all six start calls use the resolved provider
+- all six stop calls use the same resolved provider
+- any later replacement or continuation performs provider resolution again before its new dispatch is committed
+- a replacement may resolve to another provider, but it omits a session hint created by the earlier provider
+
+## Sparse machine-local config
+
+The target config is intentionally small:
+
+```toml
+[runtime]
+default_provider = "codex"
+
+[codex]
+enabled = true
+# model = "..."          # optional AutoClaw override
+# effort = "high"        # optional AutoClaw override
+
+[claude]
+enabled = false
+# model = "sonnet"       # optional AutoClaw override
+# effort = "high"        # optional AutoClaw override
+
+[openclaw]
+enabled = false
+gateway_url = "ws://127.0.0.1:18789"
+client_mode = "webchat"
+delivery_channel = "webchat"
 ```
 
 Rules:
 
-- `provider_preference` is optional
-- when omitted, runtime resolves the node through the machine-local default provider
-- `provider_preference` belongs to workflow nodes, not role or policy definitions
-- `provider_preference` is authored preference, not a guarantee of final provider resolution
-- `provider_preference` is a portable logical selector, not a model string, host path, socket path, auth ref, or sandbox config object
+- `runtime.default_provider` must name an enabled provider.
+- Each provider section owns only AutoClaw-specific enablement, connection fields, and sparse model or effort overrides that the operator deliberately sets.
+- OpenClaw handshake `client_mode` and delivery channel are independent fields.
+- Provider-native auth material never belongs in this config.
+- Codex and Claude native model catalogs, settings, project instructions, skills, compaction, and authentication are inherited rather than copied into AutoClaw config.
+- There is no generic `context_window` option. Effective capacity is model- and provider-owned.
 
-This field may appear on root, parent, or worker nodes.
+The effective precedence is:
 
-## Machine-local config shape
+1. AutoClaw correctness overlay: task workspace, prompt lanes, Node MCP, and non-interactive permissions
+2. explicit sparse AutoClaw model or effort override
+3. provider-native user and project configuration
+4. provider defaults
 
-The canonical local runtime config shape is:
+## Local execution assumption
 
-```yaml
-runtime:
-    default_provider: openclaw | codex | claude
-openclaw:
-    # local OpenClaw gateway and wrapper settings
-codex:
-    # local Codex app-server or SDK settings
-claude:
-    # local Claude Agent SDK settings
-```
+This phase is local-first and same-host. Provider and file adapters are code boundaries, not remote services.
 
-Field meaning:
+For managed Codex and Claude integrations, the AutoClaw process, bundled provider runtime, Node MCP endpoint, and task workspace share one OS environment and filesystem namespace. Provider-native configuration and authentication must be visible to the AutoClaw service identity through values such as `HOME`, `CODEX_HOME`, or `CLAUDE_CONFIG_DIR`.
 
-- `runtime.default_provider` is the machine-local default provider for nodes that do not set `provider_preference`
-- `openclaw`, `codex`, and `claude` hold machine-local auth, transport, model, permission, and tool-surface configuration
-- exact provider support constraints such as execution mode, sandbox mode, or workspace or workdir rules belong to the provider support pages and their machine-local config lanes rather than to portable authored workflow schema
+An AutoClaw process inside WSL or a container uses runtimes and paths inside that environment. It must not assume that a provider CLI or credential store in a different host namespace is transparently available.
 
-Raw host paths, transport details, and local auth material are legal only in this machine-local config lane.
+OpenClaw is externally managed, but its worker still needs network access to Node MCP and filesystem access to the local task workspace expected by the configured integration.
 
-## Resolution rule
+## Provenance and failure readback
 
-Provider resolution for one node attempt is:
-
-1. if the node sets `provider_preference`, that becomes `requested_provider`
-2. otherwise `requested_provider` is `runtime.default_provider`
-3. runtime preflights and connects the requested provider
-4. if the requested provider fails before dispatch acceptance and it is not already the default provider, runtime retries once with `runtime.default_provider`
-5. if the default provider also fails, the dispatch does not open
-
-## Launch compatibility rule
-
-Before dispatch acceptance, runtime must verify that the requested or resolved provider can use the required provider-neutral AutoClaw node and operator MCP surfaces plus any required runtime-control wiring.
-
-Rules:
-
-- ordinary node MCP access is a provider/runtime compatibility fact, not a dispatch capability family
-- if the requested provider cannot launch with the required shared MCP and runtime surfaces, runtime either falls back to the default provider or fails the dispatch before acceptance
-- provider launch incompatibility must not open a dispatch and then masquerade as an ordinary controller capability rejection for node MCP access
-- provider-specific auth, transport, approval, and session setup remain machine-local config or adapter concerns rather than authored workflow truth
-
-## Fallback boundary
-
-Fallback is intentionally narrow.
-
-Rules:
-
-- fallback is only from the requested provider to the one default provider
-- fallback is only for preflight, bootstrap, auth, or connect failure before dispatch acceptance
-- fallback must not silently chain across multiple providers
-- once an attempt has started on a provider, that attempt stays pinned to that provider
-- later retry or redispatch may choose a different provider, but that is a new controller-owned attempt decision rather than a hidden live switch
-
-## Provenance and audit
-
-Provider resolution should persist controller-owned provenance such as:
+The minimum persisted launch provenance is:
 
 ```yaml
 provider_resolution:
@@ -99,68 +102,42 @@ provider_resolution:
     resolved_provider: openclaw | codex | claude
 ```
 
-Rules:
+Provider session hints and SDK/runtime versions may appear in bounded support readback, but they do not replace controller task, attempt, or dispatch identity.
 
-- `requested_provider` is what authoring plus local default resolution asked for
-- `resolved_provider` is the provider that actually owns the accepted attempt
-- detailed fallback internals may stay in support-state or observability lanes, but the surfaced contract must still distinguish a successful accepted resolution from a pre-accept launch failure
-- adapter session ids and model ids are secondary adapter evidence only; they do not replace controller lineage truth
-- controller-owned provenance must never expose raw credentials or machine-local secret values
-
-## Pre-accept launch failure surface
-
-If the requested provider and the allowed default-provider fallback both fail before dispatch acceptance, the controller should surface one stable pre-accept failure family such as:
+Pre-commit resolution failure uses one stable family:
 
 ```yaml
-provider_launch_failure:
-    code: provider_launch_failed
+provider_resolution_failure:
+    code: provider_resolution_failed
     requested_provider: openclaw | codex | claude
     attempted_provider: openclaw | codex | claude
-    stage: preflight | auth | bootstrap | connect
+    stage: readiness | auth | configuration
     message: string
 ```
 
-Rules:
+No secret value, raw provider credential, or unbounded provider output may appear in the failure record. A provider `start()` failure after dispatch commit uses the runtime's bounded provider-control readback and `control_failed` closure instead; it never re-enters provider fallback inside that dispatch.
 
-- this failure happens before dispatch acceptance and therefore must not masquerade as an accepted attempt that later changed provider
-- `attempted_provider` is the provider whose final pre-accept launch failed; when no fallback was attempted, it matches `requested_provider`
-- the minimum surfaced contract freezes `code`, `requested_provider`, `attempted_provider`, `stage`, and `message`
-- deeper adapter evidence such as session ids, wrapper stderr, or auth diagnostics may stay in support-state or observability lanes
+## Startup isolation
 
-## Separation rule
+An unavailable or misconfigured provider never prevents the AutoClaw API from starting. Startup loads provider configuration and reports readiness independently for each provider. Only a dispatch that resolves to an unavailable provider is blocked.
 
-Keep these lanes separate:
-
-- portable role and policy definitions
-- portable workflow node `provider_preference`
-- machine-local provider config
-- controller-owned task and dispatch truth
-
-Node `provider_preference` is reusable authored intent.
-
-Machine-local provider sections decide how this host reaches `openclaw`, `codex`, or `claude`.
-
-Controller truth records the requested and resolved provider, not the raw machine-local config internals.
+This allows operators to repair one provider through the CLI while other configured providers and controller surfaces remain available.
 
 ## Non-goals
 
 This contract does not define:
 
 - role-level provider binding
-- task-compose provider override precedence
-- multi-hop provider fallback chains
-- mid-attempt hot-swap across providers
-- identical lifecycle verbs for every provider family
+- task-level provider hot swap
+- multi-provider dispatches
+- distributed provider services or remote workspaces
+- provider-native context-window normalization
+- credentials stored by AutoClaw
 
 ## Related contracts
 
 - [Workflow node schema](workflow-node-schema.md)
-- [Role and policy definition schema](role-and-policy-definition-schema.md)
 - [Provider support and compatibility](provider-support-and-compatibility.md)
-- [Provider-aware setup, configure, and doctor](provider-aware-setup-and-doctor.md)
-- [Node and operator MCP surface contract](node-and-operator-mcp-surface-contract.md)
-- [Capability, security, and audit](capability-security-and-audit.md)
-- [Control API and task event stream](control-api-and-task-event-stream.md)
-- [Prompt system v2](../prompt-layer/prompt-system-v2.md)
-- [Codex app-server adapter](../architecture/adapters/codex-app-server.md)
-- [Claude Agent SDK adapter](../architecture/adapters/claude-agent-sdk.md)
+- [Provider CLI and doctor](provider-cli-and-doctor.md)
+- [Minimal provider adapter contract](../architecture/adapter-contract.md)
+- [Runtime lifecycle and watchdog](../architecture/runtime-lifecycle-and-watchdog.md)

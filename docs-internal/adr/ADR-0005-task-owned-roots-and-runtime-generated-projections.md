@@ -6,6 +6,10 @@ Status: Accepted
 
 The task root is the shared local runtime workspace, but controller/DB state still owns truth. Generated files under `_runtime/`, durable outputs under `outputs/artifacts/`, and optional transient files under `tmp/transfers/` are deterministic projections and bodies, not primary authority.
 
+## Superseded in part
+
+[ADR-0008](ADR-0008-task-relative-mcp-reads-and-reduced-task-root.md) supersedes `context/`, `context/wiki/`, and the dispatch delivery, continuity, watchdog, and provider-event projection families. The task-owned root, controller-first authority, and generated-projection rules remain accepted.
+
 ## Context
 
 The live v1 model is filesystem-first and path-first, but it no longer uses execution slices, packets, reports, or session bindings as canonical shared runtime authority.

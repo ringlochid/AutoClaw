@@ -1,94 +1,148 @@
-# Console Component System Contract
+# Console component system
 
-Date: 2026-06-30
+Status: Target
 
-This document locks visual and component expectations for implementation
-review. Design references win for layout, spacing, color, shadows, typography,
-component shape, active states, icon usage, visual density, and responsive
-hierarchy.
+This page owns reusable V2 console component semantics for runtime truth. It does not freeze a particular framework, final visual values, backend fields, or task transitions.
 
-## Design Anchors
+## Core rule
 
-- Static pages:
-  `/home/ubuntu/leo/projects/autoclaw/references/frontend_design/pages`.
-- Mirror pages: `/home/ubuntu/leo/design/autoclaw-v2-ui/pages`.
-- Shared CSS and shell script: `shared-ui.css`, `shared-shell.js`.
-- Direction docs:
-  `references/frontend_design/design/DESIGN.md` and `navigation.md`.
-- Page charters:
-  `references/frontend_design/feature-charters/pages/*.md`.
+Components make controller state easy to scan without turning provider or transport detail into product truth.
 
-Design pages must be served through `python3 -m http.server` and inspected in
-the browser. PNGs and source reads support review but are not a replacement for
-browser inspection.
+The console uses one compact operational language for plans, progress, provider control, recovery, external waits, chronology, and lawful actions.
 
-## Shell And Navigation
+## Shell and composition
 
-- The console shell uses a warm paper background, dense operational content,
-  left rail/top breadcrumb structure, one main page surface, and compact page
-  controls.
-- Tasks is the runtime entry point. Task Detail, Human Requests, and Command
-  Runs are task-scoped under Tasks.
-- Definitions, Task Start, and Definition Editor are authoring surfaces.
-- Implementation reviews must inspect actual router/nav/source before judging
-  active states. Do not infer active behavior from screenshots alone.
-- At narrow widths, the prototype keeps navigation visible and wraps/stacks
-  rather than hiding the full shell behind an unreviewed pattern.
+The task runtime shell keeps these regions distinct:
 
-## Tokens And Density
+- task navigation
+- current runtime summary
+- execution tree or trace context
+- event chronology
+- selected detail or action context
 
-Design direction anchors:
+At wide widths, the regions may sit beside one another. At narrow widths, they stack in the same semantic order. Current state and required actions must not disappear behind hover-only or desktop-only affordances.
 
-- Background: `#F5F3F1`.
-- Primary surface: `#FDFCFB`.
-- High surface/container: `#EFECE9`.
-- Low surface: `#FFFFFF`.
-- Border tones: `#E5E7EB` and `#D1D5DB`.
-- Primary blue: `#3B82F6`.
-- Primary container: `#EFF6FF`.
-- On-primary text: `#1E40AF`.
-- Secondary container: `#E0E7FF`.
-- On-secondary text: `#3730A3`.
+Task detail, human requests, and command runs remain task-scoped siblings. Definition authoring navigation may exist elsewhere in the app shell, but it is not owned by this runtime component contract.
 
-The implementation should reuse existing app tokens and primitives where they
-match the design. Do not introduce a separate visual language, decorative
-orbs, marketing hero layout, oversized cards, or low-density dashboard chrome.
+## Tokens and variants
 
-## Components
+Shared console tokens use the `--ac-*` namespace and cover:
 
-Required component behavior:
+- background and surface hierarchy
+- text and muted text
+- borders and focus rings
+- spacing and density
+- radius and shadow
+- semantic information, success, warning, failure, paused, waiting, and neutral treatments
 
-- Buttons, icon buttons, segmented controls, tabs, checkboxes/toggles, inputs,
-  selects/menus, textareas, disclosure rows, status chips, empty states, error
-  states, modals, drawers, and page cards must have visible focus states.
-- Dense rows should not resize on hover, focus, or status changes.
-- Modals must trap focus while open, restore focus on close, and present
-  destructive actions distinctly.
-- Page cards and panels should follow the served design shape and spacing; do
-  not nest decorative cards inside cards.
+State color always appears with text or an icon label. Components use explicit variants keyed to finalized controller states; they do not construct arbitrary style names from backend strings.
 
-## Icons
+## Runtime components
 
-The current console uses `lucide-react`. Static design pages use Material
-Symbols names as prototype intent only.
+### Plan panel
 
-Rules:
+The plan panel renders revision, optional explanation, ordered steps, update provenance, and revision-history access.
 
-- Prefer current lucide icons already used by the console.
-- Add a new lucide icon only when it is a direct semantic match for a design
-  affordance and review approves it.
-- Do not add Material Symbols or unsupported icon font dependencies.
-- Do not invent icons or chrome for unsupported backend states.
+Step variants are exactly:
 
-## Responsive And Accessibility Review
+- `pending`
+- `in_progress`
+- `completed`
 
-Every implementation scope must compare desktop and narrow viewports against
-served design HTML and PNG references. Review must include:
+Only one active step receives primary emphasis. Completed steps remain readable. The panel does not add percentages, progress bars, or ETA.
 
-- shell/nav wrapping and active states;
-- visible and keyboard focus;
-- modal focus trap and restore;
-- form label/error association;
-- row/action hit targets;
-- no overlapping text or controls;
-- no hidden required backend state at narrow width.
+### Semantic progress time
+
+The progress component renders `last_progress_at` with an exact timestamp available to assistive technology and detail views. A relative label is presentation only and updates without mutating task state.
+
+Null progress uses neutral copy. It must not appear as provider failure or zero progress.
+
+### Provider provenance
+
+The provider component renders requested and resolved values. Equal values remain compact; differing values expose the fallback relationship without inventing a fallback chain or provider health.
+
+### Provider-control status
+
+The control component renders:
+
+- operation and controller-owned state
+- `attempt / max_attempts`
+- retry countdown from `next_retry_at`
+- bounded `last_error_summary`
+- documented event reason when shown in chronology
+
+Countdown changes must not resize surrounding rows. The component never labels control success as assignment completion.
+
+### Recovery notice
+
+The recovery component renders watchdog restart count and, when applicable, the `runtime_recovery_exhausted` pause.
+
+The exhausted variant includes:
+
+- precise pause reason
+- latest bounded provider-control failure
+- instruction to repair provider availability or configuration
+- ordinary continue action after repair
+
+It does not offer a provider-native reconnect action.
+
+### External-wait card
+
+Human-request and command-run cards share compact task-wait structure while preserving distinct source states and actions.
+
+Human-request cards show typed request kind, title, summary, source status, and resolve affordance only for the current open source.
+
+Command-run cards show exact state, command summary, bounded update, terminal result when present, and cancel only when legal. `cancellation_requested` uses a waiting treatment, not a terminal cancelled treatment.
+
+### Event row
+
+Event rows preserve event type, sequence, occurrence time, and controller context. Plan, control, checkpoint, boundary, wait, and task-control details use bounded disclosures.
+
+Provider and adapter are not event-source variants. Rows do not render raw payload dumps by default.
+
+### Task tree and selected context
+
+The task tree stays read-only and compact. It emphasizes the current path and uses the selected context for rich assignment, checkpoint, artifact, dispatch, request, or run detail.
+
+Provider resolution detail, full plan history, and action forms belong in summary or selected detail, not repeated on every node card.
+
+## Controls and feedback
+
+Buttons, icon buttons, segmented controls, tabs, inputs, selects, textareas, disclosure rows, status chips, empty states, error states, dialogs, and drawers share:
+
+- visible keyboard focus
+- stable size across hover, focus, countdown, and status changes
+- disabled explanation where legality is not obvious
+- pending mutation feedback tied to the exact controller action
+- normalized failure summary and suggested next step
+
+Destructive task cancel remains visually distinct from command-run cancel and nonterminal pause.
+
+Dialogs trap focus, provide an accessible name, associate validation errors with fields, and restore focus to the triggering control on close.
+
+## Responsive and accessibility rules
+
+- preserve task status, current wait, recovery notice, and lawful primary action at narrow widths
+- keep timestamp, retry count, and state available as text, not color alone
+- announce materially changed control and wait states without announcing every countdown tick
+- make plan revision and event disclosures keyboard operable
+- preserve readable source order when panes stack
+- avoid nested scroll regions that hide current actions or error summaries
+- keep action hit targets usable without inflating the overall operational density
+
+## Data exclusions
+
+No component variant exists for raw provider events, credentials, `provider_session_hint`, provider run ids, raw provider logs, fabricated provider health, progress percentage, ETA, or throughput.
+
+The explicit command-run log viewer is a controller-backed source-specific component and remains separate from ordinary runtime summaries.
+
+## Owner boundary
+
+This page owns reusable component meaning and accessibility. [Page state contracts](page-state-contracts.md) owns when states appear, [API and view-model boundary](api-and-view-model-boundary.md) owns their data, and [Console runtime surfaces](../interfaces/console-runtime-surfaces.md) owns the product composition.
+
+## Related contracts
+
+- [Console target](README.md)
+- [API and view-model boundary](api-and-view-model-boundary.md)
+- [Page state contracts](page-state-contracts.md)
+- [Console runtime surfaces](../interfaces/console-runtime-surfaces.md)

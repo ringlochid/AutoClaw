@@ -50,9 +50,7 @@ Rules:
 - saved YAML bodies are the editable truth for draft content
 - normalized JSON shadows are backend-owned read models, not a second editable truth
 - metadata owns baseline body, normalized baseline, mode, timestamps, status inputs, and stale-publish guards
-- a YAML body file under `roles/`, `policies/`, or `workflows/` remains a saved draft even when
-  metadata is missing; readback may synthesize metadata until the next save rewrites canonical
-  metadata
+- a YAML body file under `roles/`, `policies/`, or `workflows/` remains a saved draft even when metadata is missing; readback may synthesize metadata until the next save rewrites canonical metadata
 - browser state may hold unsaved textarea edits, but saved draft state belongs to the backend
 
 ## Canonical API families

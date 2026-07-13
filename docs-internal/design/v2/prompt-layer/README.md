@@ -2,32 +2,27 @@
 
 Status: Target
 
-This folder defines how V2 keeps the current prompt architecture without replacing the controller-truth-first model.
+This folder owns the V2 provider-neutral prompt package and worker operating policy.
 
 ## Core model
 
-V2 keeps these baseline rules:
-
-- controller-owned truth remains the source for prompt assembly
-- prompt artifacts remain derived read surfaces
-- support files remain support-only and do not become ordinary prompt truth
-- exact prompt text still belongs to shipped or generated prompt assets rather than to UI-owned shadow prompt surfaces
-- V2 keeps the current render-and-persist model rather than adding first-class prompt preview, diff, or regression lanes
+- controller truth renders one complete prompt per dispatch
+- `instructions_text` and `input_text` remain separate persisted transport fields
+- every worker rereads current context and maintains one `AttemptPlan`
+- checkpoints remain narrow handoff and terminal evidence
+- external waits end the current response without a workflow boundary
+- parent/root orchestration remains unchanged
+- provider configuration, events, and hidden conversation memory never become prompt truth
 
 ## Start here
 
-Read in this order:
-
 1. [Prompt system v2](prompt-system-v2.md)
-2. [V1 prompt-layer front door](../../v1/prompt-layer/README.md) for the current baseline
+2. [Attempt plan and checkpoint contract](../architecture/attempt-plan-and-checkpoint-contract.md)
+3. [Node and operator MCP surface](../interfaces/node-and-operator-mcp-surface-contract.md)
+4. [V1 prompt-layer front door](../../v1/prompt-layer/README.md) for shipped baseline and migration contrast
 
-## Scope rule
+## Ownership boundary
 
-This folder defines V2 target prompt behavior for dispatch generation, redispatch context, and capability overlays.
+The prompt owner defines assembly, persistence, worker instructions, continuation context, and conformance requirements. Runtime owners define legality, plans, checkpoints, waits, files, and boundaries. Adapters translate the committed transport request without changing its semantic contract.
 
-It does not define:
-
-- the shipped current prompt assets
-- execution-program prompt regeneration commands
-- prompt preview, diff, or regression as first-class V2 surfaces
-- adapter-private transport wrappers as controller truth
+Exact current prompt assets remain shipped-behavior evidence until V2 implementation replaces them. V2 does not add separate prompt preview, diff, or regression products.

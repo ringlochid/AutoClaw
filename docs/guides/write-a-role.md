@@ -53,7 +53,7 @@ description: Worker for one bounded scope, contradiction, feasibility, or risk r
 allowed_node_kinds:
     - worker
 instruction: >-
-    First identify the accepted purpose, proposed scope, evidence, constraints, criteria, and what decision the review should unblock. Research current contracts, dependencies, local precedent, and best-practice fit before judging scope. Do not implement or expand the plan. Publish pass/fail reasoning, required corrections, risk severity, and decision implications.
+  First identify the accepted purpose, proposed scope, evidence, constraints, criteria, and what decision the review should unblock. Research current contracts, dependencies, local precedent, and best-practice fit before judging scope. Do not implement or expand the plan. Publish pass/fail reasoning, required corrections, risk severity, and decision implications.
 ```
 
 That role can be reused anywhere a scope review is needed.

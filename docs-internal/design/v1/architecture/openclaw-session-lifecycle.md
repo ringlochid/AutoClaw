@@ -2,6 +2,8 @@
 
 Status: Target
 
+> **V2 supersession notice:** This page remains the frozen V1 OpenClaw session baseline. V2 separates the AutoClaw NodeSession key from the optional provider session hint and owns lifecycle through [OpenClaw Gateway adapter](../../v2/architecture/adapters/openclaw-gateway.md) and [Runtime records and control state](../../v2/architecture/runtime-records-and-control-state.md).
+
 ## Purpose
 
 This page freezes the v1 OpenClaw Gateway session and run lifecycle, the private node-MCP attachment boundary, and the same-attempt versus new-attempt recovery split.

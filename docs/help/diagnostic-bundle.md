@@ -96,9 +96,7 @@ For repo changes, include:
 
 ```bash
 git status --short
-git diff --check
-./.venv/bin/python -m scripts.docs.format_markdown --check
-./.venv/bin/python -m scripts.docs.docs_freeze.cli validate
+make check-docs
 ```
 
 Add the relevant focused tests or verification lane from [choose a verification lane](../maintainers/choose-a-verification-lane.md).

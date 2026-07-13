@@ -15,6 +15,8 @@ This folder owns the frozen external and adapter-facing contracts for:
 
 A retained secondary search router exists for legacy entry points. This `README.md` is the canonical interfaces front door.
 
+Use the [secondary interfaces index](INDEX.md) only when arriving from a legacy search term.
+
 ## Start Here
 
 Read in this order:

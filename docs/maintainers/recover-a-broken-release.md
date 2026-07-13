@@ -60,8 +60,7 @@ Common recovery checks:
 
 ```bash
 make check-api
-./.venv/bin/python -m scripts.docs.docs_freeze.cli validate
-git diff --check
+make check-docs
 ```
 
 Add:

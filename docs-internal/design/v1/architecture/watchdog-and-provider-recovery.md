@@ -2,6 +2,8 @@
 
 Status: Reference
 
+> **V2 supersession notice:** This page remains V1 provider-recovery routing. V2 recovery, the six-call control retry policy, and the two-restart budget are owned by [Runtime lifecycle and watchdog](../../v2/architecture/runtime-lifecycle-and-watchdog.md); provider events no longer affect watchdog truth.
+
 ## Purpose
 
 This page routes provider-specific recovery questions to the live v1 watchdog, observability, and OpenClaw transport owner pages.

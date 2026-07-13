@@ -6,6 +6,10 @@ Status: Accepted
 
 OpenClaw is the v1 transport adapter and normalization layer. It is not the owner of canonical runtime semantics, and the live runtime term is `tool`, not `skill`.
 
+## Superseded in part
+
+[ADR-0007](ADR-0007-mcp-anchored-local-runtime-and-minimal-provider-control.md) supersedes this record's OpenClaw-first provider-event normalization, transport-continuity, dispatch-monitoring, and watchdog decisions. The decisions that provider transport remains subordinate to controller truth and that `tool` is the canonical runtime term remain accepted.
+
 ## Context
 
 V1 is OpenClaw-first for delegated worker transport, but the live runtime model can no longer treat OpenClaw as the owner of canonical worker semantics.

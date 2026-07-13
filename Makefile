@@ -13,7 +13,7 @@ TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_OPENCLA
 TEST_COMPOSE := COMPOSE_PROJECT_NAME=autoclaw-test-db $(TEST_COMPOSE_ENV) $(COMPOSE)
 TREE_IGNORE := .git|.venv|node_modules|dist|build|tmp|.pytest_cache|.mypy_cache|.ruff_cache|.coverage|coverage|htmlcov|__pycache__|*.egg-info|*.pyc
 
-.PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-bounded test-api-e2e-reviewed test-api-e2e-staged docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api console-install console-dev console-format console-format-check console-lint console-typecheck console-openapi-generate console-openapi-check console-test console-test-integration console-e2e console-build console-package-assets check-console package-build install-user-service
+.PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-bounded test-api-e2e-reviewed test-api-e2e-staged docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api console-install console-dev console-format console-format-check console-lint console-typecheck console-openapi-generate console-openapi-check console-test console-test-integration console-e2e console-build console-package-assets check-console docs-format docs-format-check docs-contract-check docs-inventory docs-prompt-generate docs-prompt-check test-docs check-docs package-build install-user-service
 
 tree:
 	@tree -a -L 6 --dirsfirst --prune --gitignore -I '$(TREE_IGNORE)'
@@ -148,6 +148,35 @@ check-console: $(PYTHON)
 	$(MAKE) console-test
 	$(MAKE) console-test-integration
 	$(MAKE) console-build
+
+docs-format: $(PYTHON)
+	$(PYTHON) -m scripts.docs.format_markdown --write
+
+docs-format-check: $(PYTHON)
+	$(PYTHON) -m scripts.docs.format_markdown --check
+
+docs-contract-check: $(PYTHON)
+	$(PYTHON) -m scripts.docs.docs_contract.cli validate
+
+docs-inventory: $(PYTHON)
+	$(PYTHON) -m scripts.docs.docs_contract.cli inventory
+
+docs-prompt-generate: $(PYTHON)
+	$(PYTHON) -m scripts.docs.prompt_catalog.cli generate
+
+docs-prompt-check: $(PYTHON)
+	$(PYTHON) -m scripts.docs.prompt_catalog.cli validate
+
+test-docs: $(PYTHON)
+	@mkdir -p $(CURDIR)/tmp
+	cd apps/api && TMPDIR=$(CURDIR)/tmp PYTHONPATH=src $(PYTEST) tests/unit/test_docs_contract.py
+
+check-docs: $(PYTHON)
+	$(MAKE) docs-format-check
+	$(MAKE) docs-contract-check
+	$(MAKE) docs-prompt-check
+	$(MAKE) test-docs
+	git diff --check
 
 package-build: console-package-assets
 	$(PYTHON) -m build

@@ -18,6 +18,14 @@ If you are asking:
 - [Run real e2e workflow lanes](run-real-e2e-workflow-lanes.md)
 - [Run Docker Postgres verification](run-docker-postgres-verification.md)
 
+## Background procedures
+
+These pages preserve shipped procedure contrast outside the maintained verification entry points above.
+
+- [Inspect approval-related and watchdog state](inspect-approvals-and-watchdog.md)
+- [Launch a task-compose file](launch-a-task-compose.md)
+- [Verify the current install and runtime](verify-current-install-and-runtime.md)
+
 ## Keywords
 
 - real e2e

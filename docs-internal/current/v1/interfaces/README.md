@@ -28,6 +28,10 @@ If you are asking:
 - [Definitions compiler and launch](definitions-compiler-and-launch.md)
 - [Definition registry and publish lifecycle](definition-registry-and-publish-lifecycle.md)
 
+## Background contrast
+
+- [Current CLI fast-fail and self-contained setup](cli-fast-fail-and-self-contained-report.md)
+
 ## Keywords
 
 - API routes

@@ -2,104 +2,160 @@
 
 Status: Target
 
-This page defines the V2 shared MCP contract for AutoClaw node and operator surfaces across `openclaw`, `codex`, and `claude`.
+This page defines the V2 provider-neutral MCP surface split and the semantic role of node MCP operations. Exact context, file, and plan schemas live in the [Node MCP schema appendix](node-mcp-schema-appendix.md).
 
 ## Core rule
 
-AutoClaw should keep one provider-neutral logical MCP contract:
+AutoClaw has two logical MCP surfaces:
 
-- one shared `node` surface
-- one shared `operator` surface
+- `node` for a managed agent acting as the current worker, parent, or root
+- `operator` for external task inspection and control
 
-Provider-specific adapters may launch, authenticate, or mount those surfaces differently, but they should not fork the logical tool vocabulary without a proven hard incompatibility.
+Committed, current semantic node MCP mutations are the agent-facing runtime truth. MCP transport state and provider observations are not.
 
 ## Lowest-common-denominator profile
 
-The shared AutoClaw MCP contract should assume only the profile that all targeted providers can reliably use:
+The shared logical contract assumes only:
 
-- tools-first interaction
-- `stdio` or streamable HTTP or HTTP transport
-- JSON-schema tool input contracts
-- plain-text plus structured-result fallback for tool outputs
-- no correctness dependency on prompts, resources, channels, tool-search, or dynamic tool-refresh extensions
-- no provider-specific tool names
+- MCP tools
+- explicit JSON-schema inputs
+- structured JSON results with a text fallback
+- stateless streamable HTTP for the local AutoClaw server
+- provider-neutral logical tool names
 
-Rules:
+Correctness does not depend on MCP prompts, resources, ping, progress notifications, transport session continuity, provider tool events, provider output streams, or dynamic tool refresh.
 
-- MCP server `instructions` may help clients, but they must not be the only place that critical semantics live
-- provider-specific approval or permission models are adapter concerns, not tool-schema forks
-- if one provider needs a different auth or transport wrapper, split that wrapper rather than the logical tool namespace
+Adapters may privately use provider-specific configuration to attach node MCP. They must not rename or fork the logical AutoClaw tool contract.
 
-## Shared surface split
+## Node surface
 
-The shared logical surfaces are:
+Node MCP is the required managed-agent surface. AutoClaw commits the current dispatch and live `NodeSession` before provider launch, and an adapter does not report readiness until the agent can reach the node server.
 
-- `node`
-- `operator`
+Managed Codex, Claude, and OpenClaw agents receive node MCP only. They never receive operator MCP as part of dispatch launch.
 
-`node` owns provider-neutral current-node execution tools such as:
+### Context and plan family
 
-- definition lookup
-- checkpoint recording
-- boundary close or yield
-- parent or root structural mutation
-- controller-owned `human_request` and `command_run` tools that open external waits directly, with `command_run` reserved for long command work that is expected to exceed about two minutes
+The shared context, file-read, and plan family is exactly:
 
-`operator` owns provider-neutral task-control tools such as:
+```text
+get_current_context()
+list_files(directory=".")
+read_file(path, start_line=1, max_lines=400)
+update_plan(explanation?, steps)
+```
 
-- definition upload or start-task writes
-- definition registry reads, definition uploads, and task start
-- runtime read and control
+These signatures omit the common recognition arguments for readability. Every node call explicitly includes:
+
+```text
+task_id
+session_key
+```
+
+The server resolves those values against current controller truth before any read or mutation. Provider identity and provider session continuity are not MCP recognition fields.
+
+`get_current_context` returns:
+
+- the current assignment and attempt
+- the current attempt plan
+- effective capabilities and currently allowed actions
+- consume and produce slots with logical task-relative paths
+- normalized human-request, command-run, or watchdog-restart continuation context when present
+- `checkpoint_to_resume_from` when a durable handoff must be reread
+
+The [prompt system](../prompt-layer/prompt-system-v2.md) owns the rule that a worker reads `checkpoint_to_resume_from` before replanning. The MCP surface returns the selected controller truth and does not duplicate that prompt policy.
+
+`list_files` is non-recursive. `read_file` is bounded and text-only. Both use the shared resolver owned by [Task root and file access](../architecture/task-root-and-file-access.md).
+
+`update_plan` is worker-only. Each accepted changed request replaces the current plan snapshot with one to nine ordered steps. Exactly one step is `in_progress` unless every step is `completed`. Parent and root orchestration continue to use their existing tools and do not acquire worker plan requirements.
+
+### Existing semantic families
+
+The context and plan family extends, rather than replaces, the existing provider-neutral semantic families:
+
+- current-only definition lookup for legal structural edits
+- checkpoint publication through `record_checkpoint`
+- terminal and yield boundaries through `return_boundary`
+- human-request and command-run wait creation
+- parent and root assignment and structural mutation
+
+Their request and response payloads remain owned by their existing architecture and interface contracts. They use the same recognition, failure, invocation, and progress rules defined here.
+
+### File boundary
+
+Node MCP reads controller context and files from the whole logical task namespace. It does not write task files, search file contents, accept generic resource references, or select remote filesystem roots.
+
+Provider-native tools edit `workspace/`. Declared durable artifacts are published through checkpoint claims and controller copying. This keeps one workspace mutation lane and one durable publication lane.
+
+## Operator surface
+
+Operator MCP remains an external control and inspection surface. It owns provider-neutral actions such as:
+
+- definition registry reads, definition upload, and task start
+- runtime reads and task control
 - human-request inspection and resolution
 - running command-run cancellation
-- support-state and observability refs
+- support and observability reads
 
-Rules:
+Mutating definition draft authoring remains on the trusted HTTP `/authoring` workbench API, not operator MCP.
 
-- `human_request` and `command_run` are already part of the V2 shared `node` surface; they are not deferred future vocabulary
-- those tools create controller waiting states directly and therefore do not borrow workflow boundary-acceptance semantics
-- the owner contracts for their input and output envelopes remain the human-request and command-run pages rather than this index page
-- operator-side command-run cancel is a dedicated control action over an already-open run; it is not the same thing as whole-task pause or whole-task cancel
-- mutating definition draft authoring belongs to the `/authoring` workbench API, not to the shared operator MCP tool vocabulary
-- operator MCP must not expose definition draft authoring or draft inspection tools; flat draft authoring stays on the trusted HTTP `/authoring` API
+Operator MCP is not attached to managed provider executions and is not a provider adapter readiness requirement. Its authentication and authorization remain separate from node-session recognition.
 
-## Compatibility boundary
+## Semantic progress
 
-Provider compatibility is decided at launch, not by inventing separate MCP contracts.
+After request shape and current task, node-session, dispatch, assignment, and attempt authority validate, the server records the admitted node call as a `NodeMcpInvocation` with:
 
-Rules:
+- invocation identity
+- current dispatch identity
+- provider-neutral tool name
+- `started`, `completed`, or `failed` status
+- start and finish time
+- whether the completed operation advanced semantic progress
+- normalized failure code when failed
 
-- if a selected provider cannot use the required shared `node` or `operator` surface, runtime fails or falls back before dispatch acceptance
-- ordinary node MCP access is a provider/runtime compatibility fact, not a per-dispatch capability matrix
-- provider-specific session ids, approval callbacks, OAuth flows, or tool allow-lists remain adapter-local behavior
+This record supports audit, watchdog timing, and diagnostics. It is not a public task-timeline event and does not store provider output or request payloads.
+
+A changed `update_plan` call and other meaningful committed controller mutations advance the dispatch's `last_progress_at`. Read-only calls, rejected calls, failed calls, and identical plan updates do not. Invocation start alone never advances progress.
+
+The detailed matrix is in the [Node MCP schema appendix](node-mcp-schema-appendix.md). Persistence and transaction ownership live in [Runtime records and control state](../architecture/runtime-records-and-control-state.md), and plan revision ownership lives in [Attempt plan and checkpoint](../architecture/attempt-plan-and-checkpoint-contract.md).
+
+## Failure contract
+
+Every node tool has a structured success schema plus the shared structured `OperationFailure` alternative. Validation, recognition, currentness, path, plan, and operation errors therefore remain provider-neutral.
+
+Failures do not advance `last_progress_at`. A call admitted after authority validation and then failing during tool handling is recorded as a terminal `failed` invocation. Shape, recognition, and currentness failures that happen before invocation admission still return `OperationFailure`, but do not require a `NodeMcpInvocation` row.
+
+## Transport is not runtime truth
+
+These observations never change assignment, attempt, dispatch, plan, checkpoint, boundary, wait, or watchdog truth:
+
+- MCP transport connect or disconnect
+- MCP transport session identifiers
+- MCP ping
+- MCP protocol progress notifications
+- provider-native tool events
+- provider output, token, or terminal streams
+
+Only a successful current semantic operation may commit controller state. The runtime watchdog uses the resulting `last_progress_at`, not transport traffic.
 
 ## No-split rule
 
-Do not create provider-specific logical routes such as:
+Do not create provider-specific logical routes or tool vocabularies such as `/codex/node`, `/claude/node`, or `/openclaw/operator`.
 
-- `/codex/node`
-- `/claude/node`
-- `/openclaw/operator`
+If a hard incompatibility appears, split only the adapter's transport, configuration, or authentication wrapper. Preserve:
 
-unless a real hard incompatibility appears in practice.
-
-If a split ever becomes necessary, split only:
-
-- transport wrapper
-- auth wrapper
-- adapter launcher
-
-Do not split:
-
-- logical tool names
+- provider-neutral logical tool names
 - node versus operator trust separation
-- controller-owned request and response semantics
+- controller-owned request, response, and failure semantics
+- semantic progress rules
 
 ## Related contracts
 
-- [Provider preference and runtime config](provider-selection-and-runtime-config.md)
-- [Provider-aware setup, configure, and doctor](provider-aware-setup-and-doctor.md)
+- [Node MCP schema appendix](node-mcp-schema-appendix.md)
+- [Task root and file access](../architecture/task-root-and-file-access.md)
+- [Runtime records and control state](../architecture/runtime-records-and-control-state.md)
+- [Attempt plan and checkpoint](../architecture/attempt-plan-and-checkpoint-contract.md)
+- [Runtime lifecycle and watchdog](../architecture/runtime-lifecycle-and-watchdog.md)
 - [Capability, security, and audit](capability-security-and-audit.md)
-- [Control API and task event stream](control-api-and-task-event-stream.md)
-- [Codex app-server adapter](../architecture/adapters/codex-app-server.md)
-- [Claude Agent SDK adapter](../architecture/adapters/claude-agent-sdk.md)
+- [Human request and approval](human-request-and-approval-contract.md)
+- [Command run and external wait](../architecture/command-run-and-external-wait.md)
+- [ADR-0008: task-relative MCP reads and reduced task root](../../../adr/ADR-0008-task-relative-mcp-reads-and-reduced-task-root.md)

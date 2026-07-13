@@ -109,7 +109,7 @@ Example:
 
 ```yaml
 instruction: >-
-    Assign one page at a time. Each child assignment must include the page route, design reference, expected states, viewport targets, required screenshots, and validation commands. Inspect child checkpoint and artifacts before assigning the next page. Do not assign parallel page work when pages share components, fixtures, or visual tokens.
+  Assign one page at a time. Each child assignment must include the page route, design reference, expected states, viewport targets, required screenshots, and validation commands. Inspect child checkpoint and artifacts before assigning the next page. Do not assign parallel page work when pages share components, fixtures, or visual tokens.
 ```
 
 ## Define the evidence path
@@ -245,7 +245,7 @@ Dynamic parent instruction example:
 
 ```yaml
 instruction: >-
-    Inspect current evidence before assigning the next child. Route unclear scope to a scope reviewer, weak verification to a verifier, repeated failure to failure analysis, and workflow-shape mismatch to replan. Do not force a worker to widen scope to make progress.
+  Inspect current evidence before assigning the next child. Route unclear scope to a scope reviewer, weak verification to a verifier, repeated failure to failure analysis, and workflow-shape mismatch to replan. Do not force a worker to widen scope to make progress.
 ```
 
 Workers should surface ambiguity. Parent and root nodes should route it.

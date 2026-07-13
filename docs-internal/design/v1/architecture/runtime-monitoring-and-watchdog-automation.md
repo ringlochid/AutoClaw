@@ -2,6 +2,8 @@
 
 Status: Reference
 
+> **V2 supersession notice:** This page remains V1 observability routing. V2 removes provider-shaped monitoring projections from correctness and uses the single MCP-anchored watchdog in [Runtime lifecycle and watchdog](../../v2/architecture/runtime-lifecycle-and-watchdog.md).
+
 ## Purpose
 
 This page routes monitoring, watchdog, provider-delivery, and observability questions to the live v1 owner pages.

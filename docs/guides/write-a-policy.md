@@ -170,7 +170,7 @@ Use policy `instruction` only when the fields need an extra operational rule, us
 
 ```yaml
 instruction: >-
-    Use command_run only for commands expected to be long, asynchronous, or log-heavy enough that inline execution is the wrong surface.
+  Use command_run only for commands expected to be long, asynchronous, or log-heavy enough that inline execution is the wrong surface.
 ```
 
 Keep research, ambiguity classification, specialist behavior, and workflow routing in roles and workflow nodes unless the policy is explicitly granting the capability that handles that case.
@@ -179,7 +179,7 @@ Bad policy instruction:
 
 ```yaml
 instruction: >-
-    Review the implementation, check the tests, and write a release note.
+  Review the implementation, check the tests, and write a release note.
 ```
 
 That belongs in a role or workflow node because it describes the job, not the authority.

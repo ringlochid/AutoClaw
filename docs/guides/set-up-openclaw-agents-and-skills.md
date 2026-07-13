@@ -116,7 +116,7 @@ The copy commands below assume you are in a checkout.
 
 Worker sessions start fresh each dispatch. A short `AGENTS.md` in the worker agent's workspace keeps every session in the worker lane before the first tool call.
 
-Copy [`examples/openclaw/worker-workspace/AGENTS.md`](../../examples/openclaw/worker-workspace/AGENTS.md) into the worker workspace:
+Copy the [worker workspace agent instructions](../../examples/openclaw/worker-workspace/AGENTS.md) into the worker workspace:
 
 ```bash
 cp examples/openclaw/worker-workspace/AGENTS.md \

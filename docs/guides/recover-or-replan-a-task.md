@@ -81,28 +81,21 @@ Good parent/root instruction:
 
 ```yaml
 instruction: >-
-    Inspect child checkpoints, surfaced refs, criteria, and artifacts before
-    assigning the next child. If the current subtree cannot produce honest closure
-    evidence, use structural replan to add, update, or remove the smallest needed
-    child inside the owned subtree, then reread the manifest before assigning work.
-    Do not replan for weak execution when review, verification, or failure analysis
-    can answer the gap.
+  Inspect child checkpoints, surfaced refs, criteria, and artifacts before assigning the next child. If the current subtree cannot produce honest closure evidence, use structural replan to add, update, or remove the smallest needed child inside the owned subtree, then reread the manifest before assigning work. Do not replan for weak execution when review, verification, or failure analysis can answer the gap.
 ```
 
 Good worker instruction:
 
 ```yaml
 instruction: >-
-    Stay inside the current assignment. If the workflow shape appears wrong,
-    record the evidence and recommend the smallest replan; do not edit the node
-    tree yourself.
+  Stay inside the current assignment. If the workflow shape appears wrong, record the evidence and recommend the smallest replan; do not edit the node tree yourself.
 ```
 
 Bad instruction:
 
 ```yaml
 instruction: >-
-    If anything goes wrong, retry, replan, or block.
+  If anything goes wrong, retry, replan, or block.
 ```
 
 That does not say who owns the decision, what evidence proves shape mismatch, or what smaller recovery path should be tried first.

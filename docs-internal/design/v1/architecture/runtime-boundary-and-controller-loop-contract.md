@@ -2,6 +2,8 @@
 
 Status: Target
 
+> **V2 supersession notice:** This page remains the frozen V1 boundary baseline. For V2 dispatch lifecycle, external waits, recovery, and continuation, use [Runtime lifecycle and watchdog](../../v2/architecture/runtime-lifecycle-and-watchdog.md) and [Controller contract and resumable execution](../../v2/architecture/controller-contract-and-resumable-execution.md).
+
 This page defines the canonical v1 controller loop, public runtime boundaries, parent/root control tools, and the exact split between checkpoints, tool success, and boundary returns.
 
 ## Core rule

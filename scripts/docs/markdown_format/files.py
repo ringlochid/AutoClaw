@@ -8,35 +8,23 @@ from pathlib import Path
 from .formatting import format_markdown_text, format_yaml_text, normalize_text
 
 ROOT = Path(__file__).resolve().parents[3]
-DOCS_PUBLIC_ROOT = ROOT / "docs"
-DOCS_INTERNAL_ROOT = ROOT / "docs-internal"
-EXCLUDED_SOURCE_PACKS = DOCS_INTERNAL_ROOT / "archive" / "source-packs"
-EXCLUDED_PROMPT_GENERATED_ROOTS = (
-    DOCS_INTERNAL_ROOT / "design" / "v1" / "prompt-layer" / "generated",
-    DOCS_INTERNAL_ROOT / "design" / "v1" / "prompt-layer" / "prompt-pack",
+FORMAT_SUFFIXES = frozenset({".md", ".yaml", ".yml"})
+EXCLUDED_PROMPT_GENERATED_DIRECTORIES = (
+    Path("docs-internal/design/v1/prompt-layer/generated"),
+    Path("docs-internal/design/v1/prompt-layer/prompt-pack"),
 )
-
-MAINTAINED_MD_ROOTS = (
-    DOCS_PUBLIC_ROOT / "product",
-    DOCS_PUBLIC_ROOT / "reference",
-    DOCS_INTERNAL_ROOT / "design" / "v1",
-    DOCS_INTERNAL_ROOT / "current" / "v1",
-    DOCS_INTERNAL_ROOT / "execution" / "v1",
-    DOCS_INTERNAL_ROOT / "adr",
-    DOCS_INTERNAL_ROOT / "archive" / "execution",
-    ROOT / ".agents" / "standards",
+MAINTAINED_MARKDOWN_DIRECTORIES = (
+    Path("docs"),
+    Path("docs-internal/design"),
+    Path("docs-internal/current"),
+    Path("docs-internal/adr"),
+    Path(".agents/standards"),
 )
-MAINTAINED_MD_FILES = (
-    DOCS_PUBLIC_ROOT / "README.md",
-    DOCS_INTERNAL_ROOT / "README.md",
-    DOCS_INTERNAL_ROOT / "archive" / "README.md",
-    DOCS_INTERNAL_ROOT / "archive" / "01-source-inputs-and-unsafe-material.md",
-    DOCS_INTERNAL_ROOT / "archive" / "02-source-coverage-matrix.md",
-    DOCS_INTERNAL_ROOT / "archive" / "03-old-version-docs-disposition.md",
-    DOCS_INTERNAL_ROOT / "archive" / "design" / "findings.md",
-    ROOT / "README.md",
-    ROOT / "AGENTS.md",
-    ROOT / "STYLE.md",
+MAINTAINED_MARKDOWN_FILES = (
+    Path("README.md"),
+    Path("AGENTS.md"),
+    Path("STYLE.md"),
+    Path("docs-internal/README.md"),
 )
 
 
@@ -47,67 +35,42 @@ class FormatterViolation:
     reason: str = "hard-wrapped prose or list item"
 
 
-FORMAT_SUFFIXES = frozenset({".md", ".yaml", ".yml"})
-
-
 def iter_maintained_markdown_files(root: Path = ROOT) -> list[Path]:
-    docs_root = root / "docs"
-    docs_internal_root = root / "docs-internal"
-    excluded_source_packs = docs_internal_root / "archive" / "source-packs"
-    excluded_prompt_generated_roots = (
-        docs_internal_root / "design" / "v1" / "prompt-layer" / "generated",
-        docs_internal_root / "design" / "v1" / "prompt-layer" / "prompt-pack",
-    )
-    maintained_roots = (
-        docs_root / "product",
-        docs_root / "reference",
-        docs_internal_root / "design" / "v1",
-        docs_internal_root / "current" / "v1",
-        docs_internal_root / "execution" / "v1",
-        docs_internal_root / "adr",
-        docs_internal_root / "archive" / "execution",
-        root / ".agents" / "standards",
-    )
-    maintained_files = (
-        docs_root / "README.md",
-        docs_internal_root / "README.md",
-        docs_internal_root / "archive" / "README.md",
-        docs_internal_root / "archive" / "01-source-inputs-and-unsafe-material.md",
-        docs_internal_root / "archive" / "02-source-coverage-matrix.md",
-        docs_internal_root / "archive" / "03-old-version-docs-disposition.md",
-        docs_internal_root / "archive" / "design" / "findings.md",
-        root / "README.md",
-        root / "AGENTS.md",
-        root / "STYLE.md",
-    )
-
     paths: list[Path] = []
-    for base in maintained_roots:
-        if not base.exists():
+    for relative_directory in MAINTAINED_MARKDOWN_DIRECTORIES:
+        directory = root / relative_directory
+        if not directory.exists():
             continue
-        for path in sorted(base.rglob("*.md")):
-            try:
-                path.relative_to(excluded_source_packs)
-                continue
-            except ValueError:
-                pass
-            if any(_is_relative_to(path, excluded) for excluded in excluded_prompt_generated_roots):
-                continue
-            paths.append(path)
+        paths.extend(
+            path
+            for path in sorted(directory.rglob("*.md"))
+            if not is_excluded_prompt_generated_path(path, root=root)
+        )
+    paths.extend(
+        path
+        for relative_file in MAINTAINED_MARKDOWN_FILES
+        if (path := root / relative_file).exists()
+    )
+    return deduplicate_paths(paths)
 
-    for path in maintained_files:
-        if path.exists():
-            paths.append(path)
 
+def is_excluded_prompt_generated_path(path: Path, *, root: Path = ROOT) -> bool:
+    return any(
+        path.is_relative_to(root / relative_directory)
+        for relative_directory in EXCLUDED_PROMPT_GENERATED_DIRECTORIES
+    )
+
+
+def deduplicate_paths(paths: Iterable[Path]) -> list[Path]:
     seen: set[Path] = set()
-    deduped: list[Path] = []
+    result: list[Path] = []
     for path in paths:
         resolved = path.resolve()
         if resolved in seen:
             continue
         seen.add(resolved)
-        deduped.append(path)
-    return deduped
+        result.append(path)
+    return result
 
 
 def first_difference_line(original: str, formatted: str) -> int:
@@ -157,38 +120,22 @@ def resolve_paths(cli_paths: Sequence[str] | None) -> list[Path]:
     resolved: list[Path] = []
     for raw in cli_paths:
         path = (ROOT / raw).resolve() if not Path(raw).is_absolute() else Path(raw)
-        if path == DOCS_PUBLIC_ROOT or path == DOCS_INTERNAL_ROOT:
+        if path in {ROOT / "docs", ROOT / "docs-internal"}:
             resolved.extend(iter_maintained_markdown_files())
             continue
         if path.is_dir():
-            for child in sorted(path.rglob("*")):
-                if child.suffix not in FORMAT_SUFFIXES:
-                    continue
-                try:
-                    child.relative_to(EXCLUDED_SOURCE_PACKS)
-                    continue
-                except ValueError:
-                    pass
-                if any(
-                    _is_relative_to(child, excluded) for excluded in EXCLUDED_PROMPT_GENERATED_ROOTS
-                ):
-                    continue
-                resolved.append(child)
+            resolved.extend(
+                child
+                for child in sorted(path.rglob("*"))
+                if child.suffix in FORMAT_SUFFIXES and not is_excluded_prompt_generated_path(child)
+            )
             continue
         if path.suffix in FORMAT_SUFFIXES:
             resolved.append(path)
-    return resolved
+    return deduplicate_paths(resolved)
 
 
 def format_path_text(path: Path, text: str) -> str:
     if path.suffix in {".yaml", ".yml"}:
         return format_yaml_text(text)
     return format_markdown_text(text)
-
-
-def _is_relative_to(path: Path, parent: Path) -> bool:
-    try:
-        path.relative_to(parent)
-    except ValueError:
-        return False
-    return True

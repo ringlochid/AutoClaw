@@ -2,6 +2,8 @@
 
 Status: Target
 
+> **V2 supersession notice:** This page remains the frozen V1 continuity baseline. V2 treats continuity as an optional opaque provider hint, resends the complete structured prompt on every start, and owns that contract in [Minimal provider adapter contract](../../v2/architecture/adapter-contract.md).
+
 ## Purpose
 
 This page records the canonical v1 send-mode truth and keeps transport continuity detail below the canonical v1 session/run/abort architecture.

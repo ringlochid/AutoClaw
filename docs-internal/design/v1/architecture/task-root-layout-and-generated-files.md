@@ -2,6 +2,8 @@
 
 Status: Target
 
+> **V2 supersession notice:** This page remains the frozen V1 task-root baseline. V2 removes `context/`, `context/wiki/`, and the four dispatch monitoring files; use [Task root and file access](../../v2/architecture/task-root-and-file-access.md).
+
 This page defines the canonical v1 task-root layout and the generated runtime surfaces that live inside it.
 
 ## Core rule

@@ -2,6 +2,8 @@
 
 Status: Target
 
+> **V2 supersession notice:** This directory remains the frozen V1 prompt baseline. V2 worker context reads, attempt plans, narrowed checkpoints, and provider-neutral prompt transport are owned by [Prompt system v2](../../v2/prompt-layer/prompt-system-v2.md) and [Attempt plan and checkpoint contract](../../v2/architecture/attempt-plan-and-checkpoint-contract.md).
+
 This folder owns the canonical frozen v1 prompt contract for the current runtime model.
 
 Read this folder with this mental model first:
@@ -20,6 +22,8 @@ Read this folder with this mental model first:
 - prompt-pack markdown pages are audited mirrors of those shipped assets
 
 A retained secondary search router exists for legacy entry points. This `README.md` is the canonical prompt-layer front door.
+
+Use the [secondary prompt-layer index](INDEX.md) only when arriving from a legacy search term.
 
 ## Start Here
 

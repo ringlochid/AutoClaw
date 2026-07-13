@@ -55,7 +55,7 @@ The watchdog must therefore distinguish:
 - an ordinary provider turn that reached terminal state before controller progress, which can indicate an unsafe lineage
 - a dispatch whose lawful node action opened a controller-owned external wait, which is the expected terminal boundary for that dispatch
 
-For the target model, see `../../../design/v2/architecture/controller-contract-and-resumable-execution.md`, `../../../design/v2/interfaces/human-request-and-approval-contract.md`, and `../../../design/v2/architecture/command-run-and-long-running-boundary.md`.
+For the target model, see `../../../design/v2/architecture/controller-contract-and-resumable-execution.md`, `../../../design/v2/interfaces/human-request-and-approval-contract.md`, and `../../../design/v2/architecture/command-run-and-external-wait.md`.
 
 ## Evidence
 

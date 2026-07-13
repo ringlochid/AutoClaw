@@ -176,4 +176,4 @@ worker dispatch opens a human request
 
 ## Design pointer
 
-For the target monitor, watchdog, and health-rollup contract, see `../../../design/v2/architecture/controller-contract-and-resumable-execution.md`, `../../../design/v2/interfaces/human-request-and-approval-contract.md`, `../../../design/v2/architecture/command-run-and-long-running-boundary.md`, and the V1 baseline pages `../../../design/v1/architecture/watchdog-and-recovery-contract.md`, `../../../design/v1/architecture/runtime-observability-and-boundary-log.md`, and `../../../design/v1/architecture/runtime-monitoring-and-watchdog-automation.md`.
+For the target monitor, watchdog, and health-rollup contract, see `../../../design/v2/architecture/controller-contract-and-resumable-execution.md`, `../../../design/v2/interfaces/human-request-and-approval-contract.md`, `../../../design/v2/architecture/command-run-and-external-wait.md`, and the V1 baseline pages `../../../design/v1/architecture/watchdog-and-recovery-contract.md`, `../../../design/v1/architecture/runtime-observability-and-boundary-log.md`, and `../../../design/v1/architecture/runtime-monitoring-and-watchdog-automation.md`.

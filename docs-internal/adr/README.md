@@ -12,3 +12,5 @@ This surface owns durable accepted decisions for AutoClaw.
 - [ADR-0004 OpenClaw adapter normalization and worker transport boundary](ADR-0004-openclaw-adapter-normalization-and-worker-transport-boundary.md)
 - [ADR-0005 task-owned directories and runtime-generated projections](ADR-0005-task-owned-roots-and-runtime-generated-projections.md)
 - [ADR-0006 revision-safe replan and adopt](ADR-0006-revision-safe-replan-and-adopt.md)
+- [ADR-0007 MCP-anchored local runtime and minimal provider control](ADR-0007-mcp-anchored-local-runtime-and-minimal-provider-control.md)
+- [ADR-0008 task-relative MCP reads and reduced task root](ADR-0008-task-relative-mcp-reads-and-reduced-task-root.md)

@@ -22,8 +22,7 @@ At minimum, collect:
 
 - `make check-api`
 - applicable unit and integration tests
-- docs freeze validation
-- markdown unwrap check for touched docs
+- `make check-docs`
 - package build success
 - package install smoke for the supported public lane
 

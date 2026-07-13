@@ -2,6 +2,8 @@
 
 Status: Target
 
+> **V2 supersession notice:** This page remains the frozen V1 OpenClaw transport baseline. V2 uses the minimal provider-neutral adapter and MCP-anchored runtime in [Minimal provider adapter contract](../../v2/architecture/adapter-contract.md) and [OpenClaw Gateway adapter](../../v2/architecture/adapters/openclaw-gateway.md); provider-event normalization no longer owns correctness.
+
 ## Purpose
 
 This page freezes the v1 OpenClaw adapter contract as a transport adapter and provider-event normalization surface, not as canonical runtime truth or the owner of observability projections.

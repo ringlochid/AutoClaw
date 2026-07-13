@@ -6,6 +6,10 @@ Status: Accepted
 
 Runtime truth lives in controller/DB state first. Generated files, prompts, and surfaced refs are deterministic projections of that truth, not competing authorities.
 
+## Superseded in part
+
+[ADR-0007](ADR-0007-mcp-anchored-local-runtime-and-minimal-provider-control.md) narrows the persisted dispatch record set: delivery, continuity, watchdog, and provider-event rows are no longer separate correctness families. Controller-first relational runtime truth remains unchanged.
+
 ## Context
 
 The live v1 runtime model depends on one authoritative source of currentness and legality.

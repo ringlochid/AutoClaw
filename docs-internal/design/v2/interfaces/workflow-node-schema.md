@@ -32,7 +32,8 @@ role_id: string
 policy_id: string
 provider_preference: openclaw | codex | claude | optional
 description: string
-instruction: string | optional
+instruction: >-
+  string | optional
 ```
 
 Field meaning:
@@ -81,5 +82,5 @@ This page does not define:
 
 - [Role and policy definition schema](role-and-policy-definition-schema.md)
 - [Provider preference and runtime config](provider-selection-and-runtime-config.md)
-- [Provider-aware setup, configure, and doctor](provider-aware-setup-and-doctor.md)
+- [Provider CLI and doctor](provider-cli-and-doctor.md)
 - [Node and operator MCP surface contract](node-and-operator-mcp-surface-contract.md)

@@ -100,13 +100,23 @@ Read these in order before non-trivial implementation:
 
 For non-trivial `apps/console/**` frontend implementation, also read the relevant UI contract and route sources before touching components:
 
-1. `docs-internal/design/v2/interfaces/control-ui-runtime-and-authoring-surfaces.md`
-2. `docs-internal/design/v2/interfaces/control-api-and-task-event-stream.md` for task-detail, SSE, and task-control surfaces
-3. `docs-internal/design/v2/interfaces/human-request-and-approval-contract.md` for human-request surfaces
-4. `docs-internal/design/v2/architecture/command-run-and-long-running-boundary.md` for command-run surfaces
-5. `docs-internal/design/v2/interfaces/definition-authoring-api-and-flat-draft-contract.md` for authoring surfaces
-6. `docs/reference/api/api-surface-and-route-map.md` for current shipped route families
-7. the relevant design-repo product brief, navigation contract, page charter, static HTML, screenshot, and shared CSS handoff
+1. `docs-internal/design/v2/interfaces/console-runtime-surfaces.md`
+2. `docs-internal/design/v2/interfaces/control-api.md` for current task state and task controls
+3. `docs-internal/design/v2/interfaces/task-event-stream.md` for task chronology, SSE, and cursor reset
+4. `docs-internal/design/v2/interfaces/human-request-and-approval-contract.md` for human-request surfaces
+5. `docs-internal/design/v2/architecture/command-run-and-external-wait.md` for command-run surfaces
+6. `docs-internal/design/v2/interfaces/definition-authoring-api-and-flat-draft-contract.md` for authoring surfaces
+7. `docs/reference/api/api-surface-and-route-map.md` for current shipped route families
+8. the relevant design-repo product brief, navigation contract, page charter, static HTML, screenshot, and shared CSS handoff
+
+For non-trivial V2 runtime implementation, start with these owner pages before reading provider-specific or shipped-contrast detail:
+
+1. `docs-internal/design/v2/architecture/runtime-lifecycle-and-watchdog.md`
+2. `docs-internal/design/v2/architecture/runtime-records-and-control-state.md`
+3. `docs-internal/design/v2/architecture/attempt-plan-and-checkpoint-contract.md`
+4. `docs-internal/design/v2/architecture/task-root-and-file-access.md`
+5. `docs-internal/design/v2/architecture/controller-contract-and-resumable-execution.md`
+6. `docs-internal/design/v2/architecture/adapter-contract.md`
 
 ## Implementation fast path
 
@@ -188,6 +198,17 @@ Rules:
 - `make check-console` runs the non-browser console gate: format check, lint, typecheck, generated OpenAPI drift check, unit/component tests, MSW-backed integration tests, and production build
 - grouped runners must preserve the full coverage of the target they replace and expose readable progress
 
+Docs commands:
+
+- `make docs-format` rewrites maintained Markdown with the repo formatter
+- `make docs-format-check` checks maintained Markdown formatting without writes
+- `make docs-contract-check` validates authority metadata, links, front-door coverage, and docs-layer rules
+- `make docs-inventory` prints maintained-doc and contract-finding counts
+- `make docs-prompt-generate` regenerates prompt-catalog readbacks
+- `make docs-prompt-check` validates prompt-catalog inputs and generated readbacks
+- `make test-docs` runs the focused docs-tooling unit lane
+- `make check-docs` runs the complete non-mutating docs gate
+
 ### Applicability
 
 For touched backend behavior under `apps/api/**`, run every applicable lane before claiming completion:
@@ -224,8 +245,8 @@ For touched Python backend surfaces:
 
 For touched prompt assets, prompt-catalog inputs, or generated prompt pages:
 
-- `python -m scripts.docs.prompt_catalog.cli validate`
-- `python -m scripts.docs.prompt_catalog.cli generate` first when inputs or generated pages changed
+- `make docs-prompt-check`
+- `make docs-prompt-generate` first when inputs or generated pages changed
 - `ruff check scripts/docs` and `mypy scripts/docs` when the slice touched `scripts/docs/*`
 
 For touched TypeScript, frontend, or plugin surfaces:
@@ -239,6 +260,7 @@ For touched TypeScript, frontend, or plugin surfaces:
 
 For touched docs:
 
+- run `make check-docs`
 - keep line wrapping and paragraph breaks intentional
 - fix broken line-splitting instead of carrying it forward
 - update the owning current, design, execution, standards, public product, or public reference surface instead of dropping truth into an unrelated page
