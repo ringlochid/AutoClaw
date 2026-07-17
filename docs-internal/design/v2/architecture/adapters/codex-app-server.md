@@ -2,57 +2,80 @@
 
 Status: Target
 
-This page maps the official Codex Python SDK and its local app-server runtime into the minimal AutoClaw provider adapter.
+This page maps the supported Codex SDK/app-server runtime into the minimal AutoClaw provider adapter.
 
-## Confirmed external behavior
+## External basis
 
-- The official `openai-codex` Python package controls a local Codex app-server over JSON-RPC. Published SDK builds include a pinned Codex runtime, while a custom binary is optional: [Codex SDK Python library](https://developers.openai.com/codex/sdk/#python-library).
-- App-server exposes thread start and resume, turn start, and turn interrupt. Threads carry conversation context while turns are individual agent runs: [Codex app-server](https://developers.openai.com/codex/app-server).
-- Codex supports ChatGPT and API-key authentication, stores its own credentials under the Codex home or OS credential store, and refreshes them itself: [Codex authentication](https://developers.openai.com/codex/auth).
-- Codex reads normal user and trusted-project configuration, including model, reasoning, sandbox, approval, project instructions, skills, MCP, and compaction settings: [Codex configuration reference](https://developers.openai.com/codex/config-reference).
-- App-server owns provider-native approval and streamed event protocols. Those protocols are client integration surfaces, not evidence of AutoClaw task success: [Codex app-server](https://developers.openai.com/codex/app-server).
+- Codex app-server exposes thread/turn control and interruption: [Codex app-server](https://developers.openai.com/codex/app-server/).
+- Codex owns ChatGPT/API authentication and its native credential home: [Codex authentication](https://developers.openai.com/codex/auth/).
+- Codex owns normal user/project model, reasoning, sandbox, approval, instruction, skill, MCP, and compaction settings: [Codex configuration reference](https://developers.openai.com/codex/config-reference/).
+- The supported SDK/runtime shape is pinned and release-tested: [Codex SDK](https://developers.openai.com/codex/sdk/).
 
-## AutoClaw mapping
+## Adapter mapping
 
-AutoClaw installs the tested `openai-codex` SDK dependency and uses its bundled runtime by default. A separate global `codex` executable is not a prerequisite for this managed path.
+One `DispatchStartRequest` starts one new or continuity-assisted Codex turn. Thread IDs, active turn handles, JSON-RPC connection state, and child-process handles stay private to this adapter.
 
-The mapping is:
+`StartAccepted` is returned on the documented app-server acceptance boundary. Streamed items, output text, tool events, token usage, turn completion, and final response are discarded for controller progression.
 
-- one provider session hint is one Codex thread id
-- one AutoClaw dispatch starts one turn in a new or resumed thread
-- the active turn handle remains private to the adapter and `AgentControlManager`
-- `stop()` interrupts that active turn and returns only after the adapter can establish that the turn and any turn-owned background work can no longer continue
-- app-server output is drained privately and never updates controller progress or completion
+The adapter does not render or concatenate prompts. It delivers the exact `instructions` and `input` lanes from the request through the pinned supported fields.
 
-For every fresh or resumed start, the adapter applies an ephemeral correctness overlay:
+## Per-dispatch correctness overlay
 
-- task workspace as the current working directory
-- current `instructions_text` and `input_text`
-- AutoClaw Node MCP as a required managed-agent MCP server
-- a non-interactive approval policy
-- the selected workspace sandbox policy
-- optional AutoClaw model or effort overrides
+Each start applies an ephemeral overlay containing:
 
-The overlay must not rewrite the user's `config.toml`. Normal user and trusted-project Codex configuration, `AGENTS.md`, skills, and provider-owned authentication remain active beneath the overlay. AutoClaw leaves model choice, reasoning effort, model context metadata, and compaction settings unset unless the operator explicitly provides a sparse override.
+- exact task cwd;
+- current instruction and input lanes;
+- managed Node MCP URL and bearer authorization;
+- exact role-scoped enabled Node tools;
+- noninteractive approval policy;
+- resolved native-tool/network/sandbox policy; and
+- optional explicit model/effort overrides.
 
-AutoClaw preserves the thread id after each successful start. If resume cannot apply the current instruction layer reliably, the adapter starts a new thread with the full prompt and returns the replacement id.
+The overlay is supplied dynamically to that thread/turn invocation. It never rewrites user/project `config.toml`, stores the bearer credential in provider config, or changes another concurrent dispatch.
 
-Provider-native approvals must not wait for an app-server UI. The adapter resolves them non-interactively according to the AutoClaw machine policy, and the worker prompt routes human direction through AutoClaw MCP.
+The exact app-server/SDK request fields are selected by the pinned implementation and conformance-tested. The stable contract is dynamic nonpersistent injection, not one frozen upstream wire spelling.
 
-`autoclaw codex login` delegates authentication to the official Codex login protocol. Codex stores the credentials; AutoClaw stores neither tokens nor `auth.json` contents.
+## Tool exposure and authority
 
-## Open assumptions and non-goals
+Provider-side enabled tools mirror the binding's stable exposure ceiling. A worker turn is not shown parent/root structural tools. App-server exposure is defense in depth; every call still authenticates the binding and rereads controller currentness/capability.
 
-- Exact request fields used for per-thread MCP and instruction overrides remain an adapter implementation detail until the pinned SDK version is selected and conformance-tested.
-- Stop conformance must include any background terminal or process owned by the active turn. Failure to establish the stop boundary is a retryable control failure, not a successful interrupt.
-- Unix socket or `stdio` app-server transport may be selected privately. Experimental app-server WebSocket transport is not required.
-- AutoClaw does not persist generic Codex turn ids, provider events, diffs, token streams, or provider terminal state.
-- AutoClaw does not add a generic context-window option. Codex's model catalog and native configuration own actual capacity and compaction behavior.
-- A separately installed Codex CLI may be supported later as an explicit custom-runtime choice, but it is not the default managed integration.
+Provider-native approval events are resolved noninteractively under the machine policy. They are never translated into controller human requests after the fact.
+
+## Continuity
+
+A Codex thread may be reused only when the pinned integration can still deliver both complete current request lanes and the fresh dispatch MCP binding. Otherwise the adapter starts a fresh thread.
+
+Continuity is an optimization, not a correctness input. A thread ID is not persisted as generic controller state, does not authenticate Node MCP, and may be lost on process restart.
+
+## Stop and cleanup
+
+When supported, `stop(dispatch_id)` sends one bounded interrupt for the adapter-owned active turn and returns `Stopped` or `NotRunning` only on the documented stop acknowledgement. Runtime proceeds when the call is unsupported, fails, or times out.
+
+Normal boundary/human/command transitions never invoke this method. The adapter may continue consuming app-server frames privately to keep the child transport healthy, but runtime does not await a final response or drain completion and no dispatch enters a closing fence.
+
+Shutdown closes adapter resources under the main FastAPI lifespan after binding revocation. Cleanup cannot modify committed controller truth.
+
+## Failure classification
+
+The adapter normalizes configuration, authentication, connection, unavailable, timeout, rejection, unsupported, and uncertain-acceptance failures. When acceptance may have occurred, it reports uncertainty so runtime can revoke the old binding, make the one bounded interrupt attempt, and retry the same D2 with a fresh binding.
+
+Raw app-server payloads, provider output, credentials, binding material, and thread IDs are excluded from controller error storage and ordinary logs.
+
+## Required conformance
+
+- exact two-lane delivery;
+- dynamic per-dispatch MCP attachment and role allowlist;
+- no persistent provider config mutation;
+- noninteractive approval behavior;
+- acceptance and interrupt boundaries for the pinned version;
+- definite versus uncertain start classification where observable;
+- same-D2 retry with a new binding and identical request bytes; and
+- no provider output/final/drain effect on controller state.
 
 ## Related contracts
 
 - [Minimal provider adapter contract](../adapter-contract.md)
-- [Provider CLI and doctor](../../interfaces/provider-cli-and-doctor.md)
+- [Managed Node MCP binding](../managed-node-mcp-binding.md)
+- [Provider CLI and check](../../interfaces/provider-cli-and-check.md)
 - [Codex support and compatibility](../../interfaces/codex-support-and-compatibility.md)
-- [Node and operator MCP surface contract](../../interfaces/node-and-operator-mcp-surface-contract.md)
+- [Node and Operator MCP surface contract](../../interfaces/node-and-operator-mcp-surface-contract.md)

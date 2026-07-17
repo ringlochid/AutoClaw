@@ -30,7 +30,8 @@ kind: root | parent | worker
 title: string | optional
 role_id: string
 policy_id: string
-provider_preference: openclaw | codex | claude | optional
+provider:
+    kind: codex | claude | openclaw
 description: string
 instruction: >-
   string | optional
@@ -43,7 +44,7 @@ Field meaning:
 - `title` is optional authored display metadata
 - `role_id` points to the portable role definition the node should resolve at launch or adopt time
 - `policy_id` points to the portable policy definition the node should resolve at launch or adopt time
-- `provider_preference` is an optional portable logical preference for provider selection
+- `provider` is an optional strict portable selection object whose `kind` chooses one logical provider
 - `description` is reusable node-purpose text and remains distinct from guidance layers
 - `instruction` is optional node-local prompt guidance for how this node should execute its role
 
@@ -53,20 +54,22 @@ Validation must enforce:
 
 - `node_key`, `kind`, `role_id`, `policy_id`, and `description` are required
 - `kind` accepts only `root`, `parent`, or `worker`
-- `provider_preference`, when present, accepts only `openclaw`, `codex`, or `claude`
-- `provider_preference` is optional and omission means runtime will resolve through the machine-local default provider
+- `provider`, when present, is discriminated by `kind` and accepts only `codex`, `claude`, or `openclaw`
+- each current-phase provider variant contains only `kind`; unknown and provider-inapplicable fields fail validation
+- `provider` is optional and omission means runtime resolves through the machine-local configured default
 - `instruction`, when present, is non-empty prompt guidance authored on the node itself
 - runtime and projection fields disambiguate this source as `node_instruction`, separate from `role_instruction`, `policy_instruction`, task instruction, and assignment instruction
 
 ## Separation rule
 
-`provider_preference` is reusable authored intent only.
+`provider` is reusable authored intent only.
 
 Rules:
 
-- `provider_preference` belongs on workflow nodes, not role or policy definitions
-- `provider_preference` is not a model string, socket path, auth ref, sandbox config, or transport block
+- `provider` belongs on workflow nodes, not role or policy definitions
+- `provider` is not a model/effort block, Gateway profile, socket path, auth ref, sandbox config, or transport block
 - machine-local config decides how this host reaches `openclaw`, `codex`, or `claude`
+- provider-specific machine settings are resolved into the committed dispatch route rather than authored node fields
 - controller truth records requested and resolved provider provenance without turning local config into authored definition truth
 
 ## Non-goals
@@ -75,12 +78,12 @@ This page does not define:
 
 - the full outer workflow-definition container shape
 - machine-local provider setup
-- provider fallback semantics
+- machine-local default and no-fallback resolution semantics
 - provider-specific MCP tool names
 
 ## Related contracts
 
 - [Role and policy definition schema](role-and-policy-definition-schema.md)
-- [Provider preference and runtime config](provider-selection-and-runtime-config.md)
-- [Provider CLI and doctor](provider-cli-and-doctor.md)
-- [Node and operator MCP surface contract](node-and-operator-mcp-surface-contract.md)
+- [Provider selection and runtime config](provider-selection-and-runtime-config.md)
+- [Provider CLI and check](provider-cli-and-check.md)
+- [Node and Operator MCP surface contract](node-and-operator-mcp-surface-contract.md)

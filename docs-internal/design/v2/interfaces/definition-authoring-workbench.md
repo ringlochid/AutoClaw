@@ -59,6 +59,9 @@ Rules:
 - apply or import is explicit and separate from draft save
 - task start remains a post-apply action over current controller truth
 - exact flat draft, validation, staleness, collision, and publish semantics live in the definition authoring API and flat draft contract rather than this UI page
+- task-compose preview is a separate read-only operation over current stored definitions, not an extension of draft validation or a draft execution path
+- a ready preview shows each workflow node's resolved provider plus `provider_native_access` and `network_access` as `{effective, source}` values
+- preview creates no task or runtime effects, and the workbench must explain that task start rereads current truth rather than relying on the preview as a reservation
 
 ## Non-goals
 
@@ -73,6 +76,6 @@ This contract does not define:
 
 - [Definition authoring API and flat draft contract](definition-authoring-api-and-flat-draft-contract.md)
 - [Role and policy definition schema](role-and-policy-definition-schema.md)
-- [Provider preference and runtime config](provider-selection-and-runtime-config.md)
+- [Provider selection and runtime config](provider-selection-and-runtime-config.md)
 - [Console runtime surfaces](console-runtime-surfaces.md)
 - [V1 definition registry and upload contract](../../v1/interfaces/definition-registry-and-upload-contract.md)

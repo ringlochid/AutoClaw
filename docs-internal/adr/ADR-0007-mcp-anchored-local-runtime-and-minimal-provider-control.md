@@ -2,6 +2,8 @@
 
 Status: Accepted
 
+> **Partial supersession notice:** [ADR-0009](ADR-0009-exact-source-runtime-control.md) replaces this ADR's broad supervisor/manager, semantic-only progress clock, finite provider-control budget, provider-stop fencing, mandatory attempt plan, and provider-start exhaustion details. This page remains the historical decision that established local-first controller truth, provider-output irrelevance, provider-neutral adapters, and same-attempt watchdog recovery.
+
 ## Decision summary
 
 AutoClaw V2 is a local-first, same-host runtime whose agent-originated semantic truth arrives through committed node MCP operations. Provider adapters expose only start and stop control plus optional opaque conversation continuity. Provider events, output, tool streams, and terminal frames do not own progress, completion, or workflow advancement.
@@ -146,5 +148,5 @@ Rejected for the current strategy. Provider and file boundaries remain useful co
 
 - `../design/v2/architecture/runtime-lifecycle-and-watchdog.md`
 - `../design/v2/architecture/runtime-records-and-control-state.md`
-- `../design/v2/architecture/attempt-plan-and-checkpoint-contract.md`
+- `../design/v2/architecture/work-plan-and-checkpoint-contract.md`
 - `../design/v2/architecture/controller-contract-and-resumable-execution.md`

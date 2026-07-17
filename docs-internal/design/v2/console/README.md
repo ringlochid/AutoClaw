@@ -2,48 +2,44 @@
 
 Status: Reference
 
-This directory is the V2 implementation-facing console contract for runtime state, task chronology, provider control, recovery, and external waits.
-
-The primary product owner is [Console runtime surfaces](../interfaces/console-runtime-surfaces.md). The pages here translate that product contract into frontend data boundaries, page states, and component semantics without redefining backend truth.
+This directory translates the V2 [Console runtime surfaces](../interfaces/console-runtime-surfaces.md) contract into frontend data boundaries, page states, and reusable component semantics. It does not redefine backend truth.
 
 ## Pages
 
-- [API and view-model boundary](api-and-view-model-boundary.md) owns source-row, event, mapping, error, and cursor-reset boundaries.
-- [Page state contracts](page-state-contracts.md) owns the required runtime page states and lawful transitions.
-- [Component system](component-system.md) owns shared visual, interaction, responsive, and accessibility semantics.
+- [API and view-model boundary](api-and-view-model-boundary.md) owns source-row, event, mapping, failure, and cursor-reset boundaries.
+- [Page state contracts](page-state-contracts.md) owns required runtime render states and lawful actions.
+- [Component system](component-system.md) owns shared interaction, responsive, and accessibility semantics.
 
-This README is the only console subtree router. The four files in this directory are the complete live V2 console target set.
+These four files are the complete live V2 console target set.
 
 ## Authority order
 
-Console implementation follows this order:
+1. Control API source rows for current state and mutation legality
+2. task events for chronology and live refresh hints
+3. human-request and command-run source routes for complete external-wait detail
+4. console runtime surfaces for product composition
+5. pages here for frontend mapping and presentation
 
-1. Control API source-row contracts for current state and mutation legality
-2. task event contracts for chronology and live updates
-3. human-request and command-run source owners for complete external-wait detail
-4. console runtime surface rules for product composition
-5. console page and component contracts for presentation
-
-Generated OpenAPI types remain the TypeScript wire source. Explicit mappers may shape render-ready views, but they must preserve controller names and states.
+Generated OpenAPI types remain the TypeScript wire source. Explicit mappers may create render-ready views but must preserve controller identities, states, and timing.
 
 ## Scope
 
 This subtree covers:
 
-- current attempt plan and plan revision history
-- `last_progress_at`
-- requested and resolved provider provenance
-- provider-control operation, retry, countdown, error, and reason presentation
-- watchdog restart count and exhausted-recovery pause
-- ordinary continue after provider repair
-- human-request and command-run waits
-- source-row refresh, task-event chronology, and cursor reset
+- active `starting|open` dispatch and closed dispatch history;
+- optional assignment-owned work plan and plan chronology;
+- admitted Node activity and watchdog due/recovery presentation;
+- exact provider selection basis and indefinite provider-start retry;
+- experimental OpenClaw labeling without disabling selection;
+- human-request and command-run waits;
+- pause/cancel/continue timing; and
+- source refresh, task-event chronology, and cursor reset.
 
-It does not own definition authoring, provider onboarding, backend routes or schemas, runtime behavior, task-file projections, or implementation evidence programs.
+It does not own definition authoring, provider setup/configuration mutation, backend schemas, runtime behavior, task-file projections, or implementation evidence programs.
 
 ## Non-negotiable exclusions
 
-The console does not invent backend fields, lifecycle states, counts, progress percentages, ETA, provider health, or action legality. Ordinary product views never expose raw provider events, credentials, `provider_session_hint`, raw provider output, or raw provider logs.
+The console does not invent lifecycle states, provider-start maxima, fallback chains, health, semantic progress from Node activity, percentages, ETA, or action legality. Ordinary product views never expose provider/native events, credentials, binding material, provider/MCP session identity, raw provider output, or raw provider logs.
 
 ## Related contracts
 

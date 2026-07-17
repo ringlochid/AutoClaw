@@ -170,7 +170,8 @@ Source: [SQLAlchemy declarative mapping](https://docs.sqlalchemy.org/en/20/orm/d
 - component files should use `PascalCase.tsx` when they primarily export one component; non-component frontend modules should use responsibility-named lower kebab-case
 - event callback props should be named `on*`; local event handlers should be named `handle*`
 - use generated OpenAPI types for controller-backed API payloads; do not hand-maintain duplicate TypeScript API contracts
-- keep one narrow API/SSE client layer for base URL resolution, `X-AutoClaw-API-Key`, error envelopes, query construction, SSE cursor handling, backfill, and reset behavior
+- keep one narrow API/SSE client layer for base URL resolution, request headers, error envelopes, query construction, SSE cursor handling, backfill, and reset behavior
+- V2 loopback console and control clients do not add a global operator API key or browser credential bootstrap; follow the owning V2 security contract for local admission
 - render frontend view-models such as task rows, event items, human-request items, command-run rows, and definition summaries instead of passing raw controller payloads directly through component trees
 - translate generated snake_case controller fields into camelCase view-model fields only inside explicit mappers
 - keep controller vocabulary exact for route names, states, event families, command-run states, human-request kinds, and definition kinds

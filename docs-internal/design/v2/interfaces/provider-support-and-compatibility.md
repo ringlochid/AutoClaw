@@ -2,88 +2,100 @@
 
 Status: Target
 
-This page defines the shared local support contract for the `codex`, `claude`, and `openclaw` providers.
+This page owns the shared local support contract for the `codex`, `claude`, and `openclaw` provider routes.
 
-## Support model
+## Product status
 
-AutoClaw supports two deployment shapes:
+| Provider | Target integration | Runtime ownership | Product status |
+| --- | --- | --- | --- |
+| Codex | managed local SDK/app-server | AutoClaw owns invocation resources | managed target |
+| Claude | managed local Agent SDK | AutoClaw owns invocation resources | managed target |
+| OpenClaw | external Gateway + compatibility MCP | user owns install/config/service; AutoClaw owns only its adapter calls | experimental selectable lane |
 
-| Provider | Target shape | Runtime ownership | Continuity hint | Initial status |
-| --- | --- | --- | --- | --- |
-| Codex | Managed local SDK | AutoClaw launches the SDK and bundled pinned runtime | Codex thread id | Targeted |
-| Claude | Managed local SDK | AutoClaw launches the SDK and bundled compatible runtime | Claude session id | Targeted |
-| OpenClaw | External Gateway | Operator installs and supervises OpenClaw | OpenClaw session key | Targeted with webchat baseline |
+`Target` freezes the V2 contract; it does not claim the implementation has shipped.
 
-Targeted means the V2 contract is frozen but does not claim that the implementation has already shipped.
+OpenClaw's experimental label does not disable it. An operator may explicitly enable/select it or configure it as the default. Release conformance reports exact limitations rather than hiding the route or becoming a global selectability switch.
 
-## Shared readiness contract
+## Packaging
 
-A provider is ready only when the named adapter can:
+The target base AutoClaw distribution carries the tested Codex and Claude adapter dependencies and their supported bundled runtimes. Codex/Claude are not separate product install extras in the target model.
 
-- start with the current task workspace and both prompt lanes
-- attach or reach AutoClaw Node MCP
-- preserve the existing AutoClaw task and node recognition values
-- prevent provider-native approvals or questions from waiting invisibly
-- return the effective optional provider session hint
-- interrupt an active provider turn through the centralized stop path
-- inherit or validate provider-owned authentication and native configuration
-- run in the same filesystem and network namespace required by the local task
+Installing those integrations does not configure or authenticate either provider. Zero enabled/configured providers remains a valid controller installation.
 
-Operator MCP is not a provider launch prerequisite. Managed workers receive Node MCP only; Operator MCP remains an external operator surface.
+OpenClaw is not bundled. The user installs, upgrades, configures, secures, and supervises it independently.
 
-Provider output streams and terminal events are not readiness requirements except where an adapter must drain them privately to keep its SDK or process healthy.
+## Shared managed-start contract
 
-## Packaging contract
+A managed Codex/Claude start receives:
 
-Managed provider dependencies are optional install extras:
+- one committed dispatch's exact `instructions.md` bytes;
+- that dispatch's exact `input.md` bytes;
+- the resolved task workspace/cwd;
+- a dynamic private managed Node MCP URL, bearer credential, and role-scoped tool allowlist;
+- explicit noninteractive provider policy; and
+- resolved `provider_native_access` and `network_access` ceilings plus sparse route overrides.
 
-```text
-autoclaw[codex]
-autoclaw[claude]
-autoclaw[managed]
-```
+The adapter does not persist the MCP connection in provider user/project configuration. Each retry and successor receives a fresh binding credential; concurrent dispatches never share scope or tool ceilings.
 
-`autoclaw[codex]` installs the tested official Codex Python SDK and its pinned runtime. `autoclaw[claude]` installs the tested Claude Agent SDK and its bundled compatible runtime. `autoclaw[managed]` is the union of those two dependency sets.
+## OpenClaw compatibility contract
 
-OpenClaw is not part of `managed`; it remains a separately installed and supervised system.
+OpenClaw uses the stable user-configured `/node/mcp` compatibility endpoint. Every Node tool requires full `task_id` and `dispatch_id` selectors. AutoClaw renders the full IDs in current dispatch context but never edits `openclaw.json` or weakens OpenClaw tool, sandbox, exec, approval, bind, or authentication policy.
 
-AutoClaw pins and tests supported SDK versions. Doctor reports the AutoClaw adapter version, SDK version, bundled runtime version when discoverable, and whether a custom runtime path is in use.
+Compatibility calls share the same logical operations and fresh controller validation as managed calls. The absence of a per-dispatch AutoClaw credential is an explicit experimental security limitation.
 
-## Native configuration and authentication
+The operator maintains the compatibility server entry and tool policy in OpenClaw configuration. AutoClaw never injects or reconciles that entry dynamically.
 
-AutoClaw adds only the correctness overlay required for one dispatch. It does not recreate provider settings.
+## Provider start and stop
 
-- Codex inherits normal user and trusted-project configuration and provider-owned ChatGPT or API authentication.
-- Claude inherits selected native setting sources and uses supported API or cloud authentication for the product integration.
-- OpenClaw inherits the externally managed Gateway configuration and credentials required by its documented client identity.
+`start()` returns when the provider has accepted responsibility for the invocation. That acceptance can move a still-current D2 from `starting` to `open`; it does not imply semantic progress or provider completion.
 
-No raw provider secret is stored in AutoClaw's database or runtime config. Doctor may report credential type and presence without exposing credential content.
+Provider-origin start failures retry the same D2 indefinitely with capped delay. There is no six-call budget, provider-start exhaustion pause, route fallback, final-response window, or provider drain gate.
 
-## Failure isolation
+`stop(dispatch_id)` is a bounded optional control. Runtime uses at most one attempt for uncertain same-D2 retry, watchdog replacement, or post-commit pause/cancel cleanup and proceeds even when stop is unsupported, fails, or times out. Normal boundaries and human/command waits never call stop.
 
-Each provider has independent readiness. One broken provider does not block AutoClaw startup or another provider's work.
+Adapters may privately consume provider streams for SDK/process health. AutoClaw discards provider final output for controller correctness and never waits for it before accepting a boundary or creating a successor.
 
-Provider resolution happens before dispatch commit. Once committed, all control retries stay on the resolved provider. Provider start and stop failures are visible as bounded controller-owned control status, not as provider-event ingestion.
+## Authentication and native configuration
 
-## Required conformance
+- Codex uses provider-owned ChatGPT or API authentication and its native home/configuration.
+- Claude uses supported Anthropic API or cloud-provider authentication and its native setting sources.
+- OpenClaw uses its externally managed Gateway identity and configuration.
 
-The common conformance suite proves:
+AutoClaw stores no raw provider credential. Passive status reports local facts; explicit checks may verify documented non-agent prerequisites without running a model turn.
 
-- fresh start and continuity resume
-- full instruction refresh on resume
-- fresh-session fallback with replacement hint
-- Node MCP context, plan, progress, external wait, and boundary operations
-- 15-minute watchdog progress depends only on semantic MCP commits
-- provider-native approvals and questions cannot create hidden waits
-- centralized six-call start and stop retry behavior
-- app restart can reconstruct desired control from controller persistence without a provider event stream
+## Independent readiness
 
-Provider-specific pages own additional requirements and exact remediation.
+One broken provider does not block API startup or another route. There is no global provider-ready gate.
 
-## Compatibility pages
+A route-specific check covers installation, configuration, authentication/reachability where a documented non-agent check exists, native-home identity, policy compatibility, and deterministic MCP prerequisites. It creates no task, dispatch, binding, or agent turn and writes no readiness cache.
+
+Runtime does not run the check before every dispatch. Deterministic route/request validation happens before D2 commit; real provider handshake happens after commit under same-D2 retry.
+
+## Conformance
+
+Every provider-specific lane proves:
+
+- exact delivery of the two committed request lanes;
+- zero provider I/O before D2+refs commit;
+- correct managed binding injection or explicit compatibility configuration;
+- worker versus parent/root tool exposure;
+- provider-native questions/approvals cannot become hidden waits;
+- bounded stop behavior when supported;
+- definite versus uncertain start classification where possible;
+- same-D2 retry without prompt rerender;
+- no provider output/final/drain progression; and
+- secret and private-binding redaction.
+
+Continuity is optional provider-private optimization. Conformance may test it, but loss of a provider thread/session must not change controller truth or prevent a full two-lane start.
+
+Conformance results classify exact-version support and readiness. Incomplete or failed OpenClaw cases remain visible limitations; they do not globally disable explicit selection or an operator-configured OpenClaw default.
+
+## Related contracts
 
 - [Codex support and compatibility](codex-support-and-compatibility.md)
 - [Claude support and compatibility](claude-support-and-compatibility.md)
 - [OpenClaw support and compatibility](openclaw-support-and-compatibility.md)
-- [Provider CLI and doctor](provider-cli-and-doctor.md)
+- [Provider CLI and check](provider-cli-and-check.md)
 - [Provider selection and runtime config](provider-selection-and-runtime-config.md)
+- [Minimal provider adapter contract](../architecture/adapter-contract.md)
+- [ADR-0011: provider routing, defaults, and capability resolution](../../../adr/ADR-0011-provider-routing-defaults-and-capability-resolution.md)

@@ -4,55 +4,69 @@ Status: Target
 
 This page maps an externally managed OpenClaw Gateway into the minimal AutoClaw provider adapter.
 
-## Confirmed external behavior
+## External basis
 
-- OpenClaw Gateway is a WebSocket control plane. Its `agent` request accepts work and returns a run id and acceptance time before the agent run completes: [OpenClaw agent loop](https://docs.openclaw.ai/agent-loop).
-- `sessions.abort` can abort a session by session key and may accept a run id for a more precise abort: [OpenClaw Gateway protocol](https://docs.openclaw.ai/gateway/protocol).
-- Gateway handshake client mode and the agent request's delivery channel are separate protocol fields: [OpenClaw Gateway protocol](https://docs.openclaw.ai/gateway/protocol).
-- The device-less `gateway-client` plus `backend` identity is a reserved trusted same-process or loopback control path. Custom automation should use a supported device identity, pairing, or another documented integration path rather than impersonating that internal identity: [OpenClaw Gateway protocol](https://docs.openclaw.ai/gateway/protocol), [OpenClaw trusted proxy authentication](https://docs.openclaw.ai/gateway/trusted-proxy).
+- Gateway `agent` accepts work before the run completes: [OpenClaw agent loop](https://docs.openclaw.ai/agent-loop).
+- Gateway exposes session/run cancellation and keeps handshake mode separate from delivery channel: [OpenClaw Gateway protocol](https://docs.openclaw.ai/gateway/protocol).
+- Reserved trusted identities must not be impersonated by third-party automation: [OpenClaw trusted proxy authentication](https://docs.openclaw.ai/gateway/trusted-proxy).
 
-## AutoClaw mapping
+## Adapter boundary
 
-OpenClaw remains independently installed, configured, and supervised. AutoClaw neither bundles the Gateway nor manages its full lifecycle.
+OpenClaw remains independently installed, configured, secured, and supervised. AutoClaw neither bundles the Gateway nor manages its service lifecycle or global policy.
 
-The mapping is:
+One `DispatchStartRequest` submits one `agent` request. An OpenClaw session key, run ID, connection, or abort handle remains private to this adapter.
 
-- one provider session hint is the OpenClaw session key
-- the adapter creates a fresh key when no hint is supplied and returns the effective key from `start()`
-- `start()` opens a Gateway control connection, submits `agent`, waits only for acceptance, and then releases the connection when the supported Gateway path permits it
-- `stop()` opens a control connection, calls `sessions.abort`, and returns only after the supported response establishes that the targeted active turn can no longer continue
-- an optional run id and any retained connection remain private adapter control details
-- Gateway events, `agent.wait`, tool events, and provider completion never update controller progress or close the AutoClaw dispatch
+`StartAccepted` is returned on the supported Gateway acceptance response. Gateway output, tool events, `agent.wait`, disconnects, and completion never advance controller state.
 
-The launch request maps `instructions_text` to OpenClaw `extraSystemPrompt` and `input_text` to the agent `message`. Gateway handshake `client.mode` and the agent request `channel` are configured independently; sharing one constant is not part of the adapter contract.
+The adapter maps the exact instruction and input lanes to the installed Gateway's supported separate system/input fields. It does not concatenate, rerender, or append compact resume text.
 
-The supported baseline is a documented `webchat` client path. A `backend` mode may be configured and tested only when the installed OpenClaw version exposes a supported third-party identity and the full adapter conformance suite passes. AutoClaw must never claim the reserved internal `gateway-client` identity merely to obtain backend behavior.
+## Compatibility MCP boundary
 
-The OpenClaw worker must be able to reach the stable AutoClaw Node MCP endpoint and the local task workspace. OpenClaw MCP setup is provider-local configuration; per-dispatch task and node recognition still uses the AutoClaw `NodeSession` values rendered into the current prompt.
+The adapter does not create a managed binding or inject a secret into OpenClaw configuration. The user has already configured the stable `/node/mcp` compatibility endpoint and OpenClaw tool policy.
 
-## Open assumptions and non-goals
+Current prompt context contains the full non-secret task and dispatch IDs required by compatibility tool schemas. Every call then performs fresh exact-current controller validation.
 
-- Disconnect-after-acceptance must be proven against each supported OpenClaw version. If an installed version requires a live Gateway connection, the adapter may retain one privately without ingesting its events as runtime truth.
-- `backend` remains experimental for AutoClaw until upstream provides a supported external identity and both launch and abort conformance pass. Only the webchat path is promised by the initial support contract.
-- AutoClaw does not persist a generic Gateway run id, provider terminal state, tool-event stream, or process-local event registry.
-- AutoClaw does not install, upgrade, expose, authenticate, or supervise the entire OpenClaw deployment.
+AutoClaw never edits `openclaw.json`, changes the user-selected agent/tool profile, or silently disables a route that remains explicitly experimental.
 
-## Additional conformance requirements
+## Gateway identity and delivery
 
-The OpenClaw adapter must prove:
+Handshake client mode and agent delivery channel remain distinct fields inside the selected tested Gateway profile. AutoClaw does not freeze `webchat`, `backend`, or another upstream mode as a universal baseline. A configured profile must use a lawful third-party identity for the installed version; incomplete conformance is recorded as an explicit limitation rather than a global activation or selection gate.
 
-- Node MCP plan, progress, wait, and boundary operations work with provider events disabled
-- disconnecting after accepted launch does not terminate the supported run
-- a fresh control connection can abort the active session
-- abort success satisfies the generic stop boundary; an unknown or unsupported result fails the control call
-- fresh and resumed session hints work
-- handshake client mode and delivery channel can differ
-- webchat passes as the supported baseline
-- backend passes the same suite before it is enabled experimentally
+AutoClaw must not claim a reserved internal `gateway-client` identity to obtain privileged behavior.
+
+## Stop and connection lifetime
+
+When supported, `stop(dispatch_id)` opens or uses a control connection, issues one bounded `sessions.abort` for the private session/run identity, and returns a successful result only on the documented abort acknowledgement. Runtime proceeds when the result is unsupported, failed, ambiguous, or timed out.
+
+The launch control connection may be released after acceptance only when exact-version conformance proves the run survives. If the installed route requires a retained connection, the adapter may keep it privately without ingesting its events as truth.
+
+Normal boundaries and human/command waits never call abort. There is no `agent.wait`, provider-output drain, or provider-stop fence in controller progression.
+
+## Failure classification
+
+The adapter normalizes configuration, authentication, connection, unavailable, timeout, rejection, unsupported, and uncertain-acceptance outcomes. Every provider-origin outcome keeps the same current D2 in `starting` and retries indefinitely with capped backoff. Ambiguous acceptance gets at most one bounded stop attempt before retry; OpenClaw's lack of reliable cancellation may cause physical overlap, but stop failure never blocks retry and stale compatibility selectors/currentness cannot mutate controller truth.
+
+Raw Gateway payloads, credentials, output, session keys, and run IDs remain out of controller error storage and ordinary logs.
+
+## Experimental conformance
+
+For each exact supported version/profile, conformance evidence records:
+
+- acceptance with exact two-lane delivery;
+- compatibility Node calls with full current IDs;
+- worker versus parent/root profile behavior;
+- legal client identity and independent delivery channel;
+- disconnect-after-acceptance behavior;
+- one bounded fresh-connection abort when supported;
+- no invisible native approval/question wait; and
+- no provider event/output/final effect on controller truth.
+
+A failed item is reported as an explicit route limitation. It does not silently mutate user configuration, change the configured default, or globally erase the experimental route.
 
 ## Related contracts
 
 - [Minimal provider adapter contract](../adapter-contract.md)
-- [Provider CLI and doctor](../../interfaces/provider-cli-and-doctor.md)
+- [Provider CLI and check](../../interfaces/provider-cli-and-check.md)
 - [OpenClaw support and compatibility](../../interfaces/openclaw-support-and-compatibility.md)
-- [Node and operator MCP surface contract](../../interfaces/node-and-operator-mcp-surface-contract.md)
+- [Node and Operator MCP surface contract](../../interfaces/node-and-operator-mcp-surface-contract.md)
+- [ADR-0011: provider routing, defaults, and capability resolution](../../../../adr/ADR-0011-provider-routing-defaults-and-capability-resolution.md)

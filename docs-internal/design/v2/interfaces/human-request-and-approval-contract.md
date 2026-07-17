@@ -2,235 +2,200 @@
 
 Status: Target
 
-This page owns the V2 typed human-request source record, its external-wait transition, and its resolution policy.
+This page owns the typed human-request source, the atomic external-wait transition, deadline behavior, terminal resolution, and same-attempt continuation. Human requests are controller concepts, not provider-native permission prompts or conversational questions.
 
 ## Core rule
 
-A human request is the only interactive wait lane available to a managed agent. The current worker opens it deliberately through node MCP when controller-owned capability allows the request kind.
+A managed agent intentionally opens a human request through Node MCP when its effective capability allows the requested kind. Opening succeeds only when the source row, matching wait, and D1 closure commit atomically.
 
-Opening a human request ends the current provider response and closes the current dispatch. It does not terminate the task, assignment, attempt, or plan, and it is not a `return_boundary` outcome.
-
-Provider-native questions, approvals, and permission prompts must never become hidden interactive waits. Adapters resolve those mechanisms noninteractively by allowing, denying, or failing according to machine policy. When human direction is intentionally required, the worker uses this AutoClaw MCP lane.
+The MCP response returns after that commit and instructs the current provider turn to stop. It does not wait for deadline registration, a human response, successor opening, provider stop, provider completion, or an async acknowledgement.
 
 ## Request kinds
 
-The request kinds are exactly:
+The target kinds are:
 
-- `direction` for a missing decision about purpose, priority, scope, technique, or trade-off
-- `approval` for permission to take a proposed sensitive or consequential action
-- `input` for missing structured information
-- `review` for a human disposition on a plan, diff, summary, or result
+- `input` for typed information required to proceed;
+- `direction` for a bounded decision among described paths;
+- `approval` for explicit authorization of a controller-described action; and
+- `review` for a bounded human assessment of supplied evidence.
 
-Free-form notes may supplement an answer. They do not replace the typed item response or bypass controller legality.
+Kinds do not inherit provider-native approval UI, permission modes, or hidden interactive prompts. Provider-native interaction is configured noninteractively by provider policy.
 
-## Request contract
+## Node operation
 
-The node-facing open request is:
+Conceptually:
 
-```yaml
-human_request_open_request:
-    kind: direction | approval | input | review
-    title: string
-    summary: string
-    items:
-        - item_id: string
-          prompt: string
-          options:
-              - id: string
-                title: string
-                description: string | null
-          recommended_option: string | null
-          input_payload_schema: object | null
-    timeout:
-        due_at: timestamp | null
-        default_behavior: string | null
-    suggested_human_instruction: string
+```text
+open_human_request(request) -> HumanRequestOpenResult
 ```
 
-Validation rules:
+Managed schemas contain only the semantic request. The compatibility projection adds required full `task_id` and `dispatch_id` selectors.
 
-- `items` contains at least one item and item identifiers are unique inside the request
-- `direction`, `approval`, and `review` items contain at least one option
-- `input` items contain `input_payload_schema` and do not require options
-- `input_payload_schema` is null for the three option-based kinds
-- `recommended_option`, when present, names an option on the same item
-- `due_at`, when present, is later than the controller commit time
-- `suggested_human_instruction` tells the human what to inspect or do before answering
-
-The controller response is:
+The request contains:
 
 ```yaml
-human_request_open_response:
-    request_id: string
-    task_id: string
-    status: open
+kind: input | direction | approval | review
+summary: bounded operator-facing purpose
+items:
+  - id: stable item id
+    prompt: bounded question or review request
+    response_schema: typed schema or bounded option set
+context_refs: optional bounded logical refs
+timeout:
+  due_at: timestamp | null
+  default_behavior: bounded policy | null
+suggested_human_instruction: optional bounded text
 ```
 
-Success means the source row and external-wait transition committed. The response must also instruct the worker to stop its response immediately without recording a terminal checkpoint or calling `return_boundary`.
+Every field is strict and bounded. Context uses logical refs instead of copying large artifacts, raw command logs, or provider output.
 
 ## Source record
 
-The controller-owned source row is:
+The authoritative source binds:
 
 ```yaml
-pending_human_request:
-    request_id: string
-    task_id: string
-    flow_id: string
-    flow_revision_id: string
-    flow_node_id: string
-    assignment_id: string
-    attempt_id: string
-    dispatch_id: string
-    requester_node: string
-    kind: direction | approval | input | review
-    title: string
-    summary: string
-    items: human_request_item[]
-    timeout:
-        due_at: timestamp | null
-        default_behavior: string | null
-    suggested_human_instruction: string
-    opened_at: timestamp
-    status: open | resolved | timed_out | cancelled
+human_request:
+  request_id: string
+  task_id: string
+  flow_id: string
+  assignment_id: string
+  attempt_id: string
+  source_dispatch_id: string
+  kind: input | direction | approval | review
+  request: typed body
+  due_at: timestamp | null
+  default_behavior: bounded policy | null
+  status: open | resolved | timed_out | cancelled
+  opened_at: timestamp
+  terminal_resolution: typed resolution | null
+  successor_dispatch_id: string | null
 ```
 
-`HumanRequestRead` is the API and Node MCP read projection of this complete source shape. It does not omit the original items, timeout policy, or suggested human instruction.
-
-`resolved` is the persisted status for an answered request. The separate resolution record identifies the terminal resolution kind as `answered`.
-
-Only one open human request may own one current task lineage. Historical source rows remain readable but cannot compete with the current wait.
+The request is bound to its source dispatch, not merely to a task or provider session. Historical requests remain readable but cannot own current wait or continuation.
 
 ## Open legality
 
-Opening is legal only when all of these are true:
+Before mutation, the operation proves:
 
-- task, node session, dispatch, assignment, and attempt are current
-- the current worker already recorded the required progress checkpoint
-- no current human-request or command-run source wait owns the lineage
-- effective `human_request.<kind>` capability is `allow`
-- the request validates against the bounded contract above
+- managed binding or compatibility selectors resolve exact current D1;
+- flow, assignment, attempt, and node are current and runnable;
+- effective policy allows the request kind;
+- no human request or command run already owns the current wait;
+- D1 has no accepted boundary or successor; and
+- request shape and timeout/default policy are valid.
 
-Omitted request kinds resolve to `deny`. A rejected call returns the shared structured `capability_rejected`, validation, or currentness failure. It creates no source row, waiting cause, dispatch closure, or standalone task event and does not advance `last_progress_at`.
+A rejected call creates no source, wait, dispatch closure, or standalone task event. If the call passed admission before its normalized domain rejection, it still refreshes Node activity once according to the common admission contract.
 
-## Atomic external-wait transition
+## Atomic open transition
 
-One shared controller operation closes a dispatch for either external-wait family. For a human request it commits, atomically:
+One transaction:
 
-1. the new `pending_human_request` source row
-2. waiting cause `waiting_for_human_request` pointing to `request_id`
-3. closure of the current `NodeSession`
-4. dispatch status `closed` with `closed_reason = human_request_wait`
-5. the semantic invocation completion and `last_progress_at`
-6. bounded `human_request_opened` chronology
+1. inserts the open human-request source bound to D1;
+2. sets `waiting_cause = human_request` and `waiting_source_id = request_id`;
+3. closes D1 with `closed_reason = human_request_wait`;
+4. clears current dispatch authority; and
+5. emits the bounded committed open event.
 
-The operation does not:
+It does not create D2, create a terminal checkpoint, call `return_boundary`, pause the flow, call provider stop, or retain D1 open.
 
-- record a terminal checkpoint
-- call `return_boundary`
-- call adapter `stop`
-- synthesize provider completion or failure
-- suspend or retain an open dispatch
-- wait for provider reconnect or provider output
+After commit, `HumanRequestOpened(request_id)` registers the immutable due time if one exists. Registration failure cannot undo the open transition; startup recovery rediscovers the exact open request.
 
-The provider response ends naturally after MCP returns success. Task, assignment, attempt, and `AttemptPlan` remain current. With no open dispatch, the ordinary execution watchdog has nothing to inspect during the wait.
+## Resolution
 
-The command-run owner uses the same conceptual close-for-external-wait operation with its own source row, waiting cause, and close reason. Runtime code must not duplicate these closure rules in two service-specific helpers.
-
-## Resolution contract
-
-The terminal resolution is:
+The terminal resolution shape is:
 
 ```yaml
 human_request_resolution:
-    request_id: string
-    task_id: string
-    resolution_kind: answered | timed_out | cancelled
-    item_responses:
-        - item_id: string
-          selected_option: string | null
-          freeform_answer: string | null
-          extra_notes: string | null
-          response_payload: object | null
-    resolved_at: timestamp
-    resolved_by_actor_ref: string | null
-    resolved_by_surface: control_api | control_ui | operator_mcp | controller
-    resolution_policy_basis: string
-    resolution_note: string | null
+  kind: answered | timed_out | cancelled
+  item_responses: typed map | null
+  policy_basis: bounded value | null
+  summary: bounded continuation guidance
+  resolved_at: timestamp
+  resolved_by_actor_ref: string | null
+  resolved_by_surface: control_api | control_ui | operator_mcp | controller
 ```
 
-`HumanRequestResolutionRead` is the read projection of this complete typed resolution shape. Continuation context always carries both `HumanRequestRead` and `HumanRequestResolutionRead`; a terminal status without its resolution is not sufficient continuation input.
+The ordinary answer route may submit only `answered`. Timeout and cancellation are controller-owned terminal transitions.
 
-Rules for `answered`:
+Answers are validated against the original item schemas/options. Resolution provenance is immutable audit truth. Generic events carry bounded summaries, not complete sensitive answers.
 
-- every request item has exactly one matching response
-- option-based responses set exactly one of `selected_option` or `freeform_answer`
-- `selected_option`, when set, names an option on the target item
-- `response_payload`, when required, validates against that item's input schema
-- `item_responses` is non-empty
+## Deadline
 
-Rules for `timed_out` and `cancelled`:
+`HumanRequestDue(request_id, due_at)` reloads the exact source. It terminalizes only when status remains `open`, the stored due time equals the signal, and the controller clock reached it.
 
-- `item_responses` is empty
-- timeout and cancellation are controller-owned terminal results, not values a caller submits to the ordinary answer route
-- the persisted request status becomes `timed_out` or `cancelled`
+Answer and timeout use conditional source-state writes. Exactly one terminal result wins; the loser rereads and returns an idempotent/stale result.
 
-An answered request sets source status `resolved` and resolution kind `answered`. Provenance is immutable audit truth and is not editable prompt context.
+Timeout records the configured default behavior/policy basis and a bounded summary. It does not fail the task automatically.
 
-## Currentness and policy
+## Terminal transaction
 
-The ordinary resolve route may answer only the current open request that owns `waiting_for_human_request` for the task.
+Answer, timeout, and cancellation atomically:
 
-Resolution is rejected when the request is missing, already terminal, historical, superseded, or no longer owns the current wait. The caller does not need to provide `expected_active_flow_revision_id`; request identity plus source wait currentness provides the conflict boundary.
+- change the exact source to its terminal status;
+- persist the typed resolution and provenance;
+- clear only matching `waiting_cause = human_request` and `waiting_source_id = request_id`; and
+- emit the matching bounded event.
 
-Pause does not terminate an open request. Task cancellation may cancel it.
-
-When `due_at` expires, the human-request owner records `timed_out`, records the configured `default_behavior` as the policy basis or continuation guidance, and emits the matching terminal event. Timeout is not task failure by itself.
+They do not open D2 inline. After commit, `HumanRequestTerminal(request_id)` owns possible continuation.
 
 ## Continuation
 
-An `answered`, `timed_out`, or `cancelled` source row is terminal only for the human request. It is not terminal for the task lineage.
+The exact terminal handler loads only the request, its source D1, flow, assignment/attempt, and rows needed to prove continuation.
 
-After the terminal result commits, the controller:
+If the flow is runnable and the terminal source is unconsumed, it publishes the prospective D2 request pair and conditionally creates one same-assignment/same-attempt successor plus refs.
 
-1. confirms the request still owns the matching wait
-2. clears `waiting_for_human_request`
-3. rereads task, structure, assignment, attempt, plan, checkpoint, and capability currentness
-4. regenerates the complete prompt from controller truth
-5. opens a new dispatch on the same assignment, attempt, and plan when legal
+The new prompt trigger includes the original request and typed resolution once, with timeout/default behavior when relevant. Provider conversation memory is optional and never required.
 
-The continuation context includes the original request, its typed resolution, timeout/default behavior when relevant, and current plan and checkpoint context. Reusing a provider session hint is optional. Correctness never depends on provider conversation memory.
+If the flow is paused, the terminal source remains retained with no successor. A later legal continue may consume it. If the flow is cancelled/terminal, no successor is permitted.
 
-Operator `continue` does not answer or clear a human request.
+Duplicate terminal signals converge through source consumption, one-successor, and current-dispatch constraints.
+
+## Watchdog interaction
+
+D1 remains watchdog-ineligible because it owns a human-request source, even after the source terminalizes and before continuation consumes it.
+
+In the opening race:
+
+- if human open wins, the source/wait and D1 close make a watchdog due signal stale and excluded;
+- if watchdog wins, D1 is no longer current and the whole stale Node MCP open transaction creates no request; and
+- no per-task lock is required beyond exact predicates and constraints.
+
+## Pause and cancel
+
+Operator pause does not cancel an open request. The human may still answer or the deadline may still fire; the result is retained without continuation.
+
+Task cancel terminalizes/cancels the owned request as part of task cancellation policy, clears the wait, and never opens a successor.
+
+An operator may use a dedicated request-cancel surface when authorized. That cancellation competes with answer/timeout on source status.
 
 ## Read and audit surfaces
 
-Control surfaces may list every request and expose the complete typed source and resolution records. The main task timeline keeps `human_request_*` payloads bounded and does not inline full answer bodies or structured response payloads.
+Authorized source routes return the complete typed request and resolution. Generic task snapshot/trace/event surfaces return only bounded kind, status, summary, due/provenance, and canonical IDs.
 
-The minimum event family is:
+Events include:
 
-- `human_request_opened`
-- `human_request_resolved`
-- `human_request_timed_out`
-- `human_request_cancelled`
+- `human_request_opened`;
+- `human_request_resolved`;
+- `human_request_timed_out`; and
+- `human_request_cancelled`.
 
-Each event comes from the committed source-row transition. Provider events and provider-native approval UI are never audit truth.
+Events are chronology over committed source changes. They do not schedule deadlines or continuation.
 
 ## Required invariants
 
-- AutoClaw MCP human requests are the only managed-agent interactive wait lane
-- a successful open owns no live dispatch or node-session authority
-- the open mutation and dispatch closure commit together
-- request terminal state does not terminate task, assignment, attempt, or plan
-- only the current source wait may authorize continuation
-- one terminal source transition can prepare at most one continuation dispatch
-- provider stop, provider completion, and `return_boundary` are absent from the external-wait path
+- a successful open commits source + wait + D1 close atomically;
+- success leaves no current D1 binding authority;
+- nonterminal open never creates D2;
+- answer and timeout have one terminal winner;
+- only the exact terminal source can authorize one successor;
+- terminal results are retained while paused;
+- watchdog skips open and terminal-unconsumed human sources;
+- provider stop/output/completion and `return_boundary` are absent; and
+- managed/compatibility projections preserve the same semantic contract.
 
-## Related contracts
+## Related
 
-- [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)
 - [Runtime lifecycle and watchdog](../architecture/runtime-lifecycle-and-watchdog.md)
-- [Attempt plan and checkpoint contract](../architecture/attempt-plan-and-checkpoint-contract.md)
-- [Capability, security, and audit](capability-security-and-audit.md)
-- [Control API](control-api.md)
-- [Task event stream](task-event-stream.md)
+- [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)
+- [Command run and external wait](../architecture/command-run-and-external-wait.md)
+- [Node MCP schema appendix](node-mcp-schema-appendix.md)

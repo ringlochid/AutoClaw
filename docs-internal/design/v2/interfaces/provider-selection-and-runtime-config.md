@@ -2,142 +2,201 @@
 
 Status: Target
 
-This page defines provider selection, sparse machine-local configuration, and launch provenance for the local V2 runtime.
+This page owns provider route selection, sparse machine-local configuration, and dispatch provider provenance for the local V2 runtime.
 
 ## Core rule
 
-Provider selection is a launch decision made before a dispatch is committed. It is not a runtime state machine and never contributes watchdog truth.
+One dispatch has one immutable resolved provider route. Route selection occurs before D2 commits and performs no provider/model I/O. Actual provider start occurs only after D2 and its request refs commit.
 
-One committed dispatch has one resolved provider. Start and stop retries never switch that provider.
+Provider authentication, reachability, availability, timeout, rejection, and uncertain acceptance after commit never switch routes. They retry the same `starting` dispatch under the runtime contract.
 
-## Authored provider preference
+## Authored provider selection
 
-V2 workflow nodes may carry one optional portable selector:
+A workflow node may carry:
 
 ```yaml
-provider_preference: openclaw | codex | claude | null
+provider:
+  kind: codex | claude | openclaw
 ```
 
-When omitted, the machine-local default provider is requested. The field belongs to a workflow node, not a role or policy definition, and may appear on root, parent, or worker nodes.
+`provider` is an optional strict discriminated object. In this phase each portable variant contains only `kind`; unknown fields and fields that belong to another provider variant fail validation. The object may appear on root, parent, or worker nodes and must not contain model names, effort settings, Gateway profiles, executable paths, URLs, credentials, sandbox policy, provider session IDs, or fallback lists.
 
-The field must not contain model names, executable paths, endpoint URLs, credentials, sandbox objects, or provider-native session ids.
+Provider-specific model, effort, Gateway, identity, and connection details remain machine-local configuration. Selection resolves those settings into the committed provider route without copying them into portable authored definitions.
 
-## Resolution before dispatch commit
+## Resolution rules
 
-Resolution proceeds in this order:
+Resolution is exact:
 
-1. Use the node preference when present; otherwise request `runtime.default_provider`.
-2. Check whether that provider is enabled and ready on this host.
-3. When a non-default requested provider is unavailable, try the one configured default provider.
-4. Commit the dispatch only after one provider is resolved and its readiness preflight passes.
-5. Persist requested and resolved provider provenance on the dispatch readback.
+1. When `provider` is present, request its exact `kind`.
+2. When it is absent, request the configured `runtime.default_provider`.
+3. Validate only deterministic local route facts needed to construct the adapter request: supported discriminator, enabled integration, required non-secret configuration shape, and available adapter implementation.
+4. Commit the candidate dispatch only with that same resolved provider route.
 
-There is no multi-hop fallback chain. If neither candidate is ready, no dispatch opens. Resolution and readiness preflight do not call adapter `start()`: the controller commits the dispatch, prompt, and `NodeSession` first, then the central manager performs provider I/O.
+An explicitly requested route never falls back. An omitted `provider` may use the configured default because the default is the request source, not a fallback candidate. A missing, disabled, broken, or unsupported default is an explicit route error; the resolver never scans installed providers for a substitute.
 
-After commit:
+If no default exists, an explicit route is disabled/unsupported, or deterministic route construction fails, no D2 or provider call is created. An asynchronous automatic source handler conditionally pauses the still-runnable flow with `runtime_transition_failed` and leaves its exact source unconsumed for repair plus operator continue. A watchdog handler also closes its still-current stale D1 in that same pause transaction. A directly awaited operator continue instead returns the structured route failure and leaves the existing pause unchanged.
 
-- all six start calls use the resolved provider
-- all six stop calls use the same resolved provider
-- any later replacement or continuation performs provider resolution again before its new dispatch is committed
-- a replacement may resolve to another provider, but it omits a session hint created by the earlier provider
+Full provider checks, network probes, login refresh, and model turns are forbidden during route selection. Once a valid D2 commits, provider-origin failures belong to indefinite same-D2 start retry rather than a second resolution pass.
+
+## Discriminated route model
+
+The committed route is a strict discriminated value:
+
+```yaml
+CodexProviderRoute:
+  kind: codex
+  model_override: string | null
+  effort_override: string | null
+
+ClaudeProviderRoute:
+  kind: claude
+  model_override: string | null
+  effort_override: string | null
+
+OpenClawProviderRoute:
+  kind: openclaw
+  gateway_profile: string
+
+ProviderRoute: CodexProviderRoute | ClaudeProviderRoute | OpenClawProviderRoute
+```
+
+Provider-specific fields are legal only in their matching variant. Credentials, raw native configuration, binding material, and provider continuity never enter this model.
 
 ## Sparse machine-local config
 
-The target config is intentionally small:
+The target configuration stays small and permits zero enabled providers:
 
 ```toml
 [runtime]
-default_provider = "codex"
+# default_provider = "codex"
 
 [codex]
-enabled = true
-# model = "..."          # optional AutoClaw override
-# effort = "high"        # optional AutoClaw override
+enabled = false
+# model = "..."
+# effort = "high"
 
 [claude]
 enabled = false
-# model = "sonnet"       # optional AutoClaw override
-# effort = "high"        # optional AutoClaw override
+# model = "..."
+# effort = "high"
 
 [openclaw]
 enabled = false
 gateway_url = "ws://127.0.0.1:18789"
-client_mode = "webchat"
-delivery_channel = "webchat"
+gateway_profile = "default"
 ```
 
 Rules:
 
-- `runtime.default_provider` must name an enabled provider.
-- Each provider section owns only AutoClaw-specific enablement, connection fields, and sparse model or effort overrides that the operator deliberately sets.
-- OpenClaw handshake `client_mode` and delivery channel are independent fields.
-- Provider-native auth material never belongs in this config.
-- Codex and Claude native model catalogs, settings, project instructions, skills, compaction, and authentication are inherited rather than copied into AutoClaw config.
-- There is no generic `context_window` option. Effective capacity is model- and provider-owned.
+- `runtime.default_provider` may be absent when no default is desired;
+- when present, it must name an enabled route;
+- OpenClaw may be enabled and explicitly/default selected even though its product status remains experimental;
+- provider sections own only AutoClaw enablement, non-secret connection fields, sparse explicit overrides, and resolved machine policy;
+- Codex and Claude inherit provider-native homes, authentication, project/user settings, skills, model catalogs, and compaction;
+- an OpenClaw gateway profile resolves the exact lawful client identity, handshake, delivery, agent, and compatibility-MCP expectations for one tested installed version; and
+- no provider credential is stored in AutoClaw runtime config.
 
-The effective precedence is:
+### Default establishment
 
-1. AutoClaw correctness overlay: task workspace, prompt lanes, Node MCP, and non-interactive permissions
-2. explicit sparse AutoClaw model or effort override
-3. provider-native user and project configuration
-4. provider defaults
+The provider configure operation owns one atomic configuration transaction. After deterministic local validation succeeds, it persists/enables that route and fills `runtime.default_provider` only when the default is empty. If a default already exists, configuring another provider preserves it.
+
+`autoclaw providers set-default <provider>` is the only operation that replaces an existing default. Failed or rolled-back configuration, provider check, authentication failure, and runtime start failure never change the default or select a fallback. Disabling or removing the current default must explicitly clear it or name a replacement.
+
+OpenClaw participates in the same rule while retaining its experimental product label. Installation or discovery alone never establishes a default.
+
+The effective settings precedence is:
+
+1. AutoClaw correctness overlay for exact cwd/request lanes, Node MCP projection, role tool ceiling, and noninteractive behavior;
+2. sparse explicit AutoClaw route overrides;
+3. provider-native user/project configuration; and
+4. provider defaults.
+
+## Capability axes
+
+`PolicyDefinitionInput.capabilities` owns two independent authored ceilings:
+
+```yaml
+capabilities:
+  provider_native_access: full | restricted | denied
+  network_access: allow | deny
+```
+
+Omission resolves to `full` and `allow`. A node inherits the policy-definition values through `policy_id`; task policy, controller policy, and adapter-local hard ceilings may only narrow them. Resolution takes the most restrictive applicable value using:
+
+```text
+full > restricted > denied
+allow > deny
+```
+
+Each successor recomputes the effective values from current controller inputs. A local adapter ceiling is attributed to `controller`, not to portable authored policy.
+
+Every preview, current-context, runtime, API, CLI/status, and console readback that exposes these axes uses:
+
+```yaml
+provider_native_access:
+  effective: full | restricted | denied
+  source: default | policy_definition | task_policy | controller
+network_access:
+  effective: allow | deny
+  source: default | policy_definition | task_policy | controller
+```
+
+When equally restrictive ceilings tie, the single reported source uses `controller > task_policy > policy_definition > default`.
+
+Neither axis silently controls Node MCP, human requests, controller `command_run`, or parent/root Node tools. Those capabilities remain independent as owned by [Capability, security, and audit](capability-security-and-audit.md).
 
 ## Local execution assumption
 
-This phase is local-first and same-host. Provider and file adapters are code boundaries, not remote services.
+Codex and Claude are managed same-host adapters. AutoClaw, the provider runtime, the private Node MCP endpoint, and the task workspace share one compatible OS/filesystem namespace and service identity.
 
-For managed Codex and Claude integrations, the AutoClaw process, bundled provider runtime, Node MCP endpoint, and task workspace share one OS environment and filesystem namespace. Provider-native configuration and authentication must be visible to the AutoClaw service identity through values such as `HOME`, `CODEX_HOME`, or `CLAUDE_CONFIG_DIR`.
+Provider-native configuration and authentication must be visible through the service identity's normal environment such as `HOME`, `CODEX_HOME`, or `CLAUDE_CONFIG_DIR`. A login/configuration in another host, container, WSL distribution, user, or home is not implicitly visible.
 
-An AutoClaw process inside WSL or a container uses runtimes and paths inside that environment. It must not assume that a provider CLI or credential store in a different host namespace is transparently available.
+OpenClaw is externally managed. Its worker must reach the compatibility Node MCP endpoint and the configured local workspace through the user's OpenClaw integration. AutoClaw does not mutate that provider configuration.
 
-OpenClaw is externally managed, but its worker still needs network access to Node MCP and filesystem access to the local task workspace expected by the configured integration.
+## Provenance and readback
 
-## Provenance and failure readback
-
-The minimum persisted launch provenance is:
+Each dispatch stores bounded selection provenance:
 
 ```yaml
 provider_resolution:
-    requested_provider: openclaw | codex | claude
-    resolved_provider: openclaw | codex | claude
+  requested_provider: codex | claude | openclaw
+  resolved_provider: codex | claude | openclaw
+  selection_basis: explicit | default
 ```
 
-Provider session hints and SDK/runtime versions may appear in bounded support readback, but they do not replace controller task, attempt, or dispatch identity.
+For explicit selection, requested and resolved values are identical. For default selection, both identify the chosen default while `selection_basis` explains the source.
 
-Pre-commit resolution failure uses one stable family:
-
-```yaml
-provider_resolution_failure:
-    code: provider_resolution_failed
-    requested_provider: openclaw | codex | claude
-    attempted_provider: openclaw | codex | claude
-    stage: readiness | auth | configuration
-    message: string
-```
-
-No secret value, raw provider credential, or unbounded provider output may appear in the failure record. A provider `start()` failure after dispatch commit uses the runtime's bounded provider-control readback and `control_failed` closure instead; it never re-enters provider fallback inside that dispatch.
+Controller readback may expose the route, selection basis, current provider-start attempt count, next retry, retry kind, and sanitized error code. It never exposes credentials, private MCP connection material, raw provider errors/output, or provider session IDs as authority.
 
 ## Startup isolation
 
-An unavailable or misconfigured provider never prevents the AutoClaw API from starting. Startup loads provider configuration and reports readiness independently for each provider. Only a dispatch that resolves to an unavailable provider is blocked.
+Zero configured providers and individual broken providers do not block AutoClaw API startup, database/definition work, passive status, or other providers. Only a source that needs to create a dispatch requires a valid selected route.
 
-This allows operators to repair one provider through the CLI while other configured providers and controller surfaces remain available.
+Provider checks are explicit diagnostics. Runtime dispatch start does not depend on a cached or recent check result.
 
-## Non-goals
+## Required invariants
 
-This contract does not define:
+- an explicit route never falls back;
+- an omitted `provider` uses at most the configured default;
+- configuring the first successful route fills only an empty default;
+- later configuration and every provider failure preserve the default;
+- route selection performs zero provider/model I/O;
+- D2 and its route commit before provider start;
+- a committed D2 never switches providers during retry;
+- provider-origin start failure retries the same D2 without a finite maximum;
+- OpenClaw remains selectable and visibly experimental; and
+- zero-provider startup remains legal.
 
-- role-level provider binding
-- task-level provider hot swap
-- multi-provider dispatches
-- distributed provider services or remote workspaces
-- provider-native context-window normalization
-- credentials stored by AutoClaw
+## Framework basis
+
+[Pydantic discriminated unions](https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions) are the preferred implementation mechanism for the strict provider-route variants. The runtime must still enforce selection and no-fallback behavior outside schema parsing.
 
 ## Related contracts
 
 - [Workflow node schema](workflow-node-schema.md)
 - [Provider support and compatibility](provider-support-and-compatibility.md)
-- [Provider CLI and doctor](provider-cli-and-doctor.md)
+- [Provider CLI and check](provider-cli-and-check.md)
+- [Capability, security, and audit](capability-security-and-audit.md)
 - [Minimal provider adapter contract](../architecture/adapter-contract.md)
 - [Runtime lifecycle and watchdog](../architecture/runtime-lifecycle-and-watchdog.md)
+- [ADR-0011: provider routing, defaults, and capability resolution](../../../adr/ADR-0011-provider-routing-defaults-and-capability-resolution.md)

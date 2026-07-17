@@ -2,299 +2,255 @@
 
 Status: Target
 
-This page owns the V2 controller-managed command-run source record, runner lifecycle, and external-wait continuation.
+This page owns the controller-managed command-run source, its atomic external wait, OS-process supervision, timeout/cancellation semantics, logs, terminal result, and same-attempt continuation.
 
 ## Core rule
 
-A worker uses `start_command_run` for shell work expected to exceed about two minutes or for any command that requires controller-owned background execution, timeout, logs, or cancellation.
+A node uses `start_command_run` for shell work that must continue independently of the provider turn, especially long-running work, bounded background execution, timeout, logs, or cancellation.
 
-Starting a command run closes the current dispatch and ends the provider response. It does not terminate the task, assignment, attempt, or plan, and it is not a `return_boundary` outcome.
+Starting a command run commits the source, matching wait, and D1 closure atomically. It is not a workflow boundary, provider-native shell tool, task cancel, or terminal assignment result.
 
-Short commands normally remain inside the provider's ordinary tool lane. The command-run source is not a record of every shell command.
+The MCP response returns after commit and instructs the current provider turn to stop. It does not wait for process launch, provider stop, command completion, successor opening, or an async acknowledgement.
 
 ## State machine
 
-The states are exactly:
+The exact states are:
 
 ```text
 pending_start -> running -> succeeded
                          -> failed
                          -> timed_out
-                         -> cancelled
+                         -> cancellation_requested -> cancelled
 
 pending_start -> cancellation_requested -> cancelled
-running       -> cancellation_requested -> cancelled
 ```
 
-`cancellation_requested` is non-terminal. The task remains waiting until the runner commits one of:
+`succeeded`, `failed`, `timed_out`, and `cancelled` are terminal. `cancellation_requested` is nonterminal until the owner proves that the process terminated and was reaped.
 
-- `succeeded`
-- `failed`
-- `timed_out`
-- `cancelled`
+Process state is evidence used to commit controller state; it is not a second runtime truth lane.
 
-Runner process state is evidence used to commit this controller state; it is not a second runtime truth lane.
+## Node operation
 
-## Start contract
+Conceptually:
 
-The node-facing request is:
+```text
+start_command_run(request) -> CommandRunOpenResult
+```
+
+Managed schemas contain semantic fields only. The compatibility projection adds required full `task_id` and `dispatch_id` selectors.
+
+The request contains:
 
 ```yaml
-command_run_start_request:
-    command: string
-    description: string
-    workdir: string | null
-    timeout_seconds: integer | null
+command: non-empty argv or strict command form
+cwd: task-relative workspace path | null
+environment: bounded approved references | null
+timeout_seconds: positive integer | null
+summary: bounded purpose
+expected_outputs: optional bounded logical refs/description
 ```
 
-Rules:
-
-- `command` is the exact human-readable invocation
-- `description` explains why the task needs the command
-- `workdir` is task-relative and uses the task-file resolver; null selects the task's default command working directory
-- `timeout_seconds`, when present, is a positive integer
-- request fields do not carry artifact schemas, human-request identifiers, or provider control
-
-The successful response is:
-
-```yaml
-command_run_start_response:
-    run_id: string
-    task_id: string
-    state: pending_start | running
-```
-
-Success means the source row and external-wait transition committed. The response instructs the worker to stop its response immediately without a terminal checkpoint or `return_boundary`.
+The command contract must distinguish argv from any shell-string form and apply the owning policy explicitly. It never interpolates provider prose into a privileged shell implicitly.
 
 ## Source record
 
-The controller-owned record is:
-
 ```yaml
 command_run:
-    run_id: string
-    task_id: string
-    flow_id: string
-    flow_revision_id: string
-    flow_node_id: string
-    assignment_id: string
-    attempt_id: string
-    dispatch_id: string
-    requester_node: string
-    command: string
-    description: string
-    workdir: string | null
-    timeout_seconds: integer | null
-    state: >-
-      pending_start | running | cancellation_requested | succeeded | failed |
-      timed_out | cancelled
-    created_at: timestamp
-    started_at: timestamp | null
-    ended_at: timestamp | null
-    latest_update: string | null
-    latest_log_ref: string | null
-    cancellation_requested_at: timestamp | null
-    cancellation_requested_by_actor_ref: string | null
-    terminal_result:
-        summary: string
-        exit_code: integer | null
-        signal: string | null
-        log_ref: string | null
-    terminal_event_source: controller | control_api | operator_mcp | null
-    terminal_actor_ref: string | null
+  run_id: string
+  task_id: string
+  flow_id: string
+  assignment_id: string
+  attempt_id: string
+  source_dispatch_id: string
+  request: typed command request
+  state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
+  ownership_revision: integer
+  due_at: timestamp | null
+  started_at: timestamp | null
+  ended_at: timestamp | null
+  cancellation_requested_at: timestamp | null
+  cancellation_requested_by_actor_ref: string | null
+  terminal_result: typed result | null
+  stdout_log_ref: logical path | null
+  stderr_log_ref: logical path | null
+  successor_dispatch_id: string | null
 ```
 
-`terminal_result`, `ended_at`, and `terminal_event_source` are present only in a terminal state. `latest_update` is a bounded summary, not copied stdout or stderr.
+The source binds to its exact D1. Historical runs remain readable but cannot own a current wait or authorize continuation.
 
-One current command run may own one current task lineage. Historical runs stay readable but cannot clear or replace the current wait.
+Live process handles and operating-system process IDs remain process-owner support state. They are not portable controller authority and are never exposed as provider or Node credentials.
 
 ## Start legality
 
-Starting is legal only when all of these are true:
+Before mutation, the operation proves:
 
-- task, node session, dispatch, assignment, and attempt are current
-- the worker already recorded the required progress checkpoint
-- no human-request or command-run source wait currently owns the lineage
-- effective `command_run` capability is `allow`
-- the request and task-relative working directory validate
+- exact managed binding or compatibility scope resolves current D1;
+- task, flow, assignment, attempt, and node are current/runnable;
+- effective `command_run` capability permits the requested command, cwd, environment, timeout, and resource bounds;
+- no human request or command run already owns the current wait;
+- D1 has no accepted boundary or successor; and
+- logical paths and environment references are safe.
 
-A rejected call creates no command row, waiting cause, dispatch closure, or standalone task event and does not advance `last_progress_at`.
+A rejected call creates no run, wait, dispatch closure, process, or standalone task event. A call rejected after common admission still refreshes Node activity once according to the common contract.
 
 ## Atomic external-wait transition
 
-The same shared close-for-external-wait controller operation used by human requests commits, atomically:
+One transaction:
 
-1. the new `command_run` row in `pending_start` or `running`
-2. waiting cause `waiting_for_command_run` pointing to `run_id`
-3. closure of the current `NodeSession`
-4. dispatch status `closed` with `closed_reason = command_run_wait`
-5. semantic invocation completion and `last_progress_at`
-6. bounded `command_run_started` chronology
+1. inserts the `pending_start` command source bound to D1;
+2. sets `waiting_cause = command_run` and `waiting_source_id = run_id`;
+3. closes D1 with `closed_reason = command_run_wait`;
+4. clears current dispatch authority; and
+5. emits the bounded open event.
 
-The operation does not:
+It does not create D2, record a terminal checkpoint, call `return_boundary`, call provider stop, pause the flow, or keep D1 open.
 
-- record a terminal checkpoint
-- call `return_boundary`
-- call adapter `stop`
-- synthesize provider completion or failure
-- retain a suspended dispatch
-- wait for provider reconnect or provider output
+After commit, `CommandRunPending(run_id)` wakes the command owner. Lost publication is recovered by the bounded startup source audit.
 
-The provider response ends naturally. Task, assignment, attempt, and `AttemptPlan` remain current. The command-run owner, not the execution watchdog, then monitors the source row.
+## Command-process ownership
 
-## Runner ownership
+The lifespan-owned `CommandProcessOwner` handles one exact run at a time by ownership revision. It owns:
 
-The command-run manager owns:
+- conditional claim of `pending_start`;
+- process creation with resolved cwd/environment policy;
+- stdout/stderr pipe consumption;
+- bounded log persistence;
+- timeout registration;
+- exit classification;
+- cancellation/termination escalation; and
+- final process reap before cancellation terminalization.
 
-- claiming `pending_start` work
-- launching the local process in the validated task-relative workdir
-- recording `started_at`
-- appending stdout and stderr to the run log
-- publishing bounded progress summaries
-- enforcing the declared timeout
-- handling cancellation
-- committing exactly one terminal result
-- recovering locally owned non-terminal runs after API restart
+Each controller write matches `run_id + ownership_revision + expected state`. Stale callbacks cannot mutate a newer owner or terminal run.
 
-V2 remains one-process and local-tool-first. This contract does not require a remote queue, distributed worker, or provider adapter to run commands.
+There is no global provider semaphore or broad runtime task lock. An optional command-specific resource limit belongs to command policy/process ownership, not provider dispatch orchestration.
 
-## Progress and logs
+## Launch
 
-A runner update is:
+The command owner opens a fresh database session, conditionally claims a current `pending_start` run, then launches the process outside the claim transaction. It records `running`, start time, log refs, process support metadata, and incremented ownership revision through its owned recovery-safe sequence.
 
-```yaml
-command_run_progress_update:
-    run_id: string
-    summary: string
-    log_ref: string | null
-    occurred_at: timestamp
-```
+If process creation definitely fails, it commits terminal `failed` with a sanitized result. If restart makes ownership ambiguous, it does not blindly launch another process; it follows the recovery classification below.
 
-The runner may also record its locally owned process identifier internally. That identifier is support state, not portable task truth.
+## Logs and updates
 
-Rules:
+The process owner continuously consumes stdout/stderr to prevent child-process pipe blockage. This is command-resource supervision, not provider output drain.
 
-- frequent output is coalesced into bounded `command_run_progressed` updates
-- progress does not invent percent complete, ETA, or provider lifecycle
-- full stdout and stderr remain append-only behind `log_ref`
-- ordinary task, snapshot, trace, and event reads never inline raw log bytes
-- the dedicated log route may expose the complete retained log to an authorized caller
+Raw logs live behind authorized bounded log routes/refs. Generic events, checkpoints, prompts, and snapshots contain bounded summaries and refs only.
 
-Command-run progress updates do not update a closed dispatch's watchdog clock. The source wait is monitored by the command-run manager instead.
+Progress summaries may update command source support fields without affecting a closed D1 watchdog clock. Human/command waits are monitored by their own deadlines/resources, not dispatch inactivity.
 
-## Terminal result
+## Timeout
 
-Terminal completion normalizes to:
+`CommandRunDue(run_id, due_at)` reloads the exact source and matches stored due time/state/ownership revision. If still nonterminal, it requests process termination under timeout ownership.
 
-```yaml
-command_run_terminal_result:
-    run_id: string
-    state: succeeded | failed | timed_out | cancelled
-    summary: string
-    exit_code: integer | null
-    signal: string | null
-    log_ref: string | null
-    ended_at: timestamp
-```
+`timed_out` becomes terminal only after the owner has performed the process termination/reap rules required by platform policy, then commits a typed terminal result.
 
-For command-style work, `exit_code` plus runner legality determines succeeded or failed. Timeout and cancellation may have no exit code. `summary` states what happened and what the next dispatch should know first.
+Process exit and timeout compete through conditional state and ownership revision. Exactly one terminal classification wins.
 
-The terminal state and result commit together with the matching event:
+## Dedicated cancellation
 
-| State       | Event                    |
-| ----------- | ------------------------ |
-| `succeeded` | `command_run_succeeded`  |
-| `failed`    | `command_run_failed`     |
-| `timed_out` | `command_run_timed_out`  |
-| `cancelled` | `command_run_cancelled`  |
+Dedicated command cancel targets one exact current nonterminal run and does not cancel the task.
 
-A stale process callback cannot change a terminal run or reopen a no-longer current task lineage.
-
-## Cancellation and timeout
-
-The dedicated cancel control targets one current non-terminal command run. It does not cancel the task.
-
-When cancellation cannot complete in the same transaction, the controller commits:
+If termination cannot complete synchronously, the controller commits:
 
 ```yaml
 state: cancellation_requested
-cancellation_requested_at: timestamp
-cancellation_requested_by_actor_ref: string | null
+cancellation_requested_at: <timestamp>
+cancellation_requested_by_actor_ref: <actor or null>
 ```
 
-That intent survives refresh. It does not clear `waiting_for_command_run` or authorize redispatch. The runner later commits `cancelled` after process termination.
+This state remains waiting and does not authorize D2. The process owner sends the bounded interrupt/terminate/kill sequence, waits for termination, reaps the process, then conditionally commits `cancelled`.
 
-Timeout is a first-class runner-owned terminal transition. Task cancellation may also force the current run to `cancelled`; later runner callbacks remain stale and cannot continue the cancelled task.
+After the cancellation-request transaction commits, `CommandRunCancellationRequested(run_id, ownership_revision)` wakes that exact process owner. The control response does not wait for the signal handler.
+
+Repeated cancel is idempotent. A process exit may win before cancellation; its legal terminal result remains authoritative.
+
+## Task cancellation
+
+Task cancel is separate. It makes the task terminal and clears its matching flow wait, but a possibly live run moves only to `cancellation_requested`. The run becomes `cancelled` after the process owner proves no process exists or completes termination and reap. Task cancel publishes the exact cleanup signal and never opens a successor.
+
+Later exit/timeout/cancel callbacks fail terminal/task-currentness predicates and cannot continue the cancelled task.
+
+## Terminal result
+
+```yaml
+command_run_terminal_result:
+  state: succeeded | failed | timed_out | cancelled
+  exit_code: integer | null
+  summary: bounded continuation-first explanation
+  started_at: timestamp | null
+  ended_at: timestamp
+  stdout_log_ref: logical path | null
+  stderr_log_ref: logical path | null
+  failure_code: sanitized string | null
+  terminal_event_source: controller | control_api | operator_mcp | process_owner
+  terminal_actor_ref: string | null
+```
+
+Command exit code plus policy determines succeeded/failed. Timeout/cancel may have no useful exit code. Raw output is never copied into this result.
+
+Terminal state, result, and matching wait clear commit atomically. The source event is emitted from that commit.
 
 ## Continuation
 
-A terminal command state is terminal only for the command run. It is not terminal for task, assignment, attempt, or plan.
+Terminal command state is terminal only for the run. After commit, `CommandRunTerminal(run_id)` may create one successor.
 
-After terminal state commits, the controller:
+The handler proves the terminal run still belongs to the exact lineage, its matching wait is cleared, the flow is runnable, D1 has no successor, and the terminal source is unconsumed. It then publishes the D2 request pair and conditionally creates D2 on the same assignment, attempt, and plan.
 
-1. confirms the run still owns `waiting_for_command_run`
-2. clears that waiting cause
-3. rereads task, structure, assignment, attempt, plan, checkpoint, and capability currentness
-4. regenerates the complete prompt from controller truth
-5. opens a new dispatch on the same assignment, attempt, and plan when legal
+The trigger contains the command purpose, terminal state, exit code/failure code, bounded summary, timing, and logical log/output refs. It does not inline raw logs or rely on provider conversation memory.
 
-The normalized continuation context includes:
+If paused, the terminal result remains retained with no successor. If cancelled/terminal, no successor is permitted.
 
-```yaml
-command_run_continuation_context:
-    run_id: string
-    command: string
-    description: string
-    workdir: string | null
-    state: succeeded | failed | timed_out | cancelled
-    created_at: timestamp
-    started_at: timestamp | null
-    ended_at: timestamp
-    timeout_seconds: integer | null
-    latest_update: string | null
-    terminal_result:
-        summary: string
-        exit_code: integer | null
-        signal: string | null
-        log_ref: string | null
-```
+## Watchdog interaction
 
-Raw logs are not injected into ordinary prompts. The next worker may inspect a surfaced task-relative log when the controller makes that path available.
+D1 is watchdog-ineligible whenever it owns this command source, from `pending_start` through terminal-but-unconsumed state.
 
-Provider session-hint reuse is optional. Controller context, plan, and checkpoint remain sufficient when the provider starts a fresh session.
+If command opening wins against watchdog, source + wait + D1 closure make watchdog stale/excluded. If watchdog wins, the stale Node MCP transaction cannot create the command row or process.
 
-Operator `continue` does not complete or clear a command run.
+The command timeout is not the dispatch watchdog. It is owned by `run_id + due_at + ownership_revision`.
+
+## Restart recovery
+
+Startup audits exact command states:
+
+- `pending_start`: emit a launch signal only when no prior ownership can be inferred;
+- `running`: recover or classify local process ownership without blind relaunch;
+- `cancellation_requested`: resume bounded termination/reap when ownership is provable;
+- terminal without successor: emit terminal continuation if the flow is runnable; and
+- terminal on paused/cancelled flow: retain result or clean resources only.
+
+When a process may still exist but cannot be safely reattached, the source becomes an explicit recoverable command ownership failure according to command policy. The runtime does not duplicate the process merely to make progress.
 
 ## Read and event surfaces
 
-The control API owns list, detail, log, and cancel routes. The main event stream contains:
+Authorized control surfaces own run list/detail, bounded log reads, and cancel. Generic task events include:
 
-- `command_run_started`
-- `command_run_progressed`
-- `command_run_cancel_requested`
-- `command_run_succeeded`
-- `command_run_failed`
-- `command_run_timed_out`
-- `command_run_cancelled`
+- `command_run_opened`;
+- `command_run_started`;
+- `command_run_cancel_requested`;
+- `command_run_succeeded`;
+- `command_run_failed`;
+- `command_run_timed_out`; and
+- `command_run_cancelled`.
 
-Events are bounded chronology derived from committed source state. They do not drive the runner or continuation.
+Events are chronology only. They do not drive process ownership or continuation.
 
 ## Required invariants
 
-- a successful start owns no live dispatch or node-session authority
-- start and dispatch closure commit atomically
-- a non-terminal run keeps the task waiting
-- exactly one terminal result owns one run
-- only the current terminal source row may authorize continuation
-- one terminal source transition can prepare at most one continuation dispatch
-- provider stop, provider completion, and `return_boundary` are absent from the external-wait path
+- start commits source + wait + D1 close atomically;
+- successful open leaves no current D1 binding authority;
+- command launch happens only after commit;
+- nonterminal state keeps the flow waiting and creates no D2;
+- cancel is nonterminal until termination and reap;
+- exit/timeout/cancel produce one terminal winner;
+- only the exact terminal source may create one successor;
+- terminal result is retained while paused;
+- restart never blindly duplicates an ambiguously owned process;
+- watchdog skips all command-source states until consumption; and
+- provider stop/output/completion and `return_boundary` are absent.
 
-## Related contracts
+## Related
 
-- [Controller contract and resumable execution](controller-contract-and-resumable-execution.md)
 - [Runtime lifecycle and watchdog](runtime-lifecycle-and-watchdog.md)
-- [Attempt plan and checkpoint contract](attempt-plan-and-checkpoint-contract.md)
+- [Controller contract and resumable execution](controller-contract-and-resumable-execution.md)
 - [Human request and approval contract](../interfaces/human-request-and-approval-contract.md)
 - [Capability, security, and audit](../interfaces/capability-security-and-audit.md)
-- [Control API](../interfaces/control-api.md)
-- [Task event stream](../interfaces/task-event-stream.md)

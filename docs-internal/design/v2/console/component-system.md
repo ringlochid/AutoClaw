@@ -2,143 +2,92 @@
 
 Status: Target
 
-This page owns reusable V2 console component semantics for runtime truth. It does not freeze a particular framework, final visual values, backend fields, or task transitions.
+This page owns reusable V2 console semantics for runtime truth. It does not freeze a framework, final visual values, backend fields, or controller transitions.
 
 ## Core rule
 
-Components make controller state easy to scan without turning provider or transport detail into product truth.
-
-The console uses one compact operational language for plans, progress, provider control, recovery, external waits, chronology, and lawful actions.
+Components make controller state scannable without turning provider, transport, timer, or support detail into product truth.
 
 ## Shell and composition
 
-The task runtime shell keeps these regions distinct:
+The task runtime shell keeps task navigation, current summary, tree/trace, chronology, and selected detail/action context distinct. Wide layouts may place them side by side; narrow layouts preserve the same semantic order.
 
-- task navigation
-- current runtime summary
-- execution tree or trace context
-- event chronology
-- selected detail or action context
-
-At wide widths, the regions may sit beside one another. At narrow widths, they stack in the same semantic order. Current state and required actions must not disappear behind hover-only or desktop-only affordances.
-
-Task detail, human requests, and command runs remain task-scoped siblings. Definition authoring navigation may exist elsewhere in the app shell, but it is not owned by this runtime component contract.
+Current state and lawful primary actions must not be hover-only or desktop-only. Human requests and command runs remain task-scoped sibling details.
 
 ## Tokens and variants
 
-Shared console tokens use the `--ac-*` namespace and cover:
+Shared console tokens use the `--ac-*` namespace for surface hierarchy, text, borders/focus, spacing/density, shape/elevation, and semantic information/success/warning/failure/paused/waiting/neutral treatments.
 
-- background and surface hierarchy
-- text and muted text
-- borders and focus rings
-- spacing and density
-- radius and shadow
-- semantic information, success, warning, failure, paused, waiting, and neutral treatments
+Color always has a text or icon-label equivalent. Variants are explicit mappings of finalized controller states, never arbitrary classes constructed from backend strings.
 
-State color always appears with text or an icon label. Components use explicit variants keyed to finalized controller states; they do not construct arbitrary style names from backend strings.
+## Work-plan panel
 
-## Runtime components
+The plan panel renders optional assignment plan, revision, explanation, ordered steps, authoring provenance, and chronology access.
 
-### Plan panel
+Step variants are `pending`, `in_progress`, and `completed`. Zero or one active step is legal. The panel adds no percentage, progress bar, ETA, mandatory-plan warning, or completion claim.
 
-The plan panel renders revision, optional explanation, ordered steps, update provenance, and revision-history access.
+## Node-activity component
 
-Step variants are exactly:
+The component renders `last_node_activity_at` with exact time available to assistive technology and optional relative text. Null uses neutral copy.
 
-- `pending`
-- `in_progress`
-- `completed`
+Its labels say Node activity. They do not say semantic progress, provider activity, heartbeat, percent, or health.
 
-Only one active step receives primary emphasis. Completed steps remain readable. The panel does not add percentages, progress bars, or ETA.
+## Provider-selection component
 
-### Semantic progress time
+The component renders provider plus `explicit` or `default` selection basis. Requested/resolved provenance is available in detail. It never renders fallback.
 
-The progress component renders `last_progress_at` with an exact timestamp available to assistive technology and detail views. A relative label is presentation only and updates without mutating task state.
+OpenClaw uses an accessible `experimental` product-status badge that does not look like disabled, failed, or unauthorized.
 
-Null progress uses neutral copy. It must not appear as provider failure or zero progress.
+## Provider-start component
 
-### Provider provenance
+For a `starting` dispatch, the component renders attempt count, next-attempt countdown, retry kind, and bounded sanitized error. It never renders a denominator/max, exhausted provider start, stop operation, provider completion, or provider health.
 
-The provider component renders requested and resolved values. Equal values remain compact; differing values expose the fallback relationship without inventing a fallback chain or provider health.
+Countdown changes do not resize rows or announce every tick. Reaching zero schedules nothing.
 
-### Provider-control status
+## Watchdog notice
 
-The control component renders:
+The watchdog component renders due time/recovery count and the `runtime_recovery_exhausted` pause when present. Exhaustion includes precise reason, repair guidance, and ordinary continue after repair.
 
-- operation and controller-owned state
-- `attempt / max_attempts`
-- retry countdown from `next_retry_at`
-- bounded `last_error_summary`
-- documented event reason when shown in chronology
+It never offers provider-native reconnect or claims provider stop completed.
 
-Countdown changes must not resize surrounding rows. The component never labels control success as assignment completion.
+## External-wait cards
 
-### Recovery notice
+Human-request and command-run cards share a compact wait structure while preserving distinct states/actions.
 
-The recovery component renders watchdog restart count and, when applicable, the `runtime_recovery_exhausted` pause.
+Human cards show typed kind, title/summary, due/status, and resolve only for the exact current open source. They do not show a successor acknowledgement requirement.
 
-The exhausted variant includes:
+Command cards show exact source state, bounded update/result, and cancel only when legal. `cancellation_requested` uses a nonterminal waiting treatment.
 
-- precise pause reason
-- latest bounded provider-control failure
-- instruction to repair provider availability or configuration
-- ordinary continue action after repair
+## Event rows and selected context
 
-It does not offer a provider-native reconnect action.
+Event rows preserve type, sequence, occurrence time, and controller context. Work-plan, dispatch-start, checkpoint, boundary, wait, and task-control details use bounded disclosures.
 
-### External-wait card
+Provider, adapter, timer, and runtime signal are not event-source variants. Raw payload dumps are not default UI.
 
-Human-request and command-run cards share compact task-wait structure while preserving distinct source states and actions.
-
-Human-request cards show typed request kind, title, summary, source status, and resolve affordance only for the current open source.
-
-Command-run cards show exact state, command summary, bounded update, terminal result when present, and cancel only when legal. `cancellation_requested` uses a waiting treatment, not a terminal cancelled treatment.
-
-### Event row
-
-Event rows preserve event type, sequence, occurrence time, and controller context. Plan, control, checkpoint, boundary, wait, and task-control details use bounded disclosures.
-
-Provider and adapter are not event-source variants. Rows do not render raw payload dumps by default.
-
-### Task tree and selected context
-
-The task tree stays read-only and compact. It emphasizes the current path and uses the selected context for rich assignment, checkpoint, artifact, dispatch, request, or run detail.
-
-Provider resolution detail, full plan history, and action forms belong in summary or selected detail, not repeated on every node card.
+The task tree stays read-only and compact. Rich assignment, checkpoint, artifact, dispatch, request, or run detail belongs in selected context rather than repeated cards.
 
 ## Controls and feedback
 
-Buttons, icon buttons, segmented controls, tabs, inputs, selects, textareas, disclosure rows, status chips, empty states, error states, dialogs, and drawers share:
+Buttons, inputs, disclosures, status chips, empty/error states, dialogs, and drawers share visible focus, stable dimensions, disabled explanation where needed, exact pending-action feedback, and normalized failure/next-step presentation.
 
-- visible keyboard focus
-- stable size across hover, focus, countdown, and status changes
-- disabled explanation where legality is not obvious
-- pending mutation feedback tied to the exact controller action
-- normalized failure summary and suggested next step
+Pause/cancel pending UI never claims provider cleanup. Continue pending/success distinguishes D2 commit from later provider acceptance. Destructive task cancel remains distinct from command-run cancel and nonterminal pause.
 
-Destructive task cancel remains visually distinct from command-run cancel and nonterminal pause.
-
-Dialogs trap focus, provide an accessible name, associate validation errors with fields, and restore focus to the triggering control on close.
+Dialogs trap/restore focus, have accessible names, and associate field errors correctly.
 
 ## Responsive and accessibility rules
 
-- preserve task status, current wait, recovery notice, and lawful primary action at narrow widths
-- keep timestamp, retry count, and state available as text, not color alone
-- announce materially changed control and wait states without announcing every countdown tick
-- make plan revision and event disclosures keyboard operable
-- preserve readable source order when panes stack
-- avoid nested scroll regions that hide current actions or error summaries
-- keep action hit targets usable without inflating the overall operational density
+- preserve task status, current wait, watchdog notice, and lawful primary action at narrow widths;
+- make timestamps, retry count, selection basis, experimental status, and source state textual;
+- announce material source changes without announcing every countdown tick;
+- keep plan/event disclosures keyboard operable;
+- preserve readable source order when panes stack; and
+- avoid nested scroll regions that hide actions or errors.
 
-## Data exclusions
+## Exclusions
 
-No component variant exists for raw provider events, credentials, `provider_session_hint`, provider run ids, raw provider logs, fabricated provider health, progress percentage, ETA, or throughput.
+No component variant exists for provider/native events, credentials, binding material, provider/MCP session or run IDs, raw provider logs/output, fabricated fallback/health, provider-start maximum/exhaustion, semantic-progress claims from activity, percentage, ETA, or throughput.
 
-The explicit command-run log viewer is a controller-backed source-specific component and remains separate from ordinary runtime summaries.
-
-## Owner boundary
-
-This page owns reusable component meaning and accessibility. [Page state contracts](page-state-contracts.md) owns when states appear, [API and view-model boundary](api-and-view-model-boundary.md) owns their data, and [Console runtime surfaces](../interfaces/console-runtime-surfaces.md) owns the product composition.
+The explicit command log viewer is a source-specific controller component, not a provider-log component.
 
 ## Related contracts
 

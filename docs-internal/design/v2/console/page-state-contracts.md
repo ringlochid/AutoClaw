@@ -2,172 +2,122 @@
 
 Status: Target
 
-This page owns the user-visible runtime states the V2 console must render. It consumes finalized Control API and task-event names without adding frontend lifecycle states.
+This page owns the runtime states the V2 console must render. It consumes finalized Control API and event names without adding frontend lifecycle states.
 
-## Shared page states
+## Shared states
 
-Every data-backed runtime surface supports:
+Every data-backed surface supports initial loading, ready, lawful empty, normalized error, stale mutation followed by targeted refresh, and narrow layout without hiding current status/actions.
 
-- initial loading
-- ready content
-- empty content where the source permits it
-- normalized authorization, validation, network, and controller errors
-- stale mutation followed by targeted source refresh
-- narrow viewport without hiding current status or lawful actions
-
-Event-backed surfaces also support disconnected, reconnecting, and `cursor_reset_required`. Those are transport presentation states, not task or provider states.
-
-## Task selection
-
-The task entry surface routes to task detail and displays only fields supplied by the existing task-list contract. This page does not add list counts, aggregate metrics, provider health, or runtime fields absent from that route.
-
-Task status labels preserve controller values. External-wait, recovery, and provider-control detail belongs to the selected task's Control API read.
+Event-backed surfaces additionally show disconnected, reconnecting, and cursor-reset states. Those are transport presentation, not task/provider state.
 
 ## Task detail
 
-Task detail bootstraps from the current task read and snapshot, then attaches event chronology. Its required regions are:
+Task detail bootstraps from task plus snapshot reads, then attaches chronology. It must expose:
 
-- compact task and current-node identity
-- current attempt plan and semantic progress
-- requested and resolved provider provenance
-- current dispatch and provider-control readback
-- watchdog restart and pause/recovery state
-- current external wait when present
-- ordered task chronology
-- selected graph, trace, checkpoint, boundary, request, or run context
-- lawful task controls
+- task/current assignment/attempt identity;
+- optional current work plan;
+- active dispatch and provider-start readback;
+- admitted Node activity and watchdog/recovery;
+- exact provider selection basis and experimental label where applicable;
+- independent provider-native and network effective values with their controlling sources;
+- current external wait;
+- ordered chronology and selected trace/source detail; and
+- lawful task controls.
 
-Source state remains readable when SSE is disconnected.
+Source state remains usable when SSE is disconnected.
 
-### Plan states
+## Work-plan states
 
 | Source state | Presentation |
 | --- | --- |
-| `current_plan = null` with an active worker attempt | awaiting the worker's first plan; do not fabricate steps |
-| current plan with one `in_progress` step | render ordered steps and highlight only that active step |
-| every step `completed` | render the plan as complete without implying the task boundary committed |
-| new semantic attempt with no plan | start a separate plan-history group for the new attempt |
-| `plan_updated` history | expose revisions in event order with explanation and update provenance |
+| `current_plan = null` | no current work plan; do not imply the agent is late or blocked |
+| plan with an `in_progress` step | show ordered steps and emphasize only that step |
+| plan with no `in_progress` step | show statuses exactly; do not manufacture an active step |
+| all steps completed | show completed plan without implying a boundary/task completion |
+| `work_plan_set` history | show bounded snapshots by assignment/revision in event order |
+| `work_plan_cleared` | show plan removal in chronology without inventing an empty revision body |
 
-Plan completion never renders the task as succeeded by itself. Boundary and task source state remain authoritative.
+## Active-dispatch and provider-start states
 
-### Progress states
-
-`last_progress_at` appears as an exact timestamp with an optional derived relative-time label. Null means no semantic progress has committed for that dispatch; it does not prove whether adapter start occurred. It does not mean disconnected, failed, or zero percent complete.
-
-The console does not show an activity clock from reads, provider output, MCP transport, or task-event arrival.
-
-### Provider resolution states
-
-| Requested versus resolved | Presentation |
+| Source state | Presentation |
 | --- | --- |
-| equal | show the resolved provider once with requested/resolved detail available |
-| different | show requested and resolved values and label the resolution as fallback |
+| no current dispatch | no active provider authority; use flow/wait/pause state for explanation |
+| current `starting`, initial attempt | provider start pending for committed dispatch |
+| current `starting`, retry scheduled | attempt count, next attempt countdown, retry kind, bounded error |
+| current `open` | accepted active dispatch, adapter time, Node activity, watchdog due |
+| closed history row | close reason and lineage in trace/chronology only |
 
-No state implies that the provider is connected, generating, finished, or healthy.
+There is no `closing`, `attempt N/M`, provider-start exhausted, or provider-complete view.
 
-### Provider-control states
+## Node activity states
 
-| `state` | Required presentation |
+`last_node_activity_at` appears as exact time with optional relative label. Null on `open` means no admitted Node call since provider acceptance; it does not mean zero work, failure, disconnect, or provider inactivity.
+
+The UI never calls this semantic progress and never derives it from provider output, transport traffic, task events, or support files.
+
+## Provider selection states
+
+| Selection basis | Presentation |
 | --- | --- |
-| `queued` | operation queued; show attempt budget when present |
-| `attempting` | operation and `attempt / max_attempts` |
-| `retry_scheduled` | operation, attempt budget, `next_retry_at` countdown, and bounded error summary when present |
-| `succeeded` | completed AutoClaw control operation, not provider task completion |
-| `failed` | bounded failure summary and controller state that follows |
-| `null` | no current provider-control operation |
+| `explicit` | selected provider, explicitly requested |
+| `default` | selected provider, machine default |
 
-The matching control-event chronology shows exact `reason`: `initial_dispatch`, `watchdog_recovery`, `operator_cancel`, or `shutdown`. `initial_dispatch` means a non-watchdog provider start; the matching `dispatch_opened.reason` preserves the more specific external-wait, operator-continue, or semantic-retry cause. The UI does not add reason values.
+Requested/resolved values remain available as provenance and should match under target rules. OpenClaw additionally shows `experimental`; it may still be selected explicitly or by the configured default, and incomplete conformance is not a disabled or unhealthy state.
 
-### Watchdog recovery states
+## Effective-capability states
 
-| Source state | Presentation and action |
+The active dispatch shows `provider_native_access.effective`, `provider_native_access.source`, `network_access.effective`, and `network_access.source` as two separate value/source pairs. Missing readback is a contract error rather than an invitation to infer from provider, role, prior dispatch, or browser state.
+
+The UI may explain `default`, `policy_definition`, `task_policy`, or `controller` in product language while preserving the exact source value for inspection. A `controller` source includes adapter or local hard ceilings and is not a provider-health state.
+
+## Watchdog states
+
+| Source state | Presentation/action |
 | --- | --- |
-| restart count zero and no recovery control | ordinary runtime; no recovery alert |
-| restart count above zero with active control | show count and current stop/start control readback |
-| replacement dispatch opened | preserve same-attempt plan while chronology shows the replacement |
-| task paused with `runtime_recovery_exhausted` | show exhausted-recovery notice, latest bounded control error, and repair guidance |
-| repaired exhausted recovery | ordinary operator continue action; render the returned same-attempt dispatch |
+| recovery count zero | ordinary activity/watchdog display |
+| replacement opened | preserve same-assignment plan; show D1/D2 lineage and count |
+| paused `runtime_recovery_exhausted` | exhaustion notice, repair guidance, ordinary continue |
+| paused `runtime_transition_failed` | deterministic transition-integrity/config repair guidance |
+| repaired pause | continue explicitly; never auto-run from browser countdown/readiness |
 
-The console never runs continue automatically when a countdown ends or provider readiness changes.
+Watchdog does not run while an exact human/command source owns the dispatch lineage. The UI does not imply provider stop must finish before a replacement starts.
 
-### Task controls
+## Task controls
 
-Pause, continue, and cancel use current controller guards and distinct confirmations.
+Pause, continue, and cancel use current flow/control revisions and distinct confirmations.
 
-- Pause holds task progression and may stop a live dispatch through the controller.
-- Continue resumes an operator-paused task or repaired `runtime_recovery_exhausted` task.
-- Cancel is terminal controller intent.
+- Pause success closes current authority synchronously; cleanup is not shown as a blocking phase.
+- Continue waits for legal D2+refs commit, then shows `starting`; it does not wait for provider acceptance.
+- Cancel is terminal controller intent; post-commit cleanup cannot make it fail.
+- Continue is never an answer or command-completion action.
 
-Continue is not offered as a way to answer a human request or finish a command run.
+The same-origin packaged console uses the loopback local-control boundary without an operator API-key bootstrap or stored key. Accepted mutations are audited as `local_operator` surface activity, not authenticated-human identity.
 
 ## Human requests
 
-The task-local human-request surface supports:
+The request page supports no history, exact open typed request, validation without losing draft answers, source-terminal success, immutable resolved/timed-out/cancelled history, and stale resolve failure.
 
-- no request history
-- current open `direction`, `approval`, `input`, or `review` request
-- typed item navigation and response controls
-- validation error without losing entered answers
-- successful answer and source refresh
-- terminal `resolved`, `timed_out`, or `cancelled` history
-- stale or no-longer-current resolve rejection
-
-Only the current open request offers resolve controls. Request summary, item prompt, options or structured input, item-scoped notes, and final submission stay distinct.
-
-The page never becomes a generic chat or provider approval surface.
+After resolve success, it shows the committed terminal request and refreshes normally. It does not display a required successor ACK or hold the response open until D2 appears.
 
 ## Command runs
 
-The task-local command-run surface supports:
+The command page supports empty history, `pending_start`, `running`, `cancellation_requested`, all terminal states, bounded summary, detail, explicit log loading, and cancel success/denial/staleness.
 
-- empty history
-- `pending_start`
-- `running`
-- `cancellation_requested`
-- terminal `succeeded`, `failed`, `timed_out`, or `cancelled`
-- bounded progress summary when supplied
-- detail expansion
-- explicit log loading, missing log, and log error
-- cancel accepted, denied, stale, and terminally unavailable
+`cancellation_requested` stays nonterminal and keeps the task waiting until termination/reap. Raw output appears only in the authorized log view.
 
-`cancellation_requested` stays visibly non-terminal and keeps the task waiting. The cancel action does not claim success before the source row becomes `cancelled`.
+## Chronology and reset
 
-Ordinary rows show normalized summary and provenance. Raw command output appears only in the explicit authorized log view and never replaces source state.
+Chronology supports REST backfill, ascending sequence, reconnect/deduplication, work-plan changes, provider-start revisions, checkpoints/boundaries, waits, controls, empty history, and cursor reset.
 
-## Task chronology
+Provider events, provider stop cleanup, runtime signals, and per-Node-invocation rows never appear.
 
-The chronology supports:
+On reset, the page discards event-derived current assumptions, rereads task/snapshot and selected source detail, then reconnects from the new head.
 
-- REST backfill before live tail
-- ascending event sequence
-- reconnect and deduplication
-- plan revision expansion
-- provider-control reason and retry detail
-- checkpoint, boundary, external-wait, task-control, and structural events
-- empty history
-- cursor reset
+## Exclusions
 
-Provider events and per-MCP-invocation events never appear.
+No page adds a debug/fallback rendering for credentials, global operator API keys, browser credential bootstrap, binding material, provider/native events/output/logs, provider/MCP session IDs, provider run IDs, provider fallback/health, provider-start maximum, semantic progress inferred from activity, percentage, ETA, or throughput.
 
-On cursor reset, the page discards event-derived current display assumptions, rereads task and snapshot source state, refreshes selected source detail, and reconnects from the new stream head.
-
-## Data exclusion states
-
-No page adds a disclosure, debug tab, or fallback rendering for:
-
-- credentials
-- `provider_session_hint`
-- provider-native event or output payloads
-- raw provider logs
-- provider run ids
-- unsupported progress, ETA, throughput, or health
-
-Authorized command-run logs remain a separate controller route and are not provider logs.
-
-## Owner boundary
-
-This page owns required render states only. It does not define API fields, event payloads, backend legality, runtime transitions, provider behavior, authoring pages, or visual tokens.
+Provider setup, login, enablement, and default mutation have no browser page state in the loopback phase; they remain CLI-only. Callback HTTP likewise has no V2 console state.
 
 ## Related contracts
 

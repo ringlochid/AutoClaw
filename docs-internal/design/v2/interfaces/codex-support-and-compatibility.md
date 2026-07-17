@@ -2,96 +2,93 @@
 
 Status: Target
 
-This page defines the local managed support contract for the `codex` provider.
+This page owns the local managed support contract for the `codex` route.
 
-## Support status
+## Support status and packaging
 
-Codex is a targeted managed provider. AutoClaw uses the tested official Python SDK and its pinned Codex runtime by default.
+Codex is a managed target provider. The supported base AutoClaw distribution includes the tested official Codex SDK integration and its pinned/bundled runtime; a separately installed global `codex` CLI is not required.
 
-The normal installation is:
+An explicit custom runtime may be added only as an advanced override that passes the same pinned adapter conformance. Installation alone does not configure or authenticate Codex.
 
-```bash
-pip install "autoclaw[codex]"
-```
+## Authentication and native home
 
-A separately installed global `codex` CLI is not required. An explicit custom runtime path may be supported as an advanced local override after it passes the same conformance suite.
+Codex authentication remains provider-owned. `autoclaw providers login codex` delegates to the supported native login flow for ChatGPT or API authentication. Codex stores and refreshes credentials under its own home or OS credential store; AutoClaw never reads, copies, prints, normalizes, or persists the credential payload.
 
-## Authentication
-
-Supported Codex authentication is provider-owned ChatGPT or API-key authentication.
-
-```text
-autoclaw codex login
-```
-
-The command delegates to the official Codex login protocol, including the supported browser or device-code flow. Codex stores and refreshes credentials under its own home or OS credential store. AutoClaw does not read, copy, print, or persist the credential payload.
-
-The AutoClaw service must run as the intended OS identity and see the same `HOME` and `CODEX_HOME` used during login.
+Status, check, login, and runtime must resolve the same service identity, `HOME`, and `CODEX_HOME`. A login under a different user/home does not make the runtime route ready.
 
 ## Configuration inheritance
 
-The managed adapter inherits normal Codex configuration, including:
+The adapter inherits normal Codex user and trusted-project configuration, including native model/reasoning choices, compaction, project instructions, `AGENTS.md`, skills, and user MCP servers.
 
-- user `config.toml`
-- trusted-project `.codex/config.toml`
-- `AGENTS.md` and project instructions
-- Codex skills and user MCP servers
-- native model, reasoning, compaction, and model-provider settings
+AutoClaw applies one nonpersistent dispatch overlay only:
 
-AutoClaw applies only its ephemeral correctness overlay: task cwd, current prompt lanes, required Node MCP, non-interactive approvals, selected sandbox policy, and optional sparse model or effort overrides.
+- exact task workspace/cwd;
+- exact separate instruction and input lanes;
+- one private managed Node MCP connection with a fresh bearer credential;
+- the exact role-scoped Node tool allowlist;
+- noninteractive approval behavior;
+- resolved provider-native tool/network policy; and
+- optional sparse model/effort override.
 
-There is no AutoClaw-wide Codex context-window setting. The native model catalog and config own effective context and compaction.
+The overlay never rewrites user or project `config.toml` and never stores the managed MCP credential in Codex configuration.
 
-## Workspace and MCP readiness
+## Dynamic MCP attachment
 
-The bundled runtime, AutoClaw process, task workspace, and Node MCP endpoint must share a compatible local execution environment.
+For each provider-start attempt, AutoClaw dynamically attaches the managed MCP URL, authorization header, and exact enabled-tool list to the new Codex thread/turn invocation through the supported app-server/SDK request override.
 
-Readiness requires:
+The exact wire fields belong to the pinned-version adapter conformance because provider protocol shapes may evolve. These invariants do not:
 
-- the SDK and bundled runtime can start
-- the task workspace exists and is accessible under the configured sandbox
-- AutoClaw Node MCP connects as a required managed-agent server
-- provider-native approvals cannot wait for a separate UI
-- a fresh thread can commit an AutoClaw plan and boundary
-- an active turn can be interrupted
+- the attachment is per invocation and nonpersistent;
+- the model-visible schemas contain semantic fields only;
+- a worker is not given parent/root-only tools;
+- concurrent dispatches use different credentials and ceilings; and
+- every retry receives a fresh credential even when it keeps the same dispatch ID.
 
-Operator MCP is not part of Codex worker readiness.
+## Start, continuity, and stop
 
-## Session and stop behavior
+One AutoClaw dispatch starts one Codex turn. A thread ID or active turn handle may remain provider-private for optional continuity and precise interruption, but it is not generic controller state or Node authentication.
 
-AutoClaw keeps the Codex thread id as the provider session hint. The active turn handle stays private. `stop()` interrupts that turn through app-server, privately drains any remaining provider response required by the pinned SDK, and succeeds only when the active turn and its adapter-owned background work can no longer continue.
+Every start receives both complete current request lanes. If safe continuity is unavailable, the adapter starts a fresh thread; no compact resume prompt or provider-history dependency is allowed.
 
-Resume always receives the current instructions and input. If the pinned version cannot refresh the instruction layer correctly, the adapter starts a fresh thread and persists the replacement thread id.
+`start()` returns on documented turn acceptance. Provider output, final response, EOF, token events, and native tool events are ignored for controller progression.
 
-## Status and doctor
+`stop(dispatch_id)` makes one bounded app-server interruption request when supported. Runtime does not wait for a provider final response or drain and proceeds after unsupported, failed, or timed-out stop. If the SDK requires stream consumption for resource health, the adapter owns it privately without turning it into a runtime fence.
 
-```text
-autoclaw provider status codex
-autoclaw provider doctor codex
-autoclaw doctor --provider codex
-```
+## Noninteractive policy
 
-The checks report:
+Provider-native approval requests must never wait for an unconsumed app-server UI. The adapter applies the resolved machine policy to native tools, and AutoClaw human direction goes only through `open_human_request` when capability permits it.
 
-- enabled and default-provider state
-- installed SDK and bundled runtime versions
-- custom runtime path when used
-- auth type and presence without credential content
-- effective Codex home and configuration sources
-- task cwd and sandbox compatibility
-- Node MCP reachability and tool discovery
-- fresh start, resume, and interrupt conformance
+Full native-tool access does not grant parent/root Node tools, controller command runs, or human-request capability.
 
-Missing authentication points to `autoclaw codex login`. A failed Codex check blocks Codex dispatches only; it does not block AutoClaw startup.
+## Status and check
 
-## Non-goals
+Passive status may report enabled/default state, installed adapter/runtime versions, custom runtime path, effective Codex home/config sources, and locally observable authentication presence without credential contents.
 
-- AutoClaw does not mirror all Codex settings into its own config.
-- AutoClaw does not persist turn ids, provider events, diffs, or terminal provider state as runtime truth.
-- AutoClaw does not use provider-native approval requests as its human-wait lane.
+`autoclaw providers check codex` may perform documented non-agent installation, configuration, auth/reachability, workspace-policy, and deterministic MCP prerequisite checks. It does not create a Codex thread/turn, dispatch, or binding and does not call Node tools.
+
+A failed check blocks no global service. A dispatch that has already committed retries provider-origin start failure under the runtime contract rather than consuming a cached check result.
+
+## Required proof
+
+- dynamic per-dispatch MCP attachment without config mutation;
+- exact worker versus parent/root tool exposure;
+- two-lane request delivery on fresh and continuity-assisted starts;
+- noninteractive native approval behavior;
+- acceptance and definite/uncertain failure classification;
+- one bounded interrupt attempt with no runtime drain gate;
+- service-identity/native-home consistency; and
+- no credential, provider-output, or private-binding leakage.
+
+## External basis
+
+- [Codex SDK](https://developers.openai.com/codex/sdk/)
+- [Codex app-server](https://developers.openai.com/codex/app-server/)
+- [Codex authentication](https://developers.openai.com/codex/auth/)
+- [Codex configuration reference](https://developers.openai.com/codex/config-reference/)
 
 ## Related contracts
 
 - [Provider support and compatibility](provider-support-and-compatibility.md)
-- [Provider CLI and doctor](provider-cli-and-doctor.md)
+- [Provider CLI and check](provider-cli-and-check.md)
 - [Codex app-server adapter](../architecture/adapters/codex-app-server.md)
+- [Managed Node MCP binding](../architecture/managed-node-mcp-binding.md)

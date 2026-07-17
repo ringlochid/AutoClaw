@@ -2,105 +2,112 @@
 
 Status: Target
 
-This page defines the external local support contract for the `openclaw` provider.
+This page owns the externally managed, explicitly experimental `openclaw` provider lane.
 
-## Support status
+## Product status
 
-OpenClaw is a targeted external provider. The operator installs, configures, upgrades, and supervises OpenClaw and its Gateway independently from AutoClaw.
+OpenClaw is experimental but selectable. AutoClaw does not disable the route merely because conformance is incomplete; operators may choose it explicitly or configure it as the default, with limitations reported explicitly.
 
-OpenClaw is not included in `autoclaw[managed]`. AutoClaw owns only its narrow Gateway adapter, stable Node MCP integration, setup checks, and dispatch-time control requests.
+Installation and discovery alone never select OpenClaw. Failure of Codex, Claude, or another route never falls back to it.
 
-## Supported Gateway shape
+The user installs, upgrades, configures, secures, and supervises OpenClaw and its Gateway independently. AutoClaw owns only the narrow Gateway adapter, controller route record, compatibility Node MCP endpoint, and bounded checks.
 
-The initial supported baseline uses a documented `webchat` client path. AutoClaw configures Gateway handshake client mode independently from the agent delivery channel:
+## Gateway route
+
+AutoClaw selects one user-authored/tested Gateway profile:
 
 ```toml
 [openclaw]
 enabled = true
 gateway_url = "ws://127.0.0.1:18789"
-client_mode = "webchat"
-delivery_channel = "webchat"
+gateway_profile = "default"
 ```
 
-The values may differ when the installed OpenClaw contract supports that combination.
+The profile identifies the installed-version-specific lawful client identity, handshake, delivery channel, agent/workspace mapping, and expected compatibility MCP configuration without copying secrets into AutoClaw config. AutoClaw does not freeze `webchat`, `backend`, or another upstream mode as a universal product baseline.
 
-`backend` is configurable and experimental only when the installed OpenClaw version exposes a supported third-party identity and the full launch, disconnect, MCP, resume, and abort suite passes. AutoClaw must not impersonate OpenClaw's reserved internal `gateway-client` identity.
+AutoClaw never impersonates an upstream reserved internal identity. A configured profile must name a lawful third-party path for the installed version. Exact adapter conformance records what is known, tested, limited, or unsupported, but an incomplete suite is not a global route, default, or selectability gate.
 
-## Setup ownership
+## User-owned setup
+
+AutoClaw does not install OpenClaw, patch `openclaw.json`, register its MCP endpoint automatically, create an agent profile, or weaken bind/TLS/pairing/authentication/sandbox/tool/exec/approval/deny policy.
+
+The user configures the stable AutoClaw compatibility endpoint `/node/mcp` and chooses which OpenClaw worker may use it. AutoClaw documentation/checks may show the required values and validate observable facts, but mutation remains user-owned.
+
+This differs deliberately from Codex/Claude dynamic injection. AutoClaw cannot guarantee per-dispatch configuration injection and revocation through the user-owned OpenClaw profile, so it does not reuse the managed binding model.
+
+## Compatibility Node MCP
+
+Every compatibility Node tool requires full:
 
 ```text
-autoclaw openclaw setup
+task_id
+dispatch_id
 ```
 
-The setup flow may:
+The prompt's dispatch context renders those non-secret IDs. They select the exact controller scope but do not authenticate the caller.
 
-- collect or validate the Gateway endpoint and documented client identity
-- register or verify the stable AutoClaw Node MCP endpoint for the selected worker integration
-- keep handshake client mode and delivery channel independent
-- verify that the OpenClaw worker can access the local AutoClaw task workspace
-- run bounded launch and abort conformance
+The endpoint applies strict request shape, Host/Origin policy, exact currentness, role/tool exposure, capability, and operation legality. It never redirects a stale dispatch ID to a newer dispatch. Because reachability plus known IDs is weaker than a managed bearer binding, the endpoint must stay inside an operator-controlled local boundary and the provider lane remains experimental.
 
-It must not:
+The worker sees the compatibility projection of the same logical Node catalog. AutoClaw does not give it Operator MCP.
 
-- install or upgrade the full OpenClaw product
-- take over Gateway process supervision
-- rewrite unrelated OpenClaw agents or user configuration
-- weaken Gateway bind, TLS, pairing, or authentication policy
-- create an AutoClaw-managed operator-agent profile
-- require Operator MCP for provider readiness
+## Workspace and behavior readiness
 
-## Workspace and MCP readiness
+The configured OpenClaw worker must:
 
-The selected OpenClaw worker must be able to reach AutoClaw Node MCP and operate on the task workspace expected by the local integration. AutoClaw does not require one fixed `~/.openclaw/workspaces/<agent_id>` layout or globally disable OpenClaw sandboxing.
+- reach the compatibility MCP endpoint;
+- access the expected local task workspace under the user's chosen OpenClaw sandbox/mount policy;
+- receive the full current instruction and input request;
+- supply the current full IDs to Node tools;
+- avoid provider-native question/approval waits that AutoClaw cannot observe; and
+- support the documented Gateway acceptance/cancellation behavior claimed by the installed route.
 
-Readiness is behavior-based:
+AutoClaw does not prescribe one global OpenClaw workspace layout or disable sandboxing.
 
-- the worker can connect to Node MCP and discover its logical tools
-- task and node recognition values from the live `NodeSession` are accepted
-- the worker can read current context and commit an AutoClaw plan and boundary
-- provider-native questions and approvals do not create an invisible wait
-- accepted launch survives control-connection release when that mode is declared supported
-- a fresh control connection can abort the active session
+## Start and stop
 
-Operator MCP is not part of OpenClaw worker readiness.
+`start()` submits the dispatch through the documented Gateway `agent` path and returns only on acceptance. Gateway output, tool events, `agent.wait`, and final completion are ignored for controller truth.
 
-## Session and stop behavior
+An OpenClaw session/run identifier may remain private to the adapter for optional continuity or precise `sessions.abort`. It is never persisted as generic controller authority and never authenticates Node MCP.
 
-AutoClaw keeps the OpenClaw session key as the provider session hint. The adapter creates the key when starting a fresh provider conversation. A Gateway run id may remain private for precise abort but does not enter the generic persisted runtime model.
+`stop(dispatch_id)` is best-effort experimental control through the supported abort path. Runtime makes at most one bounded attempt where its generic policy calls for stop and proceeds on unsupported, failed, or timed-out results. Normal boundary/wait transitions do not stop OpenClaw and never wait for provider shutdown.
 
-`start()` calls `agent` and waits only for acceptance. `stop()` uses `sessions.abort` through the same centralized provider-control policy and succeeds only when the supported abort response establishes the adapter-owned stop boundary. AutoClaw does not depend on `agent.wait`, Gateway tool events, or provider completion.
+Every provider-origin start failure keeps the same current D2 in `starting` and retries indefinitely with capped backoff. Uncertain acceptance may receive the one bounded stop attempt before retry; stop failure never pauses the flow, changes the route, or blocks retry.
 
-## Status and doctor
+## Status and check
 
-```text
-autoclaw provider status openclaw
-autoclaw provider doctor openclaw
-autoclaw doctor --provider openclaw
-```
+Passive status may report route enablement, experimental label, configured Gateway endpoint/profile, installed version when locally discoverable, and whether required user-owned fields appear present. It performs no Gateway/model action.
 
-The checks report:
+Status distinguishes installation, configured selection/default, observed compatibility, and exact-version conformance. It does not collapse those facts into one global enabled/disabled result.
 
-- enabled and default-provider state
-- Gateway endpoint and installed OpenClaw version when discoverable
-- supported client identity, handshake mode, and delivery channel
-- auth presence and connection result without credential content
-- Node MCP registration and reachability
-- local task-workspace compatibility
-- launch acceptance and disconnect behavior
-- fresh-connection abort behavior
-- webchat support status and separate backend experimental status
+`autoclaw providers check openclaw` may verify a documented non-agent Gateway handshake/reachability path and deterministic compatibility endpoint/config facts. It never edits OpenClaw configuration, runs an agent turn, creates an AutoClaw dispatch/binding, or invokes Node tools.
 
-A failed OpenClaw check blocks OpenClaw dispatches only; it does not block AutoClaw startup.
+Exact launch/disconnect/abort/MCP behavior is release-conformance evidence, not an ordinary operator check disguised as a model run.
 
-## Non-goals
+## Required proof and recorded limitations
 
-- AutoClaw does not manage the full OpenClaw installation or security posture.
-- AutoClaw does not persist Gateway lifecycle events, tool streams, or provider terminal state as runtime truth.
-- AutoClaw does not promise backend mode before the upstream identity and conformance rules are satisfied.
-- AutoClaw does not maintain a long-lived Gateway connection unless the supported installed version requires one privately.
+- accepted Gateway launch with exact two-lane request delivery;
+- current full-ID compatibility tool calls for worker and parent/root profiles;
+- no user configuration mutation by AutoClaw;
+- launch-control disconnect behavior for the exact supported version;
+- one bounded fresh-connection abort attempt where supported;
+- provider-native questions/approvals do not create hidden waits;
+- provider events and final output are absent from controller progression; and
+- every failed conformance case remains visible without globally disabling selection;
+- explicit and configured-default selection remain available while experimental;
+- installation and other-provider failure never select OpenClaw; and
+- adapter and compatibility failures remain local to the selected dispatch.
+
+## External basis
+
+- [OpenClaw agent loop](https://docs.openclaw.ai/agent-loop)
+- [OpenClaw Gateway protocol](https://docs.openclaw.ai/gateway/protocol)
+- [OpenClaw trusted proxy authentication](https://docs.openclaw.ai/gateway/trusted-proxy)
 
 ## Related contracts
 
 - [Provider support and compatibility](provider-support-and-compatibility.md)
-- [Provider CLI and doctor](provider-cli-and-doctor.md)
+- [Provider CLI and check](provider-cli-and-check.md)
 - [OpenClaw Gateway adapter](../architecture/adapters/openclaw-gateway.md)
+- [Managed Node MCP binding](../architecture/managed-node-mcp-binding.md)
+- [Node MCP schema appendix](node-mcp-schema-appendix.md)
+- [ADR-0011: provider routing, defaults, and capability resolution](../../../adr/ADR-0011-provider-routing-defaults-and-capability-resolution.md)

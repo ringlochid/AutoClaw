@@ -2,154 +2,181 @@
 
 Status: Target
 
-This page defines the complete provider-facing control contract for the local V2 runtime.
+This page owns the smallest provider-control boundary needed by the V2 controller. Adapters start one committed dispatch, optionally stop an execution, hold provider-private resources, and expose bounded diagnostics. They do not own controller currentness, semantic completion, prompt rendering, Node operations, or runtime orchestration.
 
-## Core rule
+## Portable interface
 
-MCP is the agent/runtime protocol. A provider adapter only starts and stops one provider turn and optionally preserves provider conversation continuity.
+Conceptually, a managed adapter implements:
 
-Provider output, lifecycle events, tool events, completion notifications, and connection state are never controller correctness signals. The controller learns useful progress, external waits, and completion only from committed AutoClaw MCP operations.
-
-## Required interface
-
-The required public interface is:
-
-```python
-async def start(
-    prompt: PromptTransportRequest,
-    session_hint: str | None = None,
-) -> str | None:
-    ...
-
-
-async def stop(session_hint: str | None = None) -> None:
-    ...
+```text
+start(DispatchStartRequest) -> StartAccepted
+stop(dispatch_id) -> Stopped | NotRunning
+check() -> ProviderCheckResult
 ```
 
-`PromptTransportRequest` preserves two distinct prompt lanes:
+`stop` is optional for an experimental or limited provider route. A supported managed route should implement it when the provider offers a real cancellation boundary.
 
-```python
-@dataclass(frozen=True)
-class PromptTransportRequest:
-    instructions_text: str
-    input_text: str
+The adapter may hold private SDK clients, process handles, provider thread/session IDs, cancellation tokens, or transport state. Those details never become controller authority or generic runtime records.
+
+## DispatchStartRequest
+
+The runtime constructs the request only from a committed current `starting` dispatch and validated request refs:
+
+```yaml
+DispatchStartRequest:
+  task_id: <canonical task id>
+  dispatch_id: <canonical dispatch id>
+  provider_route: <committed discriminated route>
+  workspace: <resolved provider workspace/cwd>
+  instructions: <exact bytes from instructions.md>
+  input: <exact bytes from input.md>
+  managed_node_mcp: <private connection or null>
+  compatibility_node_mcp: <provider-visible connection or null>
+  enabled_native_tools: <resolved provider-native access>
+  continuity_hint: <optional provider-private hint>
 ```
 
-Adapters must preserve the split when the provider supports separate instruction and input lanes. A provider with only one message lane may flatten the two values into the canonical combined rendering.
+The two request lanes stay separate. The adapter does not render, concatenate, repair, substitute, or persist them.
 
-The adapter is constructed with provider and dispatch launch state that does not belong in the two verbs:
+`managed_node_mcp` contains the private internal URL, opaque bearer credential, and exact dispatch tool allowlist. It is process-local and must not enter logs, task files, provider persistent config, public readbacks, or continuity fields.
 
-- task workspace
-- AutoClaw Node MCP URL and provider-native MCP attachment
-- sandbox, permission, and non-interactive approval policy
-- sparse AutoClaw provider overrides
-- provider-native runtime and connection configuration
+OpenClaw receives the user-configured compatibility endpoint instead of a managed binding. Its tools require full task/dispatch selectors.
 
-## Start semantics
+## Start acceptance
 
-`start()` means that the provider turn has been handed off and that its effective optional continuity hint is known. It does not mean that the agent has made progress or completed.
+`StartAccepted` means the adapter accepted responsibility for the provider invocation. It is sufficient for the controller to move a still-current dispatch from `starting` to `open` and set `adapter_started_at`.
 
-Rules:
+It does not mean:
 
-- AutoClaw creates the dispatch and live `NodeSession` before calling `start()`.
-- The adapter always sends both current prompt lanes, including when it resumes a provider conversation.
-- The returned value is the effective provider session hint. AutoClaw replaces the stored hint when the adapter falls back to a fresh provider session.
-- A provider without reusable conversation continuity returns `None`.
-- The first committed semantic Node MCP operation, normally `update_plan`, proves useful agent progress.
-- A launch acknowledgement, provider stream item, or provider terminal notification proves none of those facts.
+- assignment success;
+- provider response completion;
+- first Node MCP callback;
+- semantic progress;
+- boundary acceptance;
+- provider process longevity; or
+- exactly-once external execution.
 
-If a provider cannot reliably refresh instructions while resuming, the adapter starts a fresh provider session with the full current prompt and returns the replacement hint. Controller context and checkpoint rereading keep correctness independent of provider memory.
+The adapter returns only bounded non-secret acceptance metadata needed for diagnostics. Provider thread/session/run identifiers may remain private continuity hints but never authenticate Node MCP or appear in generic controller state.
 
-## Stop semantics
+## Start failures and retry classification
 
-`stop()` ends the current provider turn associated with the adapter's private active handle and optional continuity hint.
+Adapter failures normalize to stable categories such as configuration, authentication, connection, unavailable, timeout, rejected, unsupported, and unknown/uncertain acceptance.
 
-A successful return is the watchdog replacement boundary: the adapter-owned active execution can no longer continue the stopped turn. The adapter must wait for its provider-specific interrupt or abort acknowledgement and perform any private cleanup required to uphold that result. If the adapter can only request interruption but cannot establish that boundary within the operation timeout, it raises a control failure; the `AgentControlManager` retries it and eventually pauses recovery instead of launching a replacement beside an uncertain old turn.
+All provider-origin start failures are retriable on the same `starting` dispatch. The generic runtime applies the configured unbounded capped backoff and records only sanitized code/readback.
 
-The `AgentControlManager` is the only caller. It centralizes duplicate-call coalescing, retry, timeout, visibility, and cleanup so watchdog recovery, explicit cancellation, and lifespan shutdown do not grow separate stop paths.
+The adapter must distinguish when reasonably possible:
 
-Normal return boundaries and external waits do not call `stop()`:
+- `definite_failure`: no provider execution was accepted; and
+- `uncertain_acceptance`: an execution may have been accepted or the controller could not confirm the result.
 
-- after a return boundary, the provider response ends naturally
-- after opening a human request or command run, the provider response ends naturally while the controller-owned lineage waits
-- watchdog recovery and explicit cancellation use the centralized stop path
+After uncertain acceptance, the runtime revokes the prior managed binding, calls `stop(dispatch_id)` once when available, then retries the same dispatch. A route that cannot provide reliable stop/idempotency accepts the risk of duplicate physical provider work; current binding and dispatch admission still protect controller truth.
 
-This guarantee is intentionally limited to the adapter-owned execution being stopped. It does not introduce a generalized workspace, container, external-effect, or distributed fencing model.
+Deterministic controller-side request/ref validation does not call the adapter and is not classified as a provider failure.
 
-## Identity separation
+## Stop contract
 
-The runtime keeps these identities distinct:
+A successful `stop(dispatch_id)` return is proof that the adapter's execution for that dispatch is stopped or was already absent. It must include provider-owned background activity covered by that invocation, not merely close a client stream while work continues.
 
-| Identity | Owner | Meaning |
-| --- | --- | --- |
-| `NodeSession.session_key` | AutoClaw | Existing task and node recognition on Node MCP calls |
-| provider session hint | Adapter/provider | Optional conversation continuity only |
-| private active handle | Adapter/manager | Provider-specific process, run, turn, client, or connection needed to stop the active turn |
+The call is bounded by adapter/provider policy. It does not expose a long-lived controller fence or require polling until provider output ends.
 
-OpenClaw session keys, Codex thread ids, and Claude session ids may be persisted as the optional provider session hint. Provider run ids, Codex turn ids, live SDK clients, child processes, and connections remain private control details. None of them authorizes Node MCP access or replaces controller lineage.
+Unsupported, failed, or timed-out stop is a normalized adapter result/exception. Runtime behavior is:
 
-## Private provider behavior
+- uncertain same-dispatch retry proceeds after the one attempt;
+- watchdog replacement D2 starts after the one attempt against D1;
+- normal boundary and legal human/command waits never call stop; and
+- pause/cancel cleanup is best effort after controller commit.
 
-An adapter may privately:
+Repeated successful stop is idempotent through `NotRunning`.
 
-- drain a provider SDK or subprocess stream so the provider can continue running
-- retain an active SDK client, turn handle, child process, or connection needed by `stop()`
-- reconnect to a provider control plane
-- inspect provider-native messages for transport housekeeping or to obtain a session hint
-- record bounded support diagnostics
+## No output/drain contract
 
-It must not translate provider lifecycle, built-in tool, token, or completion events into watchdog progress, controller completion, or assignment success.
+The generic adapter interface does not expose provider output, final messages, terminal events, tool streams, or drain completion to controller progression.
 
-## Interactive wait rule
+An adapter may privately consume SDK/stdout streams when its library or child process requires that for transport health. It discards or sends bounded sanitized diagnostics to its own support logger. The runtime does not wait for those streams and never interprets them as assignment truth.
 
-AutoClaw MCP is the only interactive wait lane. Adapters configure provider-native approval and question mechanisms to allow, deny, or fail according to machine policy without waiting for provider UI input. Prompts direct agents to use AutoClaw human-request and command-run tools when controller-owned external waiting is required.
+There is no 30-second provider drain phase, final-response grace period, provider-terminal callback, or `agent.wait` correctness path.
 
-An adapter must expose Node MCP to managed agents. It must never expose Operator MCP as part of worker launch readiness.
+## Managed MCP injection
 
-## Retry ownership
+For Codex and Claude, the adapter dynamically supplies the managed MCP URL, bearer credential, and exact tool allowlist for one dispatch. It does not write this material to user/global/project provider configuration.
 
-The lifespan-owned `AgentControlManager` applies the shared provider-operation policy to both verbs:
+The stable adapter invariant is dynamic nonpersistent injection. Exact SDK/app-server fields are provider-version conformance details and must be proven against the pinned supported version.
 
-- six total calls by default
-- waits of 1, 2, 4, 8, and 16 seconds between calls
-- one bounded operation timeout per call, 15 seconds by default
-- transient connection and availability failures are retryable
-- authentication, configuration, and invalid-request failures fail immediately
-- delayed retries return to the central queue rather than blocking another control command
+Multiple concurrent dispatches share one MCP server but receive different credentials and allowlists. Provider session/thread continuity does not reuse a credential; every retry or successor gets a fresh binding.
 
-Connection establishment and the requested provider operation share this one budget; an adapter must not nest another six-call connection loop inside each manager call. One dispatch stays on one resolved provider. The six-call budget never switches provider. Provider fallback is resolved before the dispatch is committed.
+## OpenClaw compatibility
 
-## Provider-page evidence rule
+OpenClaw stays externally installed and supervised. Its adapter may start/cancel an explicitly selected experimental dispatch through documented Gateway behavior, but AutoClaw does not:
 
-Every provider adapter page uses these sections in order:
+- install or supervise the Gateway;
+- mutate `openclaw.json` or global MCP/tool policy;
+- infer authority from Gateway session/run IDs;
+- wait on `agent.wait` or output for correctness;
+- auto-fallback from a failed explicit route; or
+- hide the explicit-ID compatibility schema.
 
-1. `Confirmed external behavior`
-2. `AutoClaw mapping`
-3. `Open assumptions and non-goals`
+Workspace/cwd, start acceptance, cancellation, restart ambiguity, and version support remain pinned experimental conformance cases.
 
-Only primary-source-confirmed provider behavior belongs in the first section. AutoClaw translation belongs in the second. Uncertainty and deliberately deferred behavior belong in the third.
+## Provider check
 
-## Conformance requirements
+`check()` is a bounded non-agent diagnostic used only by the explicit provider-check command. It may inspect native installation/configuration/authentication/reachability using documented provider surfaces.
 
-Every adapter must pass the same controller-level cases:
+It must not create a task/dispatch/binding, run a model turn, invoke Node MCP, mutate provider configuration, or persist readiness.
 
-- fresh start returns the effective optional session hint
-- resumed start resends current instructions and input
-- failed continuity falls back to a fresh session and returns a replacement hint
-- Node MCP can read current context and commit plan, progress, wait, and boundary operations
-- no provider event or terminal signal advances watchdog progress or closes a dispatch
-- provider-native questions and approvals cannot create invisible waits
-- repeated start or stop requests are centralized by `AgentControlManager`
-- stop interrupts the active provider turn without making provider completion controller truth
+Runtime dispatch start does not run the full check first. Deterministic local request/provider-route validation occurs before D2 commit; the real adapter handshake occurs after commit and retries as owned by runtime.
 
-Provider-specific pages add only the transport cases required by that provider.
+## Lifecycle
 
-## Related pages
+Adapter resources are created and closed by the main FastAPI lifespan. The adapter may expose an async context manager or equivalent internal resource factory, but request handlers and model-facing code do not manually orchestrate public `start()`/`close()` lifecycle pairs.
 
-- [Controller contract and resumable execution](controller-contract-and-resumable-execution.md)
+Shutdown revokes managed bindings first, then requests bounded provider/process cleanup. Cleanup cannot rewrite already committed controller state.
+
+Process restart discards provider-private handles. Startup recovery treats current `starting` dispatches conservatively as potentially uncertain and re-enters the stop-and-retry path.
+
+## Security and logging
+
+Adapters run under the AutoClaw service identity and provider-native home. They never copy provider credentials into controller storage.
+
+Logs and errors may include canonical non-secret provider route, task ID, dispatch ID, operation, timing, and normalized code. They exclude:
+
+- provider credentials and auth payloads;
+- managed MCP bearer credentials or digests;
+- raw provider input/output;
+- raw environment values;
+- human answers and command logs; and
+- provider session/thread IDs presented as authority.
+
+## Conformance matrix
+
+Every adapter must prove:
+
+- exact two-lane request delivery from committed refs;
+- no provider call before D2+refs commit;
+- dynamic managed MCP injection or explicit compatibility configuration;
+- correct role-specific tool allowlist behavior;
+- definite versus uncertain start classification where the provider permits;
+- bounded stop semantics and `NotRunning` idempotency when supported;
+- same-D2 retry without prompt rerender;
+- no provider final/output progression;
+- service-identity/native-home consistency across status, check, and runtime; and
+- secret/log/readback redaction.
+
+OpenClaw additionally records exact-version conformance gaps without globally disabling its experimental route.
+
+## Removed target concepts
+
+- `start(prompt, provider_session_hint)` as a combined prompt contract;
+- generic persisted provider session/run hints;
+- finite six-call start/stop budgets;
+- provider final/EOF/tool events as controller inputs;
+- generic output drain or terminal wait;
+- provider fallback inside one committed dispatch; and
+- adapter-owned Node operation or controller validation logic.
+
+## Related
+
 - [Runtime lifecycle and watchdog](runtime-lifecycle-and-watchdog.md)
-- [Node and operator MCP surface contract](../interfaces/node-and-operator-mcp-surface-contract.md)
+- [Managed Node MCP binding](managed-node-mcp-binding.md)
+- [Prompt system](../prompt-layer/prompt-system.md)
 - [Provider selection and runtime config](../interfaces/provider-selection-and-runtime-config.md)
-- [Codex app-server adapter](adapters/codex-app-server.md)
-- [Claude Agent SDK adapter](adapters/claude-agent-sdk.md)
-- [OpenClaw Gateway adapter](adapters/openclaw-gateway.md)
+- [Provider support and compatibility](../interfaces/provider-support-and-compatibility.md)

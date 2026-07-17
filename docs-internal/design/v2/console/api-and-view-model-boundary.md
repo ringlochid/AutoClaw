@@ -2,163 +2,115 @@
 
 Status: Target
 
-This page owns how the console consumes finalized Control API and task-event contracts and maps them into render-ready runtime views. It does not define wire fields, routes, controller currentness, or event payloads.
+This page owns how the console consumes finalized Control API and task-event contracts and maps them into render-ready runtime views. It does not define wire fields, controller currentness, events, or legality.
 
 ## Core rule
 
-Source-row reads own current state. Task events own chronology. View-model mappers keep those roles separate.
-
-Page components consume generated API types and explicit render mappers; they do not parse raw controller payloads, event frames, or failures deep inside JSX.
+Source-row reads own current state. Task events own chronology. Explicit view-model mappers preserve that split; components do not parse raw controller payloads or event frames deep inside rendering code.
 
 ## Data sources
 
 | Console need | Canonical source |
 | --- | --- |
-| current task, attempt, dispatch, plan, progress, provider, recovery, and current waits | `GET /control/tasks/{task_id}` |
-| operator-ready current summary and stream anchor | `GET /control/tasks/{task_id}/snapshot` |
-| graph and dispatch/checkpoint/boundary history | `GET /control/tasks/{task_id}/trace` |
-| ordered plan revisions, provider-control attempts, waits, checkpoints, and boundaries | task event list and SSE |
-| complete human-request source and resolution | human-request list route |
-| complete command-run source, terminal result, and cancellation provenance | command-run list and detail routes |
-| authorized command output on explicit inspection | dedicated command-run log route |
+| current flow, assignment/attempt, active dispatch, plan, Node activity, provider start, effective capabilities, recovery, and waits | `GET /control/tasks/{task_id}` |
+| operator-ready summary and stream anchor | task snapshot |
+| dispatch/checkpoint/boundary/graph history | task trace |
+| work-plan revisions, dispatch-start revisions, waits, checkpoints, boundaries, and controls in order | event list and SSE |
+| complete human request/resolution | human-request route |
+| complete command source/result/provenance | command-run list/detail routes |
+| explicit authorized command output | command-run log route |
 
-No mapper reads currentness from support files, provider streams, provider events, or client-local timestamps.
+No mapper reads currentness from support files, provider streams/events, runtime signals, or client-local state.
 
-## Current runtime mapping
+## Active dispatch mapping
 
-The task runtime view maps only fields supplied by `RuntimeFlowRead` and its finalized nested reads.
+`current_dispatch` maps only `starting` or `open`. Closed dispatches map from trace/history. A frontend `closing` variant is forbidden.
 
-### Plan
+The mapped dispatch preserves full IDs, assignment/attempt, predecessor, opened reason, provider selection, adapter start time, activity revision/time, watchdog due, provider-start readback, and both effective capability readbacks exactly as supplied.
 
-Current plan rendering uses `current_plan` exactly:
+## Work-plan mapping
 
-- `attempt_id`
-- `revision`
-- `explanation`
-- ordered `steps`
-- `updated_by_dispatch_id`
-- `updated_at`
+`current_plan` maps assignment ID, revision, explanation, ordered steps, authoring dispatch, and timestamp. Null is rendered as a legal absence for every role; it is not renamed to `awaiting` or synthesized as an empty controller record.
 
-Plan history uses `plan_updated` event payloads. The mapper keys snapshots by `(attempt_id, revision)`, orders them by `event_seq`, and preserves attempts as separate histories. It does not derive a revision from step differences or display local unsaved plan state.
+History uses `work_plan_set` and `work_plan_cleared` in `event_seq` order. Mappers never derive revisions from step differences or keep unsaved browser edits as controller truth.
 
-### Progress
+## Node activity mapping
 
-Semantic progress uses `current_dispatch.last_progress_at`. A relative label is a pure display of that timestamp. It does not become a second stored progress value or an inferred watchdog state.
+The timestamp source is `current_dispatch.last_node_activity_at`. A relative label is a pure presentation of that value. The view-model name and copy must retain `activity`, not `semantic progress`.
 
-### Provider provenance
+`node_activity_revision` is useful for detail/support correlation but does not become a user-facing count of work performed.
 
-Provider provenance uses:
+## Provider selection mapping
 
-- `current_dispatch.requested_provider`
-- `current_dispatch.resolved_provider`
+Provider selection preserves:
 
-These two fields are the finalized minimum resolution provenance. A mapper may derive a display fact such as `isFallback = requested_provider != resolved_provider`, but it must not add a fallback chain, model, run id, or provider health field.
+- requested provider;
+- resolved provider; and
+- `selection_basis: explicit | default`.
 
-### Provider control
+A mapper may derive `isExperimental` from the supported product-status catalog for OpenClaw. It may not derive `isFallback`, a fallback chain, provider health, model, or private run/session identity.
 
-Current provider-control display uses the persisted nested read:
+OpenClaw may be selected explicitly or through the configured default. Experimental or incomplete-conformance disclosure must not map to disabled, unhealthy, or unselectable state.
 
-- `operation`
-- `state`
-- `attempt`
-- `max_attempts`
-- `next_retry_at`
-- `last_error_summary`
-- `updated_at`
+## Capability mapping
 
-The bounded `reason` comes from the corresponding `dispatch_control_updated` event. It belongs to the control chronology, not the persisted current read. The console may associate it with the matching dispatch, operation, and attempt for display, but a source refresh remains authoritative for current control state.
+The controller's two source-bearing objects map independently:
 
-The countdown is `max(0, next_retry_at - client_now)` for presentation. A timer expiry triggers neither provider control nor optimistic state mutation.
+- `provider_native_access.effective` and `provider_native_access.source`;
+- `network_access.effective` and `network_access.source`.
 
-### Recovery
+Mappers preserve the exact enums and source vocabulary. They may format the source for display but may not merge the axes, infer capability from provider selection, or turn a restrictive value into provider health.
 
-Recovery display uses:
+## Provider-start mapping
 
-- `watchdog_restart_count`
-- task `status`
-- `pause_reason`
-- current or most recent dispatch state and close reason
-- current provider-control readback
+Current start display maps:
 
-`pause_reason = runtime_recovery_exhausted` selects the exhausted-recovery presentation and ordinary continue action. No view-model-only recovery state is added.
+- revision;
+- attempt count;
+- next attempt timestamp;
+- retry kind; and
+- sanitized last error code.
 
-### External waits
+There is no max-attempt field, stop-operation state, or provider-completion state. The countdown is `max(0, next_attempt_at - client_now)` for presentation only and schedules nothing.
 
-The task read supplies `waiting_cause`, `current_human_request`, and `current_command_run` for compact current state. Dedicated source routes supply full request items, resolutions, command-run detail, and terminal provenance.
+`dispatch_start_updated` events remain chronology. The source read is authoritative after any event or reconnect.
 
-Task-event payloads may update chronology and prompt a source refresh. They do not replace the full source record or authorize an action.
+## Recovery mapping
 
-## Event mapping
+Recovery uses current watchdog count, active/closed dispatch lineage, activity/due data, task status, and pause reason. `runtime_recovery_exhausted` selects the repair-and-continue presentation; `runtime_transition_failed` selects integrity/config repair guidance. No frontend-only recovery state machine is added.
 
-The event client preserves the complete `task_event` envelope, especially `event_id`, `event_seq`, `event_type`, `occurred_at`, `dispatch_id`, `attempt_id`, and `payload`.
+## External-wait mapping
 
-Rules:
+Task readbacks supply compact current waiting cause/source. Dedicated routes supply full request items/resolutions or command detail/result/log refs.
 
-- order by `event_seq`, not arrival time
-- deduplicate by event identity without collapsing distinct revisions or attempts
-- render only documented event families
-- keep `plan_updated` snapshots intact for revision history
-- keep `dispatch_control_updated.reason` attached to its chronology row
-- fetch source detail for complete human answers and command logs
-- never translate provider output into synthetic task events
+Events prompt refresh and populate chronology; they never replace complete source records or authorize an action.
 
-## Cursor reset
+## Mutation mapping
 
-`cursor_reset_required` is a distinct client transition.
+Pause, continue, cancel, human resolve, and command cancel use generated request/response types and fresh guards.
 
-The console:
+The browser client relies on the packaged same-origin loopback boundary. It has no global operator API-key header, config bootstrap field, or key storage. Controller audit records these local mutations with `local_operator` surface provenance; the client does not claim a human identity.
 
-1. stops applying the stale stream
-2. clears event-derived current display assumptions
-3. refetches the task runtime read and snapshot
-4. refetches selected human-request or command-run detail when needed
-5. resets ordering and deduplication around the fresh snapshot
-6. reconnects after `stream_head_event_id`
+- no optimistic state claims success before the response;
+- pause/cancel success means controller truth committed, not provider cleanup completed;
+- continue success may include newly committed D2 but never provider start completion;
+- human resolve success means the source terminalized, not successor opening acknowledged;
+- command cancellation intent may remain nonterminal; and
+- stale/conflict/illegal failures trigger a targeted source refresh.
 
-The reset does not fold retained events into current state. Event history visible after reset is whatever the event owner lawfully returns; source rows remain sufficient for the current runtime view.
+## Event and cursor mapping
 
-## Mutation boundary
+The event client preserves `event_id`, `event_seq`, event type/source, occurrence time, dispatch/attempt context, and bounded payload. It orders by sequence, deduplicates identity, and renders only documented families.
 
-Pause, continue, cancel, human-request resolve, and command-run cancel use generated request/response contracts and fresh currentness guards.
+On `cursor_reset_required`, it stops the stale stream, clears event-derived current display assumptions, refetches task/snapshot and selected source detail, resets ordering around the fresh anchor, and reconnects after `stream_head_event_id`.
 
-Rules:
+## Failure boundary
 
-- no optimistic mutation claims a controller transition before success
-- normalized stale or illegal-state failures trigger a targeted source refresh
-- continue is offered only for controller states where the Control API defines it
-- human requests and command runs use their own resolution or cancellation routes
-- task cancel and command-run cancel remain distinct actions
+The client normalizes structured operation failures, HTTP local-admission errors, network/abort errors, cursor-reset failures, and malformed event frames. Render views use bounded summary, retryability, field path where present, and suggested next step.
 
-## Error boundary
+Raw provider exceptions, stack traces, credentials, environment values, binding material, and provider output are never placed in view models, fixtures, browser storage, or diagnostics.
 
-The client normalizes:
-
-- structured runtime failures
-- request validation failures
-- HTTP authorization and status errors
-- network and abort errors
-- cursor-reset failures
-- malformed event frames
-
-Render views consume the normalized failure summary, retryability, field path where available, and suggested next step. They never expose raw provider exceptions, stack traces, credentials, or process environment.
-
-## Data exclusions
-
-Frontend API state, view models, fixtures, and persisted browser storage must not add:
-
-- raw provider events, output, tool streams, or logs
-- provider credentials or authentication state
-- `provider_session_hint`
-- provider run ids or adapter-private handles
-- `NodeMcpInvocation` rows
-- unsupported counts, percentages, ETA, throughput, or health labels
-- support-file-derived currentness
-
-Fixtures may model only finalized controller fields, states, events, and errors.
-
-## Owner boundary
-
-This page owns client-side source selection and mapping. The [Control API](../interfaces/control-api.md) owns fields and routes, the [task event stream](../interfaces/task-event-stream.md) owns event payloads and reset semantics, and [Console runtime surfaces](../interfaces/console-runtime-surfaces.md) owns product presentation meaning.
+Provider setup, login, enablement, and default mutation remain CLI-only. Provider status in the console is passive readback, not a hidden browser mutation client. Callback HTTP is not a V2 console data or mutation lane.
 
 ## Related contracts
 
@@ -167,5 +119,5 @@ This page owns client-side source selection and mapping. The [Control API](../in
 - [Console runtime surfaces](../interfaces/console-runtime-surfaces.md)
 - [Control API](../interfaces/control-api.md)
 - [Task event stream](../interfaces/task-event-stream.md)
-- [Human request and approval contract](../interfaces/human-request-and-approval-contract.md)
+- [Human request and approval](../interfaces/human-request-and-approval-contract.md)
 - [Command run and external wait](../architecture/command-run-and-external-wait.md)

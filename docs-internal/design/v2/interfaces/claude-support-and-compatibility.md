@@ -2,95 +2,87 @@
 
 Status: Target
 
-This page defines the local managed support contract for the `claude` provider.
+This page owns the local managed support contract for the `claude` route.
 
-## Support status
+## Support status and packaging
 
-Claude is a targeted managed provider. AutoClaw uses the tested official Agent SDK and its bundled compatible Claude Code runtime by default.
+Claude is a managed target provider. The supported base AutoClaw distribution includes the tested official Agent SDK integration and its compatible bundled Claude Code runtime; a separately installed global `claude` CLI is not required.
 
-The normal installation is:
+An explicit custom runtime may be added only as an advanced override that passes the same pinned adapter conformance. Installation alone does not configure or authenticate Claude.
 
-```bash
-pip install "autoclaw[claude]"
-```
+## Authentication boundary
 
-A separately installed global `claude` CLI is not required. An explicit custom runtime path may be supported as an advanced local override after it passes the same conformance suite.
+The supported product setup uses an Anthropic API credential or a supported cloud provider such as Bedrock or Vertex. AutoClaw stores no raw credential.
 
-## Authentication
+An externally managed Claude.ai login may be observable through native diagnostics, but AutoClaw does not offer or broker Claude.ai Free, Pro, or Max subscription authentication without Anthropic approval.
 
-The supported AutoClaw product setup uses an Anthropic API credential or a supported cloud provider such as Bedrock or Vertex:
-
-```text
-autoclaw claude setup
-```
-
-The command explains and validates the selected provider-owned environment or native Claude configuration. AutoClaw stores no raw credential.
-
-Claude Code itself may have an externally managed Claude.ai login. AutoClaw may report that state for local diagnostics when the official SDK exposes it, but AutoClaw does not offer a Claude.ai login screen, broker subscription credentials, or market Free, Pro, or Max usage as an AutoClaw authentication path without Anthropic approval.
-
-The AutoClaw service must run as the intended OS identity and see the same `HOME`, `CLAUDE_CONFIG_DIR`, and cloud-provider environment used during setup.
+Status, check, and runtime must resolve the same service identity, `HOME`, `CLAUDE_CONFIG_DIR`, and cloud-provider environment.
 
 ## Configuration inheritance
 
-The managed adapter explicitly loads normal Claude user, project, and local setting sources. It preserves the `claude_code` system-prompt preset and appends current AutoClaw instructions.
+The adapter explicitly loads supported Claude user, project, and local setting sources. It preserves the native `claude_code` system-prompt preset and applies current AutoClaw instructions through the supported ephemeral instruction override.
 
-Native settings may continue to own model, effort, thinking, skills, hooks, and project instructions. AutoClaw adds task cwd, Node MCP, the dispatch input, non-interactive permissions, and optional sparse model or effort overrides.
+AutoClaw's nonpersistent dispatch overlay contains:
 
-There is no AutoClaw-wide Claude context-window setting. The selected model, account, cloud provider, and Claude's native compaction own effective context behavior.
+- exact task workspace/cwd;
+- exact separate instruction and input lanes;
+- one private managed Node MCP connection with a fresh bearer credential;
+- the exact role-scoped Node tool allowlist;
+- noninteractive native question/permission behavior;
+- resolved provider-native tool/network policy; and
+- optional sparse model/effort override.
 
-## Workspace, permission, and MCP readiness
+It never writes the managed MCP credential or dispatch policy into native user/project configuration.
 
-The bundled runtime, AutoClaw process, task workspace, and Node MCP endpoint must share a compatible local execution environment.
+## Dynamic MCP attachment
 
-Readiness requires:
+Each provider-start attempt creates the supported programmatic Streamable HTTP MCP server configuration from the current managed binding and supplies a server-scoped allowed-tool set.
 
-- the SDK and bundled runtime can start
-- the task workspace exists and is accessible under the selected tool and sandbox policy
-- AutoClaw Node MCP connects through Streamable HTTP
-- required Node MCP tools are permitted
-- `AskUserQuestion` and unresolved provider-native approvals cannot wait for provider UI
-- a fresh session can commit an AutoClaw plan and boundary
-- the active SDK client can be interrupted and drained
+The exact SDK fields are pinned-version conformance details. The attachment remains per invocation, nonpersistent, semantic-only at the tool schema, role-scoped, and independently credentialed for concurrent dispatches.
 
-Operator MCP is not part of Claude worker readiness.
+## Start, continuity, and stop
 
-## Session and stop behavior
+One dispatch issues one new or continuity-assisted Claude query. A session ID/client may remain provider-private, but it is never controller authority or Node authentication.
 
-AutoClaw keeps the Claude session id as the provider session hint. The active `ClaudeSDKClient` stays private. `stop()` interrupts that client, privately drains the interrupted response before any reuse, and succeeds only when the active query and its adapter-owned background work can no longer continue.
+Every start receives the complete current instruction and input lanes. If continuity cannot accept that exact request safely, the adapter starts a fresh session.
 
-Resume always receives the current instructions and input. If the pinned version cannot refresh the instruction layer correctly, the adapter starts a fresh session and persists the replacement session id.
+`start()` returns when the provider accepts responsibility. SDK messages, hooks, native tool events, output, and final response never advance controller state.
 
-## Status and doctor
+When supported, `stop(dispatch_id)` makes one bounded interrupt attempt. If the SDK requires an interrupted response to be consumed before client reuse, the adapter either discards that client or drains it privately as resource cleanup. Runtime does not wait for drain, does not hold a dispatch fence, and proceeds when stop is unsupported, fails, or times out.
 
-```text
-autoclaw provider status claude
-autoclaw provider doctor claude
-autoclaw doctor --provider claude
-```
+## Noninteractive policy
 
-The checks report:
+`AskUserQuestion` and unresolved provider-native approvals must not wait for a UI AutoClaw does not consume. The adapter denies or resolves them under the declared machine policy. Intentional human direction uses AutoClaw `open_human_request` only.
 
-- enabled and default-provider state
-- installed SDK and bundled runtime versions
-- custom runtime path when used
-- credential source and presence without credential content
-- effective Claude config directory and loaded setting sources
-- task cwd, native-tool, permission, and sandbox compatibility
-- Node MCP reachability and tool discovery
-- fresh start, resume, interrupt, and drain conformance
-- confirmation that provider-native questions cannot wait invisibly
+Full native-tool access does not imply Node role elevation, controller command-run permission, or human-request capability.
 
-Missing supported authentication points to `autoclaw claude setup`. A failed Claude check blocks Claude dispatches only; it does not block AutoClaw startup.
+## Status and check
 
-## Non-goals
+Passive status may report enabled/default state, installed SDK/runtime versions, custom runtime path, effective config directory/setting sources, and credential-source presence without secret contents.
 
-- AutoClaw does not mirror all Claude settings into its own config.
-- AutoClaw does not persist SDK messages, hook events, built-in tool events, or provider terminal state as runtime truth.
-- AutoClaw does not translate `AskUserQuestion` into a second human-wait path.
-- AutoClaw does not broker Claude.ai subscription authentication without approval.
+`autoclaw providers check claude` may perform documented non-agent installation, configuration, authentication/reachability, policy, and deterministic MCP prerequisite checks. It creates no session/query, task, dispatch, binding, or Node call.
+
+## Required proof
+
+- dynamic programmatic MCP attachment with a server-scoped role allowlist;
+- exact two-lane delivery for fresh and continuity-assisted starts;
+- no hidden `AskUserQuestion` or approval wait;
+- supported API/cloud authentication boundary;
+- acceptance and definite/uncertain failure classification;
+- bounded interrupt without a runtime drain gate or client reuse violation;
+- service-identity/native-home consistency; and
+- no credential, provider-output, or private-binding leakage.
+
+## External basis
+
+- [Claude Agent SDK overview](https://code.claude.com/docs/en/agent-sdk/overview)
+- [Claude Agent SDK Python reference](https://code.claude.com/docs/en/agent-sdk/python)
+- [Claude Agent SDK MCP](https://code.claude.com/docs/en/agent-sdk/mcp)
+- [Claude Agent SDK user input](https://code.claude.com/docs/en/agent-sdk/user-input)
 
 ## Related contracts
 
 - [Provider support and compatibility](provider-support-and-compatibility.md)
-- [Provider CLI and doctor](provider-cli-and-doctor.md)
+- [Provider CLI and check](provider-cli-and-check.md)
 - [Claude Agent SDK adapter](../architecture/adapters/claude-agent-sdk.md)
+- [Managed Node MCP binding](../architecture/managed-node-mcp-binding.md)

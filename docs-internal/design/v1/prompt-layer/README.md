@@ -2,7 +2,7 @@
 
 Status: Target
 
-> **V2 supersession notice:** This directory remains the frozen V1 prompt baseline. V2 worker context reads, attempt plans, narrowed checkpoints, and provider-neutral prompt transport are owned by [Prompt system v2](../../v2/prompt-layer/prompt-system-v2.md) and [Attempt plan and checkpoint contract](../../v2/architecture/attempt-plan-and-checkpoint-contract.md).
+> **V2 supersession notice:** This directory remains the frozen V1 prompt baseline. V2 current-context reads, optional assignment work plans, narrowed checkpoints, and the two-file provider-neutral request are owned by [Prompt system](../../v2/prompt-layer/prompt-system.md) and [Work plan and checkpoint contract](../../v2/architecture/work-plan-and-checkpoint-contract.md).
 
 This folder owns the canonical frozen v1 prompt contract for the current runtime model.
 

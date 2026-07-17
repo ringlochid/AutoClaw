@@ -2,332 +2,352 @@
 
 Status: Target
 
-This page owns the V2 local runtime lifecycle, dispatch control states, provider-control retry policy, semantic progress clock, and watchdog recovery.
-
-It does not own provider-specific start and stop mechanics, task-root file layout, node MCP payload schemas, human-request resolution, command execution, or public control routes. Those surfaces consume this lifecycle.
+This page owns V2 asynchronous runtime effects, exact-source routing, dispatch start retry, admitted-call activity, watchdog recovery, and process-lifetime ownership. Source transactions and relational fields are owned by [Runtime records and control state](runtime-records-and-control-state.md).
 
 ## Core rule
 
-AutoClaw V2 is one local, same-host runtime. Controller records own lifecycle truth, and meaningful node MCP-backed commits own agent progress. Provider acceptance, output, events, native tool streams, disconnects, and terminal frames never advance progress or complete a dispatch.
+Controller truth changes synchronously in the operation that owns the concept. The asynchronous runtime handles only work that must occur after that commit or depends on elapsed time or an owned OS resource.
 
-One API lifespan owns one `LocalRuntimeSupervisor`. No request handler, watchdog helper, adapter module, or background monitor may create a second provider-control owner.
+The runtime never waits for provider output, final response, drain, or termination to decide whether a controller operation succeeded.
 
-## Runtime boundary
+## Sync and async ownership
 
-The local process shape is:
+| Cause | Synchronous authoritative transaction | Asynchronous exact-source work |
+| --- | --- | --- |
+| task/flow start | persist runnable flow and root source | materialize and conditionally create root dispatch |
+| accepted boundary | persist boundary and close D1 | materialize and conditionally create D2 |
+| admitted Node MCP call | refresh exact dispatch activity revision once | register the new exact watchdog deadline |
+| open human request | persist request + wait and close D1 | register exact request deadline only |
+| terminal human request | terminalize request and clear matching wait | materialize and conditionally create D2 when runnable |
+| start command run | persist run + wait and close D1 | launch and supervise exact run |
+| terminal command run | terminalize run and clear matching wait | materialize and conditionally create D2 when runnable |
+| watchdog due | none before due handler | materialize, then atomically close D1 + create D2 or pause on cap |
+| operator pause | persist pause intent and close current dispatch authority | exact dispatch cleanup only; active external source survives |
+| task cancel | persist terminal intent, close current authority, and terminalize sources as owned | exact dispatch and live-process cleanup signals |
+| operator continue | directly await validation, materialization, and run+D2 commit | provider start only |
+| D2 committed `starting` | none | validate refs, create binding, invoke provider, retry if needed |
 
-```text
-AutoClaw API lifespan
-  -> LocalRuntimeSupervisor
-      -> AgentControlManager
-      -> provider-control retry scheduler
-      -> watchdog
-      -> managed Codex and Claude processes
-  -> controller database
-  -> node and operator MCP servers
-  -> local task roots and workspaces
+The source call returns after its own transaction. It does not wait for the listed asynchronous work or an acknowledgement.
 
-externally managed OpenClaw Gateway
-  <- controlled through the OpenClaw adapter
-```
+## Lifespan-owned components
 
-The supervisor owns runtime coordination only. The database still owns canonical task, assignment, attempt, dispatch, wait, and boundary facts.
-
-This phase does not support:
-
-- remote workspaces or workspace synchronization
-- message-queue delivery or distributed workers
-- object-store task roots
-- separately deployed provider-control services
-- multiple active AutoClaw runtime processes over one controller database
-- automatic OpenClaw installation or supervision
-
-Different task lineages may run concurrently. One task lineage still has at most one current open dispatch.
-
-## Runtime owners
-
-### `LocalRuntimeSupervisor`
-
-The API lifespan creates and closes exactly one supervisor. It owns:
-
-- the `AgentControlManager`
-- delayed retry scheduling
-- watchdog scanning and recovery dispatch
-- managed local agent-process cleanup
-- shutdown ordering
-
-It reconstructs pending local work from controller state after process restart. Its in-memory queue is scheduling machinery, not runtime truth.
-
-### `AgentControlManager`
-
-Every provider `start` and `stop` call passes through this one owner.
-
-It owns:
-
-- the central asynchronous command queue
-- adapter instances and adapter-private live handles
-- provider operation timeouts
-- exponential retry
-- duplicate stop coalescing
-- cancellation of delayed starts when stop becomes desired
-- bounded controller readback for current provider-control work
-
-It does not interpret provider output as progress, completion, or workflow state. An adapter may privately drain SDK output or retain a connection when required to keep its process healthy.
-
-## Dispatch states
-
-`Dispatch.status` has exactly these values:
-
-- `starting`
-- `open`
-- `closing`
-- `closed`
-
-`Dispatch.closed_reason`, when the dispatch is closed, has exactly these values:
-
-- `boundary`
-- `human_request_wait`
-- `command_run_wait`
-- `cancelled`
-- `superseded`
-- `control_failed`
-
-Meanings:
-
-| Status     | Meaning                                                                 |
-| ---------- | ----------------------------------------------------------------------- |
-| `starting` | controller truth and node authority exist; provider start is pending    |
-| `open`     | provider start handed off successfully; semantic MCP work may commit    |
-| `closing`  | controller has committed a provider-stop intent                         |
-| `closed`   | this dispatch can no longer accept node MCP writes                       |
-
-Rules:
-
-- status changes come from controller commits, never provider event normalization
-- `open` means provider start handed off successfully, not that the provider emitted a start event
-- `closed_reason = boundary` requires an accepted controller boundary
-- legal external waits close the dispatch rather than suspending it
-- the old dispatch is closed before a watchdog replacement dispatch is committed
-- a closed dispatch never becomes open again
-
-## Dispatch start sequence
-
-The controller opens a dispatch in this order:
-
-1. Resolve provider preference and fallback to one `resolved_provider`.
-2. Build the complete `PromptTransportRequest` from current controller truth.
-3. Mint the existing task/node-recognition `NodeSession.session_key`.
-4. Atomically commit the `Dispatch` in `starting`, its prompt request, and its open `NodeSession` authority.
-5. Enqueue one `start` operation through `AgentControlManager`.
-6. Retry transient control failures under the provider-operation budget.
-7. After successful handoff, persist the effective `provider_session_hint`, set `adapter_started_at`, and move the dispatch to `open`.
-
-The session key is created before launch so a fast agent can call node MCP immediately. It remains the existing AutoClaw task and node recognition value; V2 does not add a new provider-specific MCP credential or execution generation.
-
-A current `starting` dispatch may accept node MCP calls through that authority during the launch-handoff race. A later start-success commit may move only a still-current `starting` dispatch to `open`; it must never reopen a dispatch that an early legal MCP wait or boundary already closed.
-
-Provider fallback must finish before step 4. One dispatch never changes provider inside its six-call start budget. If fallback chooses another provider, that choice belongs to a new dispatch prepared from current controller truth.
-
-Start retry time does not consume the agent work window. The 900-second clock begins only when `adapter_started_at` commits.
-
-## Provider-control retry policy
-
-The defaults are:
-
-```toml
-provider_control_max_attempts = 6
-provider_control_initial_backoff_seconds = 1
-provider_control_operation_timeout_seconds = 15
-```
-
-Six means six total calls:
-
-| Call | Wait before the next call |
-| ---- | ------------------------- |
-| 1    | 1 second                  |
-| 2    | 2 seconds                 |
-| 3    | 4 seconds                 |
-| 4    | 8 seconds                 |
-| 5    | 16 seconds                |
-| 6    | none                      |
-
-The total configured backoff is 31 seconds, excluding each bounded operation timeout.
-
-Rules:
-
-- connection establishment and the requested start or stop share one attempt budget; retries must not nest
-- delayed retries are scheduled back into the central queue; a queue worker never sleeps through the delay
-- transient connection, timeout, and availability failures retry
-- authentication, configuration, and invalid-request failures fail without spending the remaining transient retry budget
-- repeated stop requests for one dispatch share one in-flight operation
-- once a dispatch is stopped, later stop requests succeed as no-ops
-- a queued stop cancels any delayed start for the same dispatch
-- provider I/O occurs after desired controller state commits, never inside the database transaction
-
-Controller readback exposes the operation, current call number, maximum calls, next retry time, and sanitized last error. The event/API owner decides the exact carrier, but the retry scheduler does not rely on an event stream to recover its state.
-
-If the initial dispatch start exhausts its budget or fails with a non-retryable control error, the controller closes that dispatch with `closed_reason = control_failed` and pauses the task with `pause_reason = runtime_recovery_exhausted`. This initial failure does not increment the attempt's watchdog restart count. After the provider is repaired, ordinary operator continue prepares a new same-attempt dispatch.
-
-## Semantic progress
-
-`Dispatch.last_progress_at` is the one watchdog progress clock.
-
-It records controller commit time, never an agent-supplied or provider-supplied timestamp.
-
-It advances in the same transaction as a meaningful, accepted, current node MCP-backed semantic commit, including:
-
-- a changed `AttemptPlan`
-- an allowed progress or terminal checkpoint
-- a successful assignment, structural, release, boundary-preparation, or external-wait mutation
-- an accepted `return_boundary` commit
-- another explicitly documented controller mutation that changes the current runtime lineage
-
-It does not advance for:
-
-- `get_current_context`, task-file listing, or task-file reading
-- a failed, rejected, stale, or unauthorized tool call
-- an identical `update_plan` request
-- provider acceptance, output, tool streams, events, or terminal state
-- MCP transport connectivity by itself
-- task-event emission without an owning semantic state change
-
-The minimal `NodeMcpInvocation` record shows whether a call started, completed, failed, and advanced progress. It does not create another activity clock.
-
-## Watchdog eligibility and deadline
-
-The default is:
-
-```toml
-watchdog_stale_after_seconds = 900
-watchdog_restart_limit = 2
-```
-
-One dispatch is watchdog-eligible only when all of these are true:
-
-- it is the current dispatch for the task lineage
-- its status is `open`
-- it has `adapter_started_at`
-- the task is not terminal or operator-paused
-- no current human-request or command-run source wait owns the task lineage
-- recovery is not already active for the dispatch
-
-The stale anchor is:
+The main FastAPI lifespan owns one instance of each runtime resource:
 
 ```text
-last_progress_at ?? adapter_started_at
+FastAPI lifespan
+  RuntimeEffectRouter
+  DeadlineScheduler
+  CommandProcessOwner
+  provider adapter resources
+  managed and compatibility Node MCP applications
+  SupportProjectionOwner
 ```
 
-There is no separate provider-silence clock, bootstrap clock, read-activity clock, or parent/root deadline. Parent and root normally finish quickly; they follow the same dispatch rule without new prompt obligations.
+`RuntimeEffectRouter` centralizes typed dispatch but does not centralize domain decisions. Each route calls a small handler owned by the exact source concept.
 
-## Normal completion
+`DeadlineScheduler` stores in-memory generations for sleeping efficiently and emits typed due signals. Durable UTC due values remain in source records. It is not a task scanner.
 
-The happy path is:
+`CommandProcessOwner` owns command OS resources, pipe consumption, cancellation, termination, and reap. Provider output consumption is not part of this owner.
+
+`SupportProjectionOwner` materializes operator/readback projections after commits. Its work cannot make a controller transition eligible and is not the request-file materialization required before D2.
+
+Support projections may reuse the same lifespan, queue, logging, and exact-source utility patterns, but they keep their own source/revision signal family and failure domain. They are not `RuntimeEffectRouter` control routes and cannot open/close a dispatch, clear a wait, start a provider, or refresh watchdog activity.
+
+Mounted MCP application lifespan contexts are explicitly entered by the main lifespan. Callers do not manually pair application-level `start()` and `close()` calls.
+
+## Typed signal model
+
+The complete runtime-control signal family is:
 
 ```text
-worker commits current plan and work
-  -> worker records terminal checkpoint
-  -> worker calls return_boundary
-  -> controller validates and commits boundary
-  -> controller closes NodeSession authority
-  -> controller closes dispatch with reason boundary
-  -> provider response ends naturally
+FlowStartCommitted(flow_id)
+BoundaryAccepted(source_dispatch_id)
+HumanRequestOpened(request_id)
+HumanRequestDue(request_id, due_at)
+HumanRequestTerminal(request_id)
+CommandRunPending(run_id)
+CommandRunDue(run_id, due_at)
+CommandRunCancellationRequested(run_id, ownership_revision)
+CommandRunTerminal(run_id)
+CommandProcessExited(run_id, ownership_revision)
+DispatchCleanupRequested(dispatch_id)
+WatchdogDeadlineChanged(dispatch_id, activity_revision, due_at)
+WatchdogDue(dispatch_id, activity_revision, due_at)
+DispatchStartDue(dispatch_id, provider_start_revision, due_at)
 ```
 
-The controller does not call adapter `stop` after an ordinary boundary. A provider terminal frame is neither required nor consumed.
+Every signal carries one natural source ID and only the generation/due value needed for staleness. Handlers derive task, flow, assignment, attempt, node, provider, policy, and file truth from fresh database reads.
 
-## External waits
+Signals are disposable scheduling hints. They are not durable requests, acknowledgements, idempotency keys, event-stream rows, or controller authority.
 
-Human requests and long command runs are task-lineage-owned waits, not suspended provider executions.
+An in-process enqueue either succeeds promptly or fails runtime health visibly; callers never wait for the signal's handler result. A process crash after source commit but before enqueue is the one accepted loss window and is repaired by the bounded startup audit. The runtime does not silently drop a rejected enqueue while remaining healthy.
 
-The opening sequence is:
+## Handler paradigm
+
+Every handler follows the same small pattern:
 
 ```text
-worker records the required progress checkpoint
-  -> worker opens the external-wait source through node MCP
-  -> controller commits the source row and waiting cause
-  -> controller closes NodeSession authority
-  -> controller closes the dispatch with the matching wait reason
-  -> provider response ends naturally
+receive exact signal
+  -> open a fresh AsyncSession
+  -> load exact source and minimum linked rows
+  -> reject consumed, stale, paused, terminal, or otherwise ineligible state
+  -> perform preparatory file/process work outside the final transaction
+  -> repeat every authoritative predicate in one short conditional write
+  -> commit one legal winner or observe zero affected rows
+  -> publish only the next exact signal after commit
 ```
 
-Rules:
+No `AsyncSession` is shared across asyncio tasks. No handler hydrates a complete task projection merely to answer its source-specific question.
 
-- no terminal checkpoint is recorded for opening the wait
-- no workflow boundary is returned
-- no adapter stop is requested
-- the task, assignment, attempt, and `AttemptPlan` stay current
-- the ordinary dispatch watchdog has nothing open to inspect during the wait
-- the human-request or command-run owner monitors its own record
-- after a terminal resolution, the controller rereads currentness and opens a new dispatch on the same attempt when still legal
+The runtime does not hide effects in an `AsyncSession.commit()` override. The owning service commits explicitly and then explicitly publishes its typed signal.
 
-The exact request and command state machines belong to the [human-request owner](../interfaces/human-request-and-approval-contract.md) and the [command-run owner](command-run-and-external-wait.md).
+### Minimum reads by route
+
+Handlers do not begin from a task aggregate. They load the exact source first and join only facts required for that route:
+
+| Signal/route | Required durable reads before its conditional action |
+| --- | --- |
+| flow start | exact flow/root source, root assignment/attempt basis, current-dispatch existence, render/provider-route inputs |
+| accepted boundary | accepted boundary, source D1 and successor field, flow status/current pointer, routed assignment/attempt, exact checkpoint/trigger/render inputs |
+| human opened/due | exact request status, immutable due/default policy, matching flow wait only when terminalizing |
+| human terminal | exact terminal request, source D1/successor field, flow/wait/current status, same assignment/attempt and render inputs |
+| command pending/due/cancel/exit | exact run request/state/due/ownership revision plus the minimum workspace/process-policy facts; flow/wait only for terminalization |
+| command terminal | exact terminal run, source D1/successor field, flow/wait/current status, same assignment/attempt and render inputs |
+| dispatch cleanup | exact closed dispatch/provider route plus process-local binding/adapter handle keyed by dispatch ID |
+| watchdog deadline change | no task aggregate; monotonic in-memory replacement by exact dispatch/revision/due key |
+| watchdog due | exact D1, activity revision/deadline, flow current/runnable state, existence of D1-owned human/command source, recovery lineage, and render inputs |
+| dispatch start | exact current D2, provider-start revision/due, committed request refs, resolved provider route, workspace, capability/tool exposure |
+| support projection | exact committed source ID and projection revision plus only the read-model rows that projection owns |
+
+Renderer input may require several controller rows, but it is a purpose-built prompt snapshot query, not the broad runtime/task read model used by API or console. Preparatory reads are repeated as exact predicates in the final write whenever they affect legality.
+
+The single router owns queue dispatch, lifecycle, error isolation, and health. Each route function owns one concept question; it does not automatically open unrelated dispatches except where that exact source's contract says continuation is its next effect.
+
+### Source ownership direction
+
+The target source layout keeps the cross-domain mechanism thin and the decisions domain-owned:
+
+```text
+runtime/post_commit/
+  router.py          # typed queue dispatch and health only
+  deadlines.py       # exact-key timer registration and due publication
+
+runtime/dispatch/
+  materialize.py     # immutable request-pair preparation
+  start.py           # one starting-dispatch provider question
+
+runtime/boundary/
+  continuation.py
+
+runtime/human_request/
+  deadline.py
+  continuation.py
+
+runtime/command_run/
+  process_owner.py
+  continuation.py
+
+runtime/watchdog/
+  recovery.py
+
+runtime/projection/  # separate support/readback effects
+```
+
+The filenames are steady-state ownership guidance, not permission to keep a second broad worker beside them. Transport modules call owning domain services; they do not contain these transitions.
+
+## Ordinary successor opening
+
+Boundary, human terminal, command terminal, root, and directly awaited continue handlers first mint a prospective `dispatch_id`, render/publish its canonical request pair, and then perform one final transaction that:
+
+1. rereads or conditionally matches the exact committed source;
+2. proves the flow is runnable and the source has no successor;
+3. proves the expected predecessor/current pointer has not changed;
+4. inserts D2 in `starting` plus its refs-only request row;
+5. records the source consumption/successor identity; and
+6. replaces current dispatch authority.
+
+Only a committed D2 emits `DispatchStartDue`. A losing opener may leave an unreferenced file pair but never invokes a provider.
+
+Nonterminal human-request and command-run opening never creates D2. Only their later terminal source can authorize continuation.
+
+## Transition-preparation failure
+
+Known deterministic failure before D2—unsupported/disabled route, invalid controller relationship, unsafe request path, or request materialization failure—performs zero provider I/O.
+
+For an automatic exact-source route, one short conditional transaction proves the source is still current/runnable, pauses the flow with `runtime_transition_failed`, and leaves the source without a successor so operator continue can consume it after repair. For watchdog, that transaction also closes the still-current stale D1 with `control_failed`; it never leaves a paused flow with active dispatch authority. Direct operator continue returns the structured failure and preserves the existing paused state instead of committing a second pause.
+
+Unexpected infrastructure exceptions that cannot be classified safely fail runtime health and leave source truth recoverable; they do not guess a controller transition.
 
 ## Watchdog recovery
 
-Recovery is the only automatic stale-execution replacement lane.
+Watchdog uses `WatchdogDue(dispatch_id, activity_revision, due_at)`. The handler first proves a plausible candidate, publishes the prospective D2 request pair, then enters one final transaction that repeats all checks and atomically:
 
-For an eligible stale dispatch, the controller performs this sequence:
+- proves D1 is the current `open` dispatch;
+- proves the flow is runnable;
+- matches the exact activity revision and due time;
+- proves the stale deadline is reached;
+- proves D1 owns no human-request or command-run source, including a terminal but unrouted source;
+- proves the same-attempt recovery cap is not exhausted;
+- closes D1 as watchdog-superseded; and
+- creates D2 in `starting` with refs and the same assignment/attempt.
 
-1. Acquire the task execution-slot recovery lock and reread currentness.
-2. Close the stale dispatch's `NodeSession` authority so later node MCP writes are rejected.
-3. Commit the stale dispatch to `closing` and enqueue provider `stop`.
-4. Retry stop under the six-call provider-control policy until the adapter confirms that its active execution can no longer continue that turn.
-5. Only after successful stop, close the stale dispatch with `closed_reason = superseded`.
-6. Increment the current attempt's watchdog restart count.
-7. Commit a replacement dispatch on the same assignment, attempt, and `AttemptPlan` using current controller context and the latest checkpoint.
-8. Enqueue start under the six-call provider-control policy.
-9. On successful handoff, persist the effective session hint and new `adapter_started_at`; semantic progress starts a fresh 900-second window.
+If another operation wins during materialization, the final write affects zero rows and the handler performs no provider work.
 
-The replacement may pass the prior opaque `provider_session_hint` only when the resolved provider is unchanged. If continuation fails, the adapter may start fresh and return a replacement hint. A provider change omits the incompatible hint. Correctness comes from the regenerated prompt, current plan, and checkpoint, not provider memory.
+If the configured same-attempt watchdog cap is exhausted, the final transaction closes D1 with `control_failed`, pauses the flow with `runtime_recovery_exhausted`, and creates no D2. The default cap is two replacements.
 
-Normal successful completion and legal external waits never use this recovery stop lane.
+Before a winning watchdog D2 starts, the dispatch starter makes one bounded adapter stop attempt for D1. A successful return proves stopped/not-running. Unsupported, failed, or timed-out stop does not block D2 start.
 
-If stop cannot establish its adapter-owned execution boundary, no replacement dispatch is created. Stop exhaustion follows the `control_failed` and `runtime_recovery_exhausted` path below.
+## Node activity clock
 
-## Recovery exhaustion
+Each current dispatch stores:
 
-One automatic watchdog restart cycle contains one stop operation and one start operation, each with its own six-call budget. The default limit is two cycles per current attempt.
+- `adapter_started_at` when provider start is positively accepted;
+- `last_node_activity_at`; and
+- monotonic `node_activity_revision`, initially zero.
 
-If stop or start exhausts its provider-control budget, or if the attempt exhausts its restart count:
+Every authenticated and admitted exact-current Node MCP invocation sets the timestamp from the controller clock and increments the revision once. This includes reads, accepted no-ops, and normalized domain failures after admission.
 
-1. close any current node-session authority
-2. close the affected dispatch with `closed_reason = control_failed`
-3. pause the task with `pause_reason = runtime_recovery_exhausted`
-4. emit bounded controller readback describing the failed operation and call count
+Malformed transport, failed binding authentication, wrong task/dispatch, stale authority, role/capability denial, or other pre-admission rejection does not refresh activity. Provider output and provider terminal state never refresh it.
 
-After repairing provider configuration or availability, the operator uses the ordinary continue control. Continue recomputes legality and opens a new same-attempt dispatch; it is not a special provider reconnect transition.
+The watchdog deadline is:
 
-## Explicit cancellation and shutdown
+```text
+(last_node_activity_at ?? adapter_started_at) + watchdog_interval
+```
 
-The central stop path is called only for:
+Only `open` dispatches have a watchdog deadline. `starting` dispatches are governed by provider-start retry instead.
 
-- watchdog recovery
-- explicit operator cancellation of a dispatch, including pause or task cancel
-- API lifespan shutdown cleanup
+After activity commits, `WatchdogDeadlineChanged(dispatch_id, activity_revision, due_at)` asks the scheduler to replace the in-memory due generation. The scheduler never lets an older revision overwrite a newer one. A due signal carrying the old revision or due time loses at the final conditional write.
 
-Explicit cancellation commits controller intent and closes node authority before provider I/O. It closes the dispatch as `cancelled` after the stop path. Shutdown uses the same manager and coalescing logic; it does not invent a second adapter cleanup path.
+## Provider start
 
-## Required invariants
+`DispatchStartDue` answers one question for one current `starting` dispatch. It:
 
-- one task lineage has at most one current `starting`, `open`, or `closing` dispatch
-- every provider-control call goes through `AgentControlManager`
-- every current `starting` or `open` dispatch has one open `NodeSession`
-- every `closing` or `closed` dispatch has closed node-session authority
-- `adapter_started_at` exists before watchdog eligibility
-- start retry delay never counts as semantic work time
-- only meaningful accepted node MCP-backed commits advance `last_progress_at`
-- legal external waits own no open provider dispatch
-- watchdog replacement preserves assignment, attempt, and plan
-- semantic `retry` alone creates a new attempt
-- provider identity does not change inside one dispatch control budget
-- provider terminal state never closes a controller boundary
+1. matches `provider_start_revision` and due time;
+2. loads the committed request refs;
+3. validates logical paths, containment, file type, and readability;
+4. reads the exact instruction and input bytes;
+5. resolves the committed provider route and effective tool exposure;
+6. creates a fresh `DispatchMcpBinding` for managed routes, or selects the compatibility connection for OpenClaw;
+7. invokes the adapter; and
+8. conditionally records acceptance or the next retry on the same D2.
 
-## Related contracts
+The starter never renders, publishes, repairs, substitutes, or hashes request files. A same-D2 retry rereads the same bytes.
 
-- [Controller contract and resumable execution](controller-contract-and-resumable-execution.md)
+Deterministic missing, escaped, unreadable, or wrong-dispatch refs cause zero provider I/O. A short conditional transaction closes the still-current `starting` D2 with `control_failed`, clears current authority, and pauses the flow with `runtime_transition_failed`.
+
+## Provider-start retry
+
+Provider connection, authentication, availability, timeout, explicit start failure, and uncertain acceptance are retriable. The dispatch remains `starting` indefinitely until accepted or a separate controller action closes it.
+
+Retry delay is exponential from `dispatch_launch_retry_initial_backoff_seconds` (default one second) and capped by `dispatch_launch_retry_max_backoff_seconds` (default 30 seconds). There is no maximum attempt count and no provider-start exhaustion pause.
+
+The persisted retry facts are:
+
+- monotonic `provider_start_revision`;
+- `provider_start_attempt_count`;
+- `next_provider_start_at`;
+- `provider_start_retry_kind = initial | definite_failure | uncertain_acceptance`; and
+- sanitized `provider_start_last_error_code`.
+
+An uncertain attempt includes adapter acceptance followed by an unconfirmed controller write, transport ambiguity after invocation, or startup recovery of a `starting` dispatch for which an earlier call may have occurred.
+
+Any nonaccepted managed attempt revokes its just-issued binding before it can be retained for retry. For definite failure, the starter records/schedules the retry directly. For uncertain acceptance, it also makes one bounded `stop(dispatch_id)` call when supported before the next attempt. The next attempt creates a fresh binding and starts the same D2. Stop failure does not create a fence state or prevent retry.
+
+An accepted start conditionally moves a still-current D2 to `open`, sets `adapter_started_at`, clears due/retry metadata, and registers the first watchdog deadline. If the provider already used its managed/compatibility Node authority to close D2 before the acceptance write, the write affects zero rows; the starter performs cleanup only and neither reopens nor retries that dispatch.
+
+## Command deadlines and process ownership
+
+Human due handling changes only the exact open request whose immutable `due_at` still matches. Human answer and timeout compete on source status; one terminal transition wins.
+
+Command launch, exit, timeout, and cancellation compete on the exact run and ownership revision. `cancellation_requested` is nonterminal until the process has terminated and been reaped. A process callback cannot reopen or continue a stale lineage.
+
+Consuming command stdout/stderr prevents child-process pipe blockage and feeds bounded command logs. It is not provider drain.
+
+Restart never blindly relaunches a command process whose ownership is ambiguous. The command owner first classifies the durable run and any locally provable process state according to the command-run contract.
+
+## Pause, cancel, and cleanup
+
+Pause and task cancel commit controller truth first. Current dispatch authority becomes invalid immediately through database currentness, even if a process-local binding has not yet been removed.
+
+Provider stop and process cleanup are post-commit best effort. They cannot delay, reverse, or fail the pause/cancel transaction.
+
+An active human request or command run survives ordinary pause. Its terminal result may commit while paused but cannot open a successor until an explicit legal continue consumes it.
+
+Task cancel terminalizes/cancels matching sources as owned, requests process termination, and never opens a successor.
+
+## Startup recovery
+
+Before accepting runtime work, lifespan startup exhausts bounded indexed pages for:
+
+1. runnable flows with no root dispatch;
+2. accepted boundaries whose source dispatch has no successor;
+3. terminal human requests or command runs whose successor is absent;
+4. open human requests with future or overdue deadlines;
+5. command runs pending launch, running, or cancellation-requested;
+6. current `starting` dispatches, treating any possibly attempted start as uncertain;
+7. current eligible `open` dispatches and their watchdog deadlines; and
+8. paused or terminal rows needing resource cleanup only.
+
+Each discovered row emits or registers the same exact signal used during normal operation. A recovered `open` managed dispatch receives only its existing watchdog registration; startup does not recreate its lost binding or blindly start another provider. Startup does not run a special whole-task reconciler.
+
+An explicit safety ceiling must be high enough to exhaust each family. Hitting it fails runtime health rather than silently leaving work undiscovered.
+
+## Failure isolation and health
+
+- one handler failure is logged with exact source identity and leaves durable truth recoverable;
+- a deterministic domain failure records its owned outcome instead of crashing the router;
+- repeated transient provider failures reschedule the same D2;
+- support-projection failure cannot change controller currentness;
+- unexpected router, scheduler, or command-owner death fails runtime health; and
+- shutdown cancels sleepers, revokes bindings, and performs bounded resource cleanup without rewriting committed state.
+
+## Required race outcomes
+
+| Race | Required result |
+| --- | --- |
+| duplicate boundary signals | one successor; later signals no-op |
+| human/command open vs watchdog | the current D1 conditional transition chooses one; loser creates no source/successor |
+| terminal wait vs delayed watchdog | source row keeps watchdog ineligible until continuation consumes it |
+| human answer vs timeout | one terminal request status wins |
+| command exit vs timeout/cancel | one terminal run status wins after process rules |
+| activity vs watchdog due | new revision makes old due signal stale |
+| pause vs source terminalization | both facts may persist; paused flow prevents successor |
+| pause vs watchdog | runnable/current predicates choose one legal result |
+| continue vs cancel | flow terminal/control revision predicates choose one |
+| Node boundary/wait during provider-start handoff | the admitted operation may close current `starting` D2; late start acceptance cannot reopen or retry it |
+| duplicate provider start | in-process coalescing plus revision; uncertain repeat revokes/stops/retries same D2 |
+| two terminal continuation signals | one-successor constraint chooses one |
+
+## Removed target machinery
+
+- broad post-commit task discovery and whole-task reconciliation;
+- steady-state watchdog or dispatch-open polling;
+- `LocalRuntimeSupervisor` and `AgentControlManager` as domain owners;
+- provider call semaphore/pool;
+- generic ready/open request, ACK, outbox, or idempotency table;
+- broad per-task execution-slot lock;
+- shared `AsyncSession` across concurrent handlers;
+- hidden side effects in `AsyncSession.commit()`;
+- `closing` state or wait-for-stop fence;
+- provider output/drain/terminal progression;
+- finite six-call provider-start exhaustion; and
+- provider start rendering or repairing request files.
+
+## Framework basis
+
+These primary references guide implementation without overriding this product contract:
+
+- [FastAPI lifespan](https://fastapi.tiangolo.com/advanced/events/) for one application-owned resource lifecycle;
+- [SQLAlchemy session concurrency model](https://docs.sqlalchemy.org/en/20/orm/session_basics.html#is-the-session-thread-safe-is-asyncsession-safe-to-share-in-concurrent-tasks) for one `AsyncSession` per concurrent task; and
+- [SQLAlchemy asyncio guidance](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#using-asyncsession-with-concurrent-tasks) for explicit concurrent-session ownership.
+
+## Related
+
+- [ADR-0009: exact-source runtime control](../../../adr/ADR-0009-exact-source-runtime-control.md)
 - [Runtime records and control state](runtime-records-and-control-state.md)
-- [Attempt plan and checkpoint contract](attempt-plan-and-checkpoint-contract.md)
-- [Adapter contract](adapter-contract.md)
-- [Node and operator MCP surface contract](../interfaces/node-and-operator-mcp-surface-contract.md)
+- [Controller contract and resumable execution](controller-contract-and-resumable-execution.md)
+- [Managed Node MCP binding](managed-node-mcp-binding.md)
+- [Minimal provider adapter contract](adapter-contract.md)
 - [Human request and approval contract](../interfaces/human-request-and-approval-contract.md)
 - [Command run and external wait](command-run-and-external-wait.md)

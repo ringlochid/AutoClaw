@@ -113,7 +113,7 @@ For non-trivial V2 runtime implementation, start with these owner pages before r
 
 1. `docs-internal/design/v2/architecture/runtime-lifecycle-and-watchdog.md`
 2. `docs-internal/design/v2/architecture/runtime-records-and-control-state.md`
-3. `docs-internal/design/v2/architecture/attempt-plan-and-checkpoint-contract.md`
+3. `docs-internal/design/v2/architecture/work-plan-and-checkpoint-contract.md`
 4. `docs-internal/design/v2/architecture/task-root-and-file-access.md`
 5. `docs-internal/design/v2/architecture/controller-contract-and-resumable-execution.md`
 6. `docs-internal/design/v2/architecture/adapter-contract.md`

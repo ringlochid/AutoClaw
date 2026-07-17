@@ -2,186 +2,130 @@
 
 Status: Target
 
-This page owns the V2 console's runtime-facing product model: current task state, semantic progress, provider-control readback, watchdog recovery, external waits, task chronology, and operator controls.
-
-It does not own backend schemas, event payloads, provider behavior, definition authoring, or literal visual styling. Those remain with their named owners.
+This page owns the V2 console product model for current runtime truth, work plans, admitted Node activity, provider start, watchdog recovery, external waits, chronology, and operator controls. Backend schemas and lifecycle legality remain with their named owners.
 
 ## Core rule
 
-The console renders controller truth; it does not reconstruct an agent runtime from provider behavior.
+The console renders controller source rows for current state, task events for ordered chronology, and source-specific routes for complete human-request and command-run detail. It never reconstructs an agent runtime from provider output, provider events, support files, sessions, or adapter handles.
 
-Current state comes from Control API source-row reads. Ordered history and live chronology come from persisted task events. Source-specific detail comes from the human-request and command-run routes.
+## Primary experience
 
-The console never treats provider output, provider events, provider logs, support files, or opaque provider continuity as product truth.
+The runtime console coordinates:
 
-## Authority split
+1. task selection and compact controller status;
+2. task detail with the current assignment/attempt and active dispatch;
+3. ordered task chronology; and
+4. selected detail for plans, dispatches, waits, checkpoints, and boundaries.
 
-| Surface | Authority role | Console use |
-| --- | --- | --- |
-| Control API task and snapshot reads | current source-row state | bootstrap and refresh the current task view |
-| Control API human-request and command-run reads | complete external-wait source records | render request forms, run detail, and legal actions |
-| Task event list and SSE | append-only chronology | render revision history, control attempts, waits, checkpoints, and boundaries in order |
-| Trace | historical controller read model | inspect dispatch, checkpoint, boundary, and graph history |
-| Provider-native output | none | never rendered as runtime truth |
+The task tree answers what work exists, the runtime summary answers what is current, chronology answers what committed, and selected detail exposes lawful actions.
 
-Task events do not replace current source rows. A newer-looking event cannot overrule `RuntimeFlowRead`, the current external-wait record, or controller action legality.
+## Active dispatch
 
-## Primary runtime experience
+The console treats `current_dispatch` as active authority only. It displays `starting` or `open`; closed rows appear only in history. There is no `closing` presentation.
 
-The runtime console centers on four coordinated surfaces:
+For `starting`, it may show provider route, attempt count, next retry, retry kind, and sanitized error. It never shows a finite maximum or provider-start exhaustion. For `open`, it may show adapter acceptance time, last admitted Node activity, derived watchdog due time, and recovery count.
 
-1. task selection and compact task status
-2. task detail with the current execution tree and runtime summary
-3. ordered task chronology
-4. selected context for plans, dispatches, human requests, command runs, checkpoints, and boundaries
+Provider start state is AutoClaw controller state, not proof that the provider is generating or will complete.
 
-These surfaces may share one responsive page, but their authority roles remain distinct. The task tree answers what work exists, the runtime summary answers what is current, the chronology answers what happened, and the selected context exposes detail and lawful actions.
+## Work plan
 
-## Current plan and semantic progress
+The console renders the complete optional assignment-owned work plan:
 
-For the active worker attempt, the console renders the complete current `AttemptPlan` from `RuntimeFlowRead.current_plan`:
+- assignment identity and revision;
+- optional explanation;
+- one to nine ordered steps with `pending`, `in_progress`, or `completed` when a plan exists;
+- authoring dispatch; and
+- commit time.
 
-- attempt identity
-- plan revision
-- optional explanation
-- ordered steps using only `pending`, `in_progress`, and `completed`
-- dispatch and timestamp provenance supplied by the plan read
+Root, parent, and worker assignments may have a plan; all may legally have none. The UI does not synthesize a placeholder, require one before work, infer percent/ETA, or treat completed steps as a boundary.
 
-Plan revision history comes from ordered `plan_updated` task events. Each event is a bounded complete plan snapshot for one attempt and revision. The console groups history by `attempt_id` and orders it by event sequence; it never manufactures revisions from local edits or provider messages.
+History comes from `work_plan_set` and `work_plan_cleared` events. Accepted no-ops create no plan event.
 
-The console renders `current_dispatch.last_progress_at` as the last semantic controller progress time. It may present an accessible relative-time label derived from that timestamp while preserving the exact timestamp in detail. It does not turn plans into percentages, infer ETA, or treat read-only MCP traffic as progress.
+## Node activity and watchdog
 
-When `current_plan` is null, the console distinguishes the controller-defined cases: no active worker attempt, or the worker has not yet committed its first plan. It does not synthesize a placeholder plan.
+`last_node_activity_at` means the current dispatch admitted a valid current Node MCP call. Reads, accepted no-ops, and normalized domain failures after admission all refresh it. The UI labels this as Node activity, never semantic progress.
 
-## Provider resolution provenance
+The watchdog due label is derived from controller readback and the client clock for display only. Reaching zero in the browser schedules nothing.
 
-The console renders the finalized provider-resolution provenance exactly as:
+Watchdog replacement appears through the closed historical D1, a new D2 with `opened_reason = watchdog_recovery`, and the current recovery count. Exhaustion presents task `paused`, `pause_reason = runtime_recovery_exhausted`, and ordinary continue after repair.
 
-- `requested_provider`
-- `resolved_provider`
+The console does not create another recovery state machine or imply that provider stop succeeded before D2.
 
-When the values differ, the console may label the resolved provider as a fallback. It does not invent a fallback chain, model name, provider run id, or provider health state.
+## Provider selection and support status
 
-Provider selection is dispatch provenance, not watchdog truth. A provider badge never implies that the provider is currently generating, connected, or complete.
+The console shows requested/resolved provider and `selection_basis = explicit | default`. The target has no provider fallback label or chain.
 
-## Provider-control readback
+OpenClaw is labeled experimental but remains selectable explicitly or through the operator-configured default. Incomplete conformance is disclosed as support information; it never becomes a disabled, unhealthy, or globally unavailable state. Codex and Claude are managed target lanes. A badge describes product/selection status only; it never asserts live provider health.
 
-For the current dispatch, the console renders the persisted provider-control fields:
+Provider setup, login, enablement, and default mutation are CLI-only for the loopback phase. The console exposes passive provider/default/check readbacks only; it is not a browser provider-mutation surface.
 
-- `operation`
-- `state`
-- `attempt`
-- `max_attempts`
-- `next_retry_at`
-- `last_error_summary`
+## Effective capabilities
 
-The matching `dispatch_control_updated` event supplies the bounded control `reason` for chronology. For starts, `initial_dispatch` covers every non-watchdog dispatch start; the more specific continuation or retry cause comes from `dispatch_opened.reason`. The console may show those values beside the corresponding rows, but it does not fold either event into a replacement current-state record.
+The active-dispatch view presents both independent controller readbacks:
 
-The retry countdown is derived from `next_retry_at` and the client clock. It is presentation only; reaching zero never schedules a retry or mutates controller state. The console refreshes current source rows after a control event rather than assuming the event payload is the latest state.
+```yaml
+provider_native_access:
+  effective: full | restricted | denied
+  source: default | policy_definition | task_policy | controller
+network_access:
+  effective: allow | deny
+  source: default | policy_definition | task_policy | controller
+```
 
-Control `state` remains AutoClaw's start/stop operation state:
-
-- `queued`
-- `attempting`
-- `retry_scheduled`
-- `succeeded`
-- `failed`
-
-It is never relabeled as an agent lifecycle, provider completion, or provider health state.
-
-## Watchdog recovery
-
-The console renders the active attempt's `watchdog_restart_count` and the ordinary runtime state around it.
-
-During recovery, dispatch and provider-control source reads show the current stop or start work. Task events explain the ordered recovery attempts. The console does not create a separate recovery state machine.
-
-When recovery exhausts, the canonical presentation is:
-
-- task status `paused`
-- `pause_reason = runtime_recovery_exhausted`
-- the latest bounded provider-control failure readback
-- ordinary operator `continue` as the recovery action after the provider is repaired
-
-The console must not present continue as a provider reconnect, automatic retry, human-request answer, or command-run completion. It invokes the ordinary controller continue route and renders the returned source truth.
+Copy distinguishes the effective value from its controlling source. It never combines network access with provider-native access, treats provider selection as capability provenance, or exposes provider configuration.
 
 ## Human-request waits
 
-An open human request is a controller-owned external wait. The console renders:
+The console resolves only the exact current open request through its dedicated route. It renders typed `direction`, `approval`, `input`, and `review` controls, immutable terminal history, due time, and provenance.
 
-- current waiting cause from `RuntimeFlowRead`
-- compact current request summary in task context
-- the complete request and resolution history from the dedicated source-row route
-- typed item controls for `direction`, `approval`, `input`, or `review`
-- terminal request history without illegal resolve actions
+Resolution returns when the request transaction commits. The UI does not wait for or claim a successor dispatch acknowledgement. It refreshes source state/event chronology until an independently opened successor appears.
 
-The console resolves only the current open request through its dedicated route. It never uses task continue as an answer path and never exposes provider-native question or approval UI.
+Continue is not an answer action. Provider-native question/approval UI is never surfaced as an AutoClaw wait.
 
 ## Command-run waits
 
-A current command run is another controller-owned external wait. The console renders:
+The console renders exact command source state:
 
-- exact source state from `pending_start`, `running`, `cancellation_requested`, `succeeded`, `failed`, `timed_out`, or `cancelled`
-- command, description, workdir, timing, timeout, and bounded summary fields supplied by the source read
-- terminal result and cancellation provenance when present
-- cancel only while the Control API allows it
+```text
+pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
+```
 
-`cancellation_requested` remains non-terminal. The task continues waiting until the command-run source becomes terminal.
+`cancellation_requested` remains nonterminal until process termination and reap. Bounded summary and log refs come from source reads; raw logs require explicit authorized inspection.
 
-Ordinary views use bounded summaries and log references. An authorized explicit log inspection may call the dedicated command-run log route. Command output never replaces the normalized source state.
+Command output is never provider output and never replaces normalized run state.
 
-## Task chronology and cursor reset
+## Chronology and cursor reset
 
-The execution chronology renders persisted task events in ascending `event_seq` order. Event type remains the primary label; provider or adapter is never an event source.
+Task events render in ascending event sequence. Provider/adapter/runtime-signal identities are not event sources.
 
-The client keeps cursor, high-water mark, ordering, and deduplication explicit. On `cursor_reset_required`, it performs the canonical reset:
-
-1. discard event-derived current-state assumptions
-2. reread `GET /control/tasks/{task_id}`
-3. reread `GET /control/tasks/{task_id}/snapshot`
-4. reread source-specific detail when the selected view requires it
-5. reconnect after `stream_head_event_id`
-
-Cursor reset returns to a fresh source-row snapshot. The console never rebuilds current state by folding retained events.
+On `cursor_reset_required`, the client discards event-derived current-state assumptions, rereads task and snapshot source rows, rereads selected source detail when needed, and reconnects after the snapshot head. It never folds events into a replacement state store.
 
 ## Operator controls
 
-Pause, continue, cancel, human-request resolution, and command-run cancellation use their dedicated Control API routes and current controller guards.
+Pause, continue, cancel, request resolution, and run cancellation use fresh controller guards and their dedicated routes.
 
-Rules:
+The packaged console is a same-origin loopback client. It sends no global operator API key and receives no API-key bootstrap; successful local mutations carry controller-recorded `local_operator` surface provenance rather than an asserted human identity.
 
-- disabled buttons are presentation; backend legality remains authoritative
-- current structural revision guards come from fresh source reads
-- stale or illegal mutations render the shared structured failure and trigger a targeted refresh
-- pause does not resolve an external wait
-- continue does not resolve an external wait
-- task cancel is distinct from command-run cancel
+- pause/cancel return after the authoritative transaction and do not wait for provider stop;
+- continue returns after legal D2+refs commit but before provider start;
+- human resolution returns independently of successor opening;
+- disabled buttons are presentation only; and
+- stable conflict/stale failures trigger a targeted source refresh.
 
 ## Data exclusions
 
-Ordinary console product views never render or persist:
+Ordinary console views never render or persist:
 
-- raw provider events or provider-native tool events
-- provider credentials or authentication material
-- `provider_session_hint`
-- provider run identifiers or adapter-private handles
-- raw provider output or logs
-- `NodeMcpInvocation` rows
-- support-file projections as currentness
-- fabricated percent complete, ETA, throughput, or provider health
-
-## Owner boundary
-
-This page owns runtime console behavior and presentation semantics. It does not define:
-
-- Control API fields or routes
-- task event payloads or retention
-- runtime lifecycle transitions or retry defaults
-- provider setup, authentication, or readiness
-- human-request or command-run source state machines
-- definition registry or authoring workflows
-- final colors, spacing, typography, or implementation framework
-
-The console subtree owns API mapping, page states, and component semantics for this interface.
+- raw provider/native tool events, output, or logs;
+- provider or managed-MCP credentials;
+- provider/MCP session IDs or adapter handles;
+- individual Node invocation audit rows;
+- support projections as currentness;
+- provider-start maximum/exhaustion;
+- provider fallback or fabricated health;
+- global operator API keys or browser credential bootstrap material;
+- semantic-progress claims derived from Node activity; or
+- fabricated percent complete, ETA, or throughput.
 
 ## Related contracts
 
@@ -190,7 +134,7 @@ The console subtree owns API mapping, page states, and component semantics for t
 - [Task event stream](task-event-stream.md)
 - [Runtime lifecycle and watchdog](../architecture/runtime-lifecycle-and-watchdog.md)
 - [Runtime records and control state](../architecture/runtime-records-and-control-state.md)
-- [Attempt plan and checkpoint contract](../architecture/attempt-plan-and-checkpoint-contract.md)
+- [Work plan and checkpoint contract](../architecture/work-plan-and-checkpoint-contract.md)
 - [Human request and approval contract](human-request-and-approval-contract.md)
 - [Command run and external wait](../architecture/command-run-and-external-wait.md)
 - [Provider selection and runtime config](provider-selection-and-runtime-config.md)

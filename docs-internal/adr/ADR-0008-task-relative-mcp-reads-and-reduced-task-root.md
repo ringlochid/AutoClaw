@@ -2,6 +2,8 @@
 
 Status: Accepted
 
+> **Partial supersession notice:** [ADR-0010](ADR-0010-dispatch-scoped-managed-node-mcp-authority.md) replaces this ADR's model-visible `NodeSession.session_key` recognition, one static Node projection, and progress-only invocation classification. The current [prompt system](../design/v2/prompt-layer/prompt-system.md), [work plan contract](../design/v2/architecture/work-plan-and-checkpoint-contract.md), and [task-root owner](../design/v2/architecture/task-root-and-file-access.md) also replace the historical prompt-file and attempt-plan details below. This page remains the accepted origin of task-relative reads, the reduced logical root, safe path resolution, and provider-native workspace editing.
+
 ## Decision summary
 
 AutoClaw V2 keeps one small task-relative file namespace. Provider-native tools edit `workspace/`; the shared node MCP surface reads controller context and task files through `get_current_context`, `list_files`, and `read_file`. Artifact publication continues through checkpoints and controller copying.
@@ -155,7 +157,7 @@ Rejected because V2 remains local-first and same-host. Remote workspaces, remote
 ## Canonical references
 
 - [Task root and file access](../design/v2/architecture/task-root-and-file-access.md)
-- [Node and operator MCP surface](../design/v2/interfaces/node-and-operator-mcp-surface-contract.md)
+- [Node and Operator MCP surface](../design/v2/interfaces/node-and-operator-mcp-surface-contract.md)
 - [Node MCP schema appendix](../design/v2/interfaces/node-mcp-schema-appendix.md)
 - [ADR-0001: controller-first relational runtime truth](ADR-0001-controller-first-relational-runtime-truth.md)
 - [ADR-0005: task-root surfaces and runtime-generated projections](ADR-0005-task-owned-roots-and-runtime-generated-projections.md)

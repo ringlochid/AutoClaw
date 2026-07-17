@@ -2,119 +2,67 @@
 
 Status: Target
 
-This page owns V2 append-only task chronology, event payloads, cursor backfill, Server-Sent Events delivery, and replay/reset behavior. Source-row reads and operator mutations belong to the [Control API](control-api.md).
+This page owns V2 append-only task chronology, bounded event payloads, cursor backfill, Server-Sent Events delivery, and replay/reset behavior. Source-row reads and operator mutations belong to the [Control API](control-api.md).
 
 ## Core rule
 
-Task events are bounded chronology emitted from committed controller state. They are authoritative for ordering, backfill, and audit-chain verification, but never for runtime currentness, mutation legality, provider retry scheduling, or external-wait continuation.
+Task events describe committed controller facts in order. They are authoritative for chronology and audit-chain verification, never for currentness, operation legality, provider-start scheduling, deadlines, process ownership, or continuation.
 
-Replaying an event must never execute provider control, rerun a command, reopen a wait, or reapply a semantic mutation.
+Replaying an event never starts a provider, launches a command, opens a dispatch, fires a deadline, or reapplies a mutation.
 
-## Event record
-
-Every event has this envelope:
+## Event envelope
 
 ```yaml
-task_event:
-    event_id: string
-    event_seq: integer
-    task_id: string
-    event_type: string
-    event_source: controller | control_api | operator_mcp | node
-    occurred_at: timestamp
-    flow_revision_id: string | null
-    dispatch_id: string | null
-    attempt_id: string | null
-    node_key: string | null
-    actor_ref: string | null
-    payload: object
-    prev_event_hash: string | null
-    event_hash: string
+TaskEvent:
+  event_id: string
+  event_seq: integer
+  task_id: string
+  event_type: string
+  event_source: controller | control_api | operator_mcp | node
+  occurred_at: timestamp
+  flow_revision_id: string | null
+  dispatch_id: string | null
+  attempt_id: string | null
+  node_key: string | null
+  actor_ref: string | null
+  payload: object
+  prev_event_hash: string | null
+  event_hash: string
 ```
 
-Rules:
+`event_seq` is strictly increasing within one task. Payloads are bounded summaries, not source-row replacements. Provider, adapter, MCP transport, and runtime signal are not event sources.
 
-- `event_seq` is strictly increasing and unique within one task
-- `event_source` identifies the controller-facing invocation lane; human or automation identity belongs in `actor_ref`
-- provider and adapter are not event sources in V2
-- payload fields are bounded semantic summaries, not source-row replacements
-- hash chaining covers the canonical serialized event and prior hash
-- one source mutation and its event commit in the same controller transaction where practical
+Where practical, a source mutation and its event commit in the same database transaction. A later projection event may describe a committed source revision but cannot create it.
 
-Provider output, native tool events, token streams, disconnects, and terminal frames never produce main task events.
+## Backfill and SSE
 
-## Backfill route
+`GET /control/tasks/{task_id}/events` accepts an exclusive cursor, limit `1..500`, and optional inclusive `through_event_id` high-water mark for deterministic paging. Results are ascending by `event_seq`; cursor tokens are opaque and task-bound.
 
-`GET /control/tasks/{task_id}/events` accepts:
+`GET /control/tasks/{task_id}/events/stream` emits standard SSE with event ID, type, and the complete event JSON. `cursor` or `Last-Event-ID` resumes exclusively; if both are present, they must identify the same event. No cursor tails from the head observed during setup.
 
-```yaml
-task_event_list_query:
-    cursor: string | null
-    limit: 1..500
-    through_event_id: string | null
-```
+Transport polling/notification choice and reconnects never change task state.
 
-It returns:
+## Cursor reset
 
-```yaml
-task_event_list_response:
-    task_id: string
-    items: task_event[]
-    next_cursor: string | null
-    through_event_id: string | null
-```
+An invalid, cross-task, unknown, or expired cursor returns `410 Gone` with `cursor_reset_required` and a fresh snapshot route.
 
-Events are ordered by ascending `event_seq`. `cursor` is exclusive. `through_event_id` freezes the inclusive high-water mark for deterministic multi-page backfill. A caller keeps the first response's high-water mark through the remaining pages.
+The client then:
 
-Cursor tokens may encode task and sequence identity. They are opaque to clients.
+1. rereads the task runtime source row;
+2. rereads the snapshot;
+3. rereads selected source detail when needed; and
+4. reconnects after `stream_head_event_id`.
 
-## SSE route
+It never rebuilds current state by folding retained events.
 
-`GET /control/tasks/{task_id}/events/stream` delivers standard SSE:
-
-```text
-id: <event_id>
-event: <event_type>
-data: <complete task_event JSON>
-
-```
-
-Resume rules:
-
-- the client may send `cursor=<event_id>` or `Last-Event-ID`
-- when both are present they must identify the same event
-- the resume cursor is exclusive
-- no cursor means live tail from the head observed during stream setup
-- transport reconnect never changes task state
-
-SSE may use polling or database notification internally. The transport choice does not change event or runtime semantics.
-
-## Replay and reset
-
-If a cursor is valid and retained, list and SSE continue after it without duplicates in the logical sequence.
-
-If a cursor is missing, from another task, invalid, or older than retained history, the server returns the structured `cursor_reset_required` failure with the task identifier and a fresh snapshot path.
-
-The HTTP status is `410 Gone`.
-
-The client reset flow is:
-
-1. read `GET /control/tasks/{task_id}`
-2. read `GET /control/tasks/{task_id}/snapshot`
-3. optionally read trace or source-specific detail
-4. reconnect after `stream_head_event_id`
-
-Events arriving after the snapshot high-water mark are then delivered normally. The reset path never rebuilds current state by folding the event log.
-
-## Event catalog
-
-The minimum V2 families are:
+## Minimum event catalog
 
 ```text
 task_started
 dispatch_opened
-dispatch_control_updated
-plan_updated
+dispatch_start_updated
+work_plan_set
+work_plan_cleared
 checkpoint_recorded
 boundary_accepted
 
@@ -127,6 +75,7 @@ human_request_resolved
 human_request_timed_out
 human_request_cancelled
 
+command_run_opened
 command_run_started
 command_run_progressed
 command_run_cancel_requested
@@ -140,168 +89,99 @@ task_resumed
 task_cancelled
 ```
 
-There is no provider-resolution event, provider-lifecycle event, adapter event, generic MCP-call event, or per-invocation event.
+There is no provider-output, provider-terminal, provider-tool, provider-session, generic MCP-call, timer-signal, support-projection, or per-invocation event family.
 
-## Task start event
+## Task and dispatch events
 
-`task_started` is emitted after the controller commits the task lineage, current flow revision, root attempt basis, and workflow manifest:
+`task_started` describes committed task/flow/manifest bootstrap. It does not prove provider readiness or root dispatch creation.
 
-```yaml
-task_started:
-    task_title: string
-    task_summary: string
-    workflow_key: string | null
-    initial_node_key: string
-    workflow_manifest_ref: ref
-```
-
-It is the task-lineage bootstrap event, not provider preflight or a UI-only toast.
-
-## Dispatch events
-
-`dispatch_opened` is emitted when the controller commits the new dispatch, prompt request, and NodeSession authority:
+`dispatch_opened` is emitted with the same final transaction that creates D2 in `starting` plus its refs-only request row:
 
 ```yaml
 dispatch_opened:
-    dispatch_id: string
-    previous_dispatch_id: string | null
-    assignment_id: string
-    assignment_key: string
-    attempt_id: string
-    node_key: string
-    status: starting
-    requested_provider: openclaw | codex | claude
-    resolved_provider: openclaw | codex | claude
-    workflow_manifest_ref: ref
-    reason: >-
-      initial_dispatch | external_wait_continuation | watchdog_recovery |
-      operator_continue | semantic_retry
+  dispatch_id: string
+  predecessor_dispatch_id: string | null
+  assignment_id: string
+  attempt_id: string
+  node_key: string
+  status: starting
+  opened_reason: root | boundary | child_return | human_result | command_result | watchdog_recovery | semantic_retry | operator_continue
+  requested_provider: codex | claude | openclaw
+  resolved_provider: codex | claude | openclaw
+  selection_basis: explicit | default
+  instructions_ref: ref
+  input_ref: ref
 ```
 
-This event does not mean the provider started or the agent made progress.
+This event proves neither provider acceptance nor Node activity.
 
-Material provider-control readback changes emit exactly:
+`dispatch_start_updated` describes only durable start-row changes:
 
 ```yaml
-dispatch_control_updated:
-    operation: start | stop
-    state: queued | attempting | retry_scheduled | succeeded | failed
-    provider: openclaw | codex | claude
-    attempt: integer
-    max_attempts: integer
-    next_retry_at: timestamp | null
-    last_error_summary: string | null
-    reason: initial_dispatch | watchdog_recovery | operator_cancel | shutdown
+dispatch_start_updated:
+  dispatch_id: string
+  state: retry_scheduled | accepted
+  attempt_count: integer
+  provider_start_revision: integer
+  next_attempt_at: timestamp | null
+  retry_kind: initial | definite_failure | uncertain_acceptance | null
+  last_error_code: string | null
 ```
 
-Rules:
+There is no `max_attempts`, terminal start-failure state, or generic stop operation event. Replaying retry chronology never schedules a retry. Provider-native completion or failure emits nothing.
 
-- `attempt` is the current provider-control call number
-- for `operation = start`, use `watchdog_recovery` only for a watchdog replacement and `initial_dispatch` for every other newly committed dispatch; the more specific lineage cause remains on `dispatch_opened.reason`
-- for `operation = stop`, use `watchdog_recovery` for stale replacement, `operator_cancel` for explicit pause or task cancellation, and `shutdown` for lifespan cleanup
-- combinations outside those operation-specific mappings are invalid
-- retry scheduling emits the next retry time so UI and CLI can show a countdown
-- errors are sanitized bounded summaries
-- the event is a projection over persisted provider-control readback
-- consuming or replaying the event never schedules a retry
-- provider-native acceptance, completion, or failure is not another event family
+Closing/superseding dispatch truth is visible through the event owned by its concept: boundary, external wait, watchdog successor, pause, or cancel. The target does not add a `closing` event/state while provider cleanup runs.
 
-## Plan and checkpoint events
+## Work-plan and checkpoint events
 
-Each accepted changed plan emits:
+A changed nonempty assignment plan emits:
 
 ```yaml
-plan_updated:
-    attempt_id: string
-    revision: integer
-    explanation: string | null
-    steps:
-        - step: string
-          status: pending | in_progress | completed
-    updated_by_dispatch_id: string
-    updated_at: timestamp
+work_plan_set:
+  assignment_id: string
+  revision: integer
+  explanation: string | null
+  steps:
+    - step: string
+      status: pending | in_progress | completed
+  authored_by_dispatch_id: string
+  updated_at: timestamp
 ```
 
-The payload is bounded because a plan contains at most nine steps. An identical `update_plan` call changes neither revision nor `last_progress_at` and emits no `plan_updated` event.
-
-`checkpoint_recorded` carries:
+Clearing an existing plan emits:
 
 ```yaml
-checkpoint_recorded:
-    checkpoint_id: string
-    checkpoint_kind: progress | terminal
-    outcome: green | retry | blocked | null
-    summary: string
-    next_step: string | null
-    blockers: string[]
-    risks: string[]
-    produced_artifact_refs: ref[]
-    transient_refs: ref[]
-    checkpoint_path: string
-    latest_checkpoint_path: string
+work_plan_cleared:
+  assignment_id: string
+  revision: integer
+  explanation: string | null
+  authored_by_dispatch_id: string
+  updated_at: timestamp
 ```
 
-It does not carry task-memory search hints or raw artifact bodies.
+The revision is the assignment's newly incremented work-plan revision. Clearing an absent plan or submitting an identical plan is an accepted no-op and emits nothing.
 
-`boundary_accepted` carries the explicit controller transition:
+Plan events are advisory chronology. They never satisfy a boundary, checkpoint, or assignment.
 
-```yaml
-boundary_accepted:
-    boundary: yield | green | retry | blocked
-    latest_checkpoint_path: string
-    previous_node_key: string
-    next_node_key: string | null
-    next_attempt_id: string | null
-    resulting_flow_status: >-
-      pending | running | blocked | paused | succeeded | cancelled | null
-```
+`checkpoint_recorded` carries bounded checkpoint identity, kind, outcome when terminal, summary/evidence refs, produced artifact/transient refs, and authoring lineage. It never copies artifact bodies or provider output.
 
-It has no provider terminal state or reopen-after-inactivity flag.
+`boundary_accepted` carries source dispatch, assignment/attempt, explicit boundary outcome, exact checkpoint/evidence ref when required, and resulting controller status. It has no provider-terminal field. D1 is already closed before the Node MCP result returns; any successor `dispatch_opened` occurs later after exact-source routing.
 
-## External-wait events
+## Human-request events
 
-Human-request events carry request identifier, kind, title, status or resolution kind, requester node, timestamps, and actor provenance when terminal. They do not inline complete answered item bodies or structured response payloads.
+`human_request_opened` is emitted by the same transaction that creates the request/wait and closes D1. Terminal request events are emitted by the winning answer, timeout, or cancellation transaction.
 
-`human_request_opened` comes from the same transaction that commits the source wait and closes the dispatch. Terminal events come from the source owner's terminal transition. No separate provider-response-ended event exists.
+Payloads carry request ID, typed kind, title/summary, source dispatch, due/terminal timestamps, resolution kind, and bounded actor provenance. They do not inline full answers or arbitrary response payloads.
 
-Command-run events use these bounded payloads:
+A later `dispatch_opened` may show legal continuation, but the terminal event itself neither creates nor acknowledges that dispatch.
 
-```yaml
-command_run_started:
-    run_id: string
-    state: pending_start | running
-    command: string
-    description: string
-    workdir: string | null
-    timeout_seconds: integer | null
+## Command-run events
 
-command_run_progressed:
-    run_id: string
-    state: running
-    summary: string
-    log_ref: string | null
-    occurred_at: timestamp
+Command events carry exact run ID, source dispatch, current state, bounded command/description/workdir/timing, process ownership revision when relevant, terminal result summary, and log ref.
 
-command_run_cancel_requested:
-    run_id: string
-    state: cancellation_requested
-    summary: string
-    actor_ref: string | null
-    occurred_at: timestamp
+`command_run_cancel_requested` remains nonterminal. A concrete terminal event is emitted only after the process owner satisfies the state-specific termination/reap rules.
 
-command_run_terminal:
-    run_id: string
-    state: succeeded | failed | timed_out | cancelled
-    summary: string
-    exit_code: integer | null
-    signal: string | null
-    log_ref: string | null
-    ended_at: timestamp
-```
-
-The terminal envelope is used under the matching concrete terminal event type. Raw logs remain behind the dedicated Control API route.
-
-External-wait terminal events are chronology. The controller continues only after rereading the terminal source row, matching waiting cause, task currentness, and legality.
+Raw stdout/stderr remains behind the authorized log route. Process pipe consumption does not generate provider-drain or runtime-liveness events.
 
 ## Task-control events
 
@@ -309,74 +189,45 @@ External-wait terminal events are chronology. The controller continues only afte
 
 ```yaml
 task_paused:
-    pause_reason: paused_by_operator | runtime_recovery_exhausted
-    actor_ref: string | null
-    summary: string
+  pause_reason: paused_by_operator | runtime_recovery_exhausted | runtime_transition_failed
+  control_revision: integer
+  actor_ref: string | null
+  summary: string
 ```
 
-`runtime_recovery_exhausted` is the exact runtime pause reason after provider control or watchdog restart exhaustion.
+`task_resumed` records an accepted operator continue and the new control revision. It does not mean provider reconnect, human answer, or command completion.
 
-`task_resumed` records accepted operator continue after legality recomputation. It does not represent a human-request answer, command-run completion, or provider reconnect.
-
-`task_cancelled` records terminal controller cancellation. Later provider output or source callbacks cannot append progression events that reopen the task.
-
-## Structural events
-
-Assignment and structural events remain bounded summaries over their owning controller mutations:
-
-- `child_assignment_staged`
-- `child_assignment_committed`
-- `structural_revision_adopted`
-
-Their exact assignment and revision payloads remain owned by the controller and definition contracts. Event emission never becomes a second structural commit.
+`task_cancelled` records terminal controller cancellation. Post-commit cleanup has no success/failure task event because it cannot change cancellation truth.
 
 ## Consumer behavior
 
-UI, CLI, and support consumers combine:
-
-- source-row reads for current state
-- task events for ordered chronology and live updates
-- source-specific detail routes for complete human answers and command logs
-
-A consumer may render:
+Consumers combine current source reads, event chronology, and source-specific detail routes. They may render:
 
 ```text
-Connecting to Claude - attempt 3/6
-Retrying in 4 seconds
+Starting Claude - attempt 3
+Next retry at 10:42:18
 ```
 
-from `dispatch_control_updated`. It must refresh source state after reconnect or cursor reset and must not infer provider health from the absence of events.
+They must not render `3/6`, an exhausted provider-start state, a fallback provider, or provider health from these events.
 
 ## Required invariants
 
-- event order is per task and append-only
-- event replay has no semantic side effects
-- every event derives from committed controller source state
-- provider events and individual MCP invocations are absent
-- no-op plan updates emit no event
-- external-wait events do not replace source-row currentness
-- retry countdown events never own provider-control scheduling
-- cursor reset returns consumers to source-row reads, not event folding
-
-## Validation scenarios
-
-The event contract must prove:
-
-- dispatch, plan, checkpoint, wait, and boundary chronology works with provider stream ingestion disabled
-- human-request and command-run terminal events are followed by a new same-attempt `dispatch_opened` only after source legality recomputation
-- cursor backfill and SSE resume preserve sequence without logical duplicates
-- expired or invalid cursors produce the reset flow
-- retry events expose bounded call count and next retry time
-- an identical plan update emits nothing
-- recovery exhaustion emits failed control readback then `task_paused` with `runtime_recovery_exhausted`
-- no hidden provider question or approval event is required for progression
+- order is per task and append-only;
+- replay has no runtime side effects;
+- every event describes committed controller state;
+- provider events and individual MCP invocations are absent;
+- accepted plan no-ops emit nothing but still count as admitted Node activity;
+- external-wait events never replace source currentness;
+- start retry events have no maximum and never own scheduling;
+- post-commit provider/process cleanup emits no fake controller transition; and
+- cursor reset returns to source rows rather than event folding.
 
 ## Related contracts
 
 - [Control API](control-api.md)
 - [Runtime records and control state](../architecture/runtime-records-and-control-state.md)
 - [Runtime lifecycle and watchdog](../architecture/runtime-lifecycle-and-watchdog.md)
-- [Attempt plan and checkpoint contract](../architecture/attempt-plan-and-checkpoint-contract.md)
+- [Work plan and checkpoint contract](../architecture/work-plan-and-checkpoint-contract.md)
 - [Human request and approval contract](human-request-and-approval-contract.md)
 - [Command run and external wait](../architecture/command-run-and-external-wait.md)
 - [Capability, security, and audit](capability-security-and-audit.md)

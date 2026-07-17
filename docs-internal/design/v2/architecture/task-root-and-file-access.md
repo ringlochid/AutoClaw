@@ -2,17 +2,15 @@
 
 Status: Target
 
-This page owns the V2 local task tree, logical path resolution, and the split between provider-native workspace editing, node MCP reads, and controller-owned artifact publication.
+This page owns the V2 logical task tree, controller-generated request files, safe Node MCP reads, and separation between required request materialization and optional support projections.
 
-## Core rule
+## Authority rule
 
-AutoClaw exposes one logical task namespace. Controller records own semantic truth. Files below the task namespace are mutable work, durable bodies, or deterministic projections; none can overrule the controller database.
+The controller database owns runtime currentness, legality, lineage, and metadata. Task files may be durable bodies or derived readable projections, but they never authorize a controller transition merely by existing.
 
-V2 remains local-first and same-host. The file boundary is a code ownership boundary, not a separately deployed file service.
+The two committed dispatch request files are authoritative only for the exact bytes delivered to that dispatch. Their refs row in the database establishes which files belong to the dispatch.
 
-## Canonical task tree
-
-The complete V2 task tree is:
+## Logical task tree
 
 ```text
 task/
@@ -36,140 +34,167 @@ task/
         transient-index.json
     dispatch/
       <dispatch_id>/
-        prompt.md
-        prompt-request.json
+        instructions.md
+        input.md
 ```
 
-No other top-level task directory is part of the V2 contract.
+`workspace/` is a logical root backed by the task's persisted workspace binding. It may resolve to a controller-owned copy or an explicitly bound external directory according to the task/workspace contract. Callers never provide or discover the physical root.
 
-## Root ownership
+`outputs/`, `tmp/`, and `_runtime/` live beneath the physical task root. Their ownership and retention differ; all access still uses logical task-relative paths.
 
-| Logical root | Physical mapping | Owner and purpose |
-| --- | --- | --- |
-| `workspace/` | the persisted workspace binding | provider-native mutable work for the current task |
-| `outputs/` | below the physical task root | controller-published durable output bodies and artifact pointers |
-| `tmp/` | below the physical task root | controller-managed noncanonical transient and localized material |
-| `_runtime/` | below the physical task root | controller-generated readable projections |
+The target has no `context/` or `context/wiki/` family and no provider delivery, continuity, watchdog, or provider-event files under dispatch directories.
 
-The persisted workspace binding may point outside the physical task-root directory. That does not widen the logical namespace: callers still select `workspace/...`, never an arbitrary physical root.
+## Canonical dispatch request pair
 
-### `workspace/`
-
-Managed Codex and Claude processes use the workspace binding as their working directory. OpenClaw receives the same effective task workspace through its adapter configuration.
-
-Provider-native tools may read, create, edit, rename, and delete workspace files subject to provider sandbox and approval policy. Workspace contents are not controller truth and are not automatically durable publications.
-
-### `outputs/artifacts/`
-
-The artifact owner accepts declared checkpoint claims, validates them against the assignment's produce slots, copies the accepted workspace bodies, versions them, and updates controller-owned artifact records and current pointers.
-
-Agents do not publish by writing directly into `outputs/artifacts/` through node MCP.
-
-### `tmp/transfers/localized/`
-
-External material that must become task-local is copied into `tmp/transfers/localized/` before the controller surfaces its logical path. Localized files are convenience inputs, not durable controller truth.
-
-### `_runtime/`
-
-`_runtime/` contains deterministic controller projections:
-
-- explicit criteria projections
-- the stable whole-workflow manifest
-- current attempt assignment and latest-checkpoint projections
-- attempt artifact and transient indexes
-- dispatch prompt and structured prompt-request evidence
-
-The controller writes these files. Agents may read them through the node MCP file tools but do not mutate them.
-
-## Logical path contract
-
-Node MCP file tools accept forward-slash logical paths. The public namespace contains only:
-
-- `workspace`
-- `outputs`
-- `tmp`
-- `_runtime`
-
-The special path `.` means the logical task root and is accepted only where a directory is valid. Listing `.` returns entries from this logical namespace; it does not expose the physical parent directories that back the mappings.
-
-### Shared resolver
-
-All task-relative file tools use one resolver. It performs these steps in order:
-
-1. validate the input as a nonempty logical path using `/` separators
-2. reject POSIX absolute paths, Windows drive paths, UNC paths, backslash-rooted paths, NUL bytes, and any `..` segment
-3. collapse `.` segments without changing the selected logical root
-4. require the first segment to be one of the four logical roots, except for the listing-only `.` path
-5. map that root through controller-owned task-root or workspace-binding truth
-6. resolve the candidate and any symlinks
-7. verify that the resolved path remains inside the selected physical root
-
-The resolver rejects caller-selected physical roots. A symlink that resolves outside its selected mapped root is an escape even when its target happens to be below another valid task root.
-
-Contained symlinks may be listed and read. Directory listing reports them as symlinks; a subsequent read or listing resolves them again and applies the same containment check.
-
-## Node MCP read behavior
-
-The task-file read family is:
+Every dispatch directory contains exactly:
 
 ```text
+instructions.md
+input.md
+```
+
+`instructions.md` contains the exact resolved AutoClaw instruction bytes for the dispatch's role family and authored guidance. `input.md` contains the exact complete dynamic snapshot for the dispatch.
+
+There is no combined `prompt.md`, `prompt-request.json`, resume append, provider transport envelope, content-hash file, or launch-time regenerated substitute.
+
+## Publication order
+
+The exact-source opener mints a prospective dispatch ID and renders both files outside the final database transaction. It stages and publishes them as a pair before attempting the D2+refs commit.
+
+The final transaction revalidates the source/currentness and creates D2 plus its refs-only row. A committed refs row therefore never points to a half-published request.
+
+If the transaction loses, the pair is unreferenced and may be removed by bounded cleanup. It cannot trigger provider work.
+
+The provider starter reads only the committed refs. It never invokes the renderer, repairs a missing file, changes bytes, or selects another dispatch directory.
+
+## Atomic file publication
+
+The implementation must use a same-filesystem staging and replacement strategy for the pair. The exact primitive may be a staging directory followed by atomic renames, but these invariants are fixed:
+
+- neither final path is referenced before both staged files are complete;
+- file contents are flushed/closed before the final DB transaction;
+- existing immutable request paths are never overwritten by a retry;
+- a second candidate for the same dispatch identity is rejected; and
+- orphan cleanup never deletes files referenced by a committed row.
+
+The database transaction remains the authority handoff. Filesystem atomicity alone cannot make a dispatch current.
+
+## Support and observability projections
+
+Workflow manifests, assignment/checkpoint readbacks, artifact indexes, and other operator support files may be refreshed after their owning controller transaction by a separate `SupportProjectionOwner`.
+
+Support projection rules:
+
+- projection signals carry exact source/revision identity;
+- projection handlers reread committed controller truth;
+- failures are visible and retriable within the projection domain;
+- a missing support file does not reopen, close, or block a dispatch; and
+- provider start never waits for a support projection unless the file is one of the two canonical request files, in which case it is request materialization rather than support projection.
+
+## Task-relative Node MCP reads
+
+The provider-neutral logical read family is:
+
+```text
+get_current_context()
 list_files(directory=".")
 read_file(path, start_line=1, max_lines=400)
 ```
 
-`list_files` reads one directory and is never recursive. It returns names, logical paths, entry kinds, and file sizes where available. It does not search contents or walk descendants.
+Managed schemas contain semantic arguments only. The managed binding supplies task/dispatch scope below the model-visible schema. The compatibility projection adds full `task_id` and `dispatch_id` arguments.
 
-`read_file` accepts regular text files only. It decodes UTF-8, returns a line-bounded slice, reports whether more lines remain, and never returns a partial success caused by an operational byte or entry ceiling. Binary, missing, invalid-root, escaped, wrong-kind, and over-limit cases return the explicit failures defined in the [Node MCP schema appendix](../interfaces/node-mcp-schema-appendix.md).
+`get_current_context` reads controller records directly. It does not reconstruct currentness from files.
 
-The schema default is 400 lines. V2 does not freeze a universal hard maximum. A deployment may configure response-byte, requested-line, or directory-entry ceilings; exceeding one returns the documented over-limit failure instead of silently truncating beyond the requested line boundary.
+`list_files` is non-recursive and returns bounded entries with logical paths and basic type/size metadata. `read_file` returns bounded UTF-8 text and a stable truncation/continuation shape.
 
-## Context read behavior
+The MCP surface does not expose generic task-file writes or search in this phase.
 
-`get_current_context` is the primary worker reread. It returns controller-owned current assignment, attempt, plan, capability, slot, continuation, and checkpoint-path state directly rather than asking the provider to infer those facts from directory layout.
+## Logical-path resolver
 
-Generated files remain useful for readable evidence and detailed payloads. When `checkpoint_to_resume_from` is present, the worker prompt teaches the worker to call `read_file` for that path before replanning or acting. The [prompt system](../prompt-layer/prompt-system-v2.md) owns the exact teaching; this page owns only the readable path and file behavior.
+One shared resolver maps allowed logical prefixes to physical roots and rejects:
 
-## Mutation and publication lanes
+- absolute paths;
+- empty or ambiguous path segments where disallowed;
+- `..` traversal;
+- NUL and invalid encoding;
+- paths outside declared logical roots;
+- symlink resolution escaping the selected root;
+- special devices, sockets, or non-regular files for text reads; and
+- task/dispatch scope that fails fresh currentness validation.
 
-The file model has three deliberately separate lanes:
+Containment is checked after canonical resolution. String-prefix comparison alone is not sufficient.
 
-| Need | Canonical lane |
-| --- | --- |
-| edit current work | provider-native tools inside `workspace/` |
-| read controller context or any logical task file | node MCP context and file tools |
-| publish a durable declared artifact | checkpoint claim plus controller copy/version |
+Managed request-file validation uses the same resolver and additionally requires the exact committed dispatch directory and filenames.
 
-Node MCP does not expose a task-file write tool, a content-search tool, generic resource refs, or a caller-selected root. Future remote execution may expose a remote command environment with its own standard file and search tools; it does not require V2 to invent a second local filesystem protocol now.
+## Workspace mutation
 
-## Removal and reset
+Provider-native tools remain the workspace editing lane. Their authority is the ambient AutoClaw service identity plus resolved provider policy, not Node MCP.
 
-V2 removes these V1 task-root concepts in one reset-only change:
+Node MCP does not offer general file writes, shell execution, or provider-native tool emulation. The controller `command_run` surface is a distinct external-wait concept.
 
-- `context/`
-- `context/wiki/`
-- task-memory search hints
-- the dispatch delivery-state projection
-- the dispatch continuity-state projection
-- the dispatch watchdog-state projection
-- the dispatch provider-event projection
+Provider-native access, network, managed Node MCP, command runs, and human requests remain separate capability dimensions.
 
-Do not keep ignored schema fields, empty compatibility directories, or prompt fallbacks for those surfaces.
+## Artifact publication
 
-Database and task-root upgrade compatibility is not required. Stale local state fails with reset guidance. Reset must not recursively delete a formerly configured external context binding because the path may contain user-owned data outside AutoClaw's task root.
+Workers publish declared artifacts through the checkpoint/boundary contract. The controller validates declared slots and copies/versions accepted bodies into `outputs/artifacts/`.
 
-## Security and audit
+Artifact indexes are controller projections over accepted publication records. Writing a file directly into `outputs/artifacts/` cannot create an artifact record or satisfy a criterion.
 
-- node MCP recognition remains `task_id` plus current `NodeSession` `session_key`
-- file reads run only after current node-session, dispatch, assignment, attempt, and task authority validation
-- logical paths and normalized failures may be audited; provider credentials and file contents are not added to invocation metadata
-- managed agents receive node MCP only; operator MCP remains a separate external control surface
-- filesystem transport state and provider events never establish runtime progress
+Large bodies remain behind logical refs. Prompt snapshots, checkpoints, task events, and generic readbacks do not duplicate them.
 
-## Related contracts
+## Transient localization
 
-- [Node and operator MCP surface](../interfaces/node-and-operator-mcp-surface-contract.md)
-- [Node MCP schema appendix](../interfaces/node-mcp-schema-appendix.md)
+`tmp/transfers/localized/` holds controller-localized transient inputs needed for the task. Its index records provenance and logical refs. Transient bodies are not automatically durable artifacts and do not become workflow truth.
+
+Cleanup follows the owning task retention policy and never traverses an externally bound workspace path.
+
+## Request and support cleanup
+
+Cleanup may remove:
+
+- unreferenced candidate dispatch directories older than a safety horizon;
+- staging directories left by interruption;
+- expired transient localized bodies; and
+- obsolete support projections that can be regenerated.
+
+Cleanup must first prove that no committed request-ref, artifact, transient, checkpoint, or active task relationship references the path. It is maintenance work, not the dispatch correctness path.
+
+## Secrets and sensitive data
+
+Task files must not contain:
+
+- managed MCP bearer credentials or digests;
+- provider/API/Gateway credentials;
+- raw environment secrets;
+- provider thread/session handles;
+- physical task roots;
+- unbounded human answers or command logs in generic projections; or
+- hidden model reasoning.
+
+Prompts may contain canonical non-secret task/dispatch IDs and logical paths.
+
+## Reset behavior
+
+V2 reset removes obsolete generated context and provider-monitor projections and rebuilds controller-owned runtime files from supported source records where allowed.
+
+Reset must never recursively delete an external workspace or formerly configured external context path. User-owned paths are outside the task-root deletion boundary.
+
+## Required proof
+
+- one committed dispatch has one pair and one refs row;
+- a failed/losing transaction causes no provider call;
+- retry rereads identical bytes without rendering;
+- missing, unreadable, symlink-escaped, or wrong-dispatch refs cause zero provider I/O;
+- support projection failure does not block or change controller state;
+- logical reads reject traversal and symlink escape;
+- provider-native workspace edits remain separate from Node MCP reads;
+- artifact records cannot be forged by filesystem writes; and
+- cleanup preserves every committed reference and external workspace.
+
+## Related
+
+- [Prompt system](../prompt-layer/prompt-system.md)
 - [Runtime records and control state](runtime-records-and-control-state.md)
-- [Attempt plan and checkpoint](attempt-plan-and-checkpoint-contract.md)
 - [Runtime lifecycle and watchdog](runtime-lifecycle-and-watchdog.md)
-- [ADR-0008: task-relative MCP reads and reduced task root](../../../adr/ADR-0008-task-relative-mcp-reads-and-reduced-task-root.md)
+- [Work plan and checkpoint contract](work-plan-and-checkpoint-contract.md)
+- [Node MCP schema appendix](../interfaces/node-mcp-schema-appendix.md)

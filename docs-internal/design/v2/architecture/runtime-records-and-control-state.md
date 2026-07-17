@@ -2,452 +2,309 @@
 
 Status: Target
 
-This page owns the V2 persisted records and relations required by the local runtime, semantic MCP progress, minimal provider control, same-attempt watchdog recovery, and the reset-only physical schema delta.
+This page owns the V2 relational records, lifecycle fields, lineage constraints, and current-state read model required by the exact-source runtime. It does not own provider transport handles or process-local `DispatchMcpBinding` state.
 
-The semantic shapes below are provider-neutral. The physical table, column, constraint, index, stale-schema, and reset rules in this page are the implementation contract; no separate persistence appendix owns them.
+## Authority model
 
-## Core rule
+Controller database rows own task, flow, assignment, attempt, dispatch, source, wait, plan, checkpoint, pause, and event truth. Request files own only the exact bytes referenced by one committed dispatch. Provider output, provider/MCP sessions, process handles, in-memory signals, and support projections are never current-state authority.
 
-Persist controller facts that are necessary to reconstruct legality and local runtime intent. Do not persist a provider-shaped parallel account of agent execution.
+## Task and flow
 
-V2 keeps assignment, attempt, checkpoint, boundary, external-wait, and task event truth. It uses one generic dispatch family, one existing node-session authority family, one attempt plan, one minimal node MCP invocation family, and small provider-control readback.
+The task owns stable product identity and definition/workspace provenance. The active flow owns the current execution lineage and high-level control state.
 
-## Record families
+The flow stores at least:
 
-### Retained controller truth
+```yaml
+flow:
+  flow_id: string
+  task_id: string
+  status: running | paused | completed | cancelled
+  current_dispatch_id: string | null
+  waiting_cause: none | human_request | command_run
+  waiting_source_id: string | null
+  control_revision: integer
+  pause_reason: string | null
+  pause_details: bounded object | null
+  paused_at: timestamp | null
+  paused_by_actor_ref: string | null
+```
 
-V2 retains these existing semantic families unless another V2 owner changes their exact schema:
+`current_dispatch_id` points only to a `starting` or `open` dispatch. Closed dispatches remain in lineage but never current authority.
 
-- task, compose, flow, structural revision, node, and edge
-- assignment and attempt
-- checkpoint and terminal boundary
-- staged parent/root continuation outcomes
-- durable artifact publication and current pointers
-- human request and command run source rows
-- task events
-- role, policy, and capability decisions
-- root and workspace bindings that survive the V2 task-root simplification
+`waiting_source_id` is a convenience pointer backed by the exact source row. The source row and its relationship constraints remain authoritative when the pointer disagrees.
 
-These rows keep their existing authority roles. This page does not move workflow semantics into dispatch or provider-control state.
+## Assignment and attempt
 
-### Added or reshaped runtime truth
+Assignments own declared work, role, criteria, consume/produce slots, parent/child relationships, and the optional current work plan. Attempts own semantic execution tries for an assignment.
 
-V2 adds or reshapes:
+Infrastructure continuation—provider-start retry, human/command continuation, watchdog replacement, process restart, and operator continue—remains on the same assignment and attempt. Only the semantic boundary outcome `retry` creates a new attempt.
 
-- `Dispatch`
-- persisted `PromptTransportRequest`
-- existing `NodeSession`, created before provider launch
-- `AttemptPlan`
-- `NodeMcpInvocation`
-- attempt watchdog restart count
-- generic provider start/stop readback
+## Dispatch
 
-## `Dispatch`
+The controller dispatch lifecycle is exactly:
 
-`Dispatch` represents one controller-to-agent execution turn. It is not a provider run and does not require a provider-native run identifier.
+```text
+starting -> open -> closed
+```
 
-Required semantic fields:
+There is no `closing` state and no state whose purpose is to wait for provider stop.
+
+Minimum dispatch fields:
 
 ```yaml
 dispatch:
-    dispatch_id: string
-    task_id: string
-    flow_id: string
-    flow_node_id: string
-    assignment_id: string
-    attempt_id: string
-    previous_dispatch_id: string | null
-    requested_provider: string
-    resolved_provider: string
-    provider_session_hint: string | null
-    status: starting | open | closing | closed
-    closed_reason: >-
-      boundary | human_request_wait | command_run_wait | cancelled |
-      superseded | control_failed | null
-    adapter_started_at: timestamp | null
-    last_progress_at: timestamp | null
-    created_at: timestamp
-    closed_at: timestamp | null
+  dispatch_id: string
+  task_id: string
+  flow_id: string
+  assignment_id: string
+  attempt_id: string
+  node_key: string
+  predecessor_dispatch_id: string | null
+  status: starting | open | closed
+  opened_reason: root | boundary | child_return | human_result | command_result | watchdog_recovery | semantic_retry | operator_continue
+  requested_provider: codex | claude | openclaw
+  resolved_provider: codex | claude | openclaw
+  provider_selection_basis: explicit | default
+  provider_route: strict non-secret discriminated route
+  created_at: timestamp
+  adapter_started_at: timestamp | null
+  last_node_activity_at: timestamp | null
+  node_activity_revision: integer
+  closed_at: timestamp | null
+  closed_reason: boundary | human_request_wait | command_run_wait | watchdog_superseded | cancelled | control_failed | task_terminal | null
+```
+
+`opened_reason` explains the source family. Exact source identity remains in the owned boundary, human, command, retry, or control row rather than a generic JSON envelope.
+
+The target has no fallback chain, so `requested_provider` and `resolved_provider` match. Both remain for provenance together with `provider_selection_basis`. `provider_route` stores only the normalized non-secret variant needed by the chosen adapter; it contains no native config body, credential, binding, or continuity identifier.
+
+A dispatch is immutable with respect to task, flow, assignment, attempt, node, predecessor, and resolved provider route after commit.
+
+## Dispatch capability set
+
+Each dispatch owns one frozen effective capability record:
+
+```yaml
+dispatch_capability_set:
+  dispatch_id: string
+  provider_native_access:
+    effective: full | restricted | denied
+    source: default | policy_definition | task_policy | controller
+  network_access:
+    effective: allow | deny
+    source: default | policy_definition | task_policy | controller
+  human_direction: allow | deny
+  human_approval: allow | deny
+  human_input: allow | deny
+  human_review: allow | deny
+  command_run: allow | deny
+```
+
+This is controller-derived runtime truth, not authored policy or provider configuration. The two source-bearing objects preserve both the frozen effective value and why that value won. Resolution takes the most restrictive applicable ceiling. When equally restrictive ceilings tie, source attribution is `controller > task_policy > policy_definition > default`; adapter and local hard ceilings report `controller`.
+
+A successor recomputes the record. Role/tool exposure also rereads current role and policy before every Node call; a cached capability row never widens stale dispatch authority. Provider selection provenance remains a separate dispatch record and never substitutes for capability provenance.
+
+## Provider-start retry fields
+
+A current `starting` dispatch persists only the facts required to recover delayed provider start:
+
+```yaml
+provider_start_revision: integer
+provider_start_attempt_count: integer
+next_provider_start_at: timestamp
+provider_start_retry_kind: initial | definite_failure | uncertain_acceptance
+provider_start_last_error_code: string | null
 ```
 
 Rules:
 
-- `requested_provider` records the lawful operator/task preference at dispatch preparation time
-- `resolved_provider` records the provider selected after fallback and before dispatch commit
-- one dispatch never changes `resolved_provider`
-- `provider_session_hint` is optional opaque continuity context
-- the session hint is never parsed by generic runtime code and never authorizes node MCP
-- the session hint is scoped to `resolved_provider` and is not passed across provider changes
-- `adapter_started_at` commits only after provider start hands off successfully
-- `last_progress_at` is nullable until the first meaningful accepted node MCP semantic commit
-- `closed_reason` is null until status is `closed`
-- one task lineage has at most one current dispatch whose status is `starting`, `open`, or `closing`
-- historical dispatch rows are immutable except for their bounded lifecycle, progress, control-readback, and closure fields
+- revision and attempt count are non-negative and monotonic;
+- `next_provider_start_at` is non-null while the dispatch remains retryable `starting`;
+- a successful start moves the dispatch to `open`, sets `adapter_started_at`, and clears due/retry/error fields as appropriate;
+- no maximum-attempt or exhausted-at field exists; and
+- errors are normalized/sanitized, never raw provider payloads or credentials.
 
-The generic dispatch record has no OpenClaw Gateway session or run column and no provider-terminal status.
+Any `starting` dispatch recovered after process restart whose prior external call cannot be excluded is treated as `uncertain_acceptance` for the next stop-and-retry sequence.
 
-## Persisted `PromptTransportRequest`
+Every provider-origin start failure updates and reschedules this same current `starting` dispatch. It never creates a successor, a semantic retry attempt, or a provider-start exhaustion pause.
 
-The complete prompt transport request is committed before launch and belongs to one dispatch.
+## Dispatch prompt refs
 
-Required semantic fields:
+Each dispatch has exactly one refs-only request record:
 
 ```yaml
-prompt_transport_request:
-    dispatch_id: string
-    instructions_text: string
-    input_text: string
-    created_at: timestamp
+dispatch_prompt_refs:
+  dispatch_id: string
+  instructions_logical_path: string
+  input_logical_path: string
+  dynamic_input_version: integer
+  created_at: timestamp
 ```
 
-Rules:
+The row contains no prompt text, hash, static/catalog/renderer version, provider session, physical root, or readiness state. The two logical paths are immutable after commit.
 
-- `instructions_text` and `input_text` remain separate when an adapter supports that split
-- one-message adapters may flatten them only at their private transport edge
-- retries of one dispatch use the same committed prompt request
-- replacement dispatches regenerate a new request from current controller truth
-- a support/readback Markdown rendering is optional and never authoritative
+## Activity and Node invocation audit
 
-The prompt owner may add hashes or derived readback fields. Such additions do not become runtime currentness.
+`last_node_activity_at` and `node_activity_revision` are updated once for every admitted exact-current Node MCP invocation. The revision is the watchdog generation and must be usable in a conditional `UPDATE`/compare-and-swap predicate.
 
-## `NodeSession`
-
-V2 keeps the existing task/node-recognition model. It does not introduce an execution grant, generation, or provider-specific MCP credential.
-
-Required semantic fields remain:
+A minimal optional invocation audit row may store:
 
 ```yaml
-node_session:
-    flow_node_id: string
-    dispatch_id: string
-    attempt_id: string
-    assignment_id: string
-    session_key: string
-    session_status: open | closed
-    opened_at: timestamp
-    closed_at: timestamp | null
+node_invocation:
+  invocation_id: string
+  task_id: string
+  dispatch_id: string
+  logical_tool_name: string
+  outcome_code: string
+  started_at: timestamp
+  ended_at: timestamp
 ```
 
-Rules:
-
-- create the node session in the same commit as the `starting` dispatch and prompt request
-- `session_key` plus task scope resolves the current node, assignment, attempt, and dispatch server-side
-- provider session identifiers never replace or authorize this row
-- close authority before a dispatch closes, opens an external wait, enters watchdog replacement, or is cancelled
-- stale, closed, superseded, or non-current session writes fail before commit
-
-## Attempt restart state
-
-The current attempt owns its watchdog restart budget because watchdog recovery preserves the attempt.
-
-Required semantic field:
-
-```yaml
-attempt:
-    watchdog_restart_count: integer
-```
+It stores no request/response bodies, binding credential, provider payload, raw human answer, command log, or hidden reasoning. It is audit/support data, not a task-event source or watchdog authority.
 
-Rules:
+## Boundary source
 
-- initialize to zero for a new semantic attempt
-- increment once for each watchdog replacement cycle that reaches replacement preparation
-- preserve it across external waits and same-attempt continuation
-- do not increment it for provider start retries within one dispatch
-- do not increment it for semantic `retry`; that creates a new attempt whose count starts at zero
+An accepted boundary binds exactly to its source dispatch, assignment, attempt, outcome, required checkpoint/evidence, commit time, and optional successor dispatch ID.
 
-## Generic provider-control readback
+One source dispatch may have at most one accepted boundary and at most one successor. Boundary acceptance closes D1 in the same transaction; asynchronous continuation later fills the one successor relationship if still legal.
 
-Persist only enough start/stop state for support visibility and lifespan reconciliation.
+## Human-request source
 
-Required semantic fields stored directly on `dispatch_turns`:
+Each human request binds to:
 
-```yaml
-provider_control_readback:
-    dispatch_id: string
-    control_operation: start | stop | null
-    control_state: queued | attempting | retry_scheduled | succeeded | failed | null
-    control_attempt: integer | null
-    control_max_attempts: integer | null
-    control_next_retry_at: timestamp | null
-    control_last_error_summary: string | null
-    control_updated_at: timestamp | null
-```
+- task, flow, assignment, attempt, and source dispatch;
+- typed request kind/items and capability basis;
+- immutable `due_at` and timeout/default policy when configured;
+- `open | resolved | timed_out | cancelled` status;
+- typed terminal resolution/provenance; and
+- optional successor dispatch ID.
 
-Rules:
+Opening the request creates the wait and closes D1 atomically. Terminalization clears only the matching wait. The source remains a watchdog exclusion until its continuation is consumed or the flow becomes terminal.
 
-- `control_attempt` is the current provider-control call number, not `Attempt.attempt_id`
-- `control_state` is controller-owned provider-control readback, not a provider lifecycle state
-- errors are sanitized summaries, not raw provider payload archives
-- successful completion clears delayed-retry fields
-- on API restart, dispatch lifecycle status plus this bounded readback is enough for the supervisor to resubmit unresolved local control work
-- no durable queue or outbox is required for the local-first runtime
-- no provider output, tool event, or token stream is stored here
+## Command-run source
 
-The task-event owner emits a bounded `dispatch_control_updated` event when material readback changes. Events are read models over this controller state and do not drive retries.
+Each command run binds to:
 
-## `AttemptPlan`
+- task, flow, assignment, attempt, and source dispatch;
+- command specification, cwd policy, environment-reference policy, timeout, and log refs;
+- `pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled` state;
+- process ownership revision and bounded locally owned process metadata;
+- terminal result/provenance; and
+- optional successor dispatch ID.
 
-The exact plan contract belongs to [Attempt plan and checkpoint contract](attempt-plan-and-checkpoint-contract.md). Its persisted shape is:
+`cancellation_requested` is nonterminal. Terminal state commits only after the owning process outcome rules, including termination and reap for cancellation, are satisfied.
 
-```yaml
-attempt_plan:
-    attempt_id: string
-    revision: integer
-    steps_json: json
-    explanation: string | null
-    updated_by_dispatch_id: string
-    updated_at: timestamp
-```
+Any command-run row owned by D1 remains a watchdog exclusion until its exact continuation is consumed or the flow becomes terminal, including terminal-but-unrouted command state.
 
-One current plan exists per attempt after the worker's first accepted `update_plan`. Plan currentness follows `attempt_id`; it does not follow a provider session or dispatch.
+## Waiting cause
 
-## `NodeMcpInvocation`
+At most one human request or command run may own the current flow wait. Opening either source, setting the matching wait, and closing D1 is one transaction.
 
-`NodeMcpInvocation` is the minimal audit and progress-timing record around one node MCP tool call.
+Terminal source state and flow pause are orthogonal. A source may terminalize while paused; its successor remains absent until legal continue or resumed routing consumes it.
 
-Its fields are exactly:
+## Pause and control revision
 
-```yaml
-node_mcp_invocation:
-    invocation_id: string
-    dispatch_id: string
-    tool_name: string
-    status: started | completed | failed
-    started_at: timestamp
-    finished_at: timestamp | null
-    advanced_progress: boolean
-    failure_code: string | null
-```
+Pause stores reason, bounded details, timestamp, actor/subsystem owner, and monotonic `control_revision`.
 
-Rules:
+Minimum automatic reasons are:
 
-- create or mark `started` only after task, node-session, dispatch, assignment, and attempt authority validates
-- mark `completed` or `failed` after tool handling finishes
-- set `advanced_progress = true` only when the call committed meaningful semantic progress
-- update `Dispatch.last_progress_at` in the same transaction as the semantic commit and successful invocation completion
-- read-only calls may complete with `advanced_progress = false`
-- failed, rejected, stale, and no-op calls never advance progress
-- record a stable normalized `failure_code`; do not archive stack traces or raw provider messages in this row
+- `runtime_recovery_exhausted` for watchdog cap exhaustion; and
+- `runtime_transition_failed` for deterministic controller/request integrity failure.
 
-This record deliberately has no:
+Provider connection/start failure and uncertain acceptance do not create a pause reason; the current D2 stays `starting` and retries.
 
-- request or response payload archive
-- replay result
-- client idempotency key
-- execution generation
-- provider identity
-- new MCP credential
+Operator pause uses its explicit operator reason. A local loopback control mutation records stable `local_operator` surface provenance without claiming an authenticated human identity. The pause transaction closes any current `starting` or `open` dispatch and clears current authority while retaining an active external source and any terminal result.
 
-The controller does not emit one main task-timeline event per invocation. The owning semantic mutation emits its normal bounded event when that event family requires one.
+Operator continue requires the caller's observed `control_revision`, a paused nonterminal flow, no unresolved active wait, and an exact unconsumed continuation source or lawful lineage tail. Its final transaction moves the flow to `running` and creates at most one successor.
 
-FastMCP and provider SDKs continue to own low-level request transport. Existing validators continue to own mutation legality.
+## Work plan and checkpoint
 
-## Physical V2 schema delta
+The current work plan is assignment-owned and optional. The assignment stores a monotonic `work_plan_revision`. The setter accepts zero to nine ordered steps; a present snapshot stores one to nine steps plus that revision, optional explanation, authoring dispatch, and commit time. `steps: []` increments the revision only when a current plan exists, then clears the current snapshot.
 
-Retained V1 semantic tables keep their existing physical ownership except for the exact changes below. SQLAlchemy may map timestamps and JSON to the native SQLite or Postgres representation, but the table names, column names, nullability, relationships, checks, and index purposes are canonical.
+Checkpoints are immutable assignment/attempt evidence rows with exact authoring dispatch identity, bounded summary/evidence, declared refs, and terminal outcome when required. A plan never substitutes for a checkpoint or boundary.
 
-### `dispatch_turns`
+The exact contract belongs to [Work plan and checkpoint](work-plan-and-checkpoint-contract.md).
 
-`dispatch_turns` is rewritten to carry the exact `Dispatch` fields above plus the provider-control columns named in `provider_control_readback`. It no longer carries delivery, Gateway, provider-terminal, foreground-fence, or provider-event columns.
+## Watchdog recovery lineage
 
-Required constraints and indexes:
+Watchdog recovery count is derived or persisted from exact same-attempt predecessor lineage with `opened_reason = watchdog_recovery`; it must not rely on provider events or support files.
 
-- `ck_dispatch_turns_status` permits only `starting | open | closing | closed`
-- `ck_dispatch_turns_closed_reason` permits only the six documented reasons or null
-- `ck_dispatch_turns_closure_consistency` requires a non-null close reason and `closed_at` only for `closed`, and requires both to be null otherwise
-- `ck_dispatch_turns_provider_control_operation` permits only `start | stop` or null
-- `ck_dispatch_turns_provider_control_state` permits only the five documented control states or null
-- `ck_dispatch_turns_provider_control_attempts` requires positive attempt values, `control_attempt <= control_max_attempts`, and both values to be present or absent together
-- `uq_dispatch_turns_one_active_flow` is a partial unique index on `flow_id` for rows whose status is `starting`, `open`, or `closing`
-- `ix_dispatch_turns_attempt_created_at` indexes `(attempt_id, created_at)` for same-attempt chronology
+The recovery transaction matches D1's activity revision and due time, closes D1, and creates D2 atomically. D2 carries `predecessor_dispatch_id = D1` and the same assignment/attempt.
 
-The existing primary key remains `dispatch_id`. Task, flow, node, assignment, attempt, and previous-dispatch identifiers remain foreign keys to their owning rows.
+Exhaustion stores the pause/control transition and closes D1 without a successor.
 
-### `dispatch_prompt_requests`
+## Constraints and indexes
 
-`dispatch_prompt_requests` is the one-to-one persisted `PromptTransportRequest`:
+Database-enforced backstops must work in both supported SQLite and PostgreSQL lanes:
 
-- `dispatch_id` is both primary key and foreign key to `dispatch_turns.dispatch_id`
-- `instructions_text` and `input_text` are required text columns
-- `created_at` is a required timezone-aware timestamp
+- unique root per flow where `predecessor_dispatch_id IS NULL`;
+- unique non-null predecessor dispatch ID;
+- partial unique current dispatch per flow where status is `starting` or `open`;
+- one prompt-ref row per dispatch;
+- one capability-set row per dispatch;
+- requested/resolved provider equality and a valid provider-route discriminator;
+- unique accepted boundary per source dispatch;
+- unique current external source/wait relationship;
+- immutable source-dispatch lineage on human requests and command runs;
+- non-negative activity, provider-start, plan, ownership, and control revisions; and
+- foreign keys for task/flow/assignment/attempt/dispatch/source relationships.
 
-No prompt row may outlive or belong to more than one dispatch.
+Conditional controller writes repeat currentness and source predicates; constraints are the final safety net, not a replacement for useful conflict errors.
 
-### `attempts` and `attempt_plans`
+## Task events and readbacks
 
-`attempts` adds required integer `watchdog_restart_count` with default zero and `ck_attempts_watchdog_restart_count_nonnegative`.
+Task events are bounded chronology emitted from committed source changes. They may identify dispatch creation/open/close, boundary acceptance, wait open/terminal, plan/checkpoint changes, pause/continue/cancel, provider-start retry schedule/acceptance, and watchdog recovery.
 
-`attempt_plans` stores the exact `AttemptPlan` shape:
+Events do not carry in-memory signal state, provider output, binding credentials, raw human answers, command logs, or provider/MCP session IDs.
 
-- `attempt_id` is both primary key and foreign key to `attempts.attempt_id`
-- `revision` is required and positive
-- `steps_json` is required JSON
-- `explanation` is nullable text
-- `updated_by_dispatch_id` is a required foreign key to `dispatch_turns.dispatch_id`
-- `updated_at` is a required timezone-aware timestamp
-- `ck_attempt_plans_revision_positive` enforces revision at least one
+Current API/console/CLI readbacks may expose:
 
-One attempt therefore has at most one current plan row. Revision history remains in persisted `plan_updated` task events rather than additional plan-revision rows.
+- dispatch state and lineage;
+- `adapter_started_at`, Node activity timestamp/revision, and computed watchdog due time;
+- provider-start attempt count, next due time, retry kind, and sanitized error;
+- active wait/source summary;
+- watchdog recovery count and pause/control revision;
+- provider selection provenance; and
+- `provider_native_access` and `network_access` effective values with their exact controlling sources.
 
-### `node_mcp_invocations`
+They do not present support projections or events as current authority.
 
-`node_mcp_invocations` stores the exact invocation shape above:
+## Process-local and provider-private state
 
-- `invocation_id` is the primary key
-- `dispatch_id` is a required foreign key to `dispatch_turns.dispatch_id`
-- `tool_name`, `status`, `started_at`, and `advanced_progress` are required
-- `finished_at` and `failure_code` are nullable
-- `ck_node_mcp_invocations_status` permits only `started | completed | failed`
-- `ck_node_mcp_invocations_finish_consistency` requires `finished_at` for completed or failed rows and null for started rows
-- `ck_node_mcp_invocations_failure_consistency` permits `failure_code` only for failed rows
-- `ix_node_mcp_invocations_dispatch_started_at` indexes `(dispatch_id, started_at)`
+The following are explicitly absent from relational controller truth:
 
-### `node_sessions`
+- `DispatchMcpBinding` and bearer credentials;
+- MCP protocol session IDs;
+- Codex/Claude/OpenClaw thread, session, or run IDs as authority;
+- live SDK clients, subprocess handles, tasks, and cancellation tokens;
+- provider output/events/final responses; and
+- in-memory deadline or queue generations beyond their durable source values.
 
-`node_sessions` keeps the documented recognition fields. `dispatch_id` is required and unique, so one dispatch has exactly one NodeSession row; `session_key` remains indexed for recognition. Provider session hints never appear in this table.
+Adapters may hold private resources during the process lifetime, but restart discards them and the exact-source audit reconstructs only controller work.
 
-### Removed columns on retained tables
+## Reset boundary
 
-The physical V2 delta also removes these currently shipped columns without replacements:
+This target is reset-only relative to the shipped V1 runtime schema. Remove obsolete NodeSession, provider delivery/continuity/watchdog/provider-event families, prompt body/hash/request envelopes, `closing`, semantic `last_progress_at`, finite launch-exhaustion fields, and generic provider session/run identifiers. Stale local databases fail with clear `autoclaw db reset` guidance rather than receiving compatibility shadow columns.
 
-- `assignments.task_memory_search_hints_json`
-- `attempt_checkpoints.task_memory_search_hints_json`
-- `task_composes.context_root_path`
-- `dispatch_turns.gateway_session_key`
-- `dispatch_turns.gateway_run_id`
+Task-owned workspace and declared durable artifact data follow their owning reset/preservation policy; reset must not recursively delete user-owned external paths.
 
-## Relations and currentness
+## Required proof
 
-The runtime must enforce these relationships:
+- SQLite and PostgreSQL enforce one root, one successor, and one current starting/open dispatch;
+- concurrent source handlers produce one winner without a broad lock;
+- D1 close and source/wait creation are atomic;
+- watchdog D1 close and D2 creation are atomic;
+- provider retry updates one current D2 and has no exhaustion field;
+- every admitted Node call increments activity revision once;
+- source completion while paused is retained without successor;
+- current readbacks derive from controller rows;
+- capability readbacks preserve both independent effective values and deterministic source attribution; and
+- removed secrets/provider/session/support fields do not survive reset.
 
-- one immutable task compose per task run
-- one current assignment per current runtime node
-- one current attempt per current assignment
-- one latest checkpoint pointer per attempt
-- zero or one current `AttemptPlan` per attempt
-- at most one current `starting`, `open`, or `closing` dispatch per task lineage
-- one prompt transport request per dispatch
-- one node session per current dispatch
-- many node MCP invocations per dispatch
-- one active external waiting cause or none per task lineage
+## Related
 
-Currentness never comes from newest timestamps, lexical file names, provider history, prompt memory, or task-event order.
-
-## Removed record families
-
-V2 removes these provider-shaped generic runtime families:
-
-- provider event records
-- dispatch delivery-state records
-- dispatch continuity-state records
-- dispatch watchdog-state records
-
-V2 also removes the unused context and task-memory persistence family:
-
-- `ContextSpaceModel`
-- `ContextItemModel`
-- context-root and context/wiki manifest fields, including `context_root_path`
-- task-memory search-hint fields, including `task_memory_search_hints`
-
-It also removes these identifiers from generic runtime records:
-
-- `gateway_run_id`
-- `gateway_session_key`
-- `last_provider_signal_at`
-- `provider_signal_seen`
-- `provider_completed`
-- `provider_failed`
-
-Provider-specific adapters may keep private active handles in the lifespan-owned manager while work is local and live. Those handles are not a generic persisted record family. Optional opaque continuity persists only as `provider_session_hint`.
-
-## Removed file families
-
-V2 removes the four dispatch-monitor projections:
-
-```text
-_runtime/dispatch/<dispatch_id>/delivery-state.json
-_runtime/dispatch/<dispatch_id>/continuity-state.json
-_runtime/dispatch/<dispatch_id>/watchdog-state.json
-_runtime/dispatch/<dispatch_id>/provider-events.ndjson
-```
-
-No compatibility writer, ignored readback field, or alternate filename keeps these families live. Runtime support consumes controller records and task events instead.
-
-The remaining task-root and projected-file contract belongs to [Task root and file access](task-root-and-file-access.md).
-
-## Removed monitor ownership
-
-The target source tree removes four overlapping monitor owners:
-
-- foreground provider lifecycle manager
-- provider event-ingest manager
-- dispatch lifecycle reconciler
-- standalone watchdog manager
-
-One `LocalRuntimeSupervisor` replaces their scheduling ownership. Domain services still validate and commit their own rows; the supervisor does not become a semantic god object.
-
-## Reset-only schema policy
-
-This simplification is an intentional reset boundary, not an in-place data migration.
-
-Rules:
-
-- startup compares the configured AutoClaw schema against current ORM metadata using exact application table and column sets, not only missing-table checks
-- backend-owned system tables are excluded, but an extra or missing AutoClaw table or column is a stale-schema mismatch
-- named foreign-key, check-constraint, unique-index, and ordinary-index signatures for the V2 delta above must also match
-- a database containing removed provider-event, delivery, continuity, watchdog, Gateway-ID, task-memory-hint, or context-root schema therefore fails startup with diagnostic code `runtime_schema_reset_required`
-- the diagnostic tells the operator to run `autoclaw db reset`
-- startup does not silently retain, reinterpret, or partially migrate removed fields
-- reset recreates only the current V2 schema and task-root shape
-- reset may delete AutoClaw-owned local runtime data after normal confirmation
-- reset and upgrade code must never recursively delete an externally bound context path or any other user-owned external directory
-
-The known removed fingerprint must receive explicit coverage even when the general equality check already detects it:
-
-```yaml
-removed_tables:
-  - context_spaces
-  - context_items
-  - dispatch_delivery_states
-  - dispatch_continuity_states
-  - dispatch_watchdog_states
-  - provider_event_records
-removed_columns:
-  assignments:
-    - task_memory_search_hints_json
-  dispatch_turns:
-    - gateway_session_key
-    - gateway_run_id
-  attempt_checkpoints:
-    - task_memory_search_hints_json
-  task_composes:
-    - context_root_path
-```
-
-Reset mechanics are exact:
-
-- SQLite reset replaces only the configured AutoClaw database after normal confirmation, recreates current metadata, and reruns required seeds
-- Postgres reset drops and recreates AutoClaw-owned tables in the configured schema after normal confirmation, preserves unrelated schemas, recreates current metadata, and reruns required seeds
-- neither reset traverses or deletes task workspace bindings, an old external context path, or another user-owned directory
-- `db upgrade` does not attempt an in-place V1-to-V2 runtime data migration; it returns the same reset guidance for this epoch break
-
-Required schema proof covers fresh and reset SQLite, fresh and reset Postgres, and stale SQLite/Postgres fixtures containing every removed table or column family above. Each fresh/reset schema must match current table, column, foreign-key, check, unique-index, and index signatures. Each stale fixture must fail before runtime startup with `runtime_schema_reset_required` and the `autoclaw db reset` remediation.
-
-## Projection and readback rule
-
-Controller records remain authoritative. Task events, API carriers, CLI status, and any remaining generated files are read models.
-
-If a read model disagrees with the controller database:
-
-1. use controller source rows for currentness and legality
-2. repair or regenerate the read model
-3. never rewrite controller truth from the projection
-
-## Related contracts
-
+- [ADR-0009: exact-source runtime control](../../../adr/ADR-0009-exact-source-runtime-control.md)
 - [Runtime lifecycle and watchdog](runtime-lifecycle-and-watchdog.md)
 - [Controller contract and resumable execution](controller-contract-and-resumable-execution.md)
-- [Attempt plan and checkpoint contract](attempt-plan-and-checkpoint-contract.md)
-- [Node and operator MCP surface contract](../interfaces/node-and-operator-mcp-surface-contract.md)
-- [V1 runtime database and object contract](../../v1/architecture/runtime-database-and-object-contract.md)
 - [Task root and file access](task-root-and-file-access.md)
+- [Managed Node MCP binding](managed-node-mcp-binding.md)

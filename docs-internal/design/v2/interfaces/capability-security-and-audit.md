@@ -2,201 +2,194 @@
 
 Status: Target
 
-This page owns V2 managed-agent capability decisions, noninteractive provider policy, trust-surface separation, and controller audit provenance.
+This page owns V2 managed-agent capability decisions, noninteractive provider policy, MCP trust separation, the loopback control-plane boundary, and controller audit provenance.
 
 ## Core rule
 
-Controller-owned capability decides which special semantic node actions are legal. Provider permissions may narrow execution locally, but provider UI, events, or configuration never widen controller authority or become audit truth.
+Controller-owned capability decides which semantic Node actions are legal. Provider policy may narrow local execution but never widens controller authority or becomes controller audit truth.
 
-## Trust surfaces
+Native provider tools, provider network access, Node MCP exposure, controller `command_run`, and AutoClaw human requests are separate dimensions. Enabling one does not silently enable or deny another.
 
-AutoClaw exposes two distinct MCP trust surfaces:
+## Trust lanes
 
-- Node MCP is attached to managed worker, parent, and root executions. Its existing `task_id` plus `session_key` recognition resolves current node, dispatch, assignment, and attempt authority.
-- Operator MCP is an external inspection and control surface. It uses operator authentication and task authorization and is never attached to a managed execution.
+| Lane | Principal and scope | Admission and authority source | Attached to provider execution |
+| --- | --- | --- | --- |
+| managed Node MCP | one managed Codex/Claude invocation | opaque `DispatchMcpBinding` credential mapped to exact task + dispatch, followed by fresh controller validation | yes |
+| compatibility Node MCP | user-configured experimental OpenClaw client | full `task_id` + `dispatch_id` scope selectors, operator-controlled local reachability, and fresh controller validation | yes, by user configuration |
+| Operator MCP | locally admitted operator surface | loopback or OS-owned process boundary plus task-scoped controller legality | never |
+| HTTP Control API | local client | enforced loopback boundary plus request-local task, currentness, and operation legality | never |
+| packaged console | same-origin local browser application | loopback, exact Host, exact unsafe-request Origin, and controller legality | never |
+| provider adapter | AutoClaw service identity | provider-native credential and configuration | invokes provider only |
 
-Managed agents require Node MCP only. Operator MCP availability is not provider readiness and operator credentials never appear in a managed-agent prompt or adapter configuration.
+No lane inherits another lane's credentials or authority. Managed Node credentials do not grant operator control, local operator admission does not grant Node dispatch authority, and provider login never authorizes a controller mutation.
+
+## Local operator boundary
+
+The V2 target has no global operator API key. It defines no `security.api_key`, `X-AutoClaw-API-Key`, API-key bootstrap response, browser bundle or storage path, or equivalent shared operator bearer.
+
+The HTTP Control API, Operator MCP, packaged console, and local nonbrowser clients rely on the enforced loopback listener and the operating-system process/user boundary. Local admission is not blanket controller authority. Every request still passes its route method, strict shape, task scope, currentness, capability, and operation-specific legality checks.
+
+When audit needs an actor reference, these surfaces use a stable value such as `local_operator`. It means that the locally admitted operator surface performed the action; it is not a verified named-human identity.
+
+Provider setup, login, enablement, and default mutation remain CLI-only. Browser and HTTP control surfaces may read bounded provider/default/check status but expose no provider-mutation route and never return provider credentials.
+
+## Managed Node authority
+
+Managed execution receives a private `/_internal/node/mcp` URL, bearer credential, and role-scoped tool allowlist dynamically for one provider-start invocation. The credential resolves to an ephemeral process-local `DispatchMcpBinding`; it is never a prompt field, task file, tool argument, database record, provider continuity value, log field, or public readback.
+
+The transport requires a direct loopback peer, exact allowed Host, and exact Origin handling. It is excluded from public OpenAPI and must not be published by a reverse proxy. Missing or invalid credentials, non-loopback peers, forged Host, and disallowed Origin fail before controller lookup or Node activity.
+
+Every admitted call rereads dispatch, flow, assignment, attempt, role, exposure, and capability. A binding is not a lease; database currentness is the final authority. This dispatch-scoped bearer is distinct from the removed global operator API key and remains required for managed Node MCP.
+
+## Compatibility Node authority
+
+The `/node/mcp` compatibility projection requires full `task_id` and `dispatch_id` selectors on every tool. The IDs select scope but do not authenticate a caller.
+
+This lane has no managed binding credential because AutoClaw does not own or mutate the user's OpenClaw configuration. It remains experimental and must be reachable only inside an operator-controlled local boundary. The server rejects unapproved Host values and, when an Origin header is present, rejects every value outside an exact configured allowlist. It never uses wildcard Origin reflection.
+
+A compatibility call still rereads exact current controller authority and fails rather than redirecting from a stale dispatch to a newer one. Knowing IDs cannot make a stale or role/capability-denied operation legal, but reachable compatibility access is still a weaker authentication boundary and must be documented as such.
 
 ## Effective capability set
 
-The controller computes one stable effective capability set before committing a dispatch:
+The controller freezes one effective capability set for each dispatch:
 
 ```yaml
 effective_capability_set:
-    dispatch_id: string
-    human_request:
-        direction: allow | deny
-        approval: allow | deny
-        input: allow | deny
-        review: allow | deny
-    command_run: allow | deny
+  dispatch_id: string
+  provider_native_access:
+    effective: full | restricted | denied
+    source: default | policy_definition | task_policy | controller
+  network_access:
+    effective: allow | deny
+    source: default | policy_definition | task_policy | controller
+  human_request:
+    direction: allow | deny
+    approval: allow | deny
+    input: allow | deny
+    review: allow | deny
+  command_run: allow | deny
 ```
 
-The decision may derive from:
-
-- current role and policy definitions
-- current task and workflow policy
-- the dispatch's fixed `resolved_provider`
-- local runtime configuration and adapter constraints
+`PolicyDefinition.capabilities` owns the authored native-access and network ceilings. Nodes inherit them through `policy_id`; task policy and controller-enforced ceilings may only narrow them.
 
 Rules:
 
-- omitted capabilities and omitted human-request kinds resolve to `deny`
-- provider fallback finishes before dispatch commit; one dispatch keeps one capability decision and one resolved provider
-- a later dispatch recomputes from current controller truth
-- adapter permission systems may enforce a stricter local result but may not silently allow a controller-denied action
-- ordinary Node MCP access is a launch-readiness requirement, not an optional capability family
-- pause, continue, cancel, human-request resolution, and command-run cancellation are operator controls authorized separately from node capability
+- omitted provider-native access resolves to `full` and omitted network access resolves independently to `allow`;
+- resolution chooses the most restrictive applicable value using `full > restricted > denied` and `allow > deny`;
+- adapter or local hard ceilings count as `controller`;
+- when equally restrictive ceilings tie, reported source precedence is `controller > task_policy > policy_definition > default`;
+- omitted special AutoClaw capabilities and omitted human-request kinds resolve to `deny`;
+- explicit provider selection never silently falls back to another provider;
+- the dispatch's resolved provider and capability set remain fixed for that dispatch;
+- a successor recomputes from current controller truth;
+- adapter permission systems may be stricter but cannot permit a controller-denied semantic operation;
+- managed Node MCP attachment is required for managed Codex/Claude launch rather than an optional semantic capability; and
+- pause, continue, cancel, human-request resolution, and command-run cancellation are separately authorized operator controls.
 
-The exact task tree has no `_runtime/.../capabilities.json` or `capabilities.md`. `get_current_context` returns effective capabilities and currently allowed actions from controller state. Prompt text and task files are not capability authority.
+No task file or prompt authorizes capability. Definition preview, current context, runtime/API readback, CLI/status, and console readbacks disclose the same effective values and sources without exposing provider credentials or private configuration.
 
 ## Capability enforcement
 
-The minimum node capability families are:
+The minimum special semantic families are:
 
-- `human_request.<direction|approval|input|review>`
-- `command_run`
+- `human_request.<direction|approval|input|review>`; and
+- `command_run`.
 
-Capability validates after task and node-session recognition and before the semantic source row is created. A denial returns a shared structured failure:
+Capability validates during pre-admission current-authority checks. Denial returns the shared structured failure with `code: capability_rejected`, creates no source/wait row, leaves D1 open, emits no domain event, and does not refresh Node activity.
 
-```yaml
-OperationFailure:
-    ok: false
-    code: capability_rejected
-    summary: string
-    retryable: false
-    field_path: null
-    suggested_next_step: string | null
-```
+Ordinary read, plan, checkpoint, boundary, definition, and structural operations retain their own role and policy checks. The catalog descriptor and fresh controller state jointly determine whether each is exposed and legal.
 
-The rejected capability name appears in the bounded `summary`; capability denial does not define a second failure carrier or add undeclared fields to the shared `OperationFailure` schema.
+## Provider-native access
 
-A rejected call:
+Provider-native filesystem, shell, search, network, and similar tools remain provider-owned execution surfaces. AutoClaw configures their machine policy explicitly but does not ingest provider tool events as controller truth.
 
-- creates no human-request or command-run source row
-- creates no waiting cause
-- does not close the dispatch
-- does not advance `last_progress_at`
-- does not emit a standalone main-timeline event
+Full provider-native access does not imply:
 
-The admitted failed invocation may still retain its normalized failure code in the internal `NodeMcpInvocation` audit record.
+- permission to call parent/root Node tools;
+- permission to use controller `command_run`;
+- permission to open a human request;
+- managed Node MCP authority for another dispatch; or
+- interactive approval prompts.
 
-## Noninteractive provider policy
+The provider must be configured noninteractively. A native question/approval mechanism must allow under the declared machine policy, deny with a normal tool failure, or make launch fail if noninteractive behavior cannot be guaranteed. AutoClaw never waits on an unconsumed provider UI.
 
-Provider-native question, approval, or permission mechanisms must never wait for input through a provider UI that AutoClaw does not consume.
+## Provider selection provenance
 
-Every managed adapter configures those mechanisms to one of these noninteractive outcomes:
-
-- allow under the adapter's bounded machine policy
-- deny and return a normal provider/tool failure
-- fail launch when the provider cannot guarantee noninteractive behavior
-
-The worker prompt teaches the agent to use AutoClaw `open_human_request` when it intentionally needs human direction, approval, input, or review. AutoClaw does not translate provider-native prompts after the fact, because doing so would reintroduce provider-event ingestion as runtime truth.
-
-Provider-native sandbox and approval configuration is defense in depth. It does not replace Node MCP legality or human-request policy.
-
-## Provider provenance
-
-Every dispatch records controller-owned provider resolution:
+Each dispatch records:
 
 ```yaml
 provider_resolution:
-    requested_provider: openclaw | codex | claude
-    resolved_provider: openclaw | codex | claude
+  requested_provider: openclaw | codex | claude
+  resolved_provider: openclaw | codex | claude
+  selection_basis: explicit | default
 ```
 
-Rules:
+For an explicit request, requested and resolved values must match or dispatch preparation fails. An omitted request may resolve through the configured default. There is no fallback chain.
 
-- the requested value comes from lawful task/operator preference or the runtime default
-- fallback resolves before the dispatch commits
-- the resolved value stays fixed for the dispatch
-- later same-attempt dispatches may resolve differently from current policy
-- API and event readbacks may expose requested and resolved provider plus provenance
-- opaque provider session hints, credentials, provider payloads, and raw errors never appear on public readbacks
+Opaque provider session hints, credentials, provider payloads, raw errors, and binding material never appear on public readbacks. Provider identity explains the chosen adapter, not lifecycle or semantic progress.
 
-Provider provenance explains which adapter the controller selected. It is not provider lifecycle or semantic progress.
+## Loopback browser boundary
 
-## Human-request provenance
+V2 accepts only loopback listener configuration such as `127.0.0.1` or `::1`; `0.0.0.0` and every non-loopback bind value are invalid.
 
-Every terminal human request stores:
+The packaged console is served from the API origin. The server enforces an exact allowlist of loopback Host values, validates the exact configured Origin for unsafe browser requests, and rejects mismatched browser origins before route handling. Development CORS may enumerate exact local origins, methods, and headers, but it never uses wildcard origin reflection or wildcard credentialed CORS.
 
-```yaml
-human_request_provenance:
-    request_id: string
-    task_id: string
-    resolved_by_actor_ref: string | null
-    resolved_by_surface: control_api | control_ui | operator_mcp | controller
-    resolution_kind: answered | timed_out | cancelled
-    resolved_at: timestamp
-    resolution_policy_basis: string
-    resolution_note: string | null
-```
+The loopback target intentionally adds no browser session, cookie lifecycle, CSRF-token subsystem, login/logout/expiry/revocation machinery, TLS or reverse-proxy profile, non-loopback deployment, remote-browser authentication, or browser-owned provider management. Exact Origin validation is the CSRF boundary for the supported no-cookie, no-browser-credential shape. A later remote or browser-provider-mutation product requires a new decision.
 
-The controller records provenance for answers, timeout, and cancellation. Provenance is immutable audit fact. It may be displayed by authorized control surfaces but never edited by a prompt or provider callback.
+## Task scope and human provenance
 
-## Task authorization
+Control reads and writes validate task scope and operation legality. Provider login authenticates AutoClaw to a provider; it never authorizes controller mutation.
 
-Control reads and writes are authorized per task.
-
-Rules:
-
-- operator identity remains external authority, represented by a stable actor reference in audit rows and events
-- adapter authentication proves only that AutoClaw may call that adapter
-- provider login never authorizes controller writes
-- operator MCP and HTTP controls use the same task currentness and authorization policy even when their transport authentication differs
-- node mutations must pass session recognition, currentness, capability, and operation legality before commit
-
-Credentials and raw authentication material are never controller runtime records, prompt fields, task events, or task files.
+Every terminal human request stores its request/task identity, terminal kind, actor reference when applicable, resolution surface, timestamp, policy basis, and bounded optional note. The source row is immutable audit truth after terminalization. Full sensitive answer bodies remain on their authorized detail surface rather than generic task events.
 
 ## Audit ownership
 
-Controller source rows own current truth. The append-only task event stream owns bounded chronology over committed source changes.
+Controller source rows own current truth. The append-only task event stream owns bounded chronology over committed source changes and may retain chained integrity metadata.
 
-Each task event retains:
+Provider output, native tool events, approval UI, token streams, disconnects, terminal frames, and MCP transport sessions are never controller audit facts. Provider-start readback describes AutoClaw's own attempt state only.
 
-```yaml
-task_event_integrity:
-    event_id: string
-    event_hash: string
-    prev_event_hash: string | null
-```
+Optional `NodeMcpInvocation` rows remain bounded internal audit evidence. They never contain request/response bodies, file content, binding credentials, provider payloads, raw human answers, command logs, or hidden reasoning. The dispatch's activity timestamp/revision, not invocation classification, is watchdog authority.
 
-The hash covers the canonical serialized controller event plus the prior hash. The concrete hash algorithm may evolve without changing the source-row truth model.
+## Payload and secret boundary
 
-Provider output, native tool events, approval UI, token streams, disconnects, and terminal frames are never accepted as controller audit facts. Generic provider-control readback is controller state describing AutoClaw's own start or stop attempts, not normalized provider lifecycle.
+- human-request list/detail may expose authorized typed source and resolution;
+- task events carry bounded identifiers, states, summaries, and provenance rather than full answer bodies;
+- command-run detail may expose normalized truth and log refs, while raw logs stay behind an authorized route;
+- provider and managed-MCP credentials never enter task rows, events, prompts, files, or browser readbacks;
+- no global operator key enters configuration, headers, browser bootstrap, bundles, storage, logs, or readbacks;
+- raw environment secrets never enter command specs or generic audit payloads; and
+- exact controller IDs are identifiers, not secrets.
 
-Individual `NodeMcpInvocation` rows remain internal audit/progress evidence and do not generate one main-timeline event per call.
-
-## Payload boundary
-
-The minimum local-first contract does not add heuristic secret detection or structural masking to human-request and command-run content.
-
-Instead, surfaces stay bounded by ownership:
-
-- human-request list/detail may expose the authorized typed source and resolution
-- human-request events do not inline full answer bodies or input payloads
-- command-run list/detail may expose normalized command truth and log refs
-- raw command logs remain behind the dedicated authorized log route
-- task events carry bounded summaries, identifiers, state, and provenance
-- provider payloads and credentials are never stored in these surfaces
-
-Future principal-aware narrowing may strengthen this policy without making provider events authoritative.
+The local-first phase does not add heuristic secret scanning as a substitute for these ownership boundaries.
 
 ## Required invariants
 
-- managed executions receive Node MCP and never Operator MCP
-- effective capability is stable for one dispatch and recomputed for the next
-- task files and prompts never authorize capability
-- provider-native interactive waits are disabled
-- only AutoClaw MCP opens a managed-agent human wait
-- provider authentication never authorizes controller mutation
-- controller source rows and controller events remain the only audit truth
+- managed execution receives Node MCP and never Operator MCP;
+- compatibility Node MCP remains explicit, weaker, user-configured, and experimental;
+- a worker cannot acquire parent/root tools through native-provider access or MCP discovery;
+- effective capability is fixed for one dispatch and recomputed for a successor;
+- provider-native access, network access, Node MCP, command run, and human requests remain separate axes;
+- provider-native interactive waits are disabled;
+- local operator admission never claims a verified human identity;
+- provider authentication never authorizes controller mutation;
+- browser provider mutation is absent from the loopback-only target;
+- the global operator API key is absent while managed binding and provider credentials remain private; and
+- controller source rows and events remain the only controller audit truth.
+
+## Framework basis
+
+[Starlette TrustedHostMiddleware](https://www.starlette.io/middleware/#trustedhostmiddleware) provides maintained exact Host enforcement, and [Starlette CORSMiddleware](https://www.starlette.io/middleware/#corsmiddleware) supports explicit origin, method, and header allowlists. [OWASP CSRF guidance](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html) provides the Origin-validation basis for unsafe browser requests. These implementation primitives do not widen the loopback-only product boundary.
 
 ## Related contracts
 
+- [ADR-0010: dispatch-scoped managed Node MCP authority](../../../adr/ADR-0010-dispatch-scoped-managed-node-mcp-authority.md)
+- [ADR-0012: loopback control plane without an operator API key](../../../adr/ADR-0012-loopback-control-plane-without-operator-api-key.md)
+- [Managed Node MCP binding](../architecture/managed-node-mcp-binding.md)
 - [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)
 - [Runtime records and control state](../architecture/runtime-records-and-control-state.md)
-- [Node and operator MCP surface contract](node-and-operator-mcp-surface-contract.md)
+- [Node and Operator MCP surface contract](node-and-operator-mcp-surface-contract.md)
+- [Provider selection and runtime config](provider-selection-and-runtime-config.md)
+- [Role and policy definition schema](role-and-policy-definition-schema.md)
 - [Human request and approval contract](human-request-and-approval-contract.md)
 - [Command run and external wait](../architecture/command-run-and-external-wait.md)
 - [Control API](control-api.md)

@@ -2,7 +2,7 @@
 
 Status: Target
 
-> **V2 supersession notice:** This page remains the frozen V1 checkpoint baseline. V2 narrows checkpoint timing and gives ordinary worker progress to attempt plans in [Attempt plan and checkpoint contract](../../v2/architecture/attempt-plan-and-checkpoint-contract.md).
+> **V2 supersession notice:** This page remains the frozen V1 checkpoint baseline. V2 narrows checkpoint purpose and separates durable evidence from optional assignment planning in [Work plan and checkpoint contract](../../v2/architecture/work-plan-and-checkpoint-contract.md).
 
 This page defines the canonical checkpoint write/read contract for the frozen v1 runtime.
 

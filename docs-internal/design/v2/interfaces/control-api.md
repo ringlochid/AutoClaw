@@ -6,13 +6,13 @@ This page owns V2 task runtime reads, operator controls, human-request and comma
 
 ## Core rule
 
-The Control API reads controller source rows and commits explicit controller intent. It never reconstructs currentness from provider output, task events, support files, or opaque provider session state.
+The Control API reads controller source rows and commits explicit controller intent. It never reconstructs currentness from provider output, task events, support files, provider/MCP sessions, or in-memory runtime signals.
 
-All routes are task-authorized. Mutations record the stable actor reference when the caller identity is known.
+The V2 Control API is a loopback-only, operating-system-trusted local surface. It has no global operator API key, `X-AutoClaw-API-Key` header, or browser credential bootstrap. Exact Host and unsafe-request Origin admission belong to the security owner; every admitted request still enforces task scope, currentness, and operation legality.
+
+Local mutations record stable `local_operator` surface provenance. That value identifies the trusted local control surface; it does not claim an authenticated human identity.
 
 ## Route families
-
-The target routes are:
 
 ```text
 GET  /control/tasks/{task_id}
@@ -34,330 +34,247 @@ POST /control/tasks/{task_id}/continue
 POST /control/tasks/{task_id}/cancel
 ```
 
-The event routes are listed here for public route cohesion; their exact carrier, cursor, and replay contract lives only in the task-event owner.
+Provider login/configuration mutation is not part of this browser-facing route family. No route exposes provider credentials, managed MCP binding material, raw provider payloads, or adapter-private continuity.
 
-No route exposes provider credentials, raw authentication state, provider payloads, or `provider_session_hint`.
+Callback HTTP is absent from the V2 target. Node operations use the managed or explicit-ID compatibility MCP projections rather than callback routes or session-key authority.
 
 ## Task runtime read
 
-`GET /control/tasks/{task_id}` extends the shipped compact flow read with the current V2 runtime fields:
+`GET /control/tasks/{task_id}` returns:
 
 ```yaml
 RuntimeFlowRead:
-    task_id: string
-    task_title: string
-    task_summary: string
-    workflow_key: string | null
-    status: pending | running | blocked | paused | succeeded | cancelled
-    active_flow_revision_id: string
-    workflow_manifest_ref: ref
-    current_node_key: string | null
-    active_attempt_id: string | null
-    waiting_cause: >-
-      paused_by_operator | waiting_for_human_request |
-      waiting_for_command_run | null
-    pause_reason: paused_by_operator | runtime_recovery_exhausted | null
-    current_dispatch: dispatch_runtime_read | null
-    current_plan: attempt_plan_read | null
-    watchdog_restart_count: integer | null
-    current_human_request: human_request_summary | null
-    current_command_run: command_run_summary | null
-    updated_at: timestamp
+  task_id: string
+  task_title: string
+  task_summary: string
+  workflow_key: string | null
+  status: pending | running | paused | completed | cancelled
+  active_flow_revision_id: string
+  control_revision: integer
+  workflow_manifest_ref: ref
+  current_node_key: string | null
+  active_assignment_id: string | null
+  active_attempt_id: string | null
+  waiting_cause: human_request | command_run | null
+  pause_reason: paused_by_operator | runtime_recovery_exhausted | runtime_transition_failed | null
+  current_dispatch: DispatchRuntimeRead | null
+  latest_dispatch_id: string | null
+  current_plan: WorkPlanRead | null
+  watchdog_recovery_count: integer | null
+  current_human_request: HumanRequestSummary | null
+  current_command_run: CommandRunSummary | null
+  updated_at: timestamp
 ```
 
-The nested reads are:
+`current_dispatch` is non-null only for current `starting` or `open` authority:
 
 ```yaml
-dispatch_runtime_read:
-    dispatch_id: string
-    previous_dispatch_id: string | null
-    status: starting | open | closing | closed
-    closed_reason: >-
-      boundary | human_request_wait | command_run_wait | cancelled |
-      superseded | control_failed | null
-    requested_provider: openclaw | codex | claude
-    resolved_provider: openclaw | codex | claude
-    adapter_started_at: timestamp | null
-    last_progress_at: timestamp | null
-    provider_control: provider_control_readback | null
-
-attempt_plan_read:
-    attempt_id: string
-    revision: integer
-    explanation: string | null
-    steps:
-        - step: string
-          status: pending | in_progress | completed
-    updated_by_dispatch_id: string
-    updated_at: timestamp
+DispatchRuntimeRead:
+  dispatch_id: string
+  predecessor_dispatch_id: string | null
+  assignment_id: string
+  attempt_id: string
+  status: starting | open
+  opened_reason: root | boundary | child_return | human_result | command_result | watchdog_recovery | semantic_retry | operator_continue
+  requested_provider: codex | claude | openclaw
+  resolved_provider: codex | claude | openclaw
+  selection_basis: explicit | default
+  adapter_started_at: timestamp | null
+  last_node_activity_at: timestamp | null
+  node_activity_revision: integer
+  watchdog_due_at: timestamp | null
+  provider_start: ProviderStartReadback | null
+  effective_capabilities: EffectiveCapabilityReadback
 ```
 
-`current_dispatch` is the current or most recently closed dispatch for the active attempt when one exists. `current_plan` is null only before the worker's first accepted `update_plan` or when there is no active worker attempt.
+Closed dispatches are history and appear in trace. The API never invents a `closing` state or keeps a closed row current while waiting for provider cleanup.
 
-Provider provenance is exactly the requested and resolved provider selected by controller resolution for that dispatch. Detailed fallback diagnostics may remain in authorized support readback. Session hints and credentials never appear.
-
-The provider-control readback is:
+The provider-start readback is:
 
 ```yaml
-provider_control_readback:
-    operation: start | stop | null
-    state: queued | attempting | retry_scheduled | succeeded | failed | null
-    attempt: integer | null
-    max_attempts: integer | null
-    next_retry_at: timestamp | null
-    last_error_summary: string | null
-    updated_at: timestamp | null
+ProviderStartReadback:
+  revision: integer
+  attempt_count: integer
+  next_attempt_at: timestamp | null
+  retry_kind: initial | definite_failure | uncertain_acceptance | null
+  last_error_code: string | null
 ```
 
-This is controller-owned status for AutoClaw's operation. It is not provider lifecycle. `attempt` is the provider-control call number, not the semantic attempt identifier.
+There is no maximum-attempt field. `last_error_code` is bounded/sanitized controller readback, not a raw provider exception.
 
-Human-request and command-run summaries identify the current source wait and its source state. Their complete records remain on the dedicated routes.
+The exact capability readback is:
+
+```yaml
+EffectiveCapabilityReadback:
+  provider_native_access:
+    effective: full | restricted | denied
+    source: default | policy_definition | task_policy | controller
+  network_access:
+    effective: allow | deny
+    source: default | policy_definition | task_policy | controller
+```
+
+The two axes resolve independently. Their `source` identifies the ceiling that produced the effective value, using `controller > task_policy > policy_definition > default` when equally restrictive ceilings tie. Adapter or local hard ceilings report `controller`. Provider selection provenance remains separate.
+
+`WorkPlanRead` is assignment-owned and optional:
+
+```yaml
+WorkPlanRead:
+  assignment_id: string
+  revision: integer
+  explanation: string | null
+  steps:
+    - step: string
+      status: pending | in_progress | completed
+  authored_by_dispatch_id: string
+  updated_at: timestamp
+```
+
+`current_plan: null` is a legal stable state for root, parent, or worker work. A plan is advisory and never interpreted as assignment completion.
+
+`last_node_activity_at` is admitted current Node MCP activity, including reads, no-ops, and post-admission domain failures. It is not semantic progress, percent complete, provider liveness, or plan progress.
+
+Provider provenance is exact selection provenance. An explicit route has matching requested/resolved values. An omitted preference resolves through the configured default. The API never labels a different provider as fallback because target selection has no fallback chain.
 
 ## Snapshot
 
-`GET /control/tasks/{task_id}/snapshot` returns the runtime flow read plus the smallest operator-ready summary:
+`GET /control/tasks/{task_id}/snapshot` returns the runtime flow read plus a bounded operator summary:
 
 ```yaml
 OperatorFlowSnapshotResponse:
-    flow: RuntimeFlowRead
-    top_actionable_items:
-        - summary: string
-          node_key: string | null
-          current_paths: ref[]
-          suggested_action: string | null
-    current_paths: ref[]
-    stream_head_event_id: string | null
+  flow: RuntimeFlowRead
+  top_actionable_items:
+    - summary: string
+      node_key: string | null
+      current_paths: ref[]
+      suggested_action: string | null
+  current_paths: ref[]
+  stream_head_event_id: string | null
 ```
 
-`stream_head_event_id` is a bootstrap anchor only. The snapshot remains a source row read; its event-stream anchor does not make the event log currentness authority.
-
-Actionable items may point to current plan work, an open human request, a command run, provider-control retry, operator pause, or exhausted recovery. They must not infer actions from provider terminal output.
+The event anchor bootstraps chronology only. Current state still comes from source rows. Actionable items may identify a current work-plan item, open external wait, provider-start retry, pause, or exhausted watchdog recovery, but never infer action from provider output.
 
 ## Trace
 
-`GET /control/tasks/{task_id}/trace` accepts `OperatorFlowTraceQuery`:
+`GET /control/tasks/{task_id}/trace` accepts:
 
 ```yaml
 OperatorFlowTraceQuery:
-    scope: current | whole
-    q: string | null
-    cursor: string | null
-    limit: 1..200
-    sort: occurred_at_desc | occurred_at_asc
+  scope: current | whole
+  q: string | null
+  cursor: string | null
+  limit: 1..200
+  sort: occurred_at_desc | occurred_at_asc
 ```
 
-The response is:
+The response contains graph nodes/dependencies, checkpoint and boundary history, current logical paths, and:
 
 ```yaml
-OperatorFlowTraceResponse:
-    task_id: string
-    scope: current | whole
-    graph_nodes: task_graph_node[]
-    dependency_edges: task_graph_dependency[]
-    dispatch_history:
-        - dispatch_id: string
-          attempt_id: string
-          assignment_key: string | null
-          assignment_summary: string | null
-          node_key: string
-          status: starting | open | closing | closed
-          closed_reason: string | null
-          requested_provider: string
-          resolved_provider: string
-          adapter_started_at: timestamp | null
-          last_progress_at: timestamp | null
-          created_at: timestamp
-          closed_at: timestamp | null
-    checkpoint_history: checkpoint_history_entry[]
-    boundary_history: boundary_history_entry[]
-    current_paths: ref[]
-    next_cursor: string | null
+dispatch_history:
+  - dispatch_id: string
+    predecessor_dispatch_id: string | null
+    assignment_id: string
+    attempt_id: string
+    node_key: string
+    status: starting | open | closed
+    opened_reason: string
+    closed_reason: string | null
+    requested_provider: codex | claude | openclaw
+    resolved_provider: codex | claude | openclaw
+    selection_basis: explicit | default
+    adapter_started_at: timestamp | null
+    last_node_activity_at: timestamp | null
+    node_activity_revision: integer
+    effective_capabilities: EffectiveCapabilityReadback
+    created_at: timestamp
+    closed_at: timestamp | null
 ```
 
-Trace history uses generic dispatch lifecycle and semantic checkpoints. It has no delivery status, provider terminal result, provider run identifier, provider session hint, or reopen-after-inactivity field.
-
-Plan currentness is read from `current_plan`; plan chronology is carried by `plan_updated` events. Individual `NodeMcpInvocation` rows remain internal and do not expand the ordinary trace.
+Trace contains no delivery state, provider terminal result, provider run/session identity, managed binding, or reopen-after-inactivity field. Work-plan chronology comes from bounded task events; individual Node invocation audit rows stay internal.
 
 ## Operator task controls
 
-Pause, continue, and cancel accept the current structural guard as typed query parameters:
+Pause, continue, and cancel require the caller's observed structural/control guard:
 
 ```yaml
-RuntimeFlowControlQuery:
-    expected_active_flow_revision_id: string
-
-RuntimeFlowPauseResponse:
-    flow: RuntimeFlowRead
+RuntimeFlowControlRequest:
+  expected_active_flow_revision_id: string
+  expected_control_revision: integer
 ```
-
-Pause returns `RuntimeFlowPauseResponse`. Continue and cancel return `RuntimeFlowRead` directly.
 
 ### Pause
 
-Pause commits operator intent. If a current dispatch is starting, open, or closing, the controller closes NodeSession authority and routes stop through the single `AgentControlManager` lane before closing the dispatch as `cancelled`.
+Pause atomically records operator intent, increments `control_revision`, and closes current `starting` or `open` dispatch authority. The response reports that committed state immediately.
 
-An existing human-request or command-run source wait stays source-owned. Pause does not fabricate a provider dispatch or resolve the source. If that source becomes terminal while the task is operator-paused, continuation remains held until ordinary operator continue.
+Binding currentness ends at commit. `DispatchCleanupRequested(dispatch_id)` performs registry removal and one bounded provider cleanup attempt afterward. Pause never waits for provider stop and never creates a `closing` state.
 
-While the source remains open, `waiting_cause` continues to name that source and `pause_reason` records `paused_by_operator`. After the source becomes terminal, the task remains paused and `waiting_cause` may return to `paused_by_operator` until continue succeeds.
+An active human request or command run remains source-owned. It may become terminal while the flow is paused, but no successor opens until a legal continue consumes the exact source.
 
 ### Continue
 
-Continue is legal for:
+Continue is legal for an operator pause, watchdog exhaustion, or deterministic transition failure after repair. It does not answer a human request, complete/cancel a command, reconnect a provider response, or bypass an unresolved source.
 
-- an operator-paused task
-- a task paused with `pause_reason = runtime_recovery_exhausted` after provider repair
-
-Continue recomputes task, structure, attempt, plan, capability, wait, and provider legality before preparing a new same-attempt dispatch.
-
-Continue does not answer a human request, complete a command run, infer provider reconnect, or resume a provider response. Current source waits must reach their own terminal state through their owning routes or managers.
+The request directly awaits fresh legality validation, request-file materialization, and the final flow-running plus D2+refs commit. Only provider start is asynchronous after the response. If another transition wins, continue returns a stable conflict and causes no provider effect.
 
 ### Cancel
 
-Cancel commits terminal task intent. It closes node authority, routes any live dispatch through the same centralized stop lane, and closes the dispatch as `cancelled`.
+Cancel atomically records terminal task intent, closes current dispatch authority, and updates exact owned external sources according to their contracts. A possibly live command remains `cancellation_requested` until termination/reap even though the task is already terminal. Later provider output, process callbacks, or stale signals cannot reopen the task.
 
-Task cancellation also closes or cancels current external-wait sources according to their owners. Later source callbacks or provider output cannot reopen the cancelled task.
+Binding currentness ends at commit. Exact `DispatchCleanupRequested` and command-process cleanup signals perform bounded post-commit work and cannot fail the cancellation transaction.
 
 ## Human-request routes
 
-`GET /control/tasks/{task_id}/human-requests` returns chronological typed source records with their terminal resolution when present:
+`GET /control/tasks/{task_id}/human-requests` returns chronological typed source records with terminal resolution/provenance when present.
 
-```yaml
-human_request_list_response:
-    task_id: string
-    items:
-        - request: pending_human_request
-          resolution: human_request_resolution | null
-```
+`POST /control/tasks/{task_id}/human-requests/{request_id}/resolve` accepts typed item responses for the exact open request. Answer and timeout compete on request status; one terminal transition wins.
 
-`POST /control/tasks/{task_id}/human-requests/{request_id}/resolve` accepts:
+The synchronous transaction terminalizes the request and clears only its matching wait. The response returns that committed resolution without waiting for successor materialization, D2 commit, provider start, or any acknowledgement. A typed `HumanRequestTerminal(request_id)` signal independently routes legal continuation after commit.
 
-```yaml
-human_request_resolve_request:
-    item_responses:
-        - item_id: string
-          selected_option: string | null
-          freeform_answer: string | null
-          extra_notes: string | null
-          response_payload: object | null
-```
-
-It may answer only the current open request that owns `waiting_for_human_request`. Timeout and cancellation are controller-owned terminal paths and are not caller-selected answer kinds.
-
-The response contains the committed typed resolution. A successful resolution may cause the controller to prepare a new same-attempt dispatch after legality recomputation; the HTTP handler does not directly resume a provider turn.
-
-```yaml
-human_request_resolve_response:
-    task_id: string
-    resolution: human_request_resolution
-```
+Timeout and cancellation are controller-owned terminal paths, not caller-selected answer kinds. Historical/stale requests cannot resolve or redirect current work.
 
 ## Command-run routes
 
-`GET /control/tasks/{task_id}/command-runs` returns bounded chronological items with cursor pagination:
+List/detail/log routes expose the command source state owned by the command contract:
 
-```yaml
-command_run_list_response:
-    task_id: string
-    items:
-        - run_id: string
-          state: >-
-            pending_start | running | cancellation_requested | succeeded |
-            failed | timed_out | cancelled
-          command: string
-          description: string | null
-          workdir: string | null
-          created_at: timestamp
-          started_at: timestamp | null
-          ended_at: timestamp | null
-          timeout_seconds: integer | null
-          summary: string | null
-          exit_code: integer | null
-          signal: string | null
-          log_ref: string | null
-    next_cursor: string | null
+```text
+pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
 ```
 
-`GET /control/tasks/{task_id}/command-runs/{run_id}` returns the complete normalized controller record, including cancellation and terminal provenance.
+Detail identifies the exact `run_id`, task/source dispatch, assignment/attempt, command policy, timing, ownership revision, normalized terminal result/provenance, and bounded log refs. Raw logs remain behind the authorized log route.
 
-```yaml
-command_run_record:
-    run_id: string
-    task_id: string
-    dispatch_id: string
-    attempt_id: string
-    command: string
-    description: string
-    workdir: string | null
-    state: >-
-      pending_start | running | cancellation_requested | succeeded | failed |
-      timed_out | cancelled
-    created_at: timestamp
-    started_at: timestamp | null
-    ended_at: timestamp | null
-    timeout_seconds: integer | null
-    latest_update: string | null
-    latest_log_ref: string | null
-    cancellation_requested_at: timestamp | null
-    cancellation_requested_by_actor_ref: string | null
-    terminal_result: command_run_terminal_result | null
-    terminal_event_source: controller | control_api | operator_mcp | null
-    terminal_actor_ref: string | null
-```
+`POST .../{run_id}/cancel` records intent only for an exact current nonterminal run. `cancellation_requested` remains nonterminal until the process owner proves termination and reap. `CommandRunCancellationRequested(run_id, ownership_revision)` wakes that owner after commit; the HTTP response does not wait for it, a successor dispatch, or provider start.
 
-`GET /control/tasks/{task_id}/command-runs/{run_id}/log` returns the authorized append-only retained log:
-
-```yaml
-command_run_log_response:
-    task_id: string
-    run_id: string
-    log_ref: string
-    content: string
-```
-
-`POST /control/tasks/{task_id}/command-runs/{run_id}/cancel` targets one current non-terminal run. Accepted intent may return `cancellation_requested`; that state remains non-terminal and does not clear the source wait.
-
-```yaml
-command_run_cancel_response:
-    task_id: string
-    run: command_run_list_item
-```
+Run ID identifies the source; its stored source dispatch/lineage is reread before any terminal or continuation transition. A stale callback cannot continue a newer lineage.
 
 ## Failure contract
 
-All mutation failures use the shared structured runtime failure shape:
+Mutations use a shared structured failure:
 
 ```yaml
-operation_failure:
-    code: string
-    summary: string
-    is_retryable: boolean
-    suggested_next_step: string | null
+OperationFailure:
+  code: string
+  summary: string
+  retryable: boolean
+  suggested_next_step: string | null
 ```
 
-Currentness, stale source, invalid transition, capability, authorization, path, and request-shape errors are distinct normalized codes. Raw provider exceptions, credentials, process environment, and stack traces are not response payloads.
+Currentness, stale source, conflict, invalid transition, capability, task scope, local transport admission, path, and shape errors have distinct normalized codes. Responses exclude raw provider exceptions, credentials, process environment, binding material, and stack traces.
 
-Control writes commit source state before asynchronous provider or runner work. The API response reports committed controller truth, not a guessed final provider result.
+## Required invariants
 
-## Read-model and control invariants
-
-- current task reads expose plan revision, semantic progress, provider resolution, provider-control retry, restart count, pause/recovery, and source waits
-- source rows remain authoritative when an event consumer is delayed
-- source waits are resolved through their owning lanes, never `continue`
-- provider-control status describes AutoClaw operations, not provider runtime state
-- session hints, credentials, provider events, and raw provider errors are absent from public contracts
-- API restart can reconstruct unresolved local control work from dispatch and bounded provider-control state without replaying task events
-
-## Validation scenarios
-
-The Control API contract must prove:
-
-- a running dispatch is readable without any provider stream
-- a changed plan appears with its new revision, while an identical update does not change plan or semantic progress
-- provider retry readback exposes call count and next retry time
-- exhausted initial or watchdog control pauses with `runtime_recovery_exhausted`
-- a human or command terminal source can continue the same attempt without operator `continue`
-- operator pause holds an otherwise terminal source continuation
-- no provider-native hidden prompt is required to operate any control route
+- current reads expose only `starting`/`open` current authority and `starting|open|closed` history;
+- current and trace reads expose both independent capability effective/source objects without provider configuration or credentials;
+- provider-start retries show attempt count without a fake maximum;
+- Node activity is not labeled semantic progress;
+- optional assignment work plans do not gate execution;
+- exact explicit provider selection never appears as fallback;
+- pause/cancel return after controller commit and never wait for provider stop;
+- continue awaits D2+refs commit but not provider start;
+- human resolution returns independently of successor opening;
+- command cancellation remains nonterminal until process termination/reap;
+- events, signals, sessions, and support projections never replace source-row currentness;
+- local operator writes use `local_operator` provenance without asserting human authentication; and
+- no global operator API key, browser credential bootstrap, or callback HTTP authority exists in the V2 API.
 
 ## Related contracts
 
@@ -365,7 +282,7 @@ The Control API contract must prove:
 - [Controller contract and resumable execution](../architecture/controller-contract-and-resumable-execution.md)
 - [Runtime records and control state](../architecture/runtime-records-and-control-state.md)
 - [Runtime lifecycle and watchdog](../architecture/runtime-lifecycle-and-watchdog.md)
-- [Attempt plan and checkpoint contract](../architecture/attempt-plan-and-checkpoint-contract.md)
+- [Work plan and checkpoint contract](../architecture/work-plan-and-checkpoint-contract.md)
 - [Human request and approval contract](human-request-and-approval-contract.md)
 - [Command run and external wait](../architecture/command-run-and-external-wait.md)
 - [Capability, security, and audit](capability-security-and-audit.md)

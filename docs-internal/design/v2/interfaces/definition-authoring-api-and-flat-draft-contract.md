@@ -67,6 +67,7 @@ Canonical route families are:
 - `POST /authoring/definitions/{kind}/{key}/draft/replace-current`
 - `POST /authoring/definitions/{kind}/{key}/draft/validate`
 - `POST /authoring/definitions/{kind}/{key}/draft/publish`
+- `POST /authoring/task-compose/preview`
 
 Rules:
 
@@ -80,6 +81,7 @@ Rules:
 - `POST /authoring/definitions/{kind}/{key}/draft/replace-current` refreshes a saved update draft from current registry truth and keeps the saved draft
 - `POST /authoring/definition-drafts` creates explicit `create` or `update` drafts and fails on saved-draft or registry name collisions
 - validation and publish read saved draft state; clients should save local edits first
+- task-compose preview accepts the exact `TaskStartRequest` body and reads current registry truth rather than saved draft state
 - stale publish and name collisions return structured non-published results or 409 operation failures depending on when the conflict is detected
 - operator MCP is not the draft authoring lane; draft authoring remains on trusted HTTP `/authoring`
 
@@ -153,6 +155,50 @@ definition_draft_validation_response:
     warnings:
         - definition_draft_validation_issue
 ```
+
+Task-compose preview is a separate read-only operation. It does not overload draft validation:
+
+```yaml
+task_compose_preview_issue:
+    code: string
+    message: string
+    path: string | null
+    kind: schema | cross_reference | provider | path
+
+task_compose_preview_provider_resolution:
+    requested_provider: codex | claude | openclaw
+    resolved_provider: codex | claude | openclaw
+    selection_basis: explicit | default
+
+task_compose_node_preview:
+    node_key: string
+    provider_resolution: task_compose_preview_provider_resolution
+    provider_native_access:
+        effective: full | restricted | denied
+        source: default | policy_definition | task_policy | controller
+    network_access:
+        effective: allow | deny
+        source: default | policy_definition | task_policy | controller
+
+task_compose_preview_response:
+    status: ready | invalid
+    nodes:
+        - task_compose_node_preview
+    errors:
+        - task_compose_preview_issue
+    warnings:
+        - task_compose_preview_issue
+```
+
+Preview rules:
+
+- the request body parses exactly as `TaskStartRequest`
+- resolution uses the current workflow, role, and policy revisions plus current provider routing and controller ceilings
+- every ready node reports both capability axes with the same effective-value and source shape used by runtime, API, CLI/status, current-context, and console readbacks
+- the baseline `TaskStartRequest` has no task-policy override, so `task_policy` cannot be the winning source in this preview unless a later task-compose contract explicitly adds that input
+- preview performs no provider or model I/O and creates no task, root, path lease, compiled plan, runtime row, dispatch, or external side effect
+- preview is not a reservation or launch authorization; task start rereads current truth and recomputes provider and capability resolution
+- saved draft changes are invisible to preview until they are published into current registry truth
 
 Publish uses:
 
