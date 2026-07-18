@@ -13,22 +13,6 @@ def compiled_plan_id_for_task(task_id: str) -> str:
     return f"compiled-plan.{task_id}"
 
 
-def workspace_root_id_for_task(task_id: str) -> str:
-    return f"workspace-root.{task_id}"
-
-
-def context_space_id_for_task(task_id: str) -> str:
-    return f"context-space.{task_id}"
-
-
-def manifest_root_id_for_task(task_id: str) -> str:
-    return f"manifest-root.{task_id}"
-
-
-def task_resource_binding_id(task_id: str, binding_kind: str) -> str:
-    return f"task-resource-binding.{task_id}.{binding_kind}"
-
-
 def assignment_criteria_ref_id(assignment_id: str, slot: str) -> str:
     return f"assignment-criteria-ref.{assignment_id}.{slot}"
 
@@ -72,20 +56,12 @@ def checkpoint_id(attempt_id: str, sequence: int) -> str:
     return f"checkpoint.{attempt_id}.{sequence:02d}"
 
 
-def attempt_consumed_ref_id(attempt_id: str, sequence: int) -> str:
-    return f"attempt-consumed-ref.{attempt_id}.{sequence:02d}"
-
-
 def artifact_publication_id(attempt_id: str, slot: str, version: int) -> str:
     return f"artifact-publication.{attempt_id}.{slot}.v{version:02d}"
 
 
 def artifact_current_pointer_id(task_id: str, owner_node_key: str, slot: str) -> str:
     return f"artifact-current-pointer.{task_id}.{owner_node_key}.{slot}"
-
-
-def provider_event_record_id(dispatch_id: str, event_no: int) -> str:
-    return f"provider-event-record.{dispatch_id}.{event_no:04d}"
 
 
 def task_event_id(task_id: str, event_seq: int) -> str:
@@ -110,10 +86,6 @@ def dispatch_id(node_key: str, sequence: int) -> str:
 
 def attempt_id(node_key: str, sequence: int) -> str:
     return f"attempt.{node_key}.{sequence:02d}"
-
-
-def dispatch_id_for_task(task_id: str, node_key: str, sequence: int) -> str:
-    return f"dispatch.{task_id}.{node_key}.{sequence:02d}"
 
 
 def attempt_id_for_task(task_id: str, node_key: str, sequence: int) -> str:

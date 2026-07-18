@@ -15,7 +15,7 @@ def test_cli_progress_suppresses_json_output() -> None:
 
     progress.step("database", "Running database upgrade")
     progress.command_output(
-        "openclaw config patch --stdin",
+        "providers check --stdin",
         0,
         "Patched config\n",
         "",
@@ -32,14 +32,14 @@ def test_cli_progress_verbose_redacts_nested_output() -> None:
     )
 
     progress.command_output(
-        "openclaw config patch --stdin",
+        "providers check --stdin",
         0,
         'token="live-token"\nAuthorization: Bearer abc.def\n',
         "password=secret-password\n",
     )
 
     output = stream.getvalue()
-    assert "openclaw config patch --stdin completed" in output
+    assert "providers check --stdin completed" in output
     assert 'token="<redacted>"' in output
     assert "Authorization: Bearer <redacted>" in output
     assert "password=<redacted>" in output
@@ -51,12 +51,11 @@ def test_cli_progress_verbose_redacts_nested_output() -> None:
 def test_sanitize_command_label_redacts_sensitive_option_values() -> None:
     label = sanitize_command_label(
         (
-            "openclaw",
-            "config",
-            "patch",
-            "--openclaw-gateway-token",
+            "providers",
+            "check",
+            "--token",
             "secret-token",
         )
     )
 
-    assert label == "openclaw config patch --openclaw-gateway-token <redacted>"
+    assert label == "providers check --token <redacted>"

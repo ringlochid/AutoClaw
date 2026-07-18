@@ -12,22 +12,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from autoclaw.config import Environment, get_settings
-from autoclaw.integrations.openclaw.gateway import (
-    build_openclaw_gateway_adapter,
-    openclaw_startup_compatibility_required,
-)
 from autoclaw.interfaces.http.errors import request_validation_failure
 from autoclaw.interfaces.http.router import api_router
-from autoclaw.interfaces.mcp import (
-    create_node_mcp_mount_app,
-    create_operator_mcp_app,
-)
+from autoclaw.interfaces.mcp.node.server import create_node_mcp_apps
+from autoclaw.interfaces.mcp.operator.server import create_operator_mcp_app
+from autoclaw.interfaces.mcp.transport import node_mcp_transport_policy
 from autoclaw.interfaces.web_console.router import mount_packaged_web_console
-from autoclaw.persistence.session import dispose_db_engine, verify_database_schema
-from autoclaw.runtime.command_run_runner import start_command_run_runner
-from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
-from autoclaw.runtime.post_commit import start_runtime_effect_runner
-from autoclaw.runtime.watchdog import start_runtime_watchdog
+from autoclaw.persistence.session import (
+    dispose_db_engine,
+    ensure_database_schema,
+)
+from autoclaw.runtime.node_mcp import DispatchMcpBindingRegistry
+from autoclaw.runtime.node_operations import NodeOperationExecutor
 
 
 def _package_version() -> str:
@@ -88,35 +84,38 @@ def create_app(
     mount_packaged_web_console(app)
     if should_enable_mcp_mounts:
         operator_mcp_app = create_operator_mcp_app(host=settings.api_host)
-        app.state.operator_mcp_app = operator_mcp_app
+        binding_registry = DispatchMcpBindingRegistry()
+        node_mcp_apps = create_node_mcp_apps(
+            binding_registry=binding_registry,
+            operation_executor=NodeOperationExecutor(),
+            transport_policy=node_mcp_transport_policy(
+                host=settings.api_host,
+                port=settings.api_port,
+                allowed_origins=settings.console_origins,
+            ),
+        )
+        app.state.dispatch_mcp_binding_registry = binding_registry
+        app.state.mcp_lifespan_apps = (
+            operator_mcp_app,
+            node_mcp_apps.managed,
+            node_mcp_apps.compatibility,
+        )
         app.mount("/operator", operator_mcp_app)
-        app.mount("/node/mcp", create_node_mcp_mount_app(host=settings.api_host))
+        app.mount("/_internal/node", node_mcp_apps.managed)
+        app.mount("/node", node_mcp_apps.compatibility)
     return app
 
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    settings = get_settings()
-    if settings.env != Environment.TEST:
-        await verify_database_schema()
-    if openclaw_startup_compatibility_required(settings):
-        adapter = build_openclaw_gateway_adapter(settings)
-        await adapter.check_compatibility()
-    async with AsyncExitStack() as stack:
-        operator_mcp_app = getattr(app.state, "operator_mcp_app", None)
-        if operator_mcp_app is not None:
-            await stack.enter_async_context(
-                operator_mcp_app.router.lifespan_context(operator_mcp_app)
-            )
-        await start_runtime_effect_runner()
-        if settings.env != Environment.TEST:
-            await start_command_run_runner()
-        await start_runtime_watchdog()
-        try:
+    try:
+        await ensure_database_schema()
+        async with AsyncExitStack() as stack:
+            for mcp_app in getattr(app.state, "mcp_lifespan_apps", ()):
+                await stack.enter_async_context(mcp_app.router.lifespan_context(mcp_app))
             yield
-        finally:
-            await shutdown_runtime_lifecycle()
-            await dispose_db_engine()
+    finally:
+        await dispose_db_engine()
 
 
 app: FastAPI = create_app()

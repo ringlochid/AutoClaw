@@ -43,16 +43,13 @@ class PromptRenderRequest(BaseModel):
     prompt_family: PromptFamily
     send_mode: PromptSendMode
     task_id: TaskIdentifier
-    session_key: RuntimeText | None = None
     current_node: ResolvedNodeContext
     manifest: ManifestProjection
     assignment: AssignmentProjection
     latest_checkpoint: CheckpointProjection | None = None
     human_request_continuation_context: HumanRequestRead | None = None
     command_run_continuation_context: CommandRunRecord | None = None
-    effective_capabilities: EffectiveCapabilitySet = Field(
-        default_factory=lambda: EffectiveCapabilitySet(execution_scope="dispatch")
-    )
+    effective_capabilities: EffectiveCapabilitySet = Field(default_factory=EffectiveCapabilitySet)
 
     @model_validator(mode="after")
     def validate_prompt_legality(self) -> PromptRenderRequest:

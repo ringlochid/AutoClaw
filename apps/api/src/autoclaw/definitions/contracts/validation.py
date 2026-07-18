@@ -29,7 +29,7 @@ class FlattenedNode(BaseModel):
     parent_id: str | None
     node_kind: NodeKind
     role: str
-    policy: str | None
+    policy: str
     consumes: ConsumeBuckets | None
     produces: ProduceBuckets | None
     criteria: tuple[CriteriaDeclaration, ...]
@@ -50,7 +50,7 @@ def validate_workflow_definition(
 
     for flattened_node in flattened_nodes:
         if flattened_node.node_id in node_ids:
-            raise ValueError(f"duplicate node id '{flattened_node.node_id}'")
+            raise ValueError(f"duplicate node key '{flattened_node.node_id}'")
         node_ids.add(flattened_node.node_id)
 
         local_criteria_slots: set[str] = set()
@@ -118,18 +118,10 @@ def flatten_workflow(root: RootNodeDefinition) -> tuple[FlattenedNode, ...]:
             )
         )
         for child in node.children or ():
-            visit(child, node.id)
+            visit(child, node.node_key)
 
     visit(root, parent_id=None)
     return tuple(flattened_nodes)
-
-
-def infer_node_kind(node: WorkflowNode, parent_id: str | None) -> NodeKind:
-    if parent_id is None:
-        return NodeKind.ROOT
-    if node.children:
-        return NodeKind.PARENT
-    return NodeKind.WORKER
 
 
 def build_dependency_graph(
@@ -255,16 +247,16 @@ def _build_flattened_node_source(
 ) -> SimpleNamespace:
     children = node.children or []
     return SimpleNamespace(
-        node_id=node.id,
+        node_id=node.node_key,
         parent_id=parent_id,
-        node_kind=infer_node_kind(node=node, parent_id=parent_id),
-        role=node.role,
-        policy=node.policy,
+        node_kind=node.kind,
+        role=node.role_id,
+        policy=node.policy_id,
         consumes=getattr(node, "consumes", None),
         produces=node.produces,
         criteria=tuple(node.criteria or []),
         child_defaults=node.child_defaults,
-        child_ids=tuple(child.id for child in children),
+        child_ids=tuple(child.node_key for child in children),
         order=order,
     )
 
@@ -294,9 +286,6 @@ def _validate_registry_compatibility(
                 f"'{flattened_node.node_kind}' for node '{flattened_node.node_id}'"
             )
 
-        if flattened_node.policy is None:
-            continue
-
         policy = policies.get(flattened_node.policy)
         if policy is None:
             raise ValueError(
@@ -314,7 +303,6 @@ __all__ = [
     "FlattenedNode",
     "build_dependency_graph",
     "flatten_workflow",
-    "infer_node_kind",
     "validate_acyclic_dependency_graph",
     "validate_workflow_definition",
 ]

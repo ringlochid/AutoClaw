@@ -40,9 +40,9 @@ from autoclaw.persistence.models import (
     WorkflowDefinitionModel,
     WorkflowRevisionModel,
 )
+from autoclaw.persistence.session_operations import write_session_operation
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError, invalid_request_shape_error
-from autoclaw.runtime.post_commit.operations import write_session_operation
 
 
 @dataclass(frozen=True)

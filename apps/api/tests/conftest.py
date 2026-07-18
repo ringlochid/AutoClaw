@@ -3,26 +3,37 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import AsyncGenerator, Generator
+from importlib import import_module
+from pathlib import Path
+from tempfile import gettempdir
+from typing import Protocol, cast
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
-from autoclaw.config import get_settings
-from autoclaw.integrations.openclaw.gateway.fixtures import agent_wait_fixture
-
-from tests.helpers.openclaw_gateway_support import LocalGatewayTestServer
-from tests.helpers.runtime_support.dispatch import (
-    gateway_test_server_context,
-)
 
 os.environ["AUTOCLAW_ENV"] = "test"
 os.environ["AUTOCLAW_DEBUG"] = "false"
 os.environ["AUTOCLAW_API_KEY"] = "autoclaw-operator-test-key"
+_TEST_CONFIG_PATH = Path(gettempdir()) / (f"autoclaw-pytest-{os.getpid()}-{uuid4().hex}.toml")
+if _TEST_CONFIG_PATH.exists():
+    raise RuntimeError(f"pytest config isolation path unexpectedly exists: {_TEST_CONFIG_PATH}")
+os.environ["AUTOCLAW_CONFIG"] = str(_TEST_CONFIG_PATH)
+
+
+class _CachedSettingsLoader(Protocol):
+    def cache_clear(self) -> None: ...
+
+
+# Import dynamically only after the hermetic environment is complete.
+get_settings = cast(
+    _CachedSettingsLoader,
+    import_module("autoclaw.config").get_settings,
+)
 
 get_settings.cache_clear()
 
 
-_REQUIRES_OPENCLAW_GATEWAY = "requires_openclaw_gateway"
-_GATEWAY_WAIT_TIMEOUT_DEFAULT = "gateway_wait_timeout_default"
 _QUIET_SQLALCHEMY_LOGS = "quiet_sqlalchemy_logs"
 _SQLALCHEMY_LOGGER_NAMES = (
     "sqlalchemy",
@@ -34,34 +45,12 @@ _SQLALCHEMY_LOGGER_NAMES = (
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
-        f"{_REQUIRES_OPENCLAW_GATEWAY}: configure the local OpenClaw gateway test server.",
-    )
-    config.addinivalue_line(
-        "markers",
-        (f"{_GATEWAY_WAIT_TIMEOUT_DEFAULT}: use timeout responses for default gateway wait calls."),
-    )
-    config.addinivalue_line(
-        "markers",
         f"{_QUIET_SQLALCHEMY_LOGS}: silence noisy SQLAlchemy loggers for the marked tests.",
     )
 
 
 def _has_marker(request: pytest.FixtureRequest, marker_name: str) -> bool:
     return request.node.get_closest_marker(marker_name) is not None
-
-
-def _needs_openclaw_gateway(request: pytest.FixtureRequest) -> bool:
-    return _has_marker(request, _REQUIRES_OPENCLAW_GATEWAY) or (
-        "openclaw_gateway_test_server" in request.fixturenames
-    )
-
-
-@pytest.fixture(scope="session")
-def openclaw_gateway_test_server() -> Generator[LocalGatewayTestServer, None, None]:
-    server = LocalGatewayTestServer()
-    server.start()
-    yield server
-    server.close()
 
 
 @pytest.fixture(autouse=True)
@@ -86,35 +75,11 @@ def quiet_sqlalchemy_logs_for_selected_e2e_tests(
             logger.propagate = propagate
 
 
-@pytest.fixture(autouse=True)
-def configure_openclaw_gateway_for_selected_tests(
-    request: pytest.FixtureRequest,
-) -> Generator[None, None, None]:
-    if not _needs_openclaw_gateway(request):
-        yield
-        return
-
-    openclaw_gateway_test_server = request.getfixturevalue("openclaw_gateway_test_server")
-    openclaw_gateway_test_server.clear_requests()
-    if _has_marker(request, _GATEWAY_WAIT_TIMEOUT_DEFAULT):
-        openclaw_gateway_test_server.set_default_method_payload(
-            "agent.wait",
-            agent_wait_fixture(status="timeout"),
-        )
-    with (
-        openclaw_gateway_test_server.configured_env(),
-        gateway_test_server_context(openclaw_gateway_test_server),
-    ):
-        yield
-
-
 @pytest_asyncio.fixture(autouse=True)
 async def cleanup_runtime_async_state() -> AsyncGenerator[None, None]:
     try:
         yield
     finally:
         from autoclaw.persistence.session import dispose_test_db_engine
-        from autoclaw.runtime.lifecycle import shutdown_runtime_lifecycle
 
-        await shutdown_runtime_lifecycle()
         await dispose_test_db_engine()

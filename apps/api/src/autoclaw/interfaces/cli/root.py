@@ -12,15 +12,7 @@ from autoclaw.interfaces.cli.commands.bootstrap import (
     cmd_serve,
 )
 from autoclaw.interfaces.cli.commands.config_view import cmd_config_path, cmd_config_show
-from autoclaw.interfaces.cli.commands.configure import cmd_configure
 from autoclaw.interfaces.cli.commands.definitions import cmd_definitions_import
-from autoclaw.interfaces.cli.commands.doctor import cmd_doctor
-from autoclaw.interfaces.cli.commands.onboard import cmd_onboard
-from autoclaw.interfaces.cli.commands.openclaw.wrapper import (
-    cmd_openclaw_check,
-    cmd_openclaw_doctor,
-    cmd_openclaw_setup,
-)
 from autoclaw.interfaces.cli.commands.service import (
     DEFAULT_SERVICE_NAME,
     cmd_service_install,
@@ -83,60 +75,6 @@ def init_command(**kwargs: Any) -> int:
 @config_option
 def serve_command(config: str) -> int:
     return invoke_handler_result(cmd_serve(build_argument_namespace(config=config)))
-
-
-@cli.command("onboard")
-@config_option
-@click.option("--data-dir")
-@click.option("--database-url")
-@click.option("--host", default="127.0.0.1", show_default=True)
-@click.option("--port", type=int)
-@click.option("--log-level", default=DEFAULT_LOG_LEVEL, show_default=True)
-@click.option("--api-key")
-@click.option("--force", is_flag=True)
-@click.option("--skip-db-upgrade", is_flag=True)
-@click.option("--install-daemon", is_flag=True)
-@click.option("--skip-daemon", is_flag=True)
-@click.option("--no-start", is_flag=True)
-@click.option("--non-interactive", is_flag=True)
-@click.option("--openclaw-gateway-token")
-@click.option("--openclaw-gateway-port", type=int)
-@output_options
-def onboard_command(**kwargs: Any) -> int:
-    return invoke_handler_result(
-        cmd_onboard(build_argument_namespace(**kwargs, json=kwargs["json_output"]))
-    )
-
-
-@cli.command("configure")
-@config_option
-@click.option(
-    "--section",
-    type=click.Choice(["all", "local", "openclaw", "service", "runtime", "definitions", "web"]),
-    default="all",
-    show_default=True,
-)
-@click.option("--port", type=int)
-@click.option("--force", is_flag=True)
-@click.option("--no-start", is_flag=True)
-@click.option("--non-interactive", is_flag=True)
-@click.option("--openclaw-gateway-token")
-@click.option("--openclaw-gateway-port", type=int)
-@output_options
-def configure_command(**kwargs: Any) -> int:
-    return invoke_handler_result(
-        cmd_configure(build_argument_namespace(**kwargs, json=kwargs["json_output"]))
-    )
-
-
-@cli.command("doctor")
-@config_option
-@click.option("--fix", is_flag=True)
-@output_options
-def doctor_command(**kwargs: Any) -> int:
-    return invoke_handler_result(
-        cmd_doctor(build_argument_namespace(**kwargs, json=kwargs["json_output"]))
-    )
 
 
 @cli.group("config")
@@ -234,44 +172,6 @@ def task_compose_start_command(config: str, file_path: str, is_json_output: bool
         cmd_task_compose_start(
             build_argument_namespace(config=config, file=file_path, json=is_json_output)
         )
-    )
-
-
-@cli.group("openclaw")
-def openclaw_group() -> None:
-    return None
-
-
-@openclaw_group.command("check")
-@config_option
-@output_options
-def openclaw_check_command(**kwargs: Any) -> int:
-    return invoke_handler_result(
-        cmd_openclaw_check(build_argument_namespace(**kwargs, json=kwargs["json_output"]))
-    )
-
-
-@openclaw_group.command("setup")
-@config_option
-@click.option("--non-interactive", is_flag=True)
-@click.option("--openclaw-gateway-token")
-@click.option("--openclaw-gateway-port", type=int)
-@output_options
-def openclaw_setup_command(**kwargs: Any) -> int:
-    return invoke_handler_result(
-        cmd_openclaw_setup(build_argument_namespace(**kwargs, json=kwargs["json_output"]))
-    )
-
-
-@openclaw_group.command("doctor")
-@config_option
-@click.option("--fix", is_flag=True)
-@click.option("--openclaw-gateway-token")
-@click.option("--openclaw-gateway-port", type=int)
-@output_options
-def openclaw_doctor_command(**kwargs: Any) -> int:
-    return invoke_handler_result(
-        cmd_openclaw_doctor(build_argument_namespace(**kwargs, json=kwargs["json_output"]))
     )
 
 

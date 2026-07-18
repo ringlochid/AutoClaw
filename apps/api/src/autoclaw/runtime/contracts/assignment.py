@@ -21,7 +21,6 @@ class AssignmentBody(BaseModel):
     consumes: tuple[AssignmentConsumeRef, ...] = ()
     produces: tuple[AssignmentProduceRequirement, ...] = ()
     transient_refs: tuple[TransientRef, ...] = ()
-    task_memory_search_hints: tuple[RuntimeSchemaText, ...] = ()
 
 
 __all__ = ["AssignmentBody", "AssignmentProduceRequirement"]

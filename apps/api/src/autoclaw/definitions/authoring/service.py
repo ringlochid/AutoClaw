@@ -38,11 +38,11 @@ from autoclaw.definitions.authoring.storage import (
 )
 from autoclaw.definitions.authoring.validation import validate_definition_draft
 from autoclaw.definitions.contracts import DefinitionKind
+from autoclaw.persistence.session_operations import write_session_operation
 from autoclaw.runtime.errors import (
     invalid_request_shape_error,
     name_collision_error,
 )
-from autoclaw.runtime.post_commit.operations import write_session_operation
 
 
 async def list_definition_drafts(

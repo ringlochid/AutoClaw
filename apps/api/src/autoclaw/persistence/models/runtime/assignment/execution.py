@@ -15,6 +15,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     and_,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,21 +24,51 @@ from autoclaw.persistence.models.runtime.common import (
     ATTEMPT_STATUS_VALUES,
     CHECKPOINT_KIND_VALUES,
     CHECKPOINT_OUTCOME_VALUES,
-    RUNTIME_REF_KIND_VALUES,
+    WORK_PLAN_STEP_STATUS_VALUES,
     sql_in,
     utcnow,
 )
 
 if TYPE_CHECKING:
+    from autoclaw.persistence.models.runtime.assignment.artifacts import (
+        ArtifactPublicationModel,
+        CheckpointTransientModel,
+        TransientLocalizationModel,
+    )
     from autoclaw.persistence.models.runtime.dispatch.turns import DispatchTurnModel
     from autoclaw.persistence.models.runtime.flow.graph import FlowNodeModel
     from autoclaw.persistence.models.runtime.flow.runtime import FlowModel, FlowRevisionModel
+    from autoclaw.persistence.models.runtime.task import TaskModel
 
 
 class AssignmentModel(RuntimeBase):
     __tablename__ = "assignments"
     __table_args__ = (
         UniqueConstraint("assignment_id", "flow_node_id"),
+        UniqueConstraint("assignment_id", "node_key"),
+        UniqueConstraint("assignment_id", "flow_revision_id"),
+        UniqueConstraint("assignment_id", "parent_assignment_id"),
+        UniqueConstraint(
+            "assignment_id",
+            "parent_assignment_id",
+            "created_by_dispatch_id",
+        ),
+        UniqueConstraint("assignment_id", "work_plan_revision"),
+        UniqueConstraint("task_id", "flow_id", "assignment_id"),
+        ForeignKeyConstraint(
+            ["task_id", "flow_id", "parent_assignment_id"],
+            ["assignments.task_id", "assignments.flow_id", "assignments.assignment_id"],
+            name="fk_assignments_parent_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        ForeignKeyConstraint(
+            ["flow_id", "flow_revision_id", "flow_node_id"],
+            ["flow_nodes.flow_id", "flow_nodes.flow_revision_id", "flow_nodes.flow_node_id"],
+            name="fk_assignments_flow_node_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         ForeignKeyConstraint(
             ["current_attempt_id", "assignment_id"],
             ["attempts.attempt_id", "attempts.assignment_id"],
@@ -46,61 +77,86 @@ class AssignmentModel(RuntimeBase):
             initially="DEFERRED",
         ),
         ForeignKeyConstraint(
-            ["created_by_dispatch_id"],
-            ["dispatch_turns.dispatch_id"],
-            name="fk_assignments_created_by_dispatch",
+            ["flow_id", "created_by_dispatch_id"],
+            ["dispatch_turns.flow_id", "dispatch_turns.dispatch_id"],
+            name="fk_assignments_authoring_dispatch_owner",
             deferrable=True,
             initially="DEFERRED",
         ),
+        CheckConstraint("work_plan_revision >= 0", name="ck_assignments_work_plan_revision"),
+        Index("ix_assignments_task_node", "task_id", "node_key"),
     )
 
     assignment_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.task_id"), index=True)
-    flow_id: Mapped[str | None] = mapped_column(
-        ForeignKey("flows.flow_id"),
-        nullable=True,
-        index=True,
-    )
-    flow_revision_id: Mapped[str | None] = mapped_column(
-        ForeignKey("flow_revisions.flow_revision_id"),
-        nullable=True,
-    )
-    flow_node_id: Mapped[str] = mapped_column(ForeignKey("flow_nodes.flow_node_id"), index=True)
+    flow_id: Mapped[str] = mapped_column(ForeignKey("flows.flow_id"), index=True)
+    flow_revision_id: Mapped[str] = mapped_column(String(255))
+    flow_node_id: Mapped[str] = mapped_column(String(255), index=True)
     assignment_key: Mapped[str] = mapped_column(String(255), unique=True)
     node_key: Mapped[str] = mapped_column(String(255), index=True)
+    parent_assignment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     summary: Mapped[str] = mapped_column(Text)
     instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
-    criteria_json: Mapped[list[dict[str, object]]] = mapped_column(JSON)
-    consumes_json: Mapped[list[dict[str, object]]] = mapped_column(JSON)
-    produces_json: Mapped[list[dict[str, object]]] = mapped_column(JSON)
-    transient_refs_json: Mapped[list[dict[str, object]]] = mapped_column(JSON)
-    task_memory_search_hints_json: Mapped[list[str]] = mapped_column(JSON)
-    current_attempt_id: Mapped[str | None] = mapped_column(
-        ForeignKey(
-            "attempts.attempt_id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
+    criteria_json: Mapped[list[dict[str, object]]] = mapped_column(JSON(none_as_null=True))
+    consumes_json: Mapped[list[dict[str, object]]] = mapped_column(JSON(none_as_null=True))
+    produces_json: Mapped[list[dict[str, object]]] = mapped_column(JSON(none_as_null=True))
+    current_attempt_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    work_plan_revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    created_by_dispatch_id: Mapped[str | None] = mapped_column(
+        String(255),
         nullable=True,
     )
-    created_by_dispatch_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    flow: Mapped[FlowModel | None] = relationship(
+    task: Mapped[TaskModel] = relationship(
+        "TaskModel",
+        foreign_keys=[task_id],
+        lazy="raise",
+    )
+    flow: Mapped[FlowModel] = relationship(
         "FlowModel",
+        back_populates="assignments",
         foreign_keys=[flow_id],
         lazy="raise",
     )
-    flow_revision: Mapped[FlowRevisionModel | None] = relationship(
+    flow_revision: Mapped[FlowRevisionModel] = relationship(
         "FlowRevisionModel",
-        foreign_keys=[flow_revision_id],
+        back_populates="assignments",
+        primaryjoin=(
+            "and_(AssignmentModel.flow_id == FlowRevisionModel.flow_id, "
+            "AssignmentModel.flow_revision_id == FlowRevisionModel.flow_revision_id)"
+        ),
+        foreign_keys=[flow_id, flow_revision_id],
         lazy="raise",
+        viewonly=True,
     )
     flow_node: Mapped[FlowNodeModel] = relationship(
         "FlowNodeModel",
         back_populates="assignments",
-        foreign_keys=[flow_node_id],
+        foreign_keys=[flow_id, flow_revision_id, flow_node_id],
         lazy="raise",
+        viewonly=True,
+    )
+    parent: Mapped[AssignmentModel | None] = relationship(
+        back_populates="children",
+        foreign_keys=[task_id, flow_id, parent_assignment_id],
+        remote_side=lambda: [
+            AssignmentModel.task_id,
+            AssignmentModel.flow_id,
+            AssignmentModel.assignment_id,
+        ],
+        lazy="raise",
+        viewonly=True,
+    )
+    children: Mapped[list[AssignmentModel]] = relationship(
+        back_populates="parent",
+        foreign_keys=(
+            "[AssignmentModel.task_id, AssignmentModel.flow_id, "
+            "AssignmentModel.parent_assignment_id]"
+        ),
+        lazy="raise",
+        order_by="AssignmentModel.created_at",
+        viewonly=True,
     )
     criteria_refs: Mapped[list[AssignmentCriteriaRefModel]] = relationship(
         back_populates="assignment",
@@ -110,34 +166,58 @@ class AssignmentModel(RuntimeBase):
     )
     attempts: Mapped[list[AttemptModel]] = relationship(
         back_populates="assignment",
-        foreign_keys="AttemptModel.assignment_id",
+        primaryjoin=lambda: and_(
+            AssignmentModel.task_id == AttemptModel.task_id,
+            AssignmentModel.flow_id == AttemptModel.flow_id,
+            AssignmentModel.assignment_id == AttemptModel.assignment_id,
+            AssignmentModel.node_key == AttemptModel.node_key,
+        ),
+        foreign_keys=(
+            "[AttemptModel.task_id, AttemptModel.flow_id, AttemptModel.assignment_id, "
+            "AttemptModel.node_key]"
+        ),
         lazy="raise",
         order_by="AttemptModel.opened_at",
+        viewonly=True,
     )
     current_attempt: Mapped[AttemptModel | None] = relationship(
         primaryjoin=lambda: and_(
-            AssignmentModel.current_attempt_id == AttemptModel.attempt_id,
             AssignmentModel.assignment_id == AttemptModel.assignment_id,
+            AssignmentModel.current_attempt_id == AttemptModel.attempt_id,
         ),
-        foreign_keys=lambda: [AssignmentModel.current_attempt_id, AssignmentModel.assignment_id],
+        foreign_keys=[current_attempt_id],
         lazy="raise",
+        uselist=False,
         viewonly=True,
     )
     created_by_dispatch: Mapped[DispatchTurnModel | None] = relationship(
         "DispatchTurnModel",
         back_populates="created_assignments",
-        foreign_keys=[created_by_dispatch_id],
+        foreign_keys=[flow_id, created_by_dispatch_id],
         lazy="raise",
+        viewonly=True,
+    )
+    work_plan: Mapped[AssignmentWorkPlanModel | None] = relationship(
+        back_populates="assignment",
+        primaryjoin=(
+            "and_(AssignmentModel.assignment_id == AssignmentWorkPlanModel.assignment_id, "
+            "AssignmentModel.work_plan_revision == AssignmentWorkPlanModel.revision)"
+        ),
+        foreign_keys=("[AssignmentWorkPlanModel.assignment_id, AssignmentWorkPlanModel.revision]"),
+        lazy="raise",
+        uselist=False,
+        viewonly=True,
     )
 
 
 class AssignmentCriteriaRefModel(RuntimeBase):
     __tablename__ = "assignment_criteria_refs"
+    __table_args__ = (UniqueConstraint("assignment_id", "order_index"),)
 
     assignment_criteria_ref_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     assignment_id: Mapped[str] = mapped_column(ForeignKey("assignments.assignment_id"), index=True)
     slot: Mapped[str] = mapped_column(String(255))
-    path: Mapped[str] = mapped_column(Text)
+    logical_path: Mapped[str] = mapped_column(Text)
     description: Mapped[str] = mapped_column(Text)
     version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer)
@@ -152,7 +232,8 @@ class AttemptModel(RuntimeBase):
     __tablename__ = "attempts"
     __table_args__ = (
         UniqueConstraint("attempt_id", "assignment_id"),
-        UniqueConstraint("attempt_id", "flow_node_id"),
+        UniqueConstraint("attempt_id", "task_id"),
+        UniqueConstraint("task_id", "flow_id", "assignment_id", "attempt_id"),
         CheckConstraint(
             f"status IN ({sql_in(ATTEMPT_STATUS_VALUES)})",
             name="ck_attempts_status",
@@ -160,89 +241,116 @@ class AttemptModel(RuntimeBase):
         CheckConstraint(
             "terminal_outcome IS NULL OR "
             f"terminal_outcome IN ({sql_in(CHECKPOINT_OUTCOME_VALUES)})",
-            name="ck_attempts_terminal_outcome",
+            name="ck_attempts_terminal_outcome_value",
+        ),
+        CheckConstraint(
+            "(status = 'completed' AND terminal_outcome IS NOT NULL AND closed_at IS NOT NULL) OR "
+            "(status = 'cancelled' AND terminal_outcome IS NULL AND closed_at IS NOT NULL) OR "
+            "(status IN ('pending', 'running') AND terminal_outcome IS NULL AND closed_at IS NULL)",
+            name="ck_attempts_terminal_state",
         ),
         ForeignKeyConstraint(
-            ["latest_checkpoint_id", "attempt_id"],
-            ["attempt_checkpoints.checkpoint_id", "attempt_checkpoints.attempt_id"],
-            name="fk_attempts_latest_checkpoint_owner",
+            ["task_id", "flow_id", "assignment_id"],
+            ["assignments.task_id", "assignments.flow_id", "assignments.assignment_id"],
+            name="fk_attempts_assignment_owner",
             deferrable=True,
             initially="DEFERRED",
         ),
+        ForeignKeyConstraint(
+            ["assignment_id", "node_key"],
+            ["assignments.assignment_id", "assignments.node_key"],
+            name="fk_attempts_assignment_node_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        ForeignKeyConstraint(
+            ["assignment_id", "retry_of_attempt_id"],
+            ["attempts.assignment_id", "attempts.attempt_id"],
+            name="fk_attempts_retry_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        Index("ix_attempts_task_node", "task_id", "node_key"),
     )
 
     attempt_id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    assignment_id: Mapped[str] = mapped_column(ForeignKey("assignments.assignment_id"), index=True)
-    assignment_key: Mapped[str] = mapped_column(ForeignKey("assignments.assignment_key"))
-    flow_node_id: Mapped[str] = mapped_column(ForeignKey("flow_nodes.flow_node_id"), index=True)
+    assignment_id: Mapped[str] = mapped_column(String(255), index=True)
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.task_id"), index=True)
+    flow_id: Mapped[str] = mapped_column(ForeignKey("flows.flow_id"), index=True)
     node_key: Mapped[str] = mapped_column(String(255), index=True)
-    retry_of_attempt_id: Mapped[str | None] = mapped_column(
-        ForeignKey("attempts.attempt_id"),
-        nullable=True,
-    )
+    retry_of_attempt_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(64), default="running")
-    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    latest_checkpoint_id: Mapped[str | None] = mapped_column(
-        ForeignKey(
-            "attempt_checkpoints.checkpoint_id",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        nullable=True,
-    )
     terminal_outcome: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     assignment: Mapped[AssignmentModel] = relationship(
         back_populates="attempts",
-        foreign_keys=[assignment_id],
+        primaryjoin=lambda: and_(
+            AttemptModel.task_id == AssignmentModel.task_id,
+            AttemptModel.flow_id == AssignmentModel.flow_id,
+            AttemptModel.assignment_id == AssignmentModel.assignment_id,
+            AttemptModel.node_key == AssignmentModel.node_key,
+        ),
+        foreign_keys=[task_id, flow_id, assignment_id, node_key],
+        lazy="raise",
+        viewonly=True,
+    )
+    task: Mapped[TaskModel] = relationship(
+        "TaskModel",
+        foreign_keys=[task_id],
+        lazy="raise",
+    )
+    flow: Mapped[FlowModel] = relationship(
+        "FlowModel",
+        foreign_keys=[flow_id],
         lazy="raise",
     )
     retry_of_attempt: Mapped[AttemptModel | None] = relationship(
         back_populates="retry_attempts",
-        foreign_keys=[retry_of_attempt_id],
-        remote_side=lambda: [AttemptModel.attempt_id],
-        lazy="raise",
-    )
-    retry_attempts: Mapped[list[AttemptModel]] = relationship(
-        back_populates="retry_of_attempt",
-        lazy="raise",
-        order_by="AttemptModel.opened_at",
-    )
-    checkpoints: Mapped[list[AttemptCheckpointModel]] = relationship(
-        back_populates="attempt",
-        foreign_keys="AttemptCheckpointModel.attempt_id",
-        lazy="raise",
-        order_by="AttemptCheckpointModel.recorded_at",
-    )
-    latest_checkpoint: Mapped[AttemptCheckpointModel | None] = relationship(
-        primaryjoin=lambda: and_(
-            AttemptModel.latest_checkpoint_id == AttemptCheckpointModel.checkpoint_id,
-            AttemptModel.attempt_id == AttemptCheckpointModel.attempt_id,
-        ),
-        foreign_keys=lambda: [AttemptModel.latest_checkpoint_id, AttemptModel.attempt_id],
+        foreign_keys=[assignment_id, retry_of_attempt_id],
+        remote_side=lambda: [AttemptModel.assignment_id, AttemptModel.attempt_id],
         lazy="raise",
         viewonly=True,
     )
-    consumed_refs: Mapped[list[AttemptConsumedRefModel]] = relationship(
-        back_populates="attempt",
-        foreign_keys="AttemptConsumedRefModel.attempt_id",
+    retry_attempts: Mapped[list[AttemptModel]] = relationship(
+        back_populates="retry_of_attempt",
+        foreign_keys="[AttemptModel.assignment_id, AttemptModel.retry_of_attempt_id]",
         lazy="raise",
-        order_by="AttemptConsumedRefModel.order_index",
+        order_by="AttemptModel.opened_at",
+        viewonly=True,
     )
-    produced_refs: Mapped[list[AttemptProducedRefModel]] = relationship(
+    checkpoints: Mapped[list[AttemptCheckpointModel]] = relationship(
         back_populates="attempt",
-        foreign_keys="AttemptProducedRefModel.attempt_id",
+        primaryjoin=lambda: and_(
+            AttemptModel.task_id == AttemptCheckpointModel.task_id,
+            AttemptModel.flow_id == AttemptCheckpointModel.flow_id,
+            AttemptModel.assignment_id == AttemptCheckpointModel.assignment_id,
+            AttemptModel.attempt_id == AttemptCheckpointModel.attempt_id,
+        ),
+        foreign_keys=(
+            "[AttemptCheckpointModel.task_id, AttemptCheckpointModel.flow_id, "
+            "AttemptCheckpointModel.assignment_id, AttemptCheckpointModel.attempt_id]"
+        ),
         lazy="raise",
-        order_by="AttemptProducedRefModel.order_index",
+        order_by="AttemptCheckpointModel.recorded_at",
+        viewonly=True,
     )
     dispatch_turns: Mapped[list[DispatchTurnModel]] = relationship(
         "DispatchTurnModel",
         back_populates="attempt",
-        foreign_keys="DispatchTurnModel.attempt_id",
+        primaryjoin=(
+            "and_(AttemptModel.task_id == DispatchTurnModel.task_id, "
+            "AttemptModel.flow_id == DispatchTurnModel.flow_id, "
+            "AttemptModel.assignment_id == DispatchTurnModel.assignment_id, "
+            "AttemptModel.attempt_id == DispatchTurnModel.attempt_id)"
+        ),
+        foreign_keys=(
+            "[DispatchTurnModel.task_id, DispatchTurnModel.flow_id, "
+            "DispatchTurnModel.assignment_id, DispatchTurnModel.attempt_id]"
+        ),
         lazy="raise",
-        order_by="DispatchTurnModel.rendered_at",
+        order_by="DispatchTurnModel.created_at",
+        viewonly=True,
     )
 
 
@@ -250,6 +358,14 @@ class AttemptCheckpointModel(RuntimeBase):
     __tablename__ = "attempt_checkpoints"
     __table_args__ = (
         UniqueConstraint("checkpoint_id", "attempt_id"),
+        UniqueConstraint("task_id", "assignment_id", "attempt_id", "checkpoint_id"),
+        UniqueConstraint(
+            "task_id",
+            "flow_id",
+            "assignment_id",
+            "attempt_id",
+            "checkpoint_id",
+        ),
         CheckConstraint(
             f"checkpoint_kind IN ({sql_in(CHECKPOINT_KIND_VALUES)})",
             name="ck_attempt_checkpoints_kind",
@@ -259,113 +375,216 @@ class AttemptCheckpointModel(RuntimeBase):
             name="ck_attempt_checkpoints_outcome",
         ),
         CheckConstraint(
-            "checkpoint_kind != 'progress' OR outcome IS NULL",
-            name="ck_attempt_checkpoints_progress_outcome",
-        ),
-        CheckConstraint(
-            "checkpoint_kind != 'terminal' OR outcome IS NOT NULL",
-            name="ck_attempt_checkpoints_terminal_outcome",
+            "(checkpoint_kind = 'progress' AND outcome IS NULL) OR "
+            "(checkpoint_kind = 'terminal' AND outcome IS NOT NULL)",
+            name="ck_attempt_checkpoints_kind_outcome",
         ),
         ForeignKeyConstraint(
-            ["attempt_id", "assignment_id"],
-            ["attempts.attempt_id", "attempts.assignment_id"],
+            ["task_id", "flow_id", "assignment_id", "attempt_id"],
+            [
+                "attempts.task_id",
+                "attempts.flow_id",
+                "attempts.assignment_id",
+                "attempts.attempt_id",
+            ],
             name="fk_attempt_checkpoints_attempt_owner",
             deferrable=True,
             initially="DEFERRED",
         ),
         ForeignKeyConstraint(
-            ["assignment_id", "flow_node_id"],
-            ["assignments.assignment_id", "assignments.flow_node_id"],
-            name="fk_attempt_checkpoints_assignment_owner",
+            ["authoring_dispatch_id", "assignment_id", "attempt_id"],
+            [
+                "dispatch_turns.dispatch_id",
+                "dispatch_turns.assignment_id",
+                "dispatch_turns.attempt_id",
+            ],
+            name="fk_attempt_checkpoints_dispatch_owner",
             deferrable=True,
             initially="DEFERRED",
         ),
+        Index(
+            "uq_attempt_checkpoints_one_terminal_per_dispatch",
+            "authoring_dispatch_id",
+            unique=True,
+            sqlite_where=text("checkpoint_kind = 'terminal'"),
+            postgresql_where=text("checkpoint_kind = 'terminal'"),
+        ),
         Index("ix_attempt_checkpoints_attempt_recorded_at", "attempt_id", "recorded_at"),
-        Index("ix_attempt_checkpoints_summary", "summary"),
     )
 
     checkpoint_id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    assignment_id: Mapped[str] = mapped_column(ForeignKey("assignments.assignment_id"), index=True)
-    assignment_key: Mapped[str] = mapped_column(ForeignKey("assignments.assignment_key"))
-    attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.attempt_id"), index=True)
-    flow_node_id: Mapped[str] = mapped_column(ForeignKey("flow_nodes.flow_node_id"), index=True)
-    node_key: Mapped[str] = mapped_column(String(255), index=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.task_id"), index=True)
+    flow_id: Mapped[str] = mapped_column(ForeignKey("flows.flow_id"), index=True)
+    assignment_id: Mapped[str] = mapped_column(String(255), index=True)
+    attempt_id: Mapped[str] = mapped_column(String(255), index=True)
+    authoring_dispatch_id: Mapped[str] = mapped_column(String(255), index=True)
     checkpoint_kind: Mapped[str] = mapped_column(String(64))
     outcome: Mapped[str | None] = mapped_column(String(64), nullable=True)
     summary: Mapped[str] = mapped_column(Text)
-    next_step: Mapped[str] = mapped_column(Text)
-    blockers_json: Mapped[list[str]] = mapped_column(JSON)
-    risks_json: Mapped[list[str]] = mapped_column(JSON)
-    produced_artifact_claims_json: Mapped[list[dict[str, object]]] = mapped_column(JSON)
-    produced_artifacts_json: Mapped[list[dict[str, object]]] = mapped_column(JSON)
-    artifact_refs_json: Mapped[list[dict[str, object]]] = mapped_column(JSON)
-    transient_refs_json: Mapped[list[dict[str, object]]] = mapped_column(JSON)
-    task_memory_search_hints_json: Mapped[list[str]] = mapped_column(JSON)
+    evidence_json: Mapped[dict[str, object]] = mapped_column(JSON(none_as_null=True))
+    criteria_results_json: Mapped[list[dict[str, object]]] = mapped_column(JSON(none_as_null=True))
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    task: Mapped[TaskModel] = relationship(
+        "TaskModel",
+        foreign_keys=[task_id],
+        lazy="raise",
+    )
+    flow: Mapped[FlowModel] = relationship(
+        "FlowModel",
+        foreign_keys=[flow_id],
+        lazy="raise",
+    )
     assignment: Mapped[AssignmentModel] = relationship(
+        primaryjoin=lambda: AssignmentModel.assignment_id == AttemptCheckpointModel.assignment_id,
         foreign_keys=[assignment_id],
         lazy="raise",
+        viewonly=True,
     )
     attempt: Mapped[AttemptModel] = relationship(
         back_populates="checkpoints",
-        foreign_keys=[attempt_id],
+        primaryjoin=lambda: and_(
+            AttemptCheckpointModel.task_id == AttemptModel.task_id,
+            AttemptCheckpointModel.flow_id == AttemptModel.flow_id,
+            AttemptCheckpointModel.assignment_id == AttemptModel.assignment_id,
+            AttemptCheckpointModel.attempt_id == AttemptModel.attempt_id,
+        ),
+        foreign_keys=[task_id, flow_id, assignment_id, attempt_id],
         lazy="raise",
+        viewonly=True,
+    )
+    authoring_dispatch: Mapped[DispatchTurnModel] = relationship(
+        "DispatchTurnModel",
+        back_populates="authored_checkpoints",
+        foreign_keys=[authoring_dispatch_id, assignment_id, attempt_id],
+        lazy="raise",
+        viewonly=True,
+    )
+    artifact_publications: Mapped[list[ArtifactPublicationModel]] = relationship(
+        "ArtifactPublicationModel",
+        back_populates="checkpoint",
+        foreign_keys=(
+            "[ArtifactPublicationModel.task_id, ArtifactPublicationModel.flow_id, "
+            "ArtifactPublicationModel.assignment_id, ArtifactPublicationModel.attempt_id, "
+            "ArtifactPublicationModel.checkpoint_id]"
+        ),
+        lazy="raise",
+        order_by="ArtifactPublicationModel.published_at",
+        viewonly=True,
+    )
+    transient_localizations: Mapped[list[TransientLocalizationModel]] = relationship(
+        "TransientLocalizationModel",
+        back_populates="checkpoint",
+        foreign_keys=(
+            "[TransientLocalizationModel.task_id, TransientLocalizationModel.assignment_id, "
+            "TransientLocalizationModel.attempt_id, "
+            "TransientLocalizationModel.checkpoint_id]"
+        ),
+        lazy="raise",
+        viewonly=True,
+    )
+    checkpoint_transients: Mapped[list[CheckpointTransientModel]] = relationship(
+        "CheckpointTransientModel",
+        back_populates="checkpoint",
+        foreign_keys=(
+            "[CheckpointTransientModel.task_id, CheckpointTransientModel.assignment_id, "
+            "CheckpointTransientModel.attempt_id, CheckpointTransientModel.checkpoint_id]"
+        ),
+        lazy="raise",
+        order_by="CheckpointTransientModel.order_index",
+        viewonly=True,
     )
 
 
-class AttemptConsumedRefModel(RuntimeBase):
-    __tablename__ = "attempt_consumed_refs"
+class AssignmentWorkPlanModel(RuntimeBase):
+    __tablename__ = "assignment_work_plans"
     __table_args__ = (
-        CheckConstraint(
-            f"ref_kind IN ({sql_in(RUNTIME_REF_KIND_VALUES)})",
-            name="ck_attempt_consumed_refs_kind",
+        UniqueConstraint("assignment_id", "revision"),
+        CheckConstraint("revision >= 1", name="ck_assignment_work_plans_revision"),
+        ForeignKeyConstraint(
+            ["assignment_id", "revision"],
+            ["assignments.assignment_id", "assignments.work_plan_revision"],
+            name="fk_assignment_work_plans_current_revision",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        ForeignKeyConstraint(
+            ["authoring_dispatch_id", "assignment_id"],
+            ["dispatch_turns.dispatch_id", "dispatch_turns.assignment_id"],
+            name="fk_assignment_work_plans_dispatch_owner",
+            deferrable=True,
+            initially="DEFERRED",
         ),
     )
 
-    attempt_consumed_ref_id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.attempt_id"), index=True)
-    ref_kind: Mapped[str] = mapped_column(String(64))
-    slot: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    version: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    path: Mapped[str] = mapped_column(Text)
-    description: Mapped[str] = mapped_column(Text)
-    order_index: Mapped[int] = mapped_column(Integer)
-    attempt: Mapped[AttemptModel] = relationship(
-        back_populates="consumed_refs",
-        foreign_keys=[attempt_id],
+    assignment_id: Mapped[str] = mapped_column(
+        ForeignKey("assignments.assignment_id"), primary_key=True
+    )
+    revision: Mapped[int] = mapped_column(Integer)
+    explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    authoring_dispatch_id: Mapped[str] = mapped_column(String(255))
+    committed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    assignment: Mapped[AssignmentModel] = relationship(
+        back_populates="work_plan",
+        primaryjoin=(
+            "and_(AssignmentWorkPlanModel.assignment_id == AssignmentModel.assignment_id, "
+            "AssignmentWorkPlanModel.revision == AssignmentModel.work_plan_revision)"
+        ),
+        foreign_keys=[assignment_id, revision],
         lazy="raise",
+        viewonly=True,
+    )
+    authoring_dispatch: Mapped[DispatchTurnModel] = relationship(
+        "DispatchTurnModel",
+        back_populates="authored_work_plans",
+        foreign_keys=[authoring_dispatch_id, assignment_id],
+        lazy="raise",
+        viewonly=True,
+    )
+    steps: Mapped[list[AssignmentWorkPlanStepModel]] = relationship(
+        back_populates="work_plan",
+        foreign_keys="AssignmentWorkPlanStepModel.assignment_id",
+        lazy="raise",
+        order_by="AssignmentWorkPlanStepModel.order_index",
     )
 
 
-class AttemptProducedRefModel(RuntimeBase):
-    __tablename__ = "attempt_produced_refs"
+class AssignmentWorkPlanStepModel(RuntimeBase):
+    __tablename__ = "assignment_work_plan_steps"
+    __table_args__ = (
+        UniqueConstraint("assignment_id", "order_index"),
+        CheckConstraint("order_index BETWEEN 0 AND 8", name="ck_work_plan_steps_order"),
+        CheckConstraint(
+            f"status IN ({sql_in(WORK_PLAN_STEP_STATUS_VALUES)})",
+            name="ck_work_plan_steps_status",
+        ),
+        Index(
+            "uq_work_plan_steps_one_in_progress",
+            "assignment_id",
+            unique=True,
+            sqlite_where=text("status = 'in_progress'"),
+            postgresql_where=text("status = 'in_progress'"),
+        ),
+    )
 
-    attempt_produced_ref_id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.attempt_id"), index=True)
-    owner_node_key: Mapped[str] = mapped_column(String(255), index=True)
-    assignment_key: Mapped[str] = mapped_column(ForeignKey("assignments.assignment_key"))
-    slot: Mapped[str] = mapped_column(String(255))
-    version: Mapped[int] = mapped_column(Integer)
-    path: Mapped[str] = mapped_column(Text)
-    description: Mapped[str] = mapped_column(Text)
-    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    became_current: Mapped[bool] = mapped_column(default=False)
+    work_plan_step_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    assignment_id: Mapped[str] = mapped_column(
+        ForeignKey("assignment_work_plans.assignment_id"), index=True
+    )
     order_index: Mapped[int] = mapped_column(Integer)
-    attempt: Mapped[AttemptModel] = relationship(
-        back_populates="produced_refs",
-        foreign_keys=[attempt_id],
+    step: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(64))
+    work_plan: Mapped[AssignmentWorkPlanModel] = relationship(
+        back_populates="steps",
+        foreign_keys=[assignment_id],
         lazy="raise",
     )
 
-
-Index("ix_assignments_task_node", AssignmentModel.task_id, AssignmentModel.node_key)
-Index("ix_attempts_task_node", AttemptModel.task_id, AttemptModel.node_key)
 
 __all__ = [
     "AssignmentCriteriaRefModel",
     "AssignmentModel",
+    "AssignmentWorkPlanModel",
+    "AssignmentWorkPlanStepModel",
     "AttemptCheckpointModel",
-    "AttemptConsumedRefModel",
     "AttemptModel",
-    "AttemptProducedRefModel",
 ]

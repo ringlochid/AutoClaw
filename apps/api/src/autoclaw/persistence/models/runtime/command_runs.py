@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -12,106 +13,124 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from autoclaw.persistence.base import RuntimeBase
-from autoclaw.persistence.models.runtime.common import COMMAND_RUN_STATE_VALUES, sql_in, utcnow
-from autoclaw.runtime.contracts import TaskEventSource
+from autoclaw.persistence.models.runtime.common import (
+    COMMAND_RUN_STATE_VALUES,
+    COMMAND_RUN_TERMINAL_SOURCE_VALUES,
+    COMMAND_RUN_TERMINAL_STATE_VALUES,
+    sql_in,
+    utcnow,
+)
 
 if TYPE_CHECKING:
-    from autoclaw.persistence.models.runtime.assignment.execution import (
-        AssignmentModel,
-        AttemptModel,
-    )
     from autoclaw.persistence.models.runtime.dispatch.turns import DispatchTurnModel
-    from autoclaw.persistence.models.runtime.flow.graph import FlowNodeModel
-    from autoclaw.persistence.models.runtime.flow.runtime import FlowModel, FlowRevisionModel
-    from autoclaw.persistence.models.runtime.task import TaskModel
-    from autoclaw.persistence.models.runtime.waiting import FlowWaitStateModel
-
-
-TERMINAL_COMMAND_RUN_STATE_VALUES = ("succeeded", "failed", "timed_out", "cancelled")
-TERMINAL_COMMAND_RUN_EVENT_SOURCE_VALUES = tuple(source.value for source in TaskEventSource)
+    from autoclaw.persistence.models.runtime.waiting import FlowWaitModel
 
 
 class CommandRunModel(RuntimeBase):
     __tablename__ = "command_runs"
     __table_args__ = (
+        UniqueConstraint("source_dispatch_id"),
+        UniqueConstraint("run_id", "task_id", "flow_id", "source_dispatch_id"),
         CheckConstraint(
             f"state IN ({sql_in(COMMAND_RUN_STATE_VALUES)})",
             name="ck_command_runs_state",
         ),
+        CheckConstraint("ownership_revision >= 0", name="ck_command_runs_ownership_revision"),
         CheckConstraint(
-            "timeout_seconds IS NULL OR timeout_seconds >= 1",
+            "timeout_seconds IS NULL OR timeout_seconds > 0",
             name="ck_command_runs_timeout_seconds",
         ),
         CheckConstraint(
-            "(state IN ('succeeded', 'failed', 'timed_out', 'cancelled') "
-            "AND ended_at IS NOT NULL AND terminal_summary IS NOT NULL "
-            "AND terminal_event_source IS NOT NULL) OR "
-            "(state NOT IN ('succeeded', 'failed', 'timed_out', 'cancelled') "
-            "AND ended_at IS NULL AND terminal_summary IS NULL "
-            "AND terminal_exit_code IS NULL AND terminal_signal IS NULL "
-            "AND terminal_log_ref IS NULL AND terminal_event_source IS NULL "
-            "AND terminal_actor_ref IS NULL)",
-            name="ck_command_runs_terminal_result",
+            "(timeout_seconds IS NULL AND due_at IS NULL) OR "
+            "(timeout_seconds IS NOT NULL AND due_at IS NOT NULL)",
+            name="ck_command_runs_timeout_due_pair",
         ),
         CheckConstraint(
-            "terminal_event_source IS NULL OR terminal_event_source IN "
-            f"({sql_in(TERMINAL_COMMAND_RUN_EVENT_SOURCE_VALUES)})",
+            "state != 'timed_out' OR due_at IS NOT NULL",
+            name="ck_command_runs_timeout_requires_deadline",
+        ),
+        CheckConstraint(
+            "terminal_event_source IS NULL OR "
+            f"terminal_event_source IN ({sql_in(COMMAND_RUN_TERMINAL_SOURCE_VALUES)})",
             name="ck_command_runs_terminal_event_source",
         ),
+        CheckConstraint(
+            "(state = 'pending_start' AND started_at IS NULL AND ended_at IS NULL AND "
+            "cancellation_requested_at IS NULL AND cancellation_requested_by_actor_ref IS NULL "
+            "AND terminal_summary IS NULL AND terminal_exit_code IS NULL AND "
+            "terminal_failure_code IS NULL AND terminal_event_source IS NULL AND "
+            "terminal_actor_ref IS NULL AND successor_dispatch_id IS NULL) OR "
+            "(state = 'running' AND started_at IS NOT NULL AND ended_at IS NULL AND "
+            "cancellation_requested_at IS NULL AND cancellation_requested_by_actor_ref IS NULL "
+            "AND terminal_summary IS NULL AND terminal_exit_code IS NULL AND "
+            "terminal_failure_code IS NULL AND terminal_event_source IS NULL AND "
+            "terminal_actor_ref IS NULL AND successor_dispatch_id IS NULL) OR "
+            "(state = 'cancellation_requested' AND ended_at IS NULL AND "
+            "cancellation_requested_at IS NOT NULL AND terminal_summary IS NULL AND "
+            "terminal_exit_code IS NULL AND terminal_failure_code IS NULL AND "
+            "terminal_event_source IS NULL AND terminal_actor_ref IS NULL AND "
+            "successor_dispatch_id IS NULL) OR "
+            f"(state IN ({sql_in(COMMAND_RUN_TERMINAL_STATE_VALUES)}) AND "
+            "ended_at IS NOT NULL AND terminal_summary IS NOT NULL AND "
+            "terminal_event_source IS NOT NULL)",
+            name="ck_command_runs_terminal_state",
+        ),
         ForeignKeyConstraint(
-            ["flow_id", "flow_revision_id"],
-            ["flow_revisions.flow_id", "flow_revisions.flow_revision_id"],
-            name="fk_command_runs_flow_revision_owner",
+            ["source_dispatch_id", "task_id", "flow_id", "assignment_id", "attempt_id"],
+            [
+                "dispatch_turns.dispatch_id",
+                "dispatch_turns.task_id",
+                "dispatch_turns.flow_id",
+                "dispatch_turns.assignment_id",
+                "dispatch_turns.attempt_id",
+            ],
+            name="fk_command_runs_source_owner",
             deferrable=True,
             initially="DEFERRED",
         ),
         ForeignKeyConstraint(
-            ["flow_id", "flow_revision_id", "flow_node_id"],
-            ["flow_nodes.flow_id", "flow_nodes.flow_revision_id", "flow_nodes.flow_node_id"],
-            name="fk_command_runs_flow_node_owner",
+            ["source_dispatch_id", "successor_dispatch_id"],
+            ["dispatch_turns.predecessor_dispatch_id", "dispatch_turns.dispatch_id"],
+            name="fk_command_runs_successor_owner",
             deferrable=True,
             initially="DEFERRED",
         ),
-        ForeignKeyConstraint(
-            ["attempt_id", "assignment_id"],
-            ["attempts.attempt_id", "attempts.assignment_id"],
-            name="fk_command_runs_attempt_owner",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        Index("ix_command_runs_task_created", "task_id", "created_at", "run_id"),
-        Index("ix_command_runs_task_state", "task_id", "state"),
-        Index("ix_command_runs_dispatch_state", "dispatch_id", "state"),
-        Index("ix_command_runs_flow_node_state", "flow_node_id", "state"),
+        Index("ix_command_runs_state_due", "state", "due_at"),
+        Index("ix_command_runs_task_created", "task_id", "created_at"),
     )
 
     run_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.task_id"), index=True)
     flow_id: Mapped[str] = mapped_column(ForeignKey("flows.flow_id"), index=True)
-    flow_revision_id: Mapped[str] = mapped_column(ForeignKey("flow_revisions.flow_revision_id"))
-    flow_node_id: Mapped[str] = mapped_column(ForeignKey("flow_nodes.flow_node_id"), index=True)
     assignment_id: Mapped[str] = mapped_column(ForeignKey("assignments.assignment_id"))
-    attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.attempt_id"), index=True)
-    dispatch_id: Mapped[str] = mapped_column(ForeignKey("dispatch_turns.dispatch_id"), index=True)
-    requester_node_key: Mapped[str] = mapped_column(String(255))
-    command: Mapped[str] = mapped_column(Text)
-    description: Mapped[str] = mapped_column(Text)
-    workdir: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.attempt_id"))
+    source_dispatch_id: Mapped[str] = mapped_column(String(255), index=True)
+    command_spec_json: Mapped[dict[str, object]] = mapped_column(JSON(none_as_null=True))
+    cwd_policy_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
+    environment_refs_json: Mapped[list[str] | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
+    summary: Mapped[str] = mapped_column(Text)
+    expected_outputs_json: Mapped[list[dict[str, object]] | None] = mapped_column(
+        JSON(none_as_null=True),
+        nullable=True,
+    )
     timeout_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    state: Mapped[str] = mapped_column(String(64), index=True)
-    owned_process_pid: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    latest_update: Mapped[str | None] = mapped_column(Text, nullable=True)
-    latest_log_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
-    terminal_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    terminal_exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    terminal_signal: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    terminal_log_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
-    terminal_event_source: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    terminal_actor_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stdout_logical_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stderr_logical_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    state: Mapped[str] = mapped_column(String(64), default="pending_start")
+    ownership_revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    process_metadata_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
     cancellation_requested_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
@@ -120,42 +139,36 @@ class CommandRunModel(RuntimeBase):
         String(255),
         nullable=True,
     )
+    terminal_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    terminal_exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    terminal_failure_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    terminal_event_source: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    terminal_actor_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    successor_dispatch_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=utcnow,
-        onupdate=utcnow,
-    )
-    task: Mapped[TaskModel] = relationship("TaskModel", foreign_keys=[task_id])
-    flow: Mapped[FlowModel] = relationship("FlowModel", foreign_keys=[flow_id])
-    flow_revision: Mapped[FlowRevisionModel] = relationship(
-        "FlowRevisionModel",
-        foreign_keys=[flow_revision_id],
-    )
-    flow_node: Mapped[FlowNodeModel] = relationship(
-        "FlowNodeModel",
-        foreign_keys=[flow_node_id],
-    )
-    assignment: Mapped[AssignmentModel] = relationship(
-        "AssignmentModel",
-        foreign_keys=[assignment_id],
-    )
-    attempt: Mapped[AttemptModel] = relationship(
-        "AttemptModel",
-        foreign_keys=[attempt_id],
-    )
-    dispatch: Mapped[DispatchTurnModel] = relationship(
+    source_dispatch: Mapped[DispatchTurnModel] = relationship(
         "DispatchTurnModel",
-        foreign_keys=[dispatch_id],
-    )
-    wait_state: Mapped[FlowWaitStateModel | None] = relationship(
-        "FlowWaitStateModel",
         back_populates="command_run",
-        foreign_keys="FlowWaitStateModel.command_run_id",
+        foreign_keys=[source_dispatch_id, task_id, flow_id, assignment_id, attempt_id],
+        lazy="raise",
+        viewonly=True,
+    )
+    successor_dispatch: Mapped[DispatchTurnModel | None] = relationship(
+        "DispatchTurnModel",
+        foreign_keys=[source_dispatch_id, successor_dispatch_id],
+        lazy="raise",
+        viewonly=True,
+    )
+    flow_wait: Mapped[FlowWaitModel | None] = relationship(
+        "FlowWaitModel",
+        back_populates="command_run",
+        foreign_keys="FlowWaitModel.command_run_id",
+        lazy="raise",
         uselist=False,
+        viewonly=True,
     )
 
 
-__all__ = ["TERMINAL_COMMAND_RUN_STATE_VALUES", "CommandRunModel"]
+__all__ = ["CommandRunModel"]

@@ -4,7 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 import pytest
-from autoclaw.definitions.contracts import WorkflowDefinitionFile, WorkflowNodeInput
+from autoclaw.definitions.contracts import NodeKind, WorkflowDefinitionFile, WorkflowNodeInput
 from pydantic import ValidationError
 
 from .support import bounded_workflow_payload
@@ -37,17 +37,19 @@ def test_workflow_schema_rejects_root_consumes() -> None:
         WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
 
 
-def test_workflow_schema_rejects_duplicate_node_ids() -> None:
+def test_workflow_schema_rejects_duplicate_node_keys() -> None:
     payload = bounded_workflow_payload()
     payload["root"]["children"].append(
         {
-            "id": "implement_change",
-            "role": "reviewer",
-            "description": "Duplicate id.",
+            "node_key": "implement_change",
+            "kind": "worker",
+            "role_id": "reviewer",
+            "policy_id": "standard-worker",
+            "description": "Duplicate node key.",
         }
     )
 
-    with pytest.raises(ValidationError, match="duplicate node id"):
+    with pytest.raises(ValidationError, match="duplicate node key"):
         WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
 
 
@@ -55,8 +57,10 @@ def test_workflow_schema_rejects_duplicate_artifact_slots() -> None:
     payload = bounded_workflow_payload()
     payload["root"]["children"].append(
         {
-            "id": "review_change",
-            "role": "reviewer",
+            "node_key": "review_change",
+            "kind": "worker",
+            "role_id": "reviewer",
+            "policy_id": "standard-worker",
             "description": "Review the implementation evidence.",
             "produces": {
                 "artifacts": [
@@ -110,8 +114,10 @@ def test_child_defaults_consumes_participate_in_dependency_validation() -> None:
     payload = bounded_workflow_payload()
     payload["root"]["children"].append(
         {
-            "id": "review_change",
-            "role": "reviewer",
+            "node_key": "review_change",
+            "kind": "worker",
+            "role_id": "reviewer",
+            "policy_id": "standard-worker",
             "description": "Review the change.",
         }
     )
@@ -125,8 +131,10 @@ def test_workflow_schema_rejects_cyclic_dependency_graph() -> None:
     payload = bounded_workflow_payload()
     payload["root"]["children"] = [
         {
-            "id": "first_child",
-            "role": "engineer",
+            "node_key": "first_child",
+            "kind": "worker",
+            "role_id": "engineer",
+            "policy_id": "standard-worker",
             "description": "First sibling.",
             "consumes": {"artifacts": [{"slot": "second_output"}]},
             "produces": {
@@ -139,8 +147,10 @@ def test_workflow_schema_rejects_cyclic_dependency_graph() -> None:
             },
         },
         {
-            "id": "second_child",
-            "role": "reviewer",
+            "node_key": "second_child",
+            "kind": "worker",
+            "role_id": "reviewer",
+            "policy_id": "standard-worker",
             "description": "Second sibling.",
             "consumes": {"artifacts": [{"slot": "first_output"}]},
             "produces": {
@@ -176,16 +186,73 @@ def test_removed_skill_refs_are_rejected_on_root_node() -> None:
         WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
 
 
-def test_workflow_nodes_accept_portable_provider_preference() -> None:
+@pytest.mark.parametrize(
+    ("target_field", "legacy_field"),
+    [
+        ("node_key", "id"),
+        ("role_id", "role"),
+        ("policy_id", "policy"),
+    ],
+)
+@pytest.mark.parametrize("node_path", ["root", "child"])
+def test_workflow_definition_rejects_legacy_authored_node_fields(
+    target_field: str,
+    legacy_field: str,
+    node_path: str,
+) -> None:
     payload = bounded_workflow_payload()
-    payload["root"]["provider_preference"] = "codex"
-    payload["root"]["children"][0]["provider_preference"] = "openclaw"
+    node = payload["root"] if node_path == "root" else payload["root"]["children"][0]
+    node[legacy_field] = node.pop(target_field)
+
+    with pytest.raises(ValidationError, match=legacy_field):
+        WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
+
+
+@pytest.mark.parametrize("required_field", ["kind", "policy_id"])
+def test_workflow_definition_requires_target_node_fields(required_field: str) -> None:
+    payload = bounded_workflow_payload()
+    payload["root"]["children"][0].pop(required_field)
+
+    with pytest.raises(ValidationError, match=required_field):
+        WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
+
+
+def test_workflow_definition_rejects_structural_kind_conflicts() -> None:
+    root_kind_conflict = bounded_workflow_payload()
+    root_kind_conflict["root"]["kind"] = "parent"
+    with pytest.raises(ValidationError, match="kind"):
+        WorkflowDefinitionFile.model_validate({"kind": "workflow", **root_kind_conflict})
+
+    worker_with_children = bounded_workflow_payload()
+    child = worker_with_children["root"]["children"][0]
+    child["children"] = [
+        {
+            "node_key": "nested_worker",
+            "kind": "worker",
+            "role_id": "engineer",
+            "policy_id": "standard-worker",
+            "description": "Nested worker that makes its parent structurally inconsistent.",
+        }
+    ]
+    with pytest.raises(ValidationError, match="worker workflow nodes must not contain children"):
+        WorkflowDefinitionFile.model_validate({"kind": "workflow", **worker_with_children})
+
+
+@pytest.mark.parametrize("provider_kind", ["codex", "claude", "openclaw"])
+def test_workflow_nodes_accept_strict_portable_provider_selection(
+    provider_kind: str,
+) -> None:
+    payload = bounded_workflow_payload()
+    payload["root"]["provider"] = {"kind": provider_kind}
+    payload["root"]["children"][0]["provider"] = {"kind": provider_kind}
 
     workflow = WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
 
-    assert workflow.root.provider_preference == "codex"
+    assert workflow.root.provider is not None
+    assert workflow.root.provider.kind == provider_kind
     assert workflow.root.children is not None
-    assert workflow.root.children[0].provider_preference == "openclaw"
+    assert workflow.root.children[0].provider is not None
+    assert workflow.root.children[0].provider.kind == provider_kind
 
 
 def test_workflow_nodes_accept_authored_node_instruction() -> None:
@@ -200,11 +267,22 @@ def test_workflow_nodes_accept_authored_node_instruction() -> None:
     assert workflow.root.children[0].instruction == "Patch only the bounded slice."
 
 
-def test_workflow_nodes_reject_unknown_provider_preference() -> None:
+@pytest.mark.parametrize(
+    "provider",
+    [
+        "codex",
+        {},
+        {"kind": "local-shell"},
+        {"kind": "codex", "model": "gpt-5"},
+        {"kind": "claude", "effort": "high"},
+        {"kind": "openclaw", "gateway_profile": "default"},
+    ],
+)
+def test_workflow_nodes_reject_non_strict_provider_selection(provider: object) -> None:
     payload = bounded_workflow_payload()
-    payload["root"]["children"][0]["provider_preference"] = "local-shell"
+    payload["root"]["children"][0]["provider"] = provider
 
-    with pytest.raises(ValidationError, match="provider_preference"):
+    with pytest.raises(ValidationError, match=r"provider|kind"):
         WorkflowDefinitionFile.model_validate({"kind": "workflow", **payload})
 
 
@@ -228,14 +306,14 @@ def test_workflow_nodes_reject_provider_local_configuration(
 
 
 def test_portable_workflow_node_contract_accepts_authored_execution_intent() -> None:
-    node = WorkflowNodeInput.model_validate(
+    node = WorkflowNodeInput[NodeKind].model_validate(
         {
             "node_key": "implement_slice",
             "kind": "worker",
             "title": "Implement slice",
             "role_id": "engineer",
             "policy_id": "standard-worker",
-            "provider_preference": "codex",
+            "provider": {"kind": "codex"},
             "description": "Implement the bounded slice.",
             "instruction": "Read the current criteria before patching.",
         }
@@ -247,7 +325,7 @@ def test_portable_workflow_node_contract_accepts_authored_execution_intent() -> 
         "title": "Implement slice",
         "role_id": "engineer",
         "policy_id": "standard-worker",
-        "provider_preference": "codex",
+        "provider": {"kind": "codex"},
         "description": "Implement the bounded slice.",
         "instruction": "Read the current criteria before patching.",
     }
@@ -259,6 +337,7 @@ def test_portable_workflow_node_contract_accepts_authored_execution_intent() -> 
         ("id", "implement_slice"),
         ("role", "engineer"),
         ("policy", "standard-worker"),
+        ("provider_preference", "codex"),
         ("transport", {"socket_path": "/tmp/provider.sock"}),
     ],
 )

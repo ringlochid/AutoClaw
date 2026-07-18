@@ -1,11 +1,10 @@
-from typing import Annotated, Literal
+from typing import Literal
 
 from pydantic import (
     AliasChoices,
     BaseModel,
     ConfigDict,
     Field,
-    TypeAdapter,
     model_validator,
 )
 
@@ -18,7 +17,6 @@ from autoclaw.definitions.contracts.workflow import (
 from autoclaw.runtime.contracts.checkpoint import TransientSurfaceWrite
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
 from autoclaw.runtime.contracts.flow import RuntimeFlowRead
-from autoclaw.runtime.contracts.primitives import ParentRootToolName
 from autoclaw.runtime.contracts.refs import (
     AssignmentFileRef,
     CheckpointFileRef,
@@ -53,7 +51,6 @@ class AssignChildPayload(BaseModel):
     assignment_intent: AssignmentIntent
     supplemental_durable_context: SupplementalDurableContext | None = None
     transient_surfaces: tuple[TransientSurfaceWrite, ...] = ()
-    task_memory_search_hints: tuple[RuntimeSchemaText, ...] = ()
 
 
 class ChildNodeDraft(BaseModel):
@@ -62,7 +59,7 @@ class ChildNodeDraft(BaseModel):
     node_key: RuntimeSchemaText = Field(validation_alias=AliasChoices("node_key", "id"))
     parent_node_key: RuntimeSchemaText | None = Field(default=None, exclude=True)
     role: RuntimeSchemaText
-    policy: RuntimeSchemaText | None = None
+    policy: RuntimeSchemaText
     description: RuntimeSchemaText
     instruction: RuntimeSchemaText | None = None
     consumes: ConsumeBuckets | None = None
@@ -86,9 +83,11 @@ class ChildNodePatch(BaseModel):
     children: list[ChildNodeDraft] | None = None
 
     @model_validator(mode="after")
-    def validate_children(self) -> "ChildNodePatch":
+    def validate_patch_shape(self) -> "ChildNodePatch":
         if self.children is not None:
             raise ValueError("update_child does not support subtree patch shapes")
+        if "policy" in self.model_fields_set and self.policy is None:
+            raise ValueError("update_child cannot clear the node policy")
         return self
 
 
@@ -129,94 +128,6 @@ class ReleaseGreenPayload(BaseModel):
 
 class ReleaseBlockedPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
-
-
-type ParentToolPayload = (
-    AssignChildPayload
-    | AddChildPayload
-    | UpdateChildPayload
-    | RemoveChildPayload
-    | ReleaseGreenPayload
-    | ReleaseBlockedPayload
-)
-
-
-class _ParentToolCallBase(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    expected_structural_revision_id: RuntimeSchemaText | None = None
-
-
-class AssignChildToolCall(_ParentToolCallBase):
-    tool_name: Literal["assign_child"] = "assign_child"
-    payload: AssignChildPayload
-
-
-class AddChildToolCall(_ParentToolCallBase):
-    tool_name: Literal["add_child"] = "add_child"
-    payload: AddChildPayload
-
-
-class UpdateChildToolCall(_ParentToolCallBase):
-    tool_name: Literal["update_child"] = "update_child"
-    payload: UpdateChildPayload
-
-
-class RemoveChildToolCall(_ParentToolCallBase):
-    tool_name: Literal["remove_child"] = "remove_child"
-    payload: RemoveChildPayload
-
-
-class ReleaseGreenToolCall(_ParentToolCallBase):
-    tool_name: Literal["release_green"] = "release_green"
-    payload: ReleaseGreenPayload
-
-
-class ReleaseBlockedToolCall(_ParentToolCallBase):
-    tool_name: Literal["release_blocked"] = "release_blocked"
-    payload: ReleaseBlockedPayload
-
-
-type ParentToolCallVariant = Annotated[
-    AssignChildToolCall
-    | AddChildToolCall
-    | UpdateChildToolCall
-    | RemoveChildToolCall
-    | ReleaseGreenToolCall
-    | ReleaseBlockedToolCall,
-    Field(discriminator="tool_name"),
-]
-
-_PARENT_TOOL_CALL_ADAPTER: TypeAdapter[ParentToolCallVariant] = TypeAdapter(ParentToolCallVariant)
-
-
-class ParentToolCall(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    tool_name: ParentRootToolName
-    payload: ParentToolPayload
-    expected_structural_revision_id: RuntimeSchemaText | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_payload_by_tool(cls, data: object) -> object:
-        if not isinstance(data, dict):
-            return data
-        variant = _PARENT_TOOL_CALL_ADAPTER.validate_python(data)
-        return {
-            "tool_name": ParentRootToolName(variant.tool_name),
-            "payload": variant.payload,
-            "expected_structural_revision_id": variant.expected_structural_revision_id,
-        }
-
-    def as_variant(self) -> ParentToolCallVariant:
-        return _PARENT_TOOL_CALL_ADAPTER.validate_python(
-            {
-                "tool_name": self.tool_name,
-                "payload": self.payload,
-                "expected_structural_revision_id": self.expected_structural_revision_id,
-            }
-        )
 
 
 class AssignChildSuccess(BaseModel):
@@ -263,46 +174,25 @@ class ReleaseBlockedSuccess(ParentToolMutationSuccess):
     tool_name: Literal["release_blocked"] = "release_blocked"
 
 
-type ParentToolSuccess = Annotated[
-    AssignChildSuccess
-    | AddChildSuccess
-    | UpdateChildSuccess
-    | RemoveChildSuccess
-    | ReleaseGreenSuccess
-    | ReleaseBlockedSuccess,
-    Field(discriminator="tool_name"),
-]
-
-
 ChildNodeDraft.model_rebuild()
 
 __all__ = [
     "AddChildPayload",
     "AddChildSuccess",
-    "AddChildToolCall",
     "AssignChildPayload",
     "AssignChildSuccess",
-    "AssignChildToolCall",
     "AssignmentIntent",
     "ChildNodeDraft",
     "ChildNodePatch",
-    "ParentToolCall",
-    "ParentToolCallVariant",
     "ParentToolMutationSuccess",
-    "ParentToolPayload",
-    "ParentToolSuccess",
     "ReleaseBlockedPayload",
     "ReleaseBlockedSuccess",
-    "ReleaseBlockedToolCall",
     "ReleaseGreenPayload",
     "ReleaseGreenSuccess",
-    "ReleaseGreenToolCall",
     "RemoveChildPayload",
     "RemoveChildSuccess",
-    "RemoveChildToolCall",
     "SupplementalDurableContext",
     "SupplementalSlot",
     "UpdateChildPayload",
     "UpdateChildSuccess",
-    "UpdateChildToolCall",
 ]

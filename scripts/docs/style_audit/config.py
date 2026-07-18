@@ -94,74 +94,31 @@ def _src_runtime_import_exceptions() -> frozenset[Path]:
     return frozenset()
 
 
-def _openclaw_gateway_public_naming_exceptions() -> frozenset[tuple[Path, str]]:
+def _canonical_contract_naming_exceptions() -> frozenset[tuple[Path, str]]:
     return _existing_public_naming_exceptions(
+        (ROOT / "apps/api/src/autoclaw/config.py", "enabled"),
+        (ROOT / "apps/api/src/autoclaw/config.py", "value_is_complex"),
         (
             ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/adapter.py",
-            "check_compatibility",
+            "check",
         ),
         (
-            ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/contracts.py",
-            "retry_used_cached_device_token",
-        ),
-        (ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/contracts.py", "aborted"),
-        (ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/contracts.py", "yielded"),
-        (ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/contracts.py", "accepted"),
-        (
-            ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/discovery.py",
-            "binary_found",
+            ROOT / "apps/api/src/autoclaw/runtime/contracts/operation_failure.py",
+            "ok",
         ),
         (
-            ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/discovery.py",
-            "config_exists",
-        ),
-        (ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/discovery.py", "loopback"),
-        (
-            ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/discovery.py",
-            "token_available",
+            ROOT / "apps/api/src/autoclaw/runtime/contracts/operation_failure.py",
+            "retryable",
         ),
         (
-            ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/discovery.py",
-            "password_available",
+            ROOT / "apps/api/src/autoclaw/runtime/work_plan/contracts.py",
+            "changed",
         ),
-        (ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/fixtures.py", "aborted"),
-        (ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/fixtures.py", "yielded"),
-        (
-            ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/handshake.py",
-            "use_cached_device_token",
-        ),
-        (
-            ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/host_setup.py",
-            "run_openclaw_cli",
-        ),
-        (ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/protocol.py", "ok"),
-        (ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/protocol.py", "aborted"),
-        (ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/protocol.py", "yielded"),
-        (
-            ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/request_builders.py",
-            "use_cached_device_token",
-        ),
-        (
-            ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/request_builders.py",
-            "retry_used_cached_device_token",
-        ),
-        (
-            ROOT / "apps/api/src/autoclaw/integrations/openclaw/gateway/runtime_handle.py",
-            "request_sent",
-        ),
-    )
-
-
-def _runtime_public_naming_exceptions() -> frozenset[tuple[Path, str]]:
-    return _existing_public_naming_exceptions(
-        (ROOT / "apps/api/src/autoclaw/config.py", "value_is_complex"),
-        (ROOT / "apps/api/src/autoclaw/runtime/replan/defaults.py", "apply_child_defaults"),
-        (ROOT / "apps/api/src/autoclaw/runtime/watchdog/manager.py", "stop_requested"),
     )
 
 
 def _approved_public_naming_exceptions() -> frozenset[tuple[Path, str]]:
-    return _openclaw_gateway_public_naming_exceptions() | _runtime_public_naming_exceptions()
+    return _canonical_contract_naming_exceptions()
 
 
 def _approved_import_direction_exception_modules() -> frozenset[Path]:

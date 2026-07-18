@@ -1,82 +1,44 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-from pathlib import Path
+from typing import NoReturn
 
 from autoclaw.config import OpenClawSettings, Settings, get_settings
-from autoclaw.integrations.openclaw.gateway.contracts import (
-    OpenClawAbortRequest,
-    OpenClawAbortResult,
-    OpenClawAgentLaunchInput,
-    OpenClawCompatibilityReport,
-    OpenClawLaunchResult,
-    OpenClawWaitRequest,
-    OpenClawWaitResult,
-)
-from autoclaw.integrations.openclaw.gateway.runtime_handle import OpenClawGatewayRuntimeHandle
-from autoclaw.integrations.openclaw.gateway.session_keys import normalize_agent_launch_input
+
+
+class OpenClawAdapterUnavailableError(RuntimeError):
+    """OpenClaw provider execution is not implemented in this build."""
 
 
 class OpenClawGatewayAdapter:
-    def __init__(
-        self,
-        *,
-        config: OpenClawSettings,
-        data_dir: Path,
-    ) -> None:
-        self._config = config
-        self._auth_state_path = data_dir / "openclaw" / "gateway-device-auth.json"
+    """Compile-safe provider seam for an unavailable OpenClaw adapter."""
 
-    async def check_compatibility(self) -> OpenClawCompatibilityReport:
-        async with self.dispatch_handle() as handle:
-            return handle.require_compatibility()
+    def __init__(self, *, config: OpenClawSettings) -> None:
+        self.config = config
 
-    async def launch_run(self, request: OpenClawAgentLaunchInput) -> OpenClawLaunchResult:
-        normalized_request = normalize_agent_launch_input(request, self._config.agent_id)
-        async with self.dispatch_handle() as handle:
-            return await handle.launch_run(normalized_request)
+    async def start(self, _request: object) -> NoReturn:
+        _raise_unavailable()
 
-    async def wait_for_run(self, request: OpenClawWaitRequest) -> OpenClawWaitResult:
-        async with self.dispatch_handle() as handle:
-            return await handle.wait_for_run(request)
+    async def stop(self, _dispatch_id: str) -> NoReturn:
+        _raise_unavailable()
 
-    async def abort_run(self, request: OpenClawAbortRequest) -> OpenClawAbortResult:
-        async with self.dispatch_handle() as handle:
-            return await handle.abort_run(request)
-
-    @asynccontextmanager
-    async def dispatch_handle(self) -> AsyncIterator[OpenClawGatewayRuntimeHandle]:
-        handle = OpenClawGatewayRuntimeHandle(
-            config=self._config,
-            auth_state_path=self._auth_state_path,
-        )
-        try:
-            await handle.open()
-            yield handle
-        finally:
-            await handle.close()
+    async def check(self) -> NoReturn:
+        _raise_unavailable()
 
 
 def build_openclaw_gateway_adapter(settings: Settings | None = None) -> OpenClawGatewayAdapter:
     loaded = settings or get_settings()
-    return OpenClawGatewayAdapter(
-        config=loaded.openclaw,
-        data_dir=loaded.data_dir,
+    return OpenClawGatewayAdapter(config=loaded.openclaw)
+
+
+def _raise_unavailable() -> NoReturn:
+    raise OpenClawAdapterUnavailableError(
+        "OpenClaw provider execution is not available in this build; retrying the "
+        "same operation will not succeed"
     )
 
 
-def openclaw_startup_compatibility_required(settings: Settings | None = None) -> bool:
-    loaded = settings or get_settings()
-    if loaded.openclaw.gateway_token:
-        return True
-    if loaded.openclaw.gateway_password:
-        return True
-    return (loaded.data_dir / "openclaw" / "gateway-device-auth.json").is_file()
-
-
 __all__ = [
+    "OpenClawAdapterUnavailableError",
     "OpenClawGatewayAdapter",
     "build_openclaw_gateway_adapter",
-    "openclaw_startup_compatibility_required",
 ]

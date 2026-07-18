@@ -1,118 +1,28 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from pathlib import Path
 
 from autoclaw.definitions.compiler import NormalizedCompiledNode, NormalizedCompiledPlan
+from autoclaw.definitions.contracts.workflow import NodeKind
 from autoclaw.runtime.contracts import (
     AssignmentProjection,
-    CheckpointProjection,
     EvidenceKind,
     EvidenceRef,
-    ManifestProjection,
-    PersistedPromptRecord,
     ProduceRequirement,
-    PromptRenderRequest,
-    PromptSendMode,
-    PromptTransportRequest,
-    RenderedPromptBundle,
     ResolvedNodeContext,
-    RuntimeBootstrapProjectionInput,
+    RuntimeBootstrapInput,
     RuntimeBootstrapResult,
     TaskRootPaths,
-    prompt_family_for_node_kind,
 )
 from autoclaw.runtime.errors import illegal_state_error, missing_resource_error
-from autoclaw.runtime.launch.bootstrap.manifest import build_manifest_projection
-from autoclaw.runtime.prompt.bundle import render_prompt_bundle
-from autoclaw.runtime.task_root import (
-    criteria_file_path,
-    ensure_task_root_layout,
-    localize_assignment_projection,
-    localize_checkpoint_projection,
-    localize_manifest_projection,
-    prompt_markdown_path,
-    prompt_request_json_path,
-    resolve_task_root_paths,
-    stable_json_hash,
-    write_assignment_projection,
-    write_checkpoint_projection,
-    write_criteria_files,
-    write_manifest_projection,
-    write_prompt_artifact,
-)
+from autoclaw.runtime.task_root import criteria_logical_path, resolve_task_root_paths
 
 
-def materialize_bootstrap_runtime_projection(
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+def build_launch_bootstrap_result(
+    bootstrap_input: RuntimeBootstrapInput,
 ) -> RuntimeBootstrapResult:
-    result = build_bootstrap_runtime_projection_result(bootstrap_input)
-    ensure_task_root_layout(result.paths)
-    write_criteria_files(
-        paths=result.paths,
-        compiled_plan=bootstrap_input.compiled_plan,
-    )
+    """Build fresh-task controller records without opening or projecting a dispatch."""
 
-    current_node = _resolve_node_context(
-        compiled_plan=bootstrap_input.compiled_plan,
-        current_node_key=bootstrap_input.current_node_key,
-        bootstrap_input=bootstrap_input,
-    )
-    assignment = localize_assignment_projection(paths=result.paths, assignment=result.assignment)
-    latest_checkpoint = (
-        localize_checkpoint_projection(paths=result.paths, checkpoint=result.latest_checkpoint)
-        if result.latest_checkpoint is not None
-        else None
-    )
-    manifest = localize_manifest_projection(paths=result.paths, manifest=result.manifest)
-    prompt_bundle, transport_request = _render_bootstrap_prompt(
-        bootstrap_input=bootstrap_input,
-        current_node=current_node,
-        assignment=assignment,
-        manifest=manifest,
-        latest_checkpoint=latest_checkpoint,
-    )
-    prompt_record = result.prompt_record.model_copy(
-        update={
-            "assignment_key": assignment.assignment_key,
-            "content_hash": prompt_bundle.content_hash,
-            "transport_request_hash": stable_json_hash(transport_request),
-            "transport_request": transport_request,
-        }
-    )
-    localized_result = result.model_copy(
-        update={
-            "manifest": manifest,
-            "assignment": assignment,
-            "latest_checkpoint": latest_checkpoint,
-            "prompt_bundle": prompt_bundle,
-            "prompt_record": prompt_record,
-        }
-    )
-
-    write_manifest_projection(paths=localized_result.paths, manifest=localized_result.manifest)
-    write_assignment_projection(
-        paths=localized_result.paths,
-        attempt_id=bootstrap_input.attempt_id,
-        assignment=localized_result.assignment,
-    )
-    if localized_result.latest_checkpoint is not None:
-        write_checkpoint_projection(
-            paths=localized_result.paths,
-            attempt_id=bootstrap_input.attempt_id,
-            checkpoint=localized_result.latest_checkpoint,
-        )
-    write_prompt_artifact(
-        paths=localized_result.paths,
-        prompt_record=localized_result.prompt_record,
-        full_markdown=localized_result.prompt_bundle.full_markdown,
-    )
-    return localized_result
-
-
-def build_bootstrap_runtime_projection_result(
-    bootstrap_input: RuntimeBootstrapProjectionInput,
-) -> RuntimeBootstrapResult:
     task_root_paths = resolve_task_root_paths(
         task_root=bootstrap_input.task_root,
         task_compose=bootstrap_input.task_compose,
@@ -121,56 +31,14 @@ def build_bootstrap_runtime_projection_result(
         bootstrap_input,
         task_root_paths=task_root_paths,
     )
-    criteria_descriptions = _criteria_descriptions_by_slot(bootstrap_input.compiled_plan)
-    current_node = _resolve_node_context(
-        compiled_plan=bootstrap_input.compiled_plan,
-        current_node_key=bootstrap_input.current_node_key,
-        bootstrap_input=bootstrap_input,
-    )
-    assignment = bootstrap_input.assignment or _build_launch_assignment(
+    current_node = _resolve_root_node_context(bootstrap_input)
+    assignment = _build_launch_assignment(
         bootstrap_input=bootstrap_input,
         current_node=current_node,
         criteria_paths=criteria_paths,
-        criteria_descriptions=criteria_descriptions,
+        criteria_descriptions=_criteria_descriptions_by_slot(bootstrap_input.compiled_plan),
     )
-    if assignment.node_key != current_node.node_key:
-        raise illegal_state_error(
-            f"assignment node_key '{assignment.node_key}' does not match current node "
-            f"'{current_node.node_key}'"
-        )
-
-    manifest = build_manifest_projection(
-        bootstrap_input=bootstrap_input,
-        current_node=current_node,
-        criteria_paths=criteria_paths,
-        criteria_descriptions=criteria_descriptions,
-        assignment=assignment,
-        latest_checkpoint=bootstrap_input.latest_checkpoint,
-        task_root_paths=task_root_paths,
-    )
-    prompt_bundle, transport_request = _render_bootstrap_prompt(
-        bootstrap_input=bootstrap_input,
-        current_node=current_node,
-        assignment=assignment,
-        manifest=manifest,
-        latest_checkpoint=bootstrap_input.latest_checkpoint,
-    )
-    prompt_record = _build_persisted_prompt_record(
-        bootstrap_input=bootstrap_input,
-        current_node=current_node,
-        assignment=assignment,
-        prompt_bundle=prompt_bundle,
-        task_root_paths=task_root_paths,
-        transport_request=transport_request,
-    )
-    return RuntimeBootstrapResult(
-        paths=task_root_paths,
-        manifest=manifest,
-        assignment=assignment,
-        latest_checkpoint=bootstrap_input.latest_checkpoint,
-        prompt_bundle=prompt_bundle,
-        prompt_record=prompt_record,
-    )
+    return RuntimeBootstrapResult(paths=task_root_paths, assignment=assignment)
 
 
 def _compiled_nodes_by_key(
@@ -204,25 +72,23 @@ def _merge_criteria_refs(
     return tuple(merged)
 
 
-def _resolve_node_context(
-    *,
-    compiled_plan: NormalizedCompiledPlan,
-    current_node_key: str,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+def _resolve_root_node_context(
+    bootstrap_input: RuntimeBootstrapInput,
 ) -> ResolvedNodeContext:
-    compiled_node = _compiled_nodes_by_key(compiled_plan).get(current_node_key)
+    root_node_key = bootstrap_input.workflow_definition.root.node_key
+    compiled_node = _compiled_nodes_by_key(bootstrap_input.compiled_plan).get(root_node_key)
     if compiled_node is None:
-        raise illegal_state_error(f"unknown current_node_key '{current_node_key}'")
+        raise illegal_state_error(f"compiled plan is missing authored root node '{root_node_key}'")
+    if compiled_node.structural_kind != NodeKind.ROOT or compiled_node.parent_node_key is not None:
+        raise illegal_state_error(f"compiled node '{root_node_key}' is not the structural root")
 
     role_revision = bootstrap_input.role_policy_lookup.get_role(compiled_node.role)
     if role_revision is None:
         raise missing_resource_error(f"missing role definition for '{compiled_node.role}'")
 
-    policy_revision = None
-    if compiled_node.policy is not None:
-        policy_revision = bootstrap_input.role_policy_lookup.get_policy(compiled_node.policy)
-        if policy_revision is None:
-            raise missing_resource_error(f"missing policy definition for '{compiled_node.policy}'")
+    policy_revision = bootstrap_input.role_policy_lookup.get_policy(compiled_node.policy)
+    if policy_revision is None:
+        raise missing_resource_error(f"missing policy definition for '{compiled_node.policy}'")
 
     return ResolvedNodeContext(
         node_key=compiled_node.node_key,
@@ -235,37 +101,25 @@ def _resolve_node_context(
         role_instruction=role_revision.definition.instruction,
         policy_key=compiled_node.policy,
         policy_revision_no=compiled_node.policy_revision_no,
-        policy_description=policy_revision.definition.description if policy_revision else None,
-        policy_instruction=policy_revision.definition.instruction if policy_revision else None,
+        policy_description=policy_revision.definition.description,
+        policy_instruction=policy_revision.definition.instruction,
     )
 
 
 def _build_launch_assignment(
     *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     current_node: ResolvedNodeContext,
     criteria_paths: dict[str, Path],
     criteria_descriptions: dict[str, str],
 ) -> AssignmentProjection:
-    if current_node.node_key != "root":
-        raise illegal_state_error(
-            "Automatic assignment generation only supports the launch/root path; "
-            "later node assignments require explicit projected assignment input so "
-            "runtime truth is not guessed early.",
-            suggested_next_step=(
-                "Provide an explicit projected assignment for non-root bootstrap inputs "
-                "instead of asking launch projection to infer later-node runtime truth."
-            ),
-        )
-
     compiled_node = _compiled_nodes_by_key(bootstrap_input.compiled_plan)[current_node.node_key]
     if compiled_node.consumes is not None and compiled_node.consumes.artifacts:
         raise illegal_state_error(
-            "Automatic assignment generation does not resolve artifact consumes; "
-            "provide an explicit projected assignment instead.",
+            "the root assignment cannot consume an unresolved artifact at task start",
             suggested_next_step=(
-                "Provide an explicit projected assignment when bootstrap inputs need "
-                "artifact consumes resolved before launch."
+                "Remove root artifact consumption or start from a workflow whose root inputs "
+                "are available from controller truth."
             ),
         )
 
@@ -322,70 +176,15 @@ def _build_launch_assignment(
 
 
 def _criteria_paths(
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     *,
     task_root_paths: TaskRootPaths,
 ) -> dict[str, Path]:
     return {
-        criteria.slot: criteria_file_path(paths=task_root_paths, slot=criteria.slot, version=1)
+        criteria.slot: criteria_logical_path(slot=criteria.slot, version=1)
         for node in bootstrap_input.compiled_plan.nodes
         for criteria in node.criteria
     }
 
 
-def _render_bootstrap_prompt(
-    *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
-    current_node: ResolvedNodeContext,
-    assignment: AssignmentProjection,
-    manifest: ManifestProjection,
-    latest_checkpoint: CheckpointProjection | None,
-) -> tuple[RenderedPromptBundle, PromptTransportRequest]:
-    prompt_bundle = render_prompt_bundle(
-        PromptRenderRequest(
-            prompt_family=prompt_family_for_node_kind(current_node.node_kind),
-            send_mode=PromptSendMode.FULL_PROMPT,
-            task_id=bootstrap_input.task_id,
-            current_node=current_node,
-            manifest=manifest,
-            assignment=assignment,
-            latest_checkpoint=latest_checkpoint,
-        )
-    )
-    transport_request = PromptTransportRequest(
-        send_mode=prompt_bundle.send_mode,
-        instructions_text=prompt_bundle.instructions_text,
-        input_text=prompt_bundle.input_text,
-    )
-    return prompt_bundle, transport_request
-
-
-def _build_persisted_prompt_record(
-    *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
-    current_node: ResolvedNodeContext,
-    assignment: AssignmentProjection,
-    prompt_bundle: RenderedPromptBundle,
-    task_root_paths: TaskRootPaths,
-    transport_request: PromptTransportRequest,
-) -> PersistedPromptRecord:
-    return PersistedPromptRecord(
-        dispatch_id=bootstrap_input.dispatch_id,
-        node_key=current_node.node_key,
-        attempt_id=bootstrap_input.attempt_id,
-        assignment_key=assignment.assignment_key,
-        prompt_name=prompt_bundle.prompt_family,
-        send_mode=prompt_bundle.send_mode,
-        rendered_markdown_path=prompt_markdown_path(
-            paths=task_root_paths,
-            dispatch_id=bootstrap_input.dispatch_id,
-        ),
-        transport_request_path=prompt_request_json_path(
-            paths=task_root_paths,
-            dispatch_id=bootstrap_input.dispatch_id,
-        ),
-        content_hash=prompt_bundle.content_hash,
-        transport_request_hash=stable_json_hash(transport_request),
-        rendered_at=datetime.now(tz=UTC),
-        transport_request=transport_request,
-    )
+__all__ = ["build_launch_bootstrap_result"]

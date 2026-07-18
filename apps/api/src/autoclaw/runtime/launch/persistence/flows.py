@@ -9,7 +9,7 @@ from autoclaw.persistence.models import (
     NodePlanRevisionModel,
 )
 from autoclaw.runtime.contracts import (
-    RuntimeBootstrapProjectionInput,
+    RuntimeBootstrapInput,
     RuntimeBootstrapResult,
 )
 from autoclaw.runtime.ids import assignment_id, flow_edge_id, flow_node_id, node_plan_revision_id
@@ -19,7 +19,7 @@ from autoclaw.runtime.launch.bootstrap.criteria import build_node_criteria_json
 
 def build_flow_row(
     *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     context: LaunchBootstrapPersistenceContext,
 ) -> FlowModel:
     return FlowModel(
@@ -28,20 +28,20 @@ def build_flow_row(
         compiled_plan_id=context.compiled_plan_id,
         status="running",
         active_flow_revision_id=bootstrap_input.active_flow_revision_id,
-        current_open_dispatch_id=None,
-        current_node_key=bootstrap_input.current_node_key,
+        current_dispatch_id=None,
     )
 
 
 def build_flow_revision_row(
     *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     context: LaunchBootstrapPersistenceContext,
 ) -> FlowRevisionModel:
     return FlowRevisionModel(
         flow_revision_id=bootstrap_input.active_flow_revision_id,
         flow_id=context.flow_id,
         revision_index=1,
+        parent_flow_revision_id=None,
         source_compiled_plan_id=context.compiled_plan_id,
         cause="launch",
         snapshot_json=bootstrap_input.compiled_plan.model_dump(mode="json"),
@@ -53,7 +53,7 @@ def build_flow_node_row(
     result: RuntimeBootstrapResult,
     flow_revision: FlowRevisionModel,
     context: LaunchBootstrapPersistenceContext,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     node: NormalizedCompiledNode,
     role_description: str,
     role_instruction: str | None,
@@ -66,13 +66,8 @@ def build_flow_node_row(
             node.node_key,
         ),
         flow_id=context.flow_id,
-        flow_revision=flow_revision,
+        flow_revision_id=flow_revision.flow_revision_id,
         node_key=node.node_key,
-        parent_flow_node_id=(
-            flow_node_id(bootstrap_input.active_flow_revision_id, node.parent_node_key)
-            if node.parent_node_key is not None
-            else None
-        ),
         parent_node_key=node.parent_node_key,
         structural_kind=node.structural_kind.value,
         role_key=node.role,
@@ -88,13 +83,14 @@ def build_flow_node_row(
         child_node_keys_json=list(node.child_node_keys),
         consumes_json=(node.consumes.model_dump(mode="json") if node.consumes else None),
         produces_json=(node.produces.model_dump(mode="json") if node.produces else None),
-        criteria_json=build_node_criteria_json(paths=result.paths, node=node),
+        criteria_json=build_node_criteria_json(node=node),
         child_defaults_json=node.child_defaults.model_dump(mode="json")
         if node.child_defaults
         else None,
         current_assignment_id=assignment_id(result.assignment.assignment_key)
         if node.node_key == result.assignment.node_key
         else None,
+        state="running" if node.node_key == result.assignment.node_key else "ready",
         order_index=node.order_index,
     )
 
@@ -103,7 +99,7 @@ def build_node_plan_revision_row(
     *,
     flow_revision: FlowRevisionModel,
     flow_node: FlowNodeModel,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     node: NormalizedCompiledNode,
     role_description: str,
     role_instruction: str | None,
@@ -115,8 +111,9 @@ def build_node_plan_revision_row(
             bootstrap_input.active_flow_revision_id,
             node.node_key,
         ),
-        flow_revision=flow_revision,
-        flow_node=flow_node,
+        flow_id=flow_revision.flow_id,
+        flow_revision_id=flow_revision.flow_revision_id,
+        flow_node_id=flow_node.flow_node_id,
         role_key=node.role,
         role_revision_no=node.role_revision_no,
         role_description=role_description,
@@ -130,7 +127,7 @@ def build_node_plan_revision_row(
 
 def build_flow_edge_row(
     *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     edge: NormalizedDependencyEdge,
 ) -> FlowEdgeModel:
     return FlowEdgeModel(
@@ -141,14 +138,6 @@ def build_flow_edge_row(
             edge.slot,
         ),
         flow_revision_id=bootstrap_input.active_flow_revision_id,
-        provider_flow_node_id=flow_node_id(
-            bootstrap_input.active_flow_revision_id,
-            edge.provider_node_key,
-        ),
-        consumer_flow_node_id=flow_node_id(
-            bootstrap_input.active_flow_revision_id,
-            edge.consumer_node_key,
-        ),
         provider_node_key=edge.provider_node_key,
         consumer_node_key=edge.consumer_node_key,
         kind=edge.kind.value,

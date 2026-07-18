@@ -7,32 +7,26 @@ from autoclaw.persistence.models import (
     CompiledPlanEdgeModel,
     CompiledPlanModel,
     CompiledPlanNodeModel,
-    ContextSpaceModel,
     FlowNodeModel,
     FlowRevisionModel,
-    ManifestRootModel,
+    FlowStartSourceModel,
     TaskComposeModel,
+    TaskEventStreamHeadModel,
     TaskModel,
-    TaskResourceBindingModel,
-    WorkspaceRootModel,
+    WorkspaceBindingModel,
 )
 from autoclaw.runtime.contracts import (
-    RuntimeBootstrapProjectionInput,
+    RuntimeBootstrapInput,
     RuntimeBootstrapResult,
 )
 from autoclaw.runtime.ids import (
     compiled_plan_edge_id,
     compiled_plan_node_id,
-    context_space_id_for_task,
-    manifest_root_id_for_task,
     task_compose_id_for_task,
-    task_resource_binding_id,
-    workspace_root_id_for_task,
 )
 from autoclaw.runtime.launch.bootstrap.context import LaunchBootstrapPersistenceContext
 from autoclaw.runtime.launch.bootstrap.criteria import build_node_criteria_json
 from autoclaw.runtime.launch.bootstrap.revisions import resolve_pinned_role_policy
-from autoclaw.runtime.launch.bootstrap.workspace import acquire_workspace_root_lease
 from autoclaw.runtime.launch.persistence.flows import (
     build_flow_edge_row,
     build_flow_node_row,
@@ -45,7 +39,7 @@ type NodePlanRevisionInput = tuple[
     NormalizedCompiledNode,
     str,
     str | None,
-    str | None,
+    str,
     str | None,
 ]
 
@@ -53,7 +47,7 @@ type NodePlanRevisionInput = tuple[
 async def stage_launch_bootstrap_rows(
     session: AsyncSession,
     *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     result: RuntimeBootstrapResult,
     context: LaunchBootstrapPersistenceContext,
 ) -> None:
@@ -66,7 +60,6 @@ async def stage_launch_bootstrap_rows(
     await _stage_compiled_plan_graph_rows(
         session,
         bootstrap_input=bootstrap_input,
-        result=result,
         context=context,
     )
     await _stage_flow_rows(
@@ -80,7 +73,7 @@ async def stage_launch_bootstrap_rows(
 async def _stage_task_root_rows(
     session: AsyncSession,
     *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     result: RuntimeBootstrapResult,
     context: LaunchBootstrapPersistenceContext,
 ) -> None:
@@ -97,27 +90,13 @@ async def _stage_task_root_rows(
     )
     await session.flush()
 
+    session.add(TaskEventStreamHeadModel(task_id=bootstrap_input.task_id))
     session.add(
-        WorkspaceRootModel(
-            workspace_root_id=workspace_root_id_for_task(bootstrap_input.task_id),
+        WorkspaceBindingModel(
+            workspace_binding_id=f"workspace-binding.{bootstrap_input.task_id}",
             task_id=bootstrap_input.task_id,
-            path=str(result.paths.workspace_path),
-            binding_mode=context.workspace_binding_mode,
-        )
-    )
-    session.add(
-        ContextSpaceModel(
-            context_space_id=context_space_id_for_task(bootstrap_input.task_id),
-            task_id=bootstrap_input.task_id,
-            path=str(result.paths.context_path),
-            binding_mode=context.context_binding_mode,
-        )
-    )
-    session.add(
-        ManifestRootModel(
-            manifest_root_id=manifest_root_id_for_task(bootstrap_input.task_id),
-            task_id=bootstrap_input.task_id,
-            path=str(result.paths.runtime_path),
+            binding_mode=_workspace_binding_mode(context.workspace_binding_mode),
+            normalized_root_path=str(result.paths.workspace_path.resolve()),
         )
     )
     session.add(
@@ -127,10 +106,6 @@ async def _stage_task_root_rows(
             workflow_key=bootstrap_input.task_compose.workflow.key,
             workflow_revision_no=bootstrap_input.compiled_plan.definition_revision_no,
             compiled_plan_id=context.compiled_plan_id,
-            workspace_root_path=str(result.paths.workspace_path),
-            context_root_path=str(result.paths.context_path),
-            outputs_root_path=str(result.paths.outputs_path),
-            runtime_root_path=str(result.paths.runtime_path),
             compose_payload=bootstrap_input.task_compose.model_dump(mode="json"),
         )
     )
@@ -144,36 +119,21 @@ async def _stage_task_root_rows(
             snapshot_json=bootstrap_input.compiled_plan.model_dump(mode="json"),
         )
     )
-    for resource_binding_row in _task_resource_binding_rows(
-        task_id=bootstrap_input.task_id,
-        binding_paths=context.binding_paths,
-    ):
-        session.add(resource_binding_row)
     await session.flush()
 
 
-def _task_resource_binding_rows(
-    *,
-    task_id: str,
-    binding_paths: dict[str, str],
-) -> tuple[TaskResourceBindingModel, ...]:
-    return tuple(
-        TaskResourceBindingModel(
-            task_resource_binding_id=task_resource_binding_id(task_id, binding_kind),
-            task_id=task_id,
-            binding_kind=binding_kind,
-            path=path,
-            binding_mode=None,
-        )
-        for binding_kind, path in binding_paths.items()
-    )
+def _workspace_binding_mode(binding_mode: str) -> str:
+    if binding_mode == "ensure_task_default":
+        return "controller_owned"
+    if binding_mode in {"ensure_host_path", "use_existing_host"}:
+        return "external"
+    raise ValueError(f"unknown workspace binding mode: {binding_mode}")
 
 
 async def _stage_compiled_plan_graph_rows(
     session: AsyncSession,
     *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
-    result: RuntimeBootstrapResult,
+    bootstrap_input: RuntimeBootstrapInput,
     context: LaunchBootstrapPersistenceContext,
 ) -> None:
     for node in bootstrap_input.compiled_plan.nodes:
@@ -192,11 +152,6 @@ async def _stage_compiled_plan_graph_rows(
                 ),
                 compiled_plan_id=context.compiled_plan_id,
                 node_key=node.node_key,
-                parent_compiled_plan_node_id=(
-                    compiled_plan_node_id(context.compiled_plan_id, node.parent_node_key)
-                    if node.parent_node_key is not None
-                    else None
-                ),
                 parent_node_key=node.parent_node_key,
                 structural_kind=node.structural_kind.value,
                 role_key=node.role,
@@ -205,14 +160,15 @@ async def _stage_compiled_plan_graph_rows(
                 role_instruction=role.definition.instruction,
                 policy_key=node.policy,
                 policy_revision_no=node.policy_revision_no,
-                policy_description=policy.definition.description if policy else None,
-                policy_instruction=policy.definition.instruction if policy else None,
+                policy_description=policy.definition.description,
+                policy_instruction=policy.definition.instruction,
+                provider_kind=node.provider.kind.value if node.provider is not None else None,
                 description=node.description,
                 node_instruction=node.node_instruction,
                 child_node_keys_json=list(node.child_node_keys),
                 consumes_json=(node.consumes.model_dump(mode="json") if node.consumes else None),
                 produces_json=(node.produces.model_dump(mode="json") if node.produces else None),
-                criteria_json=build_node_criteria_json(paths=result.paths, node=node),
+                criteria_json=build_node_criteria_json(node=node),
                 child_defaults_json=node.child_defaults.model_dump(mode="json")
                 if node.child_defaults
                 else None,
@@ -229,14 +185,6 @@ async def _stage_compiled_plan_graph_rows(
                     edge.slot,
                 ),
                 compiled_plan_id=context.compiled_plan_id,
-                provider_compiled_plan_node_id=compiled_plan_node_id(
-                    context.compiled_plan_id,
-                    edge.provider_node_key,
-                ),
-                consumer_compiled_plan_node_id=compiled_plan_node_id(
-                    context.compiled_plan_id,
-                    edge.consumer_node_key,
-                ),
                 provider_node_key=edge.provider_node_key,
                 consumer_node_key=edge.consumer_node_key,
                 kind=edge.kind.value,
@@ -251,7 +199,7 @@ async def _stage_compiled_plan_graph_rows(
 async def _stage_flow_rows(
     session: AsyncSession,
     *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     result: RuntimeBootstrapResult,
     context: LaunchBootstrapPersistenceContext,
 ) -> None:
@@ -261,20 +209,21 @@ async def _stage_flow_rows(
             context=context,
         )
     )
+    await session.flush()
+
     flow_revision = build_flow_revision_row(
         bootstrap_input=bootstrap_input,
         context=context,
     )
     session.add(flow_revision)
-    await session.flush()
-    await acquire_workspace_root_lease(
-        session,
-        task_id=bootstrap_input.task_id,
-        flow_id=context.flow_id,
-        workspace_root_path=str(result.paths.workspace_path),
-        binding_mode=context.workspace_binding_mode,
+    session.add(
+        FlowStartSourceModel(
+            flow_id=context.flow_id,
+            task_id=bootstrap_input.task_id,
+            successor_dispatch_id=None,
+        )
     )
-
+    await session.flush()
     flow_node_rows, node_plan_revision_inputs = _stage_flow_node_rows(
         session,
         bootstrap_input=bootstrap_input,
@@ -301,7 +250,7 @@ async def _stage_flow_rows(
 def _stage_flow_node_rows(
     session: AsyncSession,
     *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     result: RuntimeBootstrapResult,
     context: LaunchBootstrapPersistenceContext,
     flow_revision: FlowRevisionModel,
@@ -324,8 +273,8 @@ def _stage_flow_node_rows(
             node=node,
             role_description=role.definition.description,
             role_instruction=role.definition.instruction,
-            policy_description=policy.definition.description if policy else None,
-            policy_instruction=policy.definition.instruction if policy else None,
+            policy_description=policy.definition.description,
+            policy_instruction=policy.definition.instruction,
         )
         session.add(flow_node)
         flow_node_rows.append(flow_node)
@@ -334,8 +283,8 @@ def _stage_flow_node_rows(
                 node,
                 role.definition.description,
                 role.definition.instruction,
-                policy.definition.description if policy else None,
-                policy.definition.instruction if policy else None,
+                policy.definition.description,
+                policy.definition.instruction,
             )
         )
     return flow_node_rows, node_plan_revision_inputs
@@ -344,7 +293,7 @@ def _stage_flow_node_rows(
 def _stage_node_plan_revision_rows(
     session: AsyncSession,
     *,
-    bootstrap_input: RuntimeBootstrapProjectionInput,
+    bootstrap_input: RuntimeBootstrapInput,
     flow_revision: FlowRevisionModel,
     flow_node_rows: list[FlowNodeModel],
     node_plan_revision_inputs: list[NodePlanRevisionInput],

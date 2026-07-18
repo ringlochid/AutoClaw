@@ -8,7 +8,6 @@ Type=simple
 Environment=AUTOCLAW_CONFIG=@AUTOCLAW_CONFIG@
 Environment=AUTOCLAW_DATA_DIR=@AUTOCLAW_DATA_DIR@
 EnvironmentFile=-@AUTOCLAW_ENV_FILE@
-ExecStartPre=@AUTOCLAW_PYTHON@ -m autoclaw openclaw check --config @AUTOCLAW_CONFIG@
 ExecStartPre=@AUTOCLAW_PYTHON@ -m autoclaw db upgrade --config @AUTOCLAW_CONFIG@ --revision head
 ExecStart=@AUTOCLAW_PYTHON@ -m autoclaw serve --config @AUTOCLAW_CONFIG@
 Restart=on-failure

@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import secrets
-from typing import Any
 
 import uvicorn
 
@@ -13,16 +12,9 @@ from autoclaw.interfaces.cli.bootstrap.config import (
     update_config_sections,
 )
 from autoclaw.interfaces.cli.bootstrap.database import (
-    DatabaseRepairResult,
     ensure_database_ready,
-    ensure_database_ready_with_legacy_sqlite_repair,
-    ensure_sqlite_database,
-    reset_sqlite_database,
+    reset_database,
     sqlite_database_path,
-)
-from autoclaw.interfaces.cli.commands.openclaw.support import (
-    collect_openclaw_preflight,
-    emit_openclaw_preflight_failure,
 )
 from autoclaw.interfaces.cli.progress import CliProgress
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
@@ -66,7 +58,7 @@ async def cmd_init(args: argparse.Namespace) -> int:
         api_key=api_key,
     ):
         if not args.skip_db_upgrade:
-            await ensure_database_ready(database_url, progress=progress)
+            await ensure_database_ready(progress=progress)
 
     payload = {
         "ok": True,
@@ -87,20 +79,20 @@ def cmd_db_upgrade(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
     with command_env(config_path=config_path):
         settings = load_settings()
-        progress.step("database", "Running database upgrade")
-        repair_result = asyncio.run(
-            ensure_database_ready_with_legacy_sqlite_repair(
-                settings.database_url,
+        progress.step("database", "Creating or verifying the exact database schema")
+        asyncio.run(
+            ensure_database_ready(
                 progress=progress,
             )
         )
-    payload = _db_upgrade_payload(settings.database_url, repair_result)
+    payload = {
+        "ok": True,
+        "database_url": settings.database_url,
+    }
     if getattr(args, "json", False):
         print_json(payload)
-    elif repair_result is not None:
-        _print_db_upgrade_repair_summary(repair_result)
     else:
-        progress.done("database", "Database upgrade complete")
+        progress.done("database", "Database schema is current")
     return 0
 
 
@@ -109,13 +101,17 @@ async def cmd_db_reset(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
     with command_env(config_path=config_path):
         settings = load_settings()
-        progress.step("database", "Resetting SQLite database")
-        await asyncio.to_thread(reset_sqlite_database, settings.database_url)
-        await ensure_database_ready(settings.database_url, progress=progress)
+        progress.step("database", "Destructively resetting the database")
+        reset_result = await reset_database(
+            data_boundary=settings.data_dir,
+            progress=progress,
+        )
 
     payload = {
         "ok": True,
         "database_url": settings.database_url,
+        "database_backend": reset_result.database_backend,
+        "deleted_task_root_count": reset_result.deleted_task_root_count,
     }
     if args.json:
         print_json(payload)
@@ -126,14 +122,6 @@ async def cmd_db_reset(args: argparse.Namespace) -> int:
 
 def cmd_serve(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
-    preflight = collect_openclaw_preflight(config_path=config_path)
-    if preflight.host_state.support_status != "supported":
-        return emit_openclaw_preflight_failure(
-            command_name="AutoClaw serve",
-            args=args,
-            openclaw_payload=preflight.payload,
-            stopped_before="stopped before API startup",
-        )
     with command_env(config_path=config_path):
         settings = load_settings()
         uvicorn.run(
@@ -146,44 +134,13 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
-def _db_upgrade_payload(
-    database_url: str,
-    repair_result: DatabaseRepairResult | None,
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "ok": True,
-        "database_url": database_url,
-        "repaired": repair_result is not None,
-    }
-    if repair_result is None:
-        return payload
-    payload.update(
-        {
-            "backup_path": repair_result.backup_path,
-            "migrated_tables": list(repair_result.migrated_tables),
-            "skipped_tables": list(repair_result.skipped_tables),
-        }
-    )
-    return payload
-
-
-def _print_db_upgrade_repair_summary(repair_result: DatabaseRepairResult) -> None:
-    print("Database repair: legacy schema backed up and reconciled")
-    print(f"Database backup: {repair_result.backup_path}")
-    print(f"Migrated tables: {', '.join(repair_result.migrated_tables) or 'none'}")
-    print(f"Skipped tables: {', '.join(repair_result.skipped_tables) or 'none'}")
-
-
 __all__ = [
-    "DatabaseRepairResult",
     "cmd_db_reset",
     "cmd_db_upgrade",
     "cmd_init",
     "cmd_serve",
     "ensure_database_ready",
-    "ensure_database_ready_with_legacy_sqlite_repair",
-    "ensure_sqlite_database",
-    "reset_sqlite_database",
+    "reset_database",
     "settings_to_config_text",
     "sqlite_database_path",
     "update_config_sections",

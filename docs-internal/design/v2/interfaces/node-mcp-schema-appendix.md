@@ -198,11 +198,11 @@ The server accepts UTF-8 text from a regular file or a contained symlink resolvi
 
 ```yaml
 SetWorkPlanStep:
-  step: nonempty string
+  step: string # 1..512 normalized Unicode characters
   status: pending | in_progress | completed
 
 SetWorkPlanRequest:
-  explanation: string | null = null
+  explanation: string | null = null # 1..1,024 normalized Unicode characters when present
   steps: [SetWorkPlanStep, ...] # 0..9
 ```
 
@@ -215,7 +215,9 @@ Rules:
 - all steps may be completed;
 - ordered normalized steps replace the previous assignment-owned snapshot;
 - repeated or vague filler steps fail validation; and
-- explanation, when present, must be bounded and nonempty after normalization.
+- explanation, when present, uses the same narrow meaningful-text validation as a step.
+
+Normalization, placeholder recognition, and exact limits are owned by the work-plan and checkpoint contract. The schema exposes the limits as `minLength` and `maxLength`; the ordered steps expose `maxItems: 9`.
 
 ### Success response
 
@@ -229,7 +231,24 @@ Clearing an existing plan returns `changed: true` and `plan: null`. Clearing an 
 
 ## Other catalog operations
 
-The projection rule applies unchanged to checkpoint, boundary, external-wait, definition, child-assignment, and release operations. Their semantic fields and domain results remain owned by their concept pages and schema owners.
+The projection rule applies unchanged to checkpoint, boundary, external-wait, definition, child-assignment, and release operations. Their retained semantic top-level fields are fixed here so transport migration cannot invent a generic wrapper:
+
+| Operation | Semantic top-level fields |
+| --- | --- |
+| `record_checkpoint` | `checkpoint` |
+| `return_boundary` | `boundary` |
+| `open_human_request` | `request` |
+| `start_command_run` | `request` |
+| `search_definitions` | its current strict search fields |
+| `get_definition` | its current strict kind/key fields |
+| `assign_child` | `expected_structural_revision_id`, `payload` |
+| `add_child` | `expected_structural_revision_id`, `payload` |
+| `update_child` | `expected_structural_revision_id`, `payload` |
+| `remove_child` | `expected_structural_revision_id`, `payload` |
+| `release_green` | `expected_structural_revision_id` |
+| `release_blocked` | `expected_structural_revision_id` |
+
+`checkpoint`, `boundary`, `request`, and `payload` are semantic fields owned by their strict Pydantic concept contracts; they are not session, callback, or transport envelopes. Managed schemas contain exactly these semantic fields. Compatibility schemas add only full `task_id` and `dispatch_id`. Both forbid additional properties at every owned model boundary. Operation-specific nested fields and success results remain owned by their concept pages and runtime contracts.
 
 For example, managed `open_human_request` contains only the typed request fields, while compatibility `open_human_request` contains `task_id`, `dispatch_id`, and those same request fields. Neither transport projection may reinterpret the human-request transaction or timeout policy.
 
@@ -295,8 +314,8 @@ Provider events, MCP ping/progress notifications, and transport traffic create n
 
 ## Transaction rules
 
-- admission refreshes the exact current dispatch activity revision once;
-- the requested operation then owns its read or short conditional transaction;
+- admission transaction A refreshes the exact current dispatch activity revision once and commits;
+- the requested operation opens a fresh session and owns transaction B for its read or short conditional mutation;
 - a changed plan snapshot and its bounded plan event commit together;
 - boundary and external-wait sources close D1 in their own synchronous operation transaction;
 - post-commit runtime signals are explicit and never hidden in session commit hooks;

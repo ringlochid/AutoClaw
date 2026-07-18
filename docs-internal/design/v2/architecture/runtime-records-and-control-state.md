@@ -19,6 +19,7 @@ flow:
   flow_id: string
   task_id: string
   status: running | paused | completed | cancelled
+  terminal_outcome: green | blocked | null
   current_dispatch_id: string | null
   waiting_cause: none | human_request | command_run
   waiting_source_id: string | null
@@ -30,6 +31,8 @@ flow:
 ```
 
 `current_dispatch_id` points only to a `starting` or `open` dispatch. Closed dispatches remain in lineage but never current authority.
+
+`terminal_outcome` is null unless `status = completed`. A completed green root stores `green`; a completed root whose accepted blocked release closes the task stores `blocked`. `blocked` is a semantic terminal outcome, not a second flow lifecycle state and not an infrastructure pause.
 
 `waiting_source_id` is a convenience pointer backed by the exact source row. The source row and its relationship constraints remain authoritative when the pointer disagrees.
 
@@ -71,7 +74,7 @@ dispatch:
   last_node_activity_at: timestamp | null
   node_activity_revision: integer
   closed_at: timestamp | null
-  closed_reason: boundary | human_request_wait | command_run_wait | watchdog_superseded | cancelled | control_failed | task_terminal | null
+  closed_reason: boundary | human_request_wait | command_run_wait | watchdog_superseded | paused | cancelled | control_failed | task_terminal | null
 ```
 
 `opened_reason` explains the source family. Exact source identity remains in the owned boundary, human, command, retry, or control row rather than a generic JSON envelope.
@@ -79,6 +82,22 @@ dispatch:
 The target has no fallback chain, so `requested_provider` and `resolved_provider` match. Both remain for provenance together with `provider_selection_basis`. `provider_route` stores only the normalized non-secret variant needed by the chosen adapter; it contains no native config body, credential, binding, or continuity identifier.
 
 A dispatch is immutable with respect to task, flow, assignment, attempt, node, predecessor, and resolved provider route after commit.
+
+A current `starting` dispatch may close directly only for `boundary`, `human_request_wait`, `command_run_wait`, `paused`, `cancelled`, `control_failed`, or `task_terminal`. `watchdog_superseded` is legal only from `open`. A provider-acceptance write is conditional on the same dispatch still being current and `starting`; any direct close wins permanently and late acceptance cannot reopen it.
+
+## Workspace binding
+
+Each task owns exactly one logical workspace-binding row:
+
+```yaml
+workspace_binding:
+  task_id: string
+  binding_mode: controller_owned | external
+  normalized_root_path: string
+  bound_at: timestamp
+```
+
+The binding is path provenance and logical-root resolution, not a lease. Multiple live tasks may bind the same normalized external workspace concurrently. No lease table, unique-path exclusion, OS lock, database lock, release transition, or terminal cleanup exists. Pause, cancel, and task completion leave the binding unchanged. Reset never derives a deletion target from a workspace binding and never deletes an external workspace.
 
 ## Dispatch capability set
 
@@ -168,6 +187,18 @@ An accepted boundary binds exactly to its source dispatch, assignment, attempt, 
 
 One source dispatch may have at most one accepted boundary and at most one successor. Boundary acceptance closes D1 in the same transaction; asynchronous continuation later fills the one successor relationship if still legal.
 
+## Assignment decisions and release basis
+
+A source dispatch may own at most one immutable assignment-decision fact. Its discriminator is exactly one of:
+
+- `staged_child`, binding one direct child assignment and its first attempt;
+- `release_green`, binding the current assignment, structural revision, selected checkpoints, and exact artifact versions used to justify release; or
+- `release_blocked`, binding the root assignment, structural revision, selected blocked checkpoints, and exact descendant terminal facts used to justify whole-flow blocked release.
+
+The discriminator and database checks make staged-child and release decisions mutually exclusive for one dispatch. Evidence membership is stored through typed association rows to controller IDs and artifact versions, not as copied provider prose or a generic JSON authority envelope. A later boundary references the decision fact it consumes. Decision facts do not close a dispatch by themselves.
+
+Assignments store explicit `parent_assignment_id` lineage. A staged-child decision binds its child to the current parent assignment, authoring dispatch, source structural revision, and first attempt. The one accepted `yield` that consumes it records the consumption; no timestamp or latest-child query may choose a child.
+
 ## Human-request source
 
 Each human request binds to:
@@ -225,6 +256,10 @@ Checkpoints are immutable assignment/attempt evidence rows with exact authoring 
 
 The exact contract belongs to [Work plan and checkpoint](work-plan-and-checkpoint-contract.md).
 
+Artifact publications are immutable version rows owned by one task, assignment, attempt, checkpoint, declared slot, and logical path. The current pointer references that exact publication. A boundary that relies on a publication reaches it through its checkpoint or immutable decision-basis association; filesystem presence cannot supply the link.
+
+Transient localizations are separate first-class rows containing task, assignment, attempt, optional checkpoint, logical source provenance, localized logical path, description, retention status, and timestamps. A transient row never receives an artifact version/current pointer and never becomes durable merely because a checkpoint references it. Checkpoint-to-transient association rows preserve the exact surfaced set.
+
 ## Watchdog recovery lineage
 
 Watchdog recovery count is derived or persisted from exact same-attempt predecessor lineage with `opened_reason = watchdog_recovery`; it must not rely on provider events or support files.
@@ -244,8 +279,13 @@ Database-enforced backstops must work in both supported SQLite and PostgreSQL la
 - one capability-set row per dispatch;
 - requested/resolved provider equality and a valid provider-route discriminator;
 - unique accepted boundary per source dispatch;
+- unique assignment-decision fact per source dispatch, with discriminator-specific ownership checks;
 - unique current external source/wait relationship;
+- exactly one of human-request ID or command-run ID on a present flow wait;
 - immutable source-dispatch lineage on human requests and command runs;
+- one current work-plan snapshot per assignment, ordered step indexes `0..8`, and at most one `in_progress` step;
+- artifact publication ownership through an exact checkpoint and versioned current pointer;
+- typed transient provenance and checkpoint association without an artifact pointer;
 - non-negative activity, provider-start, plan, ownership, and control revisions; and
 - foreign keys for task/flow/assignment/attempt/dispatch/source relationships.
 
@@ -286,7 +326,15 @@ Adapters may hold private resources during the process lifetime, but restart dis
 
 This target is reset-only relative to the shipped V1 runtime schema. Remove obsolete NodeSession, provider delivery/continuity/watchdog/provider-event families, prompt body/hash/request envelopes, `closing`, semantic `last_progress_at`, finite launch-exhaustion fields, and generic provider session/run identifiers. Stale local databases fail with clear `autoclaw db reset` guidance rather than receiving compatibility shadow columns.
 
-Task-owned workspace and declared durable artifact data follow their owning reset/preservation policy; reset must not recursively delete user-owned external paths.
+Reset is destructive schema replacement, not migration or repair:
+
+- ordinary startup creates tables only for a genuinely empty database; a nonempty database must match the exact table, column, foreign-key, check, and required-index contract without DDL;
+- SQLite reset rejects a symlinked configured database path, removes only that configured file and its safe sidecars, recreates the full schema, and restores seeds;
+- PostgreSQL reset requires a dedicated AutoClaw schema and operator-assured exclusive service ownership, then drops and recreates that schema before restoring seeds;
+- reset never copies compatible rows, repairs legacy columns, or creates a backup; and
+- before schema destruction, reset reads controller-owned task roots, deletes only roots contained beneath the configured AutoClaw data boundary, rejects a symlink as a deletion root, does not traverse child symlinks, and never treats workspace bindings as deletion targets.
+
+Exclusive service ownership is an operator precondition, not a runtime lease or distributed-lock protocol. This phase does not add a database-owner marker or infer ownership from a generic service status. The CLI must state the destructive precondition and may refuse only when a later reliable, configuration-matched owner check exists.
 
 ## Required proof
 

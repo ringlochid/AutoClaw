@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def ensure_repo_root_on_path() -> Path:
@@ -101,14 +102,14 @@ def build_valid_contract_tree(root: Path) -> None:
     )
 
 
-def contract_modules() -> tuple[object, object]:
+def contract_modules() -> tuple[Any, Any]:
     ensure_repo_root_on_path()
     validator = importlib.import_module("scripts.docs.docs_contract.validator")
     markdown_files = importlib.import_module("scripts.docs.markdown_format.files")
     return validator, markdown_files
 
 
-def finding_categories(report: object) -> set[str]:
+def finding_categories(report: Any) -> set[str]:
     return {finding.category for finding in report.findings}
 
 

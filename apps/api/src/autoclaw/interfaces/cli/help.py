@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 ROOT_HELP_EPILOG = """Examples:
-  autoclaw onboard --json
-  autoclaw configure --section openclaw
-  autoclaw openclaw check --json
+  autoclaw init --json
   autoclaw service status
   autoclaw definitions import --file ./reviewer.yaml
 """

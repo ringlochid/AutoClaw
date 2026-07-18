@@ -145,7 +145,7 @@ An optional bounded `NodeMcpInvocation` audit row may describe the admitted oper
 
 ## Operation transactions
 
-Each operation owns its controller transaction. Transport code never wraps unrelated tools in a shared transaction and never hides after-commit effects in `AsyncSession.commit()`.
+Admission owns one short activity transaction. After it commits and publishes the exact activity signal, the operation opens a fresh session and owns its read or short conditional domain transaction. Transport code never wraps unrelated tools in a shared transaction, shares an `AsyncSession` between concurrent calls, or hides after-commit effects in `AsyncSession.commit()`.
 
 Boundary, human-request, and command-run operations commit the exact source and close D1 before returning their MCP result. Their successor or deadline/process work is signalled after commit and proceeds independently of the response.
 

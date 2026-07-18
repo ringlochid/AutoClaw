@@ -41,12 +41,15 @@ Runtime operations own controller reads, validation, and transaction boundaries.
 
 - a digest or lookup key for one opaque credential;
 - the canonical `task_id` and `dispatch_id`;
+- the nonsecret, nonnegative committed `provider_start_revision` for this provider invocation;
 - the maximum role/tool exposure ceiling established at dispatch start; and
 - active or revoked lifecycle state.
 
 It is not a database row, provider thread, MCP protocol session, prompt field, task file, public API model, or cached controller snapshot. Assignment, attempt, structural revision, role, capability, tool exposure, and operation legality are reread from the database on every invocation.
 
-The binding is created only for a committed current `starting` dispatch with valid request refs. Closing, superseding, pausing, retrying, or cancelling the dispatch revokes its credential. Every provider-start retry receives a fresh credential. API-process restart invalidates the whole registry.
+The binding is created only for a committed current `starting` dispatch with valid request refs and the exact committed provider-start revision. Closing, superseding, pausing, retrying, or cancelling the dispatch revokes its credential. Revocation removes the registry entry rather than retaining a tombstone. Every provider-start retry receives a fresh credential. API-process restart invalidates the whole registry.
+
+A same-dispatch replacement first advances and commits `provider_start_revision`, then removes the old registry entry, and only then issues a fresh credential bound to the new generation. Both short Node database phases require the binding's exact generation as well as dispatch currentness, so an old in-flight request loses authority as soon as the generation advance commits.
 
 ### Managed projection
 

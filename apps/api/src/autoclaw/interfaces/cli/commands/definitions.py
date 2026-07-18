@@ -13,9 +13,9 @@ from autoclaw.definitions.registry.definition_catalog import (
 )
 from autoclaw.definitions.registry.revisions.ids import canonical_content_hash
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
+from autoclaw.persistence.session_operations import read_session_operation
 from autoclaw.platform.file_entrypoints import definition_upload_request_from_path
 from autoclaw.runtime.errors import RuntimeOperationError
-from autoclaw.runtime.post_commit.operations import read_session_operation
 
 
 class DefinitionImportOverwriteMode(StrEnum):

@@ -5,6 +5,7 @@ from autoclaw.definitions.contracts import WorkflowDefinitionFile
 
 from .support import (
     WORKFLOW_COMPILER_TEST_VERSION,
+    compile_workflow_fixture,
     load_packaged_seed_lookup,
     node_by_key,
 )
@@ -17,9 +18,10 @@ def test_compile_preserves_optional_consume_selectors_for_runtime_surfaces() -> 
             "id": "optional-consume-selectors",
             "description": "Optional consume selectors stay explicit in normalized output.",
             "root": {
-                "id": "root",
-                "role": "root_planning_lead",
-                "policy": "standard-root",
+                "node_key": "root",
+                "kind": "root",
+                "role_id": "root_planning_lead",
+                "policy_id": "standard-root",
                 "description": "Root coordinator.",
                 "produces": {
                     "artifacts": [
@@ -38,9 +40,10 @@ def test_compile_preserves_optional_consume_selectors_for_runtime_surfaces() -> 
                 ],
                 "children": [
                     {
-                        "id": "implement_change",
-                        "role": "engineer",
-                        "policy": "standard-worker",
+                        "node_key": "implement_change",
+                        "kind": "worker",
+                        "role_id": "engineer",
+                        "policy_id": "standard-worker",
                         "description": "Worker child.",
                         "consumes": {
                             "artifacts": [
@@ -62,15 +65,7 @@ def test_compile_preserves_optional_consume_selectors_for_runtime_surfaces() -> 
         }
     )
 
-    plan = compile_workflow(
-        workflow=workflow,
-        workflow_revision=WorkflowRevisionMetadata(
-            workflow_key=workflow.id,
-            definition_revision_no=2,
-        ),
-        compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
-        lookup=load_packaged_seed_lookup(),
-    )
+    plan = compile_workflow_fixture(workflow, revision_no=2)
 
     child = node_by_key(plan, "implement_change")
     assert child.consumes is not None
@@ -101,15 +96,17 @@ def test_compile_preserves_criteria_owner_for_inherited_and_local_slots() -> Non
             "id": "criteria-owner-preservation",
             "description": "Inherited criteria keep the declaring node as owner.",
             "root": {
-                "id": "root",
-                "role": "root_planning_lead",
-                "policy": "standard-root",
+                "node_key": "root",
+                "kind": "root",
+                "role_id": "root_planning_lead",
+                "policy_id": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {
-                        "id": "change_subtree",
-                        "role": "planning_lead",
-                        "policy": "standard-parent",
+                        "node_key": "change_subtree",
+                        "kind": "parent",
+                        "role_id": "planning_lead",
+                        "policy_id": "standard-parent",
                         "description": "Parent subtree.",
                         "criteria": [
                             {
@@ -123,9 +120,10 @@ def test_compile_preserves_criteria_owner_for_inherited_and_local_slots() -> Non
                         },
                         "children": [
                             {
-                                "id": "implement_change",
-                                "role": "engineer",
-                                "policy": "standard-worker",
+                                "node_key": "implement_change",
+                                "kind": "worker",
+                                "role_id": "engineer",
+                                "policy_id": "standard-worker",
                                 "description": "Worker child.",
                                 "criteria": [
                                     {

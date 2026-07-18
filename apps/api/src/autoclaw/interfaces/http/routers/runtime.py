@@ -11,6 +11,7 @@ from autoclaw.interfaces.http.dependencies import (
 )
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session
+from autoclaw.persistence.session_operations import write_session_operation
 from autoclaw.runtime.contracts import (
     RuntimeFlowControlQuery,
     RuntimeFlowPauseResponse,
@@ -25,7 +26,6 @@ from autoclaw.runtime.flow.service import (
     pause_runtime_flow,
     runtime_flow_read,
 )
-from autoclaw.runtime.post_commit.operations import write_runtime_operation
 
 router = APIRouter(prefix="/runtime", tags=["runtime"], dependencies=[Depends(require_api_key)])
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
@@ -71,7 +71,7 @@ async def continue_task(
     actor_ref: ControlActorRefDep,
 ) -> RuntimeFlowRead:
     try:
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda active_session: continue_runtime_flow(
                 active_session,
                 task_id,
@@ -92,7 +92,7 @@ async def pause_task(
     actor_ref: ControlActorRefDep,
 ) -> RuntimeFlowPauseResponse:
     try:
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda active_session: pause_runtime_flow(
                 active_session,
                 task_id,
@@ -113,7 +113,7 @@ async def cancel_task(
     actor_ref: ControlActorRefDep,
 ) -> RuntimeFlowRead:
     try:
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda active_session: cancel_runtime_flow(
                 active_session,
                 task_id,

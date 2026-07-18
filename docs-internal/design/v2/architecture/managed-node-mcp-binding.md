@@ -27,11 +27,14 @@ DispatchMcpBinding:
   credential_digest: <non-reversible lookup value>
   task_id: <canonical task id>
   dispatch_id: <canonical dispatch id>
+  provider_start_revision: <nonnegative committed provider-start generation>
   exposure_ceiling: <stable role/tool ceiling>
   lifecycle_state: active | revoked
 ```
 
-The registry may index by a constant-time digest of the presented credential. It must not store the plaintext credential after construction.
+`provider_start_revision` is nonsecret and binds the credential to one committed provider-start generation of the dispatch. The registry may index by a constant-time digest of the presented credential. It must not store the plaintext credential after construction.
+
+The registry retains active bindings only. Revocation atomically removes the entry rather than accumulating a revoked tombstone. Authentication compares the presented digest in constant time against every currently active digest, so historical retry attempts add neither retained credential state nor authentication work.
 
 The credential has no independent wall-clock TTL in this phase. Its authority ends on dispatch currentness loss, explicit revocation, or process restart. A shorter expiry is not added until a safe rotation/refresh contract exists for a still-current provider invocation.
 
@@ -53,12 +56,12 @@ The dispatch starter creates a binding only after it has:
 
 1. received `DispatchStartDue(dispatch_id, provider_start_revision, due_at)`;
 2. opened a fresh database session;
-3. proved that the dispatch is the current `starting` dispatch;
+3. proved that the dispatch is the current `starting` dispatch at the signal's exact `provider_start_revision`;
 4. loaded its exact assignment, role, policy, and effective tool exposure;
 5. validated the committed `instructions.md` and `input.md` refs; and
 6. proved that the selected provider uses the managed projection.
 
-It then generates a cryptographically random opaque credential, stores only its digest with the binding, builds the provider's exact tool allowlist, and invokes the adapter with the private connection material.
+It then generates a cryptographically random opaque credential, stores only its digest and exact provider-start revision with the binding, builds the provider's exact tool allowlist, and invokes the adapter with the private connection material.
 
 Provider invocation is skipped if binding construction or request validation fails. No binding is created for a losing or uncommitted candidate dispatch.
 
@@ -66,14 +69,17 @@ Provider invocation is skipped if binding construction or request validation fai
 
 Every provider-start attempt that is not positively retained as the current accepted execution revokes its binding. The retry receives a fresh credential even though it retains the same `dispatch_id` and request files.
 
-A definite start failure revokes the failed attempt's credential before scheduling the next due time. An uncertain attempt revokes it immediately, then makes the one bounded stop attempt when supported before a later fresh-binding start.
+A same-dispatch replacement first conditionally advances and commits the dispatch's `provider_start_revision`. It then removes the old binding, makes the bounded stop attempt when required, and issues a fresh credential bound to the new committed generation. Advancing database truth first ensures that an old credential already inside request handling loses authority before asynchronous registry removal completes.
+
+A definite start failure conditionally advances and commits the next start generation and due time, then removes the failed attempt's credential. An uncertain attempt follows the same generation-first rule, then makes the one bounded stop attempt when supported before a later fresh-binding start.
 
 For an uncertain start, the starter:
 
-1. revokes the prior credential;
-2. makes one bounded adapter stop call when supported;
-3. creates a fresh binding and credential; and
-4. retries the same current `starting` dispatch regardless of unsupported, failed, or timed-out stop.
+1. advances and commits the same dispatch's provider-start generation;
+2. removes the prior credential from the registry;
+3. makes one bounded adapter stop call when supported;
+4. creates a fresh generation-bound binding and credential; and
+5. retries the same current `starting` dispatch regardless of unsupported, failed, or timed-out stop.
 
 For watchdog replacement, the D1 binding is already invalid through the atomic D1-close/D2-create commit. The starter also removes its registry entry, makes the bounded D1 stop attempt, then creates a distinct D2 binding and starts D2.
 
@@ -92,7 +98,7 @@ A binding becomes unusable when any of these facts is observed:
 - its role/capability/exposure no longer admits the requested operation; or
 - the API process restarted and the binding registry no longer contains the credential.
 
-Database currentness is the authoritative backstop. Registry cleanup may happen asynchronously after a commit, but an old call cannot pass the fresh database check in the interim.
+Database currentness and provider-start generation are the authoritative backstops. Registry removal may happen asynchronously after a commit, but an old call cannot pass the fresh database check in the interim. Removed entries are not retained as revoked tombstones.
 
 After API-process restart, an already `open` managed dispatch remains controller history/current state but has no reconstructed binding. Startup registers its existing watchdog deadline and does not blind-start another provider or mint a credential for an unknown old execution. The next lawful watchdog replacement or operator control establishes fresh authority. OpenClaw compatibility is different because its explicit-ID endpoint has no managed registry; that weaker restart behavior remains part of its experimental lane.
 
@@ -119,18 +125,20 @@ This bearer is a private one-dispatch Node credential, not a global operator API
 
 For managed `tools/list`, the server authenticates the binding, freshly requires its dispatch to remain exact current `starting` or `open` authority, and returns only operations within its stable exposure ceiling. A worker binding therefore never discovers parent/root mutation tools. Discovery itself is not a logical Node invocation and does not refresh activity.
 
-State-dependent legality is not frozen in the listing. Every tool invocation:
+State-dependent legality is not frozen in the listing. Every tool invocation uses two short independently owned phases:
 
 1. authenticates the credential and establishes exact `task_id + dispatch_id` scope;
 2. parses the strict semantic request;
 3. creates a new `AsyncSession`;
-4. rereads current dispatch, flow, assignment, attempt, node, role, capability, and exposure;
-5. conditionally refreshes `last_node_activity_at` and `node_activity_revision` once after admission;
-6. publishes the exact watchdog-deadline change after that activity commit;
-7. performs the exact read or mutation; and
-8. commits only if the operation's currentness predicates still hold.
+4. rereads current dispatch, its exact binding `provider_start_revision`, flow, assignment, attempt, node, role, capability, and exposure;
+5. transaction A requires that exact generation, conditionally refreshes `last_node_activity_at` and `node_activity_revision` once after admission, and commits;
+6. publishes the exact watchdog-deadline change after transaction A commits;
+7. transaction B opens a fresh session, rereads exact currentness and the same binding generation, and performs the exact read or conditional mutation; and
+8. transaction B commits only if the operation's currentness predicates still hold.
 
 Accepted reads, no-ops, and normalized domain failures count as admitted activity. Authentication, stale-scope, role, capability, and exposure rejection do not.
+
+This split is intentional: admitted activity remains committed even when the domain operation returns a normalized failure, while the operation never inherits stale ORM state or a rolled-back activity update. A winner between the phases can make transaction B return `stale_dispatch` or `conflict`; it cannot erase the already admitted activity or mutate the newer dispatch. No task-wide lock or shared `AsyncSession` spans the phases.
 
 ## Provider injection
 

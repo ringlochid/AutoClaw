@@ -40,6 +40,8 @@ task/
 
 `workspace/` is a logical root backed by the task's persisted workspace binding. It may resolve to a controller-owned copy or an explicitly bound external directory according to the task/workspace contract. Callers never provide or discover the physical root.
 
+The binding is nonexclusive. Multiple live tasks may resolve their own logical `workspace/` root to the same external directory. AutoClaw does not create a workspace lease, lock, ownership claim, or release transition. Exact task/dispatch MCP authority still prevents one task from borrowing another task's controller scope; filesystem coordination inside a deliberately shared external workspace remains the user's/provider's responsibility.
+
 `outputs/`, `tmp/`, and `_runtime/` live beneath the physical task root. Their ownership and retention differ; all access still uses logical task-relative paths.
 
 The target has no `context/` or `context/wiki/` family and no provider delivery, continuity, watchdog, or provider-event files under dispatch directories.

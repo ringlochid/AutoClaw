@@ -3,7 +3,12 @@ from __future__ import annotations
 from typing import Literal
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import JsonValue
 
+from autoclaw.persistence.session_operations import (
+    read_session_operation,
+    write_session_operation,
+)
 from autoclaw.runtime.command_run.service import (
     cancel_command_run,
     list_command_runs,
@@ -15,7 +20,6 @@ from autoclaw.runtime.contracts import (
     CommandRunListResponse,
     CommandRunLogReadResponse,
     CommandRunRecord,
-    HumanRequestItemResponse,
     HumanRequestListResponse,
     HumanRequestResolutionSurface,
     HumanRequestResolveRequest,
@@ -38,10 +42,6 @@ from autoclaw.runtime.flow import (
 )
 from autoclaw.runtime.human_request.service import list_human_requests, resolve_human_request
 from autoclaw.runtime.observability import operator_snapshot, operator_trace
-from autoclaw.runtime.post_commit.operations import (
-    read_session_operation,
-    write_runtime_operation,
-)
 
 from ..tool_teaching import (
     FRESH_REVISION_NOTE,
@@ -278,7 +278,7 @@ def register_runtime_control_tools(server: FastMCP) -> None:
         query = RuntimeFlowControlQuery(
             expected_active_flow_revision_id=expected_active_flow_revision_id
         )
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda session: pause_runtime_flow(
                 session,
                 task_id,
@@ -299,7 +299,7 @@ def register_runtime_control_tools(server: FastMCP) -> None:
         query = RuntimeFlowControlQuery(
             expected_active_flow_revision_id=expected_active_flow_revision_id
         )
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda session: continue_runtime_flow(
                 session,
                 task_id,
@@ -320,7 +320,7 @@ def register_runtime_control_tools(server: FastMCP) -> None:
         query = RuntimeFlowControlQuery(
             expected_active_flow_revision_id=expected_active_flow_revision_id
         )
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda session: cancel_runtime_flow(
                 session,
                 task_id,
@@ -355,10 +355,10 @@ def register_human_request_tools(server: FastMCP) -> None:
     async def resolve_human_request_tool(
         task_id: str,
         request_id: str,
-        item_responses: list[HumanRequestItemResponse],
+        item_responses: dict[str, JsonValue],
     ) -> HumanRequestResolveResponse:
-        request = HumanRequestResolveRequest(item_responses=tuple(item_responses))
-        return await write_runtime_operation(
+        request = HumanRequestResolveRequest(item_responses=item_responses)
+        return await write_session_operation(
             lambda session: resolve_human_request(
                 session,
                 task_id=task_id,
@@ -423,7 +423,7 @@ def register_command_run_tools(server: FastMCP) -> None:
         task_id: str,
         run_id: str,
     ) -> CommandRunCancelResponse:
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda session: cancel_command_run(
                 session,
                 task_id=task_id,

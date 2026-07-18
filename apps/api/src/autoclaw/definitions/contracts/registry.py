@@ -2,9 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal, Self
+from typing import Literal, Self, cast
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    StrictInt,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from autoclaw.definitions.contracts.workflow import (
     NodeKind,
@@ -74,6 +83,17 @@ class CapabilityDecision(StrEnum):
     ALLOW = "allow"
 
 
+class ProviderNativeAccess(StrEnum):
+    FULL = "full"
+    RESTRICTED = "restricted"
+    DENIED = "denied"
+
+
+class NetworkAccess(StrEnum):
+    ALLOW = "allow"
+    DENY = "deny"
+
+
 class HumanRequestKind(StrEnum):
     DIRECTION = "direction"
     APPROVAL = "approval"
@@ -109,8 +129,22 @@ class HumanRequestCapabilityInput(BaseModel):
 class PolicyCapabilitiesInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    provider_native_access: ProviderNativeAccess = ProviderNativeAccess.FULL
+    network_access: NetworkAccess = NetworkAccess.ALLOW
     human_request: HumanRequestCapabilityInput = Field(default_factory=HumanRequestCapabilityInput)
     command_run: CapabilityDecision = CapabilityDecision.DENY
+
+    @model_serializer(mode="wrap")
+    def serialize_explicit_axis_inputs(
+        self,
+        handler: SerializerFunctionWrapHandler,
+    ) -> dict[str, object]:
+        serialized = cast(dict[str, object], handler(self))
+        if "provider_native_access" not in self.model_fields_set:
+            serialized.pop("provider_native_access", None)
+        if "network_access" not in self.model_fields_set:
+            serialized.pop("network_access", None)
+        return serialized
 
 
 class PolicyDefinitionInput(BaseModel):
@@ -329,9 +363,11 @@ __all__ = [
     "DefinitionUploadRequest",
     "HumanRequestCapabilityInput",
     "HumanRequestKind",
+    "NetworkAccess",
     "PolicyCapabilitiesInput",
     "PolicyDefinitionFile",
     "PolicyDefinitionInput",
+    "ProviderNativeAccess",
     "RoleDefinitionFile",
     "RoleDefinitionInput",
 ]

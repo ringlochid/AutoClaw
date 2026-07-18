@@ -3,12 +3,25 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from autoclaw.persistence.base import RuntimeBase
-from autoclaw.persistence.models.runtime.common import sql_in, utcnow
-from autoclaw.runtime.contracts import TaskEventSource, TaskEventType
+from autoclaw.persistence.models.runtime.common import (
+    TASK_EVENT_SOURCE_VALUES,
+    TASK_EVENT_TYPE_VALUES,
+    sql_in,
+    utcnow,
+)
 
 if TYPE_CHECKING:
     from autoclaw.persistence.models.runtime.assignment.execution import AttemptModel
@@ -16,14 +29,42 @@ if TYPE_CHECKING:
     from autoclaw.persistence.models.runtime.flow.runtime import FlowRevisionModel
     from autoclaw.persistence.models.runtime.task import TaskModel
 
-TASK_EVENT_SOURCE_VALUES = tuple(source.value for source in TaskEventSource)
-LEGACY_PROVIDER_EVENT_NORMALIZED_TYPE = "provider_event_normalized"
-LEGACY_PROVIDER_RESOLUTION_RECORDED_TYPE = "provider_resolution_recorded"
-TASK_EVENT_TYPE_VALUES = (
-    *(event_type.value for event_type in TaskEventType),
-    LEGACY_PROVIDER_EVENT_NORMALIZED_TYPE,
-    LEGACY_PROVIDER_RESOLUTION_RECORDED_TYPE,
-)
+
+class TaskEventStreamHeadModel(RuntimeBase):
+    """Chronology-only task-event sequencing state, never runtime currentness."""
+
+    __tablename__ = "task_event_stream_heads"
+    __table_args__ = (
+        CheckConstraint(
+            "allocator_revision >= 0",
+            name="ck_task_event_stream_heads_allocator_revision",
+        ),
+        CheckConstraint(
+            "last_event_seq >= 0",
+            name="ck_task_event_stream_heads_last_event_seq",
+        ),
+        CheckConstraint(
+            "(last_event_seq = 0 AND last_event_hash IS NULL) OR "
+            "(last_event_seq >= 1 AND last_event_hash IS NOT NULL)",
+            name="ck_task_event_stream_heads_last_event_pair",
+        ),
+        ForeignKeyConstraint(
+            ["task_id"],
+            ["tasks.task_id"],
+            name="fk_task_event_stream_heads_task",
+        ),
+    )
+
+    task_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    allocator_revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    last_event_seq: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    last_event_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    task: Mapped[TaskModel] = relationship(
+        "TaskModel",
+        back_populates="event_stream_head",
+        foreign_keys=[task_id],
+        lazy="raise",
+    )
 
 
 class TaskEventModel(RuntimeBase):
@@ -36,6 +77,21 @@ class TaskEventModel(RuntimeBase):
         CheckConstraint(
             f"event_type IN ({sql_in(TASK_EVENT_TYPE_VALUES)})",
             name="ck_task_events_event_type",
+        ),
+        CheckConstraint("event_seq >= 1", name="ck_task_events_event_seq"),
+        ForeignKeyConstraint(
+            ["dispatch_id", "task_id"],
+            ["dispatch_turns.dispatch_id", "dispatch_turns.task_id"],
+            name="fk_task_events_dispatch_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        ForeignKeyConstraint(
+            ["attempt_id", "task_id"],
+            ["attempts.attempt_id", "attempts.task_id"],
+            name="fk_task_events_attempt_owner",
+            deferrable=True,
+            initially="DEFERRED",
         ),
         Index("ix_task_events_task_seq", "task_id", "event_seq", unique=True),
         Index("ix_task_events_task_event", "task_id", "event_id"),
@@ -53,37 +109,44 @@ class TaskEventModel(RuntimeBase):
         index=True,
     )
     dispatch_id: Mapped[str | None] = mapped_column(
-        ForeignKey("dispatch_turns.dispatch_id"),
+        String(255),
         nullable=True,
         index=True,
     )
     attempt_id: Mapped[str | None] = mapped_column(
-        ForeignKey("attempts.attempt_id"),
+        String(255),
         nullable=True,
         index=True,
     )
     node_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     actor_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    payload: Mapped[dict[str, object]] = mapped_column(JSON)
+    payload: Mapped[dict[str, object]] = mapped_column(JSON(none_as_null=True))
     prev_event_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     event_hash: Mapped[str] = mapped_column(String(255))
     task: Mapped[TaskModel] = relationship(
         "TaskModel",
         back_populates="task_events",
         foreign_keys=[task_id],
+        lazy="raise",
     )
     flow_revision: Mapped[FlowRevisionModel | None] = relationship(
         "FlowRevisionModel",
+        back_populates="task_events",
         foreign_keys=[flow_revision_id],
+        lazy="raise",
     )
     dispatch: Mapped[DispatchTurnModel | None] = relationship(
         "DispatchTurnModel",
-        foreign_keys=[dispatch_id],
+        foreign_keys=[dispatch_id, task_id],
+        lazy="raise",
+        viewonly=True,
     )
     attempt: Mapped[AttemptModel | None] = relationship(
         "AttemptModel",
-        foreign_keys=[attempt_id],
+        foreign_keys=[attempt_id, task_id],
+        lazy="raise",
+        viewonly=True,
     )
 
 
-__all__ = ["TaskEventModel"]
+__all__ = ["TaskEventModel", "TaskEventStreamHeadModel"]

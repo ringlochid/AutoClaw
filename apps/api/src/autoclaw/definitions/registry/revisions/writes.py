@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar, cast
 
-from sqlalchemy import func, select
+from sqlalchemy import Table, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
@@ -201,6 +201,12 @@ async def acquire_definition_owner_row(
     key: str,
     build_row: Callable[[], DefinitionModelT],
 ) -> tuple[DefinitionModelT, bool]:
+    await _acquire_sqlite_registry_write_transaction(
+        session,
+        definition_model=definition_model,
+        key_column=key_column,
+        key=key,
+    )
     row = await load_definition_for_update(
         session,
         definition_model,
@@ -270,6 +276,31 @@ def seed_source_matches(
         return False
     relative_seed_path = expected_source_path.removeprefix(packaged_prefix)
     return normalized_stored_path.endswith(f"/definitions/{relative_seed_path}")
+
+
+async def _acquire_sqlite_registry_write_transaction(
+    session: AsyncSession,
+    *,
+    definition_model: type[DefinitionModelT],
+    key_column: InstrumentedAttribute[str],
+    key: str,
+) -> None:
+    if session.get_bind().dialect.name != "sqlite":
+        return
+
+    definition_table = cast(Table, definition_model.__table__)
+    definition_key = definition_table.c[key_column.key]
+    updated_at = definition_table.c.updated_at
+    await session.execute(
+        update(definition_table)
+        .where(definition_key == key)
+        .values(
+            {
+                definition_key: definition_key,
+                updated_at: updated_at,
+            }
+        )
+    )
 
 
 async def _resolve_locked_definition_upsert(

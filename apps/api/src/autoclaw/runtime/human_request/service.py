@@ -1,110 +1,34 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
+from typing import cast
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.persistence.models import (
-    DispatchTurnModel,
-    FlowWaitStateModel,
-    PendingHumanRequestModel,
-)
-from autoclaw.runtime.capabilities import (
-    capability_rejection_for_human_request,
-    resolve_effective_capabilities,
-)
+from autoclaw.persistence.models import FlowModel, FlowWaitModel, HumanRequestModel
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
     HumanRequestListResponse,
-    HumanRequestOpenRequest,
-    HumanRequestOpenResponse,
     HumanRequestResolutionKind,
     HumanRequestResolutionSurface,
     HumanRequestResolveRequest,
     HumanRequestResolveResponse,
     HumanRequestStatus,
-    OperationFailureCode,
-    TaskEventSource,
     TaskEventType,
-    WaitingCause,
 )
-from autoclaw.runtime.dispatch.control import fence_foreground_dispatch
-from autoclaw.runtime.errors import RuntimeOperationError, illegal_state_error
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
+from autoclaw.runtime.errors import RuntimeOperationError, missing_resource_error
 from autoclaw.runtime.human_request.records import (
     human_request_read_from_model,
-    record_human_request_terminal_result,
+    validate_answered_item_responses,
 )
-from autoclaw.runtime.ids import human_request_id
-from autoclaw.runtime.projection.runtime_state import CurrentRuntimeState
 from autoclaw.runtime.task_events import append_task_event
 
-
-async def open_human_request(
-    session: AsyncSession,
-    *,
-    task_id: str,
-    request: HumanRequestOpenRequest,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-) -> HumanRequestOpenResponse:
-    capabilities = await resolve_effective_capabilities(
-        session,
-        state=state,
-        execution_scope="human_request_open",
-    )
-    rejection = capability_rejection_for_human_request(capabilities, request.kind)
-    if rejection is not None:
-        raise RuntimeOperationError(
-            code=OperationFailureCode.CAPABILITY_REJECTED,
-            summary=rejection.message,
-            is_retryable=False,
-            suggested_next_step=rejection.next_legal_action,
-        )
-
-    await _ensure_human_request_open_is_current(session, task_id=task_id, state=state)
-
-    opened_at = utc_now()
-    request_id = await _next_human_request_id(session, task_id=task_id)
-    pending_request = _build_pending_human_request_for_open(
-        task_id=task_id,
-        request_id=request_id,
-        request=request,
-        state=state,
-        dispatch=dispatch,
-        opened_at=opened_at,
-    )
-    session.add(pending_request)
-    await session.flush((pending_request,))
-
-    session.add(
-        _build_human_request_wait_state(
-            task_id=task_id,
-            request_id=request_id,
-            state=state,
-            dispatch=dispatch,
-            opened_at=opened_at,
-        )
-    )
-    await _append_human_request_opened_event(
-        session,
-        task_id=task_id,
-        request_id=request_id,
-        request=request,
-        state=state,
-        dispatch=dispatch,
-        opened_at=opened_at,
-    )
-    state.flow.updated_at = opened_at
-    await fence_foreground_dispatch(
-        session,
-        task_id=task_id,
-        flow=state.flow,
-        dispatch=dispatch,
-        reason=f"human_request:{request_id}:opened",
-    )
-    await session.flush()
-    return HumanRequestOpenResponse(request_id=request_id, task_id=task_id)
+_RESOLUTION_SUMMARY = "Human answered the controller-owned request."
+_RESOLUTION_POLICY_BASIS = "task_authorized_human_request_resolution"
+_CONFLICT_NEXT_STEP = "Reread the current human-request source before retrying the resolution."
 
 
 async def list_human_requests(
@@ -112,16 +36,14 @@ async def list_human_requests(
     *,
     task_id: str,
 ) -> HumanRequestListResponse:
-    from autoclaw.runtime.flow.queries import require_flow_for_task
-
-    await require_flow_for_task(session, task_id)
+    await _require_task_flow_exists(session, task_id)
     rows = list(
         await session.scalars(
-            select(PendingHumanRequestModel)
-            .where(PendingHumanRequestModel.task_id == task_id)
+            select(HumanRequestModel)
+            .where(HumanRequestModel.task_id == task_id)
             .order_by(
-                PendingHumanRequestModel.opened_at.asc(),
-                PendingHumanRequestModel.request_id.asc(),
+                HumanRequestModel.opened_at.asc(),
+                HumanRequestModel.request_id.asc(),
             )
         )
     )
@@ -138,138 +60,197 @@ async def resolve_human_request(
     request_id: str,
     request: HumanRequestResolveRequest,
     actor_ref: str | None = None,
-    resolved_by_surface: HumanRequestResolutionSurface = HumanRequestResolutionSurface.CONTROL_API,
+    resolved_by_surface: HumanRequestResolutionSurface = (
+        HumanRequestResolutionSurface.CONTROL_API
+    ),
 ) -> HumanRequestResolveResponse:
-    resolution = await record_human_request_terminal_result(
+    source = await _human_request_for_task(
         session,
         task_id=task_id,
         request_id=request_id,
-        resolution_kind=HumanRequestResolutionKind.ANSWERED,
-        item_responses=request.item_responses,
-        event_source=TaskEventSource.CONTROL_API,
-        actor_ref=actor_ref,
-        resolved_by_actor_ref=actor_ref,
-        resolved_by_surface=resolved_by_surface,
-        policy_basis="task_authorized_human_request_resolution",
     )
+    if source is None:
+        raise _human_request_conflict(f"human request '{request_id}' is not current")
+    item_responses = dict(request.item_responses)
+    validate_answered_item_responses(source, item_responses)
+
+    resolved_at = utc_now()
+    won = await _mark_human_request_answered(
+        session,
+        source=source,
+        item_responses=item_responses,
+        actor_ref=actor_ref,
+        resolved_by_surface=resolved_by_surface,
+        resolved_at=resolved_at,
+    )
+    if not won:
+        raise _human_request_conflict(f"human request '{request_id}' is already terminal")
+
+    wait_consumed = await _consume_exact_human_wait(session, source=source)
+    if not wait_consumed:
+        await session.rollback()
+        raise _human_request_conflict(
+            f"human request '{request_id}' no longer owns its exact flow wait"
+        )
+
+    await _clear_matching_human_wait_pointer(session, source=source)
+    await _append_human_request_resolved_event(
+        session,
+        source=source,
+        actor_ref=actor_ref,
+        resolved_by_surface=resolved_by_surface,
+        resolved_at=resolved_at,
+    )
+    await session.commit()
+
+    resolution = human_request_read_from_model(source).resolution
+    if resolution is None:
+        raise RuntimeOperationError(
+            code=OperationFailureCode.ILLEGAL_STATE,
+            summary="resolved human request is missing committed resolution truth",
+            is_retryable=False,
+        )
     return HumanRequestResolveResponse(task_id=task_id, resolution=resolution)
 
 
-def _build_pending_human_request_for_open(
-    *,
-    task_id: str,
-    request_id: str,
-    request: HumanRequestOpenRequest,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-    opened_at: datetime,
-) -> PendingHumanRequestModel:
-    return PendingHumanRequestModel(
-        request_id=request_id,
-        task_id=task_id,
-        flow_id=state.flow.flow_id,
-        flow_revision_id=state.flow_revision.flow_revision_id,
-        flow_node_id=state.current_node.flow_node_id,
-        assignment_id=state.current_assignment.assignment_id,
-        attempt_id=state.current_attempt.attempt_id,
-        dispatch_id=dispatch.dispatch_id,
-        requester_node_key=state.current_node.node_key,
-        kind=request.kind.value,
-        title=request.title,
-        summary=request.summary,
-        items_json=[item.model_dump(mode="json") for item in request.items],
-        timeout_json=request.timeout.model_dump(mode="json"),
-        suggested_human_instruction=request.suggested_human_instruction,
-        status=HumanRequestStatus.OPEN.value,
-        opened_at=opened_at,
-        updated_at=opened_at,
-    )
-
-
-def _build_human_request_wait_state(
-    *,
-    task_id: str,
-    request_id: str,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-    opened_at: datetime,
-) -> FlowWaitStateModel:
-    return FlowWaitStateModel(
-        flow_id=state.flow.flow_id,
-        task_id=task_id,
-        waiting_cause=WaitingCause.WAITING_FOR_HUMAN_REQUEST.value,
-        pending_human_request_id=request_id,
-        created_by_dispatch_id=dispatch.dispatch_id,
-        created_at=opened_at,
-        updated_at=opened_at,
-    )
-
-
-async def _append_human_request_opened_event(
+async def _mark_human_request_answered(
     session: AsyncSession,
     *,
-    task_id: str,
-    request_id: str,
-    request: HumanRequestOpenRequest,
-    state: CurrentRuntimeState,
-    dispatch: DispatchTurnModel,
-    opened_at: datetime,
+    source: HumanRequestModel,
+    item_responses: Mapping[str, object],
+    actor_ref: str | None,
+    resolved_by_surface: HumanRequestResolutionSurface,
+    resolved_at: datetime,
+) -> bool:
+    request_id = await session.scalar(
+        update(HumanRequestModel)
+        .where(
+            HumanRequestModel.request_id == source.request_id,
+            HumanRequestModel.task_id == source.task_id,
+            HumanRequestModel.status == HumanRequestStatus.OPEN.value,
+        )
+        .values(
+            status=HumanRequestStatus.RESOLVED.value,
+            resolution_kind=HumanRequestResolutionKind.ANSWERED.value,
+            item_responses_json=item_responses,
+            resolution_policy_basis_json={"policy_basis": _RESOLUTION_POLICY_BASIS},
+            resolution_summary=_RESOLUTION_SUMMARY,
+            resolved_by_actor_ref=actor_ref,
+            resolved_by_surface=resolved_by_surface.value,
+            resolved_at=resolved_at,
+        )
+        .returning(HumanRequestModel.request_id)
+    )
+    return request_id is not None
+
+
+async def _consume_exact_human_wait(
+    session: AsyncSession,
+    *,
+    source: HumanRequestModel,
+) -> bool:
+    flow_id = await session.scalar(
+        delete(FlowWaitModel)
+        .where(
+            FlowWaitModel.flow_id == source.flow_id,
+            FlowWaitModel.task_id == source.task_id,
+            FlowWaitModel.source_dispatch_id == source.source_dispatch_id,
+            FlowWaitModel.human_request_id == source.request_id,
+        )
+        .returning(FlowWaitModel.flow_id)
+    )
+    return flow_id is not None
+
+
+async def _clear_matching_human_wait_pointer(
+    session: AsyncSession,
+    *,
+    source: HumanRequestModel,
+) -> None:
+    await session.execute(
+        update(FlowModel)
+        .where(
+            FlowModel.flow_id == source.flow_id,
+            FlowModel.task_id == source.task_id,
+            FlowModel.waiting_cause == "human_request",
+            FlowModel.waiting_source_id == source.request_id,
+        )
+        .values(
+            waiting_cause="none",
+            waiting_source_id=None,
+            control_revision=FlowModel.control_revision + 1,
+        )
+    )
+
+
+async def _append_human_request_resolved_event(
+    session: AsyncSession,
+    *,
+    source: HumanRequestModel,
+    actor_ref: str | None,
+    resolved_by_surface: HumanRequestResolutionSurface,
+    resolved_at: datetime,
 ) -> None:
     await append_task_event(
         session,
-        task_id=task_id,
-        event_type=TaskEventType.HUMAN_REQUEST_OPENED,
-        event_source=TaskEventSource.NODE,
-        occurred_at=opened_at,
-        flow_revision_id=state.flow_revision.flow_revision_id,
-        dispatch_id=dispatch.dispatch_id,
-        attempt_id=state.current_attempt.attempt_id,
-        node_key=state.current_node.node_key,
+        task_id=source.task_id,
+        event_type=TaskEventType.HUMAN_REQUEST_RESOLVED,
+        event_source=_event_source_for_resolution_surface(resolved_by_surface),
+        occurred_at=resolved_at,
+        dispatch_id=source.source_dispatch_id,
+        attempt_id=source.attempt_id,
+        actor_ref=actor_ref,
         payload={
-            "request_id": request_id,
-            "kind": request.kind.value,
-            "status": HumanRequestStatus.OPEN.value,
+            "request_id": source.request_id,
+            "status": HumanRequestStatus.RESOLVED.value,
+            "resolution_kind": HumanRequestResolutionKind.ANSWERED.value,
         },
     )
 
 
-async def _ensure_human_request_open_is_current(
+async def _human_request_for_task(
     session: AsyncSession,
     *,
     task_id: str,
-    state: CurrentRuntimeState,
-) -> None:
-    existing_wait = await session.get(FlowWaitStateModel, state.flow.flow_id)
-    if existing_wait is not None:
-        raise illegal_state_error(
-            f"task '{task_id}' is already waiting for {existing_wait.waiting_cause}"
-        )
-
-    existing_request = await session.scalar(
-        select(PendingHumanRequestModel.request_id)
-        .where(
-            PendingHumanRequestModel.task_id == task_id,
-            PendingHumanRequestModel.flow_id == state.flow.flow_id,
-            PendingHumanRequestModel.flow_node_id == state.current_node.flow_node_id,
-            PendingHumanRequestModel.assignment_id == state.current_assignment.assignment_id,
-            PendingHumanRequestModel.attempt_id == state.current_attempt.attempt_id,
-            PendingHumanRequestModel.status == HumanRequestStatus.OPEN.value,
-        )
-        .limit(1)
+    request_id: str,
+) -> HumanRequestModel | None:
+    return cast(
+        HumanRequestModel | None,
+        await session.scalar(
+            select(HumanRequestModel).where(
+                HumanRequestModel.task_id == task_id,
+                HumanRequestModel.request_id == request_id,
+            )
+        ),
     )
-    if existing_request is not None:
-        raise illegal_state_error(
-            "current node execution already owns an open pending human request"
-        )
 
 
-async def _next_human_request_id(session: AsyncSession, *, task_id: str) -> str:
-    request_count = await session.scalar(
-        select(func.count(PendingHumanRequestModel.request_id)).where(
-            PendingHumanRequestModel.task_id == task_id
-        )
+async def _require_task_flow_exists(session: AsyncSession, task_id: str) -> None:
+    flow_id = await session.scalar(
+        select(FlowModel.flow_id).where(FlowModel.task_id == task_id).limit(1)
     )
-    return human_request_id(task_id, int(request_count or 0) + 1)
+    if flow_id is None:
+        raise missing_resource_error(f"unknown task_id '{task_id}'")
 
 
-__all__ = ["list_human_requests", "open_human_request", "resolve_human_request"]
+def _human_request_conflict(summary: str) -> RuntimeOperationError:
+    return RuntimeOperationError(
+        code=OperationFailureCode.CONFLICT,
+        summary=summary,
+        is_retryable=False,
+        suggested_next_step=_CONFLICT_NEXT_STEP,
+        status_code_override=409,
+    )
+
+
+def _event_source_for_resolution_surface(
+    surface: HumanRequestResolutionSurface,
+) -> str:
+    if surface == HumanRequestResolutionSurface.OPERATOR_MCP:
+        return "operator_mcp"
+    if surface == HumanRequestResolutionSurface.CONTROLLER:
+        return "controller"
+    return "control_api"
+
+
+__all__ = ["list_human_requests", "resolve_human_request"]

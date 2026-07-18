@@ -4,12 +4,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-from autoclaw.config import OpenClawSettings, RuntimeSettings
-from autoclaw.integrations.openclaw.gateway.host_setup import (
-    AUTOCLAW_OPERATOR_AGENT_ID,
-    AUTOCLAW_WORKER_AGENT_ID,
-)
-
 
 def settings_to_config_text(
     *,
@@ -44,13 +38,6 @@ def settings_to_config_text(
         "security": {
             "api_key": api_key,
         },
-        "openclaw": {
-            "base_url": OpenClawSettings().base_url,
-            "agent_id": AUTOCLAW_WORKER_AGENT_ID,
-            "operator_agent_id": AUTOCLAW_OPERATOR_AGENT_ID,
-            "timeout_ms": OpenClawSettings().timeout_ms,
-        },
-        "runtime": RuntimeSettings().model_dump(mode="json"),
     }
     return _config_sections_to_text(payload)
 
@@ -95,6 +82,8 @@ def _config_sections_to_text(payload: dict[str, dict[str, Any]]) -> str:
         "server",
         "logging",
         "security",
+        "codex",
+        "claude",
         "openclaw",
         "runtime",
     )

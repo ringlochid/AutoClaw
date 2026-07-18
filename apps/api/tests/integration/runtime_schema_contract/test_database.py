@@ -2,456 +2,228 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.integration.runtime_schema_contract.support import (
-    RuntimeSchemaSnapshot,
-    initialize_runtime_schema_database,
-    read_runtime_schema_snapshot,
+from autoclaw.persistence import RuntimeBase
+from sqlalchemy import CheckConstraint, ForeignKeyConstraint, UniqueConstraint, func, select
+from tests.integration.runtime_schema_contract.catalog_fixture import seed_catalog
+from tests.integration.runtime_schema_contract.runtime_lineage_fixture import (
+    seed_runtime_scope,
 )
-
-FLOW_TARGET_EXPECTATIONS = (
-    (
-        "flows",
-        {
-            ("flow_revisions", "active_flow_revision_id"),
-            ("dispatch_turns", "current_open_dispatch_id"),
-        },
-    ),
-    (
-        "flow_nodes",
-        {
-            ("flow_nodes", "flow_id"),
-            ("flow_nodes", "flow_revision_id"),
-            ("flow_nodes", "parent_flow_node_id"),
-            ("flow_nodes", "parent_node_key"),
-            ("role_revisions", "role_key"),
-            ("role_revisions", "role_revision_no"),
-            ("policy_revisions", "policy_key"),
-            ("policy_revisions", "policy_revision_no"),
-            ("assignments", "current_assignment_id"),
-        },
-    ),
-    (
-        "flow_edges",
-        {
-            ("flow_nodes", "provider_flow_node_id"),
-            ("flow_nodes", "consumer_flow_node_id"),
-            ("flow_nodes", "provider_node_key"),
-            ("flow_nodes", "consumer_node_key"),
-        },
-    ),
-    ("assignments", {("attempts", "current_attempt_id")}),
-    ("attempts", {("attempt_checkpoints", "latest_checkpoint_id")}),
-    (
-        "attempt_checkpoints",
-        {
-            ("assignments", "assignment_id"),
-            ("attempts", "attempt_id"),
-            ("flow_nodes", "flow_node_id"),
-        },
-    ),
-    (
-        "dispatch_turns",
-        {
-            ("flow_revisions", "flow_revision_id"),
-            ("flow_nodes", "flow_node_id"),
-            ("assignments", "assignment_id"),
-            ("attempts", "attempt_id"),
-        },
-    ),
-    ("dispatch_delivery_states", {("dispatch_turns", "dispatch_id")}),
-    ("dispatch_continuity_states", {("dispatch_turns", "dispatch_id")}),
-    ("dispatch_watchdog_states", {("dispatch_turns", "dispatch_id")}),
-    ("provider_event_records", {("dispatch_turns", "dispatch_id")}),
-    (
-        "artifact_publications",
-        {
-            ("assignments", "assignment_key"),
-            ("flow_nodes", "flow_node_id"),
-            ("attempts", "attempt_id"),
-        },
-    ),
-    (
-        "artifact_current_pointers",
-        {
-            ("artifact_publications", "task_id"),
-            ("artifact_publications", "flow_node_id"),
-            ("artifact_publications", "owner_node_key"),
-            ("artifact_publications", "slot"),
-        },
-    ),
-    (
-        "node_sessions",
-        {("flow_nodes", "flow_node_id"), ("dispatch_turns", "dispatch_id")},
-    ),
-    (
-        "pending_human_requests",
-        {
-            ("tasks", "task_id"),
-            ("flows", "flow_id"),
-            ("flow_revisions", "flow_revision_id"),
-            ("flow_nodes", "flow_node_id"),
-            ("assignments", "assignment_id"),
-            ("attempts", "attempt_id"),
-            ("dispatch_turns", "dispatch_id"),
-        },
-    ),
-    (
-        "command_runs",
-        {
-            ("tasks", "task_id"),
-            ("flows", "flow_id"),
-            ("flow_revisions", "flow_revision_id"),
-            ("flow_nodes", "flow_node_id"),
-            ("assignments", "assignment_id"),
-            ("attempts", "attempt_id"),
-            ("dispatch_turns", "dispatch_id"),
-        },
-    ),
-    (
-        "flow_wait_states",
-        {
-            ("flows", "flow_id"),
-            ("tasks", "task_id"),
-            ("pending_human_requests", "pending_human_request_id"),
-            ("command_runs", "command_run_id"),
-            ("dispatch_turns", "created_by_dispatch_id"),
-        },
-    ),
-    (
-        "budget_counters",
-        {
-            ("flows", "flow_id"),
-            ("flow_nodes", "flow_node_id"),
-            ("assignments", "assignment_id"),
-            ("attempts", "attempt_id"),
-        },
-    ),
-)
-
-FLOW_COLUMN_EXPECTATIONS = (
-    (
-        "flow_revisions",
-        {
-            ("flow_id", "flow_revisions", "flow_id"),
-            ("parent_flow_revision_id", "flow_revisions", "flow_revision_id"),
-            ("source_compiled_plan_id", "compiled_plans", "compiled_plan_id"),
-            ("created_by_dispatch_id", "dispatch_turns", "dispatch_id"),
-        },
-    ),
-    (
-        "flow_nodes",
-        {
-            ("flow_id", "flow_nodes", "flow_id"),
-            ("flow_revision_id", "flow_nodes", "flow_revision_id"),
-            ("parent_flow_node_id", "flow_nodes", "flow_node_id"),
-            ("flow_id", "flows", "flow_id"),
-        },
-    ),
-    (
-        "assignments",
-        {
-            ("flow_id", "flows", "flow_id"),
-            ("flow_revision_id", "flow_revisions", "flow_revision_id"),
-            ("created_by_dispatch_id", "dispatch_turns", "dispatch_id"),
-        },
-    ),
-    (
-        "attempt_checkpoints",
-        {
-            ("attempt_id", "attempts", "attempt_id"),
-            ("assignment_id", "attempts", "assignment_id"),
-            ("assignment_id", "assignments", "assignment_id"),
-            ("flow_node_id", "assignments", "flow_node_id"),
-            ("flow_node_id", "flow_nodes", "flow_node_id"),
-        },
-    ),
-    (
-        "artifact_publications",
-        {
-            ("attempt_id", "attempts", "attempt_id"),
-            ("flow_node_id", "attempts", "flow_node_id"),
-            ("flow_node_id", "flow_nodes", "flow_node_id"),
-        },
-    ),
-    (
-        "dispatch_delivery_states",
-        {
-            ("previous_dispatch_id", "dispatch_turns", "dispatch_id"),
-            ("superseded_by_dispatch_id", "dispatch_turns", "dispatch_id"),
-        },
-    ),
-    (
-        "dispatch_watchdog_states",
-        {
-            ("recovery_dispatch_id", "dispatch_turns", "dispatch_id"),
-            ("previous_dispatch_id", "dispatch_turns", "dispatch_id"),
-            ("superseded_by_dispatch_id", "dispatch_turns", "dispatch_id"),
-        },
-    ),
-    (
-        "artifact_current_pointers",
-        {
-            ("current_version", "artifact_publications", "version"),
-            ("flow_node_id", "artifact_publications", "flow_node_id"),
-        },
-    ),
-)
-
-CURRENTNESS_COLUMN_EXPECTATIONS = (
-    (
-        "flow_revisions",
-        {
-            "parent_flow_revision_id",
-            "source_compiled_plan_id",
-            "cause",
-            "created_by_dispatch_id",
-            "adopted_at",
-        },
-    ),
-    ("flow_nodes", {"flow_id", "node_kind", "state", "node_instruction"}),
-    ("compiled_plan_nodes", {"node_instruction"}),
-    ("assignments", {"flow_id", "flow_revision_id", "superseded_at"}),
-    ("artifact_publications", {"flow_node_id"}),
-    (
-        "dispatch_turns",
-        {
-            "previous_dispatch_id",
-            "superseded_by_dispatch_id",
-            "staged_child_assignment_id",
-            "release_precondition_flow_revision_id",
-            "release_precondition_assignment_id",
-            "release_precondition_descendant_refs_json",
-            "gateway_run_id",
-            "launch_error_detail",
-            "launch_error_type",
-            "launch_failure_phase",
-            "launch_request_sent",
-            "launch_retry_count",
-            "launch_retry_exhausted_at",
-            "next_launch_retry_at",
-        },
-    ),
-    (
-        "artifact_current_pointers",
-        {"flow_node_id", "task_id", "owner_node_key", "slot", "current_version"},
-    ),
-    (
-        "provider_event_records",
-        {
-            "attempt_id",
-            "event_no",
-            "event_source",
-            "provider_event_name",
-            "summary",
-            "detail",
-            "observed_at",
-            "provider_occurred_at",
-        },
-    ),
-    (
-        "pending_human_requests",
-        {
-            "requester_node_key",
-            "items_json",
-            "timeout_json",
-            "suggested_human_instruction",
-            "opened_at",
-            "status",
-            "resolution_kind",
-            "item_responses_json",
-            "resolved_at",
-            "resolved_by_actor_ref",
-            "resolved_by_surface",
-            "resolution_policy_basis",
-            "resolution_note",
-        },
-    ),
-    (
-        "flow_wait_states",
-        {
-            "waiting_cause",
-            "pending_human_request_id",
-            "command_run_id",
-            "created_by_dispatch_id",
-            "updated_at",
-        },
-    ),
-    (
-        "command_runs",
-        {
-            "requester_node_key",
-            "command",
-            "description",
-            "workdir",
-            "timeout_seconds",
-            "state",
-            "owned_process_pid",
-            "latest_update",
-            "latest_log_ref",
-            "terminal_summary",
-            "terminal_exit_code",
-            "terminal_signal",
-            "terminal_log_ref",
-            "terminal_event_source",
-            "terminal_actor_ref",
-            "cancellation_requested_at",
-            "cancellation_requested_by_actor_ref",
-            "created_at",
-            "started_at",
-            "ended_at",
-            "updated_at",
-        },
-    ),
-)
-
-CURRENTNESS_SQL_EXPECTATIONS = (
-    ("flows", "ck_flows_status"),
-    ("flow_revisions", "ck_flow_revisions_cause"),
-    ("flow_revisions", "fk_flow_revisions_parent_owner"),
-    ("flow_nodes", "ck_flow_nodes_node_kind"),
-    ("flow_nodes", "ck_flow_nodes_state"),
-    ("flow_nodes", "fk_flow_nodes_parent_owner"),
-    ("assignments", "superseded_at"),
-    ("assignments", "fk_assignments_created_by_dispatch"),
-    ("attempt_checkpoints", "ck_attempt_checkpoints_kind"),
-    ("attempt_checkpoints", "ck_attempt_checkpoints_progress_outcome"),
-    ("attempt_checkpoints", "ck_attempt_checkpoints_terminal_outcome"),
-    ("attempt_checkpoints", "fk_attempt_checkpoints_attempt_owner"),
-    ("attempt_checkpoints", "fk_attempt_checkpoints_assignment_owner"),
-    ("artifact_publications", "fk_artifact_publications_attempt_owner"),
-    ("dispatch_turns", "ck_dispatch_turns_release_precondition_kind"),
-    ("dispatch_turns", "ck_dispatch_turns_launch_failure_phase"),
-    ("dispatch_turns", "ck_dispatch_turns_launch_retry_count"),
-    ("dispatch_turns", "fk_dispatch_turns_flow_revision_owner"),
-    ("dispatch_turns", "fk_dispatch_turns_flow_node_owner"),
-    ("dispatch_turns", "fk_dispatch_turns_attempt_owner"),
-    ("dispatch_turns", "fk_dispatch_turns_previous_dispatch"),
-    ("dispatch_turns", "fk_dispatch_turns_superseded_by_dispatch"),
-    ("dispatch_delivery_states", "fk_dispatch_delivery_states_previous_dispatch"),
-    ("artifact_current_pointers", "fk_artifact_current_pointers_attempt_owner"),
-    ("artifact_current_pointers", "fk_artifact_current_pointers_publication"),
-    ("provider_event_records", "ck_provider_event_records_event_source"),
-    ("provider_event_records", "ck_provider_event_records_event_kind"),
-    ("pending_human_requests", "ck_pending_human_requests_kind"),
-    ("pending_human_requests", "ck_pending_human_requests_status"),
-    ("pending_human_requests", "ck_pending_human_requests_resolution_kind"),
-    ("pending_human_requests", "ck_pending_human_requests_resolution_status"),
-    ("pending_human_requests", "fk_pending_human_requests_flow_revision_owner"),
-    ("pending_human_requests", "fk_pending_human_requests_flow_node_owner"),
-    ("pending_human_requests", "fk_pending_human_requests_attempt_owner"),
-    ("command_runs", "ck_command_runs_state"),
-    ("command_runs", "ck_command_runs_timeout_seconds"),
-    ("command_runs", "ck_command_runs_terminal_result"),
-    ("command_runs", "fk_command_runs_flow_revision_owner"),
-    ("command_runs", "fk_command_runs_flow_node_owner"),
-    ("command_runs", "fk_command_runs_attempt_owner"),
-    ("flow_wait_states", "ck_flow_wait_states_waiting_cause"),
-    ("flow_wait_states", "ck_flow_wait_states_human_request_source"),
-    ("flow_wait_states", "ck_flow_wait_states_command_run_source"),
-)
-
-INDEX_EXPECTATIONS = (
-    ("flows", "ix_flows_status_updated_at"),
-    ("attempt_checkpoints", "ix_attempt_checkpoints_attempt_recorded_at"),
-    ("dispatch_turns", "ix_dispatch_turns_task_node_rendered_at"),
-    ("node_sessions", "ix_node_sessions_session_key"),
-    ("provider_event_records", "ix_provider_event_records_dispatch_event_no"),
-    ("pending_human_requests", "ix_pending_human_requests_task_status"),
-    ("command_runs", "ix_command_runs_task_created"),
-    ("command_runs", "ix_command_runs_task_state"),
-    ("flow_wait_states", "ix_flow_wait_states_task_cause"),
+from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+    create_runtime_schema_engine,
 )
 
 
-async def test_runtime_schema_emits_definition_plan_and_task_lineage_foreign_keys(
-    tmp_path: Path,
-) -> None:
-    snapshot = await load_schema_snapshot(tmp_path)
+def _constraint_names(table_name: str, constraint_type: type[object]) -> set[str]:
+    table = RuntimeBase.metadata.tables[table_name]
+    return {
+        str(constraint.name)
+        for constraint in table.constraints
+        if isinstance(constraint, constraint_type) and constraint.name is not None
+    }
 
-    assert_targets(
-        snapshot, "workflow_definitions", {("workflow_revisions", "current_revision_no")}
+
+def _unique_columns(table_name: str) -> set[tuple[str, ...]]:
+    table = RuntimeBase.metadata.tables[table_name]
+    return {
+        tuple(str(column.name) for column in constraint.columns)
+        for constraint in table.constraints
+        if isinstance(constraint, UniqueConstraint)
+    }
+
+
+def test_exact_source_and_owner_backstops_are_present() -> None:
+    assert {"fk_task_event_stream_heads_task"} <= _constraint_names(
+        "task_event_stream_heads", ForeignKeyConstraint
     )
-    assert_targets(snapshot, "role_definitions", {("role_revisions", "current_revision_no")})
-    assert_targets(snapshot, "policy_definitions", {("policy_revisions", "current_revision_no")})
-    assert_targets(
-        snapshot,
-        "task_composes",
-        {("workflow_revisions", "workflow_revision_no"), ("compiled_plans", "compiled_plan_id")},
+    assert {
+        "fk_assignments_authoring_dispatch_owner",
+        "fk_assignments_flow_node_owner",
+        "fk_assignments_parent_owner",
+    } <= _constraint_names("assignments", ForeignKeyConstraint)
+    assert {
+        "fk_dispatch_turns_assignment_owner",
+        "fk_dispatch_turns_assignment_node_owner",
+        "fk_dispatch_turns_attempt_owner",
+        "fk_dispatch_turns_predecessor_owner",
+        "fk_dispatch_turns_flow_start_source",
+    } <= _constraint_names("dispatch_turns", ForeignKeyConstraint)
+    assert {"fk_flows_current_dispatch_owner"} <= _constraint_names("flows", ForeignKeyConstraint)
+    assert {
+        "fk_flow_waits_unoccupied_flow",
+        "fk_flow_waits_human_request_owner",
+        "fk_flow_waits_command_run_owner",
+    } <= _constraint_names("flow_waits", ForeignKeyConstraint)
+    assert {
+        "fk_accepted_boundaries_source_owner",
+        "fk_accepted_boundaries_checkpoint_owner",
+        "fk_accepted_boundaries_decision_owner",
+        "fk_accepted_boundaries_successor_owner",
+    } <= _constraint_names("accepted_boundaries", ForeignKeyConstraint)
+    assert {
+        "fk_human_requests_source_owner",
+        "fk_human_requests_successor_owner",
+    } <= _constraint_names("human_requests", ForeignKeyConstraint)
+    assert {
+        "fk_command_runs_source_owner",
+        "fk_command_runs_successor_owner",
+    } <= _constraint_names("command_runs", ForeignKeyConstraint)
+    assert {
+        "fk_assignment_decisions_child_authoring_source",
+        "fk_assignment_decisions_source_revision_owner",
+    } <= _constraint_names("assignment_decisions", ForeignKeyConstraint)
+    assert {
+        "fk_assignment_decision_checkpoints_checkpoint_owner",
+        "fk_assignment_decision_checkpoints_decision_owner",
+    } <= _constraint_names("assignment_decision_checkpoints", ForeignKeyConstraint)
+    assert {
+        "fk_assignment_decision_artifacts_publication_owner",
+        "fk_assignment_decision_artifacts_decision_owner",
+    } <= _constraint_names("assignment_decision_artifacts", ForeignKeyConstraint)
+
+
+def test_task_event_chronology_constraints_are_present() -> None:
+    assert {
+        "ck_task_event_stream_heads_allocator_revision",
+        "ck_task_event_stream_heads_last_event_pair",
+        "ck_task_event_stream_heads_last_event_seq",
+    } <= _constraint_names("task_event_stream_heads", CheckConstraint)
+
+
+def test_target_currentness_and_pair_constraints_are_present() -> None:
+    assert {
+        "ck_dispatch_turns_exact_source_shape",
+        "ck_dispatch_turns_lifecycle_fields",
+        "ck_dispatch_turns_starting_close_reason",
+        "ck_dispatch_turns_watchdog_requires_open",
+    } <= _constraint_names("dispatch_turns", CheckConstraint)
+    assert "ck_flows_current_dispatch_excludes_wait_pointer" in _constraint_names(
+        "flows", CheckConstraint
     )
-    assert_targets(snapshot, "compiled_plans", {("workflow_revisions", "definition_revision_no")})
-    assert_targets(
-        snapshot,
-        "compiled_plan_nodes",
-        {
-            ("compiled_plan_nodes", "parent_compiled_plan_node_id"),
-            ("role_revisions", "role_key"),
-            ("role_revisions", "role_revision_no"),
-            ("policy_revisions", "policy_key"),
-            ("policy_revisions", "policy_revision_no"),
-            ("compiled_plan_nodes", "parent_node_key"),
-        },
-    )
-    assert_targets(
-        snapshot,
-        "compiled_plan_edges",
-        {
-            ("compiled_plan_nodes", "provider_compiled_plan_node_id"),
-            ("compiled_plan_nodes", "consumer_compiled_plan_node_id"),
-            ("compiled_plan_nodes", "provider_node_key"),
-            ("compiled_plan_nodes", "consumer_node_key"),
-        },
-    )
+    for table_name in ("compiled_plan_nodes", "flow_nodes", "node_plan_revisions"):
+        table = RuntimeBase.metadata.tables[table_name]
+        assert table.c.policy_key.nullable is False
+        assert table.c.policy_revision_no.nullable is False
+        assert table.c.policy_description.nullable is False
+    assert ("predecessor_dispatch_id",) in _unique_columns("dispatch_turns")
+    assert (
+        "dispatch_id",
+        "task_id",
+        "flow_id",
+        "active_status_marker",
+    ) in _unique_columns("dispatch_turns")
+    assert (
+        "flow_id",
+        "task_id",
+        "current_dispatch_presence_marker",
+    ) in _unique_columns("flows")
+    assert ("source_dispatch_id",) in _unique_columns("accepted_boundaries")
+    assert ("source_dispatch_id",) in _unique_columns("human_requests")
+    assert ("source_dispatch_id",) in _unique_columns("command_runs")
+    assert {index.name for index in RuntimeBase.metadata.tables["dispatch_turns"].indexes} >= {
+        "uq_dispatch_turns_one_root_per_flow",
+        "uq_dispatch_turns_one_current_per_flow",
+    }
 
 
-async def test_runtime_schema_emits_flow_assignment_and_dispatch_lineage_foreign_keys(
-    tmp_path: Path,
-) -> None:
-    snapshot = await load_schema_snapshot(tmp_path)
+def test_target_sources_store_complete_canonical_fields() -> None:
+    assert set(RuntimeBase.metadata.tables["human_requests"].columns.keys()) >= {
+        "request_id",
+        "task_id",
+        "flow_id",
+        "assignment_id",
+        "attempt_id",
+        "source_dispatch_id",
+        "request_kind",
+        "request_summary",
+        "request_items_json",
+        "context_refs_json",
+        "suggested_human_instruction",
+        "capability_basis_json",
+        "due_at",
+        "timeout_policy_json",
+        "default_behavior_json",
+        "status",
+        "resolution_kind",
+        "item_responses_json",
+        "resolution_policy_basis_json",
+        "resolution_summary",
+        "resolved_by_actor_ref",
+        "resolved_by_surface",
+        "successor_dispatch_id",
+        "opened_at",
+        "resolved_at",
+    }
+    assert set(RuntimeBase.metadata.tables["command_runs"].columns.keys()) >= {
+        "run_id",
+        "task_id",
+        "flow_id",
+        "assignment_id",
+        "attempt_id",
+        "source_dispatch_id",
+        "command_spec_json",
+        "cwd_policy_json",
+        "environment_refs_json",
+        "summary",
+        "expected_outputs_json",
+        "timeout_seconds",
+        "due_at",
+        "stdout_logical_path",
+        "stderr_logical_path",
+        "state",
+        "ownership_revision",
+        "process_metadata_json",
+        "cancellation_requested_at",
+        "cancellation_requested_by_actor_ref",
+        "terminal_summary",
+        "terminal_exit_code",
+        "terminal_failure_code",
+        "terminal_event_source",
+        "terminal_actor_ref",
+        "successor_dispatch_id",
+        "created_at",
+        "started_at",
+        "ended_at",
+    }
 
-    for table_name, expected_targets in FLOW_TARGET_EXPECTATIONS:
-        assert_targets(snapshot, table_name, expected_targets)
-    for table_name, expected_columns in FLOW_COLUMN_EXPECTATIONS:
-        assert_columns(snapshot, table_name, expected_columns)
+
+def test_external_workspace_binding_is_not_a_cross_task_lease(tmp_path: Path) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            first = seed_runtime_scope(connection, suffix="first")
+            second = seed_runtime_scope(connection, suffix="second")
+            bindings = RuntimeBase.metadata.tables["workspace_bindings"]
+            count = connection.scalar(
+                select(func.count())
+                .select_from(bindings)
+                .where(bindings.c.normalized_root_path == "/tmp/shared-workspace")
+            )
+        assert count == 2
+        assert first.task_id != second.task_id
+    finally:
+        engine.dispose()
 
 
-async def test_runtime_schema_emits_columns_and_constraints_for_runtime_currentness(
-    tmp_path: Path,
-) -> None:
-    snapshot = await load_schema_snapshot(tmp_path)
-
-    for table_name, expected_columns in CURRENTNESS_COLUMN_EXPECTATIONS:
-        assert expected_columns <= snapshot.table_columns[table_name]
-    for table_name, expected_sql in CURRENTNESS_SQL_EXPECTATIONS:
-        assert expected_sql in snapshot.table_sql[table_name]
-
-
-async def test_runtime_schema_emits_indexes_and_removes_legacy_release_flags(
-    tmp_path: Path,
-) -> None:
-    snapshot = await load_schema_snapshot(tmp_path)
-
-    assert "release_green_ready" not in snapshot.table_sql["assignments"]
-    assert "release_blocked_ready" not in snapshot.table_sql["assignments"]
-    for table_name, expected_index in INDEX_EXPECTATIONS:
-        assert expected_index in snapshot.index_names[table_name]
-
-
-async def load_schema_snapshot(tmp_path: Path) -> RuntimeSchemaSnapshot:
-    database_path = await initialize_runtime_schema_database(tmp_path)
-    return read_runtime_schema_snapshot(database_path)
-
-
-def assert_targets(
-    snapshot: RuntimeSchemaSnapshot,
-    table_name: str,
-    expected_targets: set[tuple[str, str]],
-) -> None:
-    assert expected_targets <= snapshot.foreign_key_targets[table_name]
-
-
-def assert_columns(
-    snapshot: RuntimeSchemaSnapshot,
-    table_name: str,
-    expected_columns: set[tuple[str, str, str]],
-) -> None:
-    assert expected_columns <= snapshot.foreign_key_columns[table_name]
+def test_repeated_task_compose_keys_create_independent_task_runs(tmp_path: Path) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            first = seed_runtime_scope(connection, suffix="first-key-run")
+            second = seed_runtime_scope(connection, suffix="second-key-run")
+            tasks = RuntimeBase.metadata.tables["tasks"]
+            connection.execute(
+                tasks.update()
+                .where(tasks.c.task_id == second.task_id)
+                .values(task_key="task-key.first-key-run")
+            )
+            count = connection.scalar(
+                select(func.count())
+                .select_from(tasks)
+                .where(tasks.c.task_key == "task-key.first-key-run")
+            )
+        assert count == 2
+        assert first.task_id != second.task_id
+    finally:
+        engine.dispose()

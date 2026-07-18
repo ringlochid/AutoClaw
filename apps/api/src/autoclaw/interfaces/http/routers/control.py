@@ -15,6 +15,7 @@ from autoclaw.interfaces.http.dependencies import (
 )
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session, get_session_factory
+from autoclaw.persistence.session_operations import write_session_operation
 from autoclaw.runtime.command_run.service import (
     cancel_command_run,
     list_command_runs,
@@ -48,7 +49,6 @@ from autoclaw.runtime.flow.service import (
 )
 from autoclaw.runtime.human_request.service import list_human_requests, resolve_human_request
 from autoclaw.runtime.observability import operator_snapshot, operator_trace
-from autoclaw.runtime.post_commit.operations import write_runtime_operation
 from autoclaw.runtime.task_events import (
     decode_task_event_cursor,
     latest_task_event,
@@ -89,7 +89,7 @@ async def pause_control_task(
     actor_ref: ControlActorRefDep,
 ) -> RuntimeFlowPauseResponse:
     try:
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda active_session: pause_runtime_flow(
                 active_session,
                 task_id,
@@ -110,7 +110,7 @@ async def continue_control_task(
     actor_ref: ControlActorRefDep,
 ) -> RuntimeFlowRead:
     try:
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda active_session: continue_runtime_flow(
                 active_session,
                 task_id,
@@ -131,7 +131,7 @@ async def cancel_control_task(
     actor_ref: ControlActorRefDep,
 ) -> RuntimeFlowRead:
     try:
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda active_session: cancel_runtime_flow(
                 active_session,
                 task_id,
@@ -198,7 +198,7 @@ async def resolve_control_human_request(
     actor_ref: ControlActorRefDep,
 ) -> HumanRequestResolveResponse:
     try:
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda active_session: resolve_human_request(
                 active_session,
                 task_id=task_id,
@@ -268,7 +268,7 @@ async def cancel_control_command_run(
     actor_ref: ControlActorRefDep,
 ) -> CommandRunCancelResponse:
     try:
-        return await write_runtime_operation(
+        return await write_session_operation(
             lambda active_session: cancel_command_run(
                 active_session,
                 task_id=task_id,

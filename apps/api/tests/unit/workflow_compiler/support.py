@@ -6,6 +6,7 @@ from typing import Any
 import yaml
 from autoclaw.definitions.compiler import (
     MappingRolePolicyLookup,
+    NormalizedCompiledPlan,
     PolicyRevisionDefinition,
     RoleRevisionDefinition,
     WorkflowRevisionMetadata,
@@ -15,6 +16,7 @@ from autoclaw.definitions.contracts import (
     PolicyDefinitionFile,
     RoleDefinitionFile,
     WorkflowDefinitionFile,
+    WorkflowDefinitionInput,
 )
 from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
 
@@ -103,8 +105,10 @@ def load_packaged_workflow_fixture(name: str) -> WorkflowDefinitionFile:
     return WorkflowDefinitionFile.model_validate(load_packaged_workflow_payload(name))
 
 
-def compile_packaged_workflow_fixture(name: str, revision_no: int) -> Any:
-    workflow = load_packaged_workflow_fixture(name)
+def compile_workflow_fixture(
+    workflow: WorkflowDefinitionInput,
+    revision_no: int,
+) -> NormalizedCompiledPlan:
     return compile_workflow(
         workflow=workflow,
         workflow_revision=WorkflowRevisionMetadata(
@@ -113,6 +117,16 @@ def compile_packaged_workflow_fixture(name: str, revision_no: int) -> Any:
         ),
         compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
         lookup=load_packaged_seed_lookup(),
+    )
+
+
+def compile_packaged_workflow_fixture(
+    name: str,
+    revision_no: int,
+) -> NormalizedCompiledPlan:
+    return compile_workflow_fixture(
+        load_packaged_workflow_fixture(name),
+        revision_no,
     )
 
 

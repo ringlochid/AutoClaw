@@ -1,31 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
 
-from autoclaw.persistence.models import TaskModel, TaskResourceBindingModel
+from autoclaw.persistence.models import TaskModel, WorkspaceBindingModel
 from autoclaw.runtime.contracts import TaskRootPaths
 from autoclaw.runtime.errors import illegal_state_error, missing_resource_error
 from autoclaw.runtime.task_root.paths import ensure_task_root_layout
-
-_REQUIRED_TASK_ROOT_BINDINGS = frozenset(
-    {
-        "workspace",
-        "context",
-        "criteria",
-        "wiki",
-        "outputs",
-        "artifacts",
-        "tmp",
-        "transfers",
-        "runtime",
-        "attempts",
-        "dispatch",
-    }
-)
 
 
 async def load_task_root_paths(session: AsyncSession, task_id: str) -> TaskRootPaths:
@@ -35,52 +20,50 @@ async def load_task_root_paths(session: AsyncSession, task_id: str) -> TaskRootP
 
 
 async def read_task_root_paths(session: AsyncSession, task_id: str) -> TaskRootPaths:
-    task, bindings = await _task_with_root_bindings(session, task_id)
-    return _task_root_paths(task, bindings)
-
-
-async def _task_with_root_bindings(
-    session: AsyncSession,
-    task_id: str,
-) -> tuple[TaskModel, dict[str, str]]:
-    rows = list(
+    row = cast(
+        tuple[TaskModel, WorkspaceBindingModel | None] | None,
         (
             await session.execute(
-                select(TaskModel, TaskResourceBindingModel)
+                select(TaskModel, WorkspaceBindingModel)
                 .options(raiseload("*"))
                 .outerjoin(
-                    TaskResourceBindingModel,
-                    TaskResourceBindingModel.task_id == TaskModel.task_id,
+                    WorkspaceBindingModel,
+                    WorkspaceBindingModel.task_id == TaskModel.task_id,
                 )
                 .where(TaskModel.task_id == task_id)
-                .order_by(TaskResourceBindingModel.binding_kind.asc())
             )
-        ).all()
+        ).one_or_none(),
     )
-    if not rows:
+    if row is None:
         raise missing_resource_error(f"unknown task_id '{task_id}'")
-    task = rows[0][0]
-    bindings = {binding.binding_kind: binding.path for _, binding in rows if binding is not None}
-    missing = _REQUIRED_TASK_ROOT_BINDINGS.difference(bindings)
-    if missing:
-        raise illegal_state_error(
-            f"task '{task_id}' is missing task root bindings: {', '.join(sorted(missing))}"
-        )
-    return task, bindings
+
+    task, workspace_binding = row
+    if workspace_binding is None:
+        raise illegal_state_error(f"task '{task_id}' is missing its workspace binding")
+    return _task_root_paths(task, workspace_binding)
 
 
-def _task_root_paths(task: TaskModel, bindings: dict[str, str]) -> TaskRootPaths:
+def _task_root_paths(
+    task: TaskModel,
+    workspace_binding: WorkspaceBindingModel,
+) -> TaskRootPaths:
+    task_root = Path(task.task_root_path)
+    runtime_path = task_root / "_runtime"
+    outputs_path = task_root / "outputs"
+    transfers_path = task_root / "tmp" / "transfers"
     return TaskRootPaths(
-        task_root=Path(task.task_root_path),
-        workspace_path=Path(bindings["workspace"]),
-        context_path=Path(bindings["context"]),
-        criteria_path=Path(bindings["criteria"]),
-        wiki_path=Path(bindings["wiki"]),
-        outputs_path=Path(bindings["outputs"]),
-        artifacts_path=Path(bindings["artifacts"]),
-        tmp_path=Path(bindings["tmp"]),
-        transfers_path=Path(bindings["transfers"]),
-        runtime_path=Path(bindings["runtime"]),
-        attempts_path=Path(bindings["attempts"]),
-        dispatch_path=Path(bindings["dispatch"]),
+        task_root=task_root,
+        workspace_path=Path(workspace_binding.normalized_root_path),
+        outputs_path=outputs_path,
+        artifacts_path=outputs_path / "artifacts",
+        tmp_path=task_root / "tmp",
+        transfers_path=transfers_path,
+        localized_path=transfers_path / "localized",
+        runtime_path=runtime_path,
+        criteria_path=runtime_path / "criteria",
+        attempts_path=runtime_path / "attempts",
+        dispatch_path=runtime_path / "dispatch",
     )
+
+
+__all__ = ["load_task_root_paths", "read_task_root_paths"]

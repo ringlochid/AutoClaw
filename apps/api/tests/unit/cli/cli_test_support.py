@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import argparse
-import json
 import socket
 import sqlite3
 from pathlib import Path
 
-import pytest
 from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL
 from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
 
@@ -24,8 +22,6 @@ SEEDED_REGISTRY_TABLES = {
     "workflow_revisions",
     "tasks",
 }
-OPENCLAW_GATEWAY_BASE_URL = "http://127.0.0.1:18789"
-OPENCLAW_GATEWAY_TOKEN = "gateway-token"
 
 
 def build_cli_init_args(config_path: Path, data_dir: Path) -> argparse.Namespace:
@@ -114,31 +110,3 @@ def write_systemctl_show_script(
         encoding="utf-8",
     )
     script_path.chmod(0o755)
-
-
-def write_openclaw_gateway_config(
-    config_path: Path,
-    *,
-    token: str = OPENCLAW_GATEWAY_TOKEN,
-) -> None:
-    config_path.write_text(
-        json.dumps({"gateway": {"auth": {"token": token}}}, indent=2),
-        encoding="utf-8",
-    )
-
-
-def configure_openclaw_gateway_env(
-    monkeypatch: pytest.MonkeyPatch,
-    *,
-    config_path: Path,
-    binary_path: Path,
-    systemctl_bin: Path | None = None,
-    base_url: str = OPENCLAW_GATEWAY_BASE_URL,
-    token: str = OPENCLAW_GATEWAY_TOKEN,
-) -> None:
-    if systemctl_bin is not None:
-        monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
-    monkeypatch.setenv("OPENCLAW_CONFIG_PATH", str(config_path))
-    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BASE_URL", base_url)
-    monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_TOKEN", token)
-    monkeypatch.setenv("AUTOCLAW_OPENCLAW__BINARY_PATH", str(binary_path))

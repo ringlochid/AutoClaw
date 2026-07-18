@@ -1,19 +1,19 @@
 from __future__ import annotations
 
+from typing import NoReturn
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import autoclaw.runtime.flow.mutations as flow_mutations
-import autoclaw.runtime.flow.reads as flow_reads
-from autoclaw.persistence.models import DispatchTurnModel
 from autoclaw.runtime.contracts import (
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,
     RuntimeFlowSummaryListResponse,
 )
+from autoclaw.runtime.errors import illegal_state_error
 
 
 async def runtime_flow_read(session: AsyncSession, task_id: str) -> RuntimeFlowRead:
-    return await flow_reads.runtime_flow_read(session, task_id)
+    _runtime_flow_surface_unavailable()
 
 
 async def list_runtime_flows(
@@ -25,30 +25,7 @@ async def list_runtime_flows(
     limit: int = 50,
     sort: str = "updated_at_desc",
 ) -> RuntimeFlowSummaryListResponse:
-    return await flow_reads.list_runtime_flows(
-        session,
-        q=q,
-        cursor=cursor,
-        status=status,
-        limit=limit,
-        sort=sort,
-    )
-
-
-async def latest_unreplaced_fenced_dispatch(
-    session: AsyncSession,
-    *,
-    task_id: str,
-) -> DispatchTurnModel | None:
-    return await flow_reads.latest_unreplaced_fenced_dispatch(session, task_id=task_id)
-
-
-async def latest_fenced_dispatch(
-    session: AsyncSession,
-    *,
-    task_id: str,
-) -> DispatchTurnModel | None:
-    return await flow_reads.latest_fenced_dispatch(session, task_id=task_id)
+    _runtime_flow_surface_unavailable()
 
 
 async def continue_runtime_flow(
@@ -58,12 +35,7 @@ async def continue_runtime_flow(
     expected_active_flow_revision_id: str,
     actor_ref: str | None = None,
 ) -> RuntimeFlowRead:
-    return await flow_mutations.continue_runtime_flow(
-        session,
-        task_id,
-        expected_active_flow_revision_id=expected_active_flow_revision_id,
-        actor_ref=actor_ref,
-    )
+    _runtime_flow_surface_unavailable()
 
 
 async def pause_runtime_flow(
@@ -73,12 +45,7 @@ async def pause_runtime_flow(
     expected_active_flow_revision_id: str,
     actor_ref: str | None = None,
 ) -> RuntimeFlowPauseResponse:
-    return await flow_mutations.pause_runtime_flow(
-        session,
-        task_id,
-        expected_active_flow_revision_id=expected_active_flow_revision_id,
-        actor_ref=actor_ref,
-    )
+    _runtime_flow_surface_unavailable()
 
 
 async def cancel_runtime_flow(
@@ -88,19 +55,22 @@ async def cancel_runtime_flow(
     expected_active_flow_revision_id: str,
     actor_ref: str | None = None,
 ) -> RuntimeFlowRead:
-    return await flow_mutations.cancel_runtime_flow(
-        session,
-        task_id,
-        expected_active_flow_revision_id=expected_active_flow_revision_id,
-        actor_ref=actor_ref,
+    _runtime_flow_surface_unavailable()
+
+
+def _runtime_flow_surface_unavailable() -> NoReturn:
+    raise illegal_state_error(
+        "runtime flow reads and controls are not available in this build",
+        suggested_next_step=(
+            "Do not retry this request; use only the controller capabilities exposed "
+            "by this installation."
+        ),
     )
 
 
 __all__ = [
     "cancel_runtime_flow",
     "continue_runtime_flow",
-    "latest_fenced_dispatch",
-    "latest_unreplaced_fenced_dispatch",
     "list_runtime_flows",
     "pause_runtime_flow",
     "runtime_flow_read",

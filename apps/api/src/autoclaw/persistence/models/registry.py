@@ -67,13 +67,19 @@ class WorkflowDefinitionModel(RuntimeBase):
 
 class WorkflowRevisionModel(RuntimeBase):
     __tablename__ = "workflow_revisions"
-    __table_args__ = (UniqueConstraint("workflow_key", "revision_no"),)
+    __table_args__ = (
+        UniqueConstraint("workflow_key", "revision_no"),
+        CheckConstraint(
+            "revision_no >= 1",
+            name="ck_workflow_revisions_revision_no",
+        ),
+    )
 
     workflow_revision_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     workflow_key: Mapped[str] = mapped_column(ForeignKey("workflow_definitions.workflow_key"))
     revision_no: Mapped[int] = mapped_column(Integer)
     content_hash: Mapped[str] = mapped_column(String(64))
-    content_json: Mapped[dict[str, object]] = mapped_column(JSON)
+    content_json: Mapped[dict[str, object]] = mapped_column(JSON(none_as_null=True))
     source_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     definition: Mapped[WorkflowDefinitionModel] = relationship(
@@ -127,13 +133,19 @@ class RoleDefinitionModel(RuntimeBase):
 
 class RoleRevisionModel(RuntimeBase):
     __tablename__ = "role_revisions"
-    __table_args__ = (UniqueConstraint("role_key", "revision_no"),)
+    __table_args__ = (
+        UniqueConstraint("role_key", "revision_no"),
+        CheckConstraint(
+            "revision_no >= 1",
+            name="ck_role_revisions_revision_no",
+        ),
+    )
 
     role_revision_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     role_key: Mapped[str] = mapped_column(ForeignKey("role_definitions.role_key"))
     revision_no: Mapped[int] = mapped_column(Integer)
     content_hash: Mapped[str] = mapped_column(String(64))
-    content_json: Mapped[dict[str, object]] = mapped_column(JSON)
+    content_json: Mapped[dict[str, object]] = mapped_column(JSON(none_as_null=True))
     source_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     definition: Mapped[RoleDefinitionModel] = relationship(
@@ -187,13 +199,19 @@ class PolicyDefinitionModel(RuntimeBase):
 
 class PolicyRevisionModel(RuntimeBase):
     __tablename__ = "policy_revisions"
-    __table_args__ = (UniqueConstraint("policy_key", "revision_no"),)
+    __table_args__ = (
+        UniqueConstraint("policy_key", "revision_no"),
+        CheckConstraint(
+            "revision_no >= 1",
+            name="ck_policy_revisions_revision_no",
+        ),
+    )
 
     policy_revision_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     policy_key: Mapped[str] = mapped_column(ForeignKey("policy_definitions.policy_key"))
     revision_no: Mapped[int] = mapped_column(Integer)
     content_hash: Mapped[str] = mapped_column(String(64))
-    content_json: Mapped[dict[str, object]] = mapped_column(JSON)
+    content_json: Mapped[dict[str, object]] = mapped_column(JSON(none_as_null=True))
     source_path: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     definition: Mapped[PolicyDefinitionModel] = relationship(

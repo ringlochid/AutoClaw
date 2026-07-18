@@ -4,7 +4,6 @@ import argparse
 import asyncio
 import json
 import socket
-import sys
 import tomllib
 from pathlib import Path
 
@@ -13,13 +12,9 @@ import pytest
 from autoclaw.config import DEFAULT_API_PORT, get_settings
 from autoclaw.persistence.session import dispose_db_engine
 
-from tests.helpers.openclaw_cli import write_fake_openclaw_cli
-
 from .cli_test_support import (
     build_cli_init_args,
-    configure_openclaw_gateway_env,
     find_available_loopback_port,
-    write_openclaw_gateway_config,
     write_systemctl_show_script,
 )
 
@@ -35,22 +30,13 @@ def test_service_install_and_status_use_systemd_user_surface(
     env_file = tmp_path / "autoclaw.env"
     systemctl_log = tmp_path / "systemctl.log"
     systemctl_bin = tmp_path / "systemctl"
-    openclaw_config = tmp_path / "openclaw.json"
-    openclaw_bin = tmp_path / "openclaw"
     write_systemctl_show_script(
         systemctl_bin,
         systemctl_log,
         active_state="active",
         sub_state="running",
     )
-    write_fake_openclaw_cli(openclaw_bin)
-    write_openclaw_gateway_config(openclaw_config)
-    configure_openclaw_gateway_env(
-        monkeypatch,
-        config_path=openclaw_config,
-        binary_path=openclaw_bin,
-        systemctl_bin=systemctl_bin,
-    )
+    monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
 
     try:
         asyncio.run(cli.cmd_init(build_cli_init_args(config_path, data_dir)))
@@ -85,7 +71,7 @@ def test_service_install_and_status_use_systemd_user_surface(
     assert payload["manager"] == "systemd-user"
     assert payload["installed"] is True
     assert payload["running"] is True
-    assert "Checking OpenClaw support" in captured.err
+    assert "OpenClaw" not in captured.err
     assert "Checking local API bind target" in captured.err
     assert "Running" in captured.err
     assert "daemon-reload" in captured.err
@@ -104,14 +90,6 @@ def test_service_install_fails_before_unit_write_when_requested_port_is_busy(
     data_dir = tmp_path / "autoclaw-data"
     unit_dir = tmp_path / "systemd-user"
     env_file = tmp_path / "autoclaw.env"
-    openclaw_config = tmp_path / "openclaw.json"
-    write_openclaw_gateway_config(openclaw_config)
-    configure_openclaw_gateway_env(
-        monkeypatch,
-        config_path=openclaw_config,
-        binary_path=Path(sys.executable),
-    )
-
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as busy_socket:
         busy_socket.bind(("127.0.0.1", 0))
         busy_socket.listen(1)
@@ -155,7 +133,6 @@ def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
     env_file = tmp_path / "autoclaw.env"
     systemctl_log = tmp_path / "systemctl-reconcile.log"
     systemctl_bin = tmp_path / "systemctl-reconcile"
-    openclaw_config = tmp_path / "openclaw.json"
     unit_dir.mkdir(parents=True, exist_ok=True)
     env_file.write_text("CUSTOM_FLAG=1\n", encoding="utf-8")
     unit_dir.joinpath("autoclaw.service").write_text("stale unit\n", encoding="utf-8")
@@ -165,13 +142,7 @@ def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
         active_state="inactive",
         sub_state="dead",
     )
-    write_openclaw_gateway_config(openclaw_config)
-    configure_openclaw_gateway_env(
-        monkeypatch,
-        config_path=openclaw_config,
-        binary_path=Path(sys.executable),
-        systemctl_bin=systemctl_bin,
-    )
+    monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
 
     try:
         init_args = build_cli_init_args(config_path, data_dir)

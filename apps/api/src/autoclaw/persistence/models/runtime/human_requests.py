@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     JSON,
@@ -12,6 +12,7 @@ from sqlalchemy import (
     Index,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,138 +27,143 @@ from autoclaw.persistence.models.runtime.common import (
 )
 
 if TYPE_CHECKING:
-    from autoclaw.persistence.models.runtime.assignment.execution import (
-        AssignmentModel,
-        AttemptModel,
-    )
     from autoclaw.persistence.models.runtime.dispatch.turns import DispatchTurnModel
-    from autoclaw.persistence.models.runtime.flow.graph import FlowNodeModel
-    from autoclaw.persistence.models.runtime.flow.runtime import FlowModel, FlowRevisionModel
-    from autoclaw.persistence.models.runtime.task import TaskModel
-    from autoclaw.persistence.models.runtime.waiting import FlowWaitStateModel
+    from autoclaw.persistence.models.runtime.waiting import FlowWaitModel
 
 
-class PendingHumanRequestModel(RuntimeBase):
-    __tablename__ = "pending_human_requests"
+class HumanRequestModel(RuntimeBase):
+    __tablename__ = "human_requests"
     __table_args__ = (
+        UniqueConstraint("source_dispatch_id"),
+        UniqueConstraint("request_id", "task_id", "flow_id", "source_dispatch_id"),
         CheckConstraint(
-            f"kind IN ({sql_in(HUMAN_REQUEST_KIND_VALUES)})",
-            name="ck_pending_human_requests_kind",
+            f"request_kind IN ({sql_in(HUMAN_REQUEST_KIND_VALUES)})",
+            name="ck_human_requests_kind",
         ),
         CheckConstraint(
             f"status IN ({sql_in(HUMAN_REQUEST_STATUS_VALUES)})",
-            name="ck_pending_human_requests_status",
+            name="ck_human_requests_status",
         ),
         CheckConstraint(
-            f"resolution_kind IS NULL OR resolution_kind IN "
-            f"({sql_in(HUMAN_REQUEST_RESOLUTION_KIND_VALUES)})",
-            name="ck_pending_human_requests_resolution_kind",
+            "resolution_kind IS NULL OR "
+            f"resolution_kind IN ({sql_in(HUMAN_REQUEST_RESOLUTION_KIND_VALUES)})",
+            name="ck_human_requests_resolution_kind",
         ),
         CheckConstraint(
-            "resolution_note IS NULL OR resolved_at IS NOT NULL",
-            name="ck_pending_human_requests_resolution_note_owner",
+            "resolved_by_surface IS NULL OR "
+            f"resolved_by_surface IN ({sql_in(HUMAN_REQUEST_RESOLUTION_SURFACE_VALUES)})",
+            name="ck_human_requests_resolution_surface",
         ),
         CheckConstraint(
-            "resolved_by_surface IS NULL OR resolved_by_surface IN "
-            f"({sql_in(HUMAN_REQUEST_RESOLUTION_SURFACE_VALUES)})",
-            name="ck_pending_human_requests_resolution_surface",
+            "(due_at IS NULL AND timeout_policy_json IS NULL AND default_behavior_json IS NULL) OR "
+            "(due_at IS NOT NULL AND timeout_policy_json IS NOT NULL)",
+            name="ck_human_requests_timeout_policy",
         ),
         CheckConstraint(
-            "(status = 'open' AND resolution_kind IS NULL AND resolved_at IS NULL "
-            "AND resolved_by_surface IS NULL AND resolution_policy_basis IS NULL) OR "
-            "(status = 'resolved' AND resolution_kind = 'answered' AND resolved_at IS NOT NULL "
-            "AND resolved_by_surface IS NOT NULL AND resolution_policy_basis IS NOT NULL) OR "
-            "(status = 'timed_out' AND resolution_kind = 'timed_out' "
-            "AND resolved_at IS NOT NULL AND resolved_by_surface IS NOT NULL "
-            "AND resolution_policy_basis IS NOT NULL) OR "
-            "(status = 'cancelled' AND resolution_kind = 'cancelled' "
-            "AND resolved_at IS NOT NULL AND resolved_by_surface IS NOT NULL "
-            "AND resolution_policy_basis IS NOT NULL)",
-            name="ck_pending_human_requests_resolution_status",
+            "status != 'timed_out' OR due_at IS NOT NULL",
+            name="ck_human_requests_timeout_requires_deadline",
+        ),
+        CheckConstraint(
+            "(status = 'open' AND resolution_kind IS NULL AND item_responses_json IS NULL AND "
+            "resolution_policy_basis_json IS NULL AND resolution_summary IS NULL AND "
+            "resolved_by_actor_ref IS NULL AND resolved_by_surface IS NULL AND "
+            "resolved_at IS NULL AND successor_dispatch_id IS NULL) OR "
+            "(status != 'open' AND resolution_kind IS NOT NULL AND "
+            "resolution_summary IS NOT NULL AND resolved_by_surface IS NOT NULL AND "
+            "resolved_at IS NOT NULL)",
+            name="ck_human_requests_terminal_state",
+        ),
+        CheckConstraint(
+            "(status = 'resolved' AND resolution_kind = 'answered' AND "
+            "item_responses_json IS NOT NULL) OR "
+            "(status = 'timed_out' AND resolution_kind = 'timed_out' AND "
+            "item_responses_json IS NULL AND resolution_policy_basis_json IS NOT NULL) OR "
+            "(status = 'cancelled' AND resolution_kind = 'cancelled' AND "
+            "item_responses_json IS NULL) OR status = 'open'",
+            name="ck_human_requests_status_resolution",
         ),
         ForeignKeyConstraint(
-            ["flow_id", "flow_revision_id"],
-            ["flow_revisions.flow_id", "flow_revisions.flow_revision_id"],
-            name="fk_pending_human_requests_flow_revision_owner",
+            ["source_dispatch_id", "task_id", "flow_id", "assignment_id", "attempt_id"],
+            [
+                "dispatch_turns.dispatch_id",
+                "dispatch_turns.task_id",
+                "dispatch_turns.flow_id",
+                "dispatch_turns.assignment_id",
+                "dispatch_turns.attempt_id",
+            ],
+            name="fk_human_requests_source_owner",
             deferrable=True,
             initially="DEFERRED",
         ),
         ForeignKeyConstraint(
-            ["flow_id", "flow_revision_id", "flow_node_id"],
-            ["flow_nodes.flow_id", "flow_nodes.flow_revision_id", "flow_nodes.flow_node_id"],
-            name="fk_pending_human_requests_flow_node_owner",
+            ["source_dispatch_id", "successor_dispatch_id"],
+            ["dispatch_turns.predecessor_dispatch_id", "dispatch_turns.dispatch_id"],
+            name="fk_human_requests_successor_owner",
             deferrable=True,
             initially="DEFERRED",
         ),
-        ForeignKeyConstraint(
-            ["attempt_id", "assignment_id"],
-            ["attempts.attempt_id", "attempts.assignment_id"],
-            name="fk_pending_human_requests_attempt_owner",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        Index("ix_pending_human_requests_task_status", "task_id", "status"),
-        Index("ix_pending_human_requests_dispatch_status", "dispatch_id", "status"),
-        Index("ix_pending_human_requests_flow_node_status", "flow_node_id", "status"),
+        Index("ix_human_requests_status_due", "status", "due_at"),
+        Index("ix_human_requests_task_status", "task_id", "status"),
     )
 
     request_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.task_id"), index=True)
     flow_id: Mapped[str] = mapped_column(ForeignKey("flows.flow_id"), index=True)
-    flow_revision_id: Mapped[str] = mapped_column(ForeignKey("flow_revisions.flow_revision_id"))
-    flow_node_id: Mapped[str] = mapped_column(ForeignKey("flow_nodes.flow_node_id"), index=True)
     assignment_id: Mapped[str] = mapped_column(ForeignKey("assignments.assignment_id"))
-    attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.attempt_id"), index=True)
-    dispatch_id: Mapped[str] = mapped_column(ForeignKey("dispatch_turns.dispatch_id"), index=True)
-    requester_node_key: Mapped[str] = mapped_column(String(255))
-    kind: Mapped[str] = mapped_column(String(64))
-    title: Mapped[str] = mapped_column(Text)
-    summary: Mapped[str] = mapped_column(Text)
-    items_json: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
-    timeout_json: Mapped[dict[str, Any]] = mapped_column(JSON)
-    suggested_human_instruction: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(64), index=True)
+    attempt_id: Mapped[str] = mapped_column(ForeignKey("attempts.attempt_id"))
+    source_dispatch_id: Mapped[str] = mapped_column(String(255), index=True)
+    request_kind: Mapped[str] = mapped_column(String(64))
+    request_summary: Mapped[str] = mapped_column(Text)
+    request_items_json: Mapped[list[dict[str, object]]] = mapped_column(JSON(none_as_null=True))
+    context_refs_json: Mapped[list[dict[str, object]] | None] = mapped_column(
+        JSON(none_as_null=True),
+        nullable=True,
+    )
+    suggested_human_instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
+    capability_basis_json: Mapped[dict[str, object]] = mapped_column(JSON(none_as_null=True))
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    timeout_policy_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
+    default_behavior_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(64), default="open")
     resolution_kind: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    item_responses_json: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    item_responses_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
+    resolution_policy_basis_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSON(none_as_null=True),
+        nullable=True,
+    )
+    resolution_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolved_by_actor_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
     resolved_by_surface: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    resolution_policy_basis: Mapped[str | None] = mapped_column(Text, nullable=True)
-    resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    successor_dispatch_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=utcnow,
-        onupdate=utcnow,
-    )
-    task: Mapped[TaskModel] = relationship("TaskModel", foreign_keys=[task_id])
-    flow: Mapped[FlowModel] = relationship("FlowModel", foreign_keys=[flow_id])
-    flow_revision: Mapped[FlowRevisionModel] = relationship(
-        "FlowRevisionModel",
-        foreign_keys=[flow_revision_id],
-    )
-    flow_node: Mapped[FlowNodeModel] = relationship(
-        "FlowNodeModel",
-        foreign_keys=[flow_node_id],
-    )
-    assignment: Mapped[AssignmentModel] = relationship(
-        "AssignmentModel",
-        foreign_keys=[assignment_id],
-    )
-    attempt: Mapped[AttemptModel] = relationship(
-        "AttemptModel",
-        foreign_keys=[attempt_id],
-    )
-    dispatch: Mapped[DispatchTurnModel] = relationship(
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    source_dispatch: Mapped[DispatchTurnModel] = relationship(
         "DispatchTurnModel",
-        foreign_keys=[dispatch_id],
+        back_populates="human_request",
+        foreign_keys=[source_dispatch_id, task_id, flow_id, assignment_id, attempt_id],
+        lazy="raise",
+        viewonly=True,
     )
-    wait_state: Mapped[FlowWaitStateModel | None] = relationship(
-        "FlowWaitStateModel",
-        back_populates="pending_human_request",
-        foreign_keys="FlowWaitStateModel.pending_human_request_id",
+    successor_dispatch: Mapped[DispatchTurnModel | None] = relationship(
+        "DispatchTurnModel",
+        foreign_keys=[source_dispatch_id, successor_dispatch_id],
+        lazy="raise",
+        viewonly=True,
+    )
+    flow_wait: Mapped[FlowWaitModel | None] = relationship(
+        "FlowWaitModel",
+        back_populates="human_request",
+        foreign_keys="FlowWaitModel.human_request_id",
+        lazy="raise",
         uselist=False,
+        viewonly=True,
     )
 
 
-__all__ = ["PendingHumanRequestModel"]
+__all__ = ["HumanRequestModel"]

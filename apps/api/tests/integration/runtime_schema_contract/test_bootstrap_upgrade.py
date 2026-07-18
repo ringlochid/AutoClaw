@@ -1,486 +1,291 @@
 from __future__ import annotations
 
-import argparse
-import asyncio
-import json
-import sqlite3
-from datetime import UTC, datetime
+from collections.abc import Callable
 from pathlib import Path
-from types import SimpleNamespace
-from typing import cast
 
-import autoclaw.interfaces.cli as cli
 import pytest
-from autoclaw.config import get_settings
-from autoclaw.persistence.models import CommandRunModel
-from autoclaw.persistence.session import dispose_db_engine, get_session_factory
-from autoclaw.runtime.command_run.continuation import (
-    command_run_continuation_context_for_dispatch,
+from autoclaw.persistence.schema_contract import (
+    normalize_schema_sql,
+    schema_mismatch_messages,
+    verify_schema_contract,
 )
-from autoclaw.runtime.command_run.records import command_run_record_from_model
-from autoclaw.runtime.human_request.continuation import (
-    human_request_continuation_context_for_dispatch,
-)
-from autoclaw.runtime.human_request.service import list_human_requests
-from tests.integration.runtime_schema_contract.lineage_support import (
-    insert_dispatch_turn,
-    seed_runtime_lineage_scope_fixture,
-)
-from tests.integration.runtime_schema_contract.support import (
-    initialize_runtime_schema_database,
-)
-
-_TERMINAL_TASK_ID = "task.alpha.a"
-_TERMINAL_FLOW_ID = "flow.alpha.a"
-_TERMINAL_FLOW_REVISION_ID = "flow-revision.alpha.a.1"
-_TERMINAL_FLOW_NODE_ID = "flow-node.alpha.a.r1.root"
-_TERMINAL_ASSIGNMENT_ID = "assignment.alpha.a.r1.root"
-_TERMINAL_ATTEMPT_ID = "attempt.alpha.a.r1.root.01"
-_TERMINAL_DISPATCH_ID = "dispatch.alpha.a.terminal"
-_TERMINAL_REQUEST_ID = "human-request.alpha.a.terminal"
-_TERMINAL_COMMAND_RUN_ID = "command-run.alpha.a.terminal"
-_TERMINAL_LOG_REF = "_runtime/dispatch/command-runs/command-run.alpha.a.terminal.log"
-_TERMINAL_EVENT_TIME = "2026-05-06T00:05:00+00:00"
-_TERMINAL_REQUEST_ITEMS_JSON = json.dumps(
-    [
-        {
-            "item_id": "review_choice",
-            "prompt": "Should the node proceed with this patch?",
-            "options": [
-                {"id": "approve", "title": "Approve"},
-                {"id": "revise", "title": "Revise"},
-            ],
-            "recommended_option": "approve",
-        }
-    ]
-)
-_TERMINAL_REQUEST_RESPONSES_JSON = json.dumps(
-    [
-        {
-            "item_id": "review_choice",
-            "selected_option": "approve",
-            "freeform_answer": None,
-            "extra_notes": "Looks good.",
-            "response_payload": None,
-        }
-    ]
+from autoclaw.persistence.session import DatabaseSchemaMismatchError
+from sqlalchemy import Engine, create_engine
+from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+    create_runtime_schema_engine,
+    rewrite_empty_sqlite_table,
 )
 
 
-async def test_db_upgrade_repairs_legacy_terminal_runtime_rows_for_readback_and_continuation(
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    config_path = tmp_path / "autoclaw-config.toml"
-    database_path = await initialize_runtime_schema_database(tmp_path)
-    await dispose_db_engine()
-    _seed_terminal_runtime_rows(database_path)
-    _legacyify_terminal_runtime_tables(database_path)
+def _messages(engine: Engine) -> list[str]:
+    with engine.connect() as connection:
+        return schema_mismatch_messages(connection, None)
 
+
+def _verify(engine: Engine) -> None:
+    with engine.connect() as connection:
+        verify_schema_contract(connection, None)
+
+
+def test_exact_schema_verifier_accepts_a_fresh_target_schema(tmp_path: Path) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
     try:
-        upgrade_result = await asyncio.to_thread(
-            cli.cmd_db_upgrade,
-            argparse.Namespace(config=str(config_path), revision="head"),
-        )
+        assert _messages(engine) == []
+        _verify(engine)
     finally:
-        await dispose_db_engine()
-
-    assert upgrade_result == 0
-    captured = capsys.readouterr()
-    assert "Database repair: legacy schema backed up and reconciled" in captured.out
-    assert str(database_path) in captured.out
-    assert "Skipped tables:" in captured.out
-
-    with sqlite3.connect(database_path) as connection:
-        human_request_row = connection.execute(
-            """
-            SELECT
-                resolved_by_actor_ref,
-                resolved_by_surface,
-                resolution_policy_basis,
-                resolution_note
-            FROM pending_human_requests
-            WHERE request_id = ?
-            """,
-            (_TERMINAL_REQUEST_ID,),
-        ).fetchone()
-        command_run_row = connection.execute(
-            """
-            SELECT terminal_event_source, terminal_actor_ref
-            FROM command_runs
-            WHERE run_id = ?
-            """,
-            (_TERMINAL_COMMAND_RUN_ID,),
-        ).fetchone()
-
-    assert human_request_row == (
-        None,
-        "control_api",
-        "task_authorized_human_request_resolution",
-        None,
-    )
-    assert command_run_row == ("controller", None)
-
-    with cli.command_env(config_path=config_path):
-        get_settings.cache_clear()
-        session_factory = get_session_factory()
-        async with session_factory() as session:
-            human_requests = await list_human_requests(session, task_id=_TERMINAL_TASK_ID)
-            human_request_context = await human_request_continuation_context_for_dispatch(
-                session,
-                task_id=_TERMINAL_TASK_ID,
-                previous_dispatch_id=_TERMINAL_DISPATCH_ID,
-            )
-            command_run_context = await command_run_continuation_context_for_dispatch(
-                session,
-                task_id=_TERMINAL_TASK_ID,
-                previous_dispatch_id=_TERMINAL_DISPATCH_ID,
-            )
-
-        await dispose_db_engine()
-
-    assert [item.request.request_id for item in human_requests.items] == [_TERMINAL_REQUEST_ID]
-    assert human_requests.items[0].resolution is not None
-    assert human_requests.items[0].resolution.resolution_kind == "answered"
-    assert human_requests.items[0].resolution.resolved_by_actor_ref is None
-    assert human_request_context is not None
-    assert human_request_context.request.request_id == _TERMINAL_REQUEST_ID
-    assert human_request_context.resolution is not None
-    assert human_request_context.resolution.resolution_kind == "answered"
-    assert human_request_context.resolution.resolved_by_actor_ref is None
-    assert command_run_context is not None
-    assert command_run_context.run_id == _TERMINAL_COMMAND_RUN_ID
-    assert command_run_context.terminal_event_source == "controller"
-    assert command_run_context.terminal_actor_ref is None
+        engine.dispose()
 
 
 @pytest.mark.parametrize(
-    ("state", "terminal_summary", "ended_at", "expected_terminal_event_source"),
+    ("postgresql_reflection", "metadata_sql"),
     (
-        ("cancellation_requested", None, None, None),
-        ("failed", "command failed with exit code 7", _TERMINAL_EVENT_TIME, "controller"),
-        ("timed_out", "command timed out after 600 seconds", _TERMINAL_EVENT_TIME, "controller"),
+        (
+            "((status)::text = ANY ((ARRAY['running'::character varying, "
+            "'paused'::character varying])::text[]))",
+            "status IN ('running', 'paused')",
+        ),
+        (
+            "((status)::text <> ALL ((ARRAY['completed'::character varying, "
+            "'cancelled'::character varying])::text[]))",
+            "status NOT IN ('completed', 'cancelled')",
+        ),
+        (
+            "CASE WHEN ((status)::text = ANY ((ARRAY['starting'::character varying, "
+            "'open'::character varying])::text[])) THEN 1 ELSE NULL::integer END",
+            "CASE WHEN status IN ('starting', 'open') THEN 1 ELSE NULL END",
+        ),
     ),
 )
-def test_command_run_record_readback_only_uses_cancel_provenance_for_cancelled_rows(
-    state: str,
-    terminal_summary: str | None,
-    ended_at: str | None,
-    expected_terminal_event_source: str | None,
+def test_schema_verifier_normalizes_postgresql_array_rendering(
+    postgresql_reflection: str,
+    metadata_sql: str,
 ) -> None:
-    command_run_model = _legacy_command_run_model_for_readback(
-        state=state,
-        terminal_summary=terminal_summary,
-        ended_at=ended_at,
-        cancellation_requested_by_actor_ref="operator.alice",
-    )
-
-    command_run_record = command_run_record_from_model(command_run_model)
-
-    assert command_run_record.terminal_event_source == expected_terminal_event_source
-    assert command_run_record.terminal_actor_ref is None
+    assert normalize_schema_sql(postgresql_reflection) == normalize_schema_sql(metadata_sql)
 
 
-def _seed_terminal_runtime_rows(database_path: Path) -> None:
-    with sqlite3.connect(database_path) as connection:
-        seed_runtime_lineage_scope_fixture(connection)
-        insert_dispatch_turn(
-            connection,
-            dispatch_id=_TERMINAL_DISPATCH_ID,
-            flow_id=_TERMINAL_FLOW_ID,
-            flow_revision_id=_TERMINAL_FLOW_REVISION_ID,
-            flow_node_id=_TERMINAL_FLOW_NODE_ID,
-            assignment_id=_TERMINAL_ASSIGNMENT_ID,
-            attempt_id=_TERMINAL_ATTEMPT_ID,
-        )
-        _insert_terminal_human_request(connection)
-        _insert_terminal_command_run(connection)
-        _insert_terminal_task_events(connection)
-        connection.commit()
-
-
-def _insert_terminal_human_request(connection: sqlite3.Connection) -> None:
-    connection.execute(
-        """
-        INSERT INTO pending_human_requests (
-            request_id,
-            task_id,
-            flow_id,
-            flow_revision_id,
-            flow_node_id,
-            assignment_id,
-            attempt_id,
-            dispatch_id,
-            requester_node_key,
-            kind,
-            title,
-            summary,
-            items_json,
-            timeout_json,
-            suggested_human_instruction,
-            status,
-            resolution_kind,
-            item_responses_json,
-            resolved_at,
-            resolved_by_actor_ref,
-            resolved_by_surface,
-            resolution_policy_basis,
-            resolution_note,
-            opened_at,
-            updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
+@pytest.mark.parametrize(
+    ("table_name", "transform", "expected_message"),
+    (
         (
-            _TERMINAL_REQUEST_ID,
-            _TERMINAL_TASK_ID,
-            _TERMINAL_FLOW_ID,
-            _TERMINAL_FLOW_REVISION_ID,
-            _TERMINAL_FLOW_NODE_ID,
-            _TERMINAL_ASSIGNMENT_ID,
-            _TERMINAL_ATTEMPT_ID,
-            _TERMINAL_DISPATCH_ID,
-            "root",
-            "review",
-            "Review implementation patch",
-            "The node needs a human review before continuing.",
-            _TERMINAL_REQUEST_ITEMS_JSON,
-            json.dumps({"due_at": None, "default_behavior": None}),
-            "Inspect the patch before answering.",
-            "resolved",
-            "answered",
-            _TERMINAL_REQUEST_RESPONSES_JSON,
-            _TERMINAL_EVENT_TIME,
-            "control_api",
-            "control_api",
-            "task_authorized_human_request_resolution",
-            None,
-            "2026-05-06T00:00:00+00:00",
-            _TERMINAL_EVENT_TIME,
+            "node_invocations",
+            lambda ddl: ddl.replace(
+                "\tlogical_tool_name VARCHAR(255) NOT NULL, \n",
+                "",
+            ),
+            "node_invocations missing column logical_tool_name",
         ),
-    )
-
-
-def _insert_terminal_command_run(connection: sqlite3.Connection) -> None:
-    connection.execute(
-        """
-        INSERT INTO command_runs (
-            run_id,
-            task_id,
-            flow_id,
-            flow_revision_id,
-            flow_node_id,
-            assignment_id,
-            attempt_id,
-            dispatch_id,
-            requester_node_key,
-            command,
-            description,
-            workdir,
-            timeout_seconds,
-            state,
-            owned_process_pid,
-            latest_update,
-            latest_log_ref,
-            terminal_summary,
-            terminal_exit_code,
-            terminal_signal,
-            terminal_log_ref,
-            terminal_event_source,
-            terminal_actor_ref,
-            cancellation_requested_at,
-            cancellation_requested_by_actor_ref,
-            created_at,
-            started_at,
-            ended_at,
-            updated_at
-        ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-        )
-        """,
         (
-            _TERMINAL_COMMAND_RUN_ID,
-            _TERMINAL_TASK_ID,
-            _TERMINAL_FLOW_ID,
-            _TERMINAL_FLOW_REVISION_ID,
-            _TERMINAL_FLOW_NODE_ID,
-            _TERMINAL_ASSIGNMENT_ID,
-            _TERMINAL_ATTEMPT_ID,
-            _TERMINAL_DISPATCH_ID,
-            "root",
-            "pytest apps/api/tests/unit -q",
-            "Run targeted tests.",
-            "workspace",
-            600,
-            "failed",
-            None,
-            "command failed with exit code 7",
-            _TERMINAL_LOG_REF,
-            "command failed with exit code 7",
-            7,
-            None,
-            _TERMINAL_LOG_REF,
-            "controller",
-            None,
-            None,
-            "operator.alice",
-            "2026-05-06T00:01:00+00:00",
-            "2026-05-06T00:02:00+00:00",
-            _TERMINAL_EVENT_TIME,
-            _TERMINAL_EVENT_TIME,
+            "node_invocations",
+            lambda ddl: ddl.replace(
+                "logical_tool_name VARCHAR(255) NOT NULL",
+                "logical_tool_name TEXT NOT NULL",
+            ),
+            "node_invocations changed column logical_tool_name",
         ),
-    )
-
-
-def _insert_terminal_task_events(connection: sqlite3.Connection) -> None:
-    connection.executemany(
-        """
-        INSERT INTO task_events (
-            event_id,
-            event_seq,
-            task_id,
-            event_type,
-            event_source,
-            occurred_at,
-            flow_revision_id,
-            dispatch_id,
-            attempt_id,
-            node_key,
-            actor_ref,
-            payload,
-            prev_event_hash,
-            event_hash
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
         (
-            (
-                "task-event.human-request.terminal",
-                1,
-                _TERMINAL_TASK_ID,
-                "human_request_resolved",
-                "control_api",
-                _TERMINAL_EVENT_TIME,
-                _TERMINAL_FLOW_REVISION_ID,
-                _TERMINAL_DISPATCH_ID,
-                _TERMINAL_ATTEMPT_ID,
-                "root",
-                "control_api",
-                json.dumps(
-                    {
-                        "request_id": _TERMINAL_REQUEST_ID,
-                        "status": "resolved",
-                        "resolution_kind": "answered",
-                        "resolved_by_actor_ref": "control_api",
-                    }
-                ),
-                None,
-                "hash.task-event.human-request.terminal",
+            "node_invocations",
+            lambda ddl: ddl.replace(
+                "logical_tool_name VARCHAR(255) NOT NULL",
+                "logical_tool_name VARCHAR(255)",
             ),
-            (
-                "task-event.command-run.terminal",
-                2,
-                _TERMINAL_TASK_ID,
-                "command_run_failed",
-                "controller",
-                _TERMINAL_EVENT_TIME,
-                _TERMINAL_FLOW_REVISION_ID,
-                _TERMINAL_DISPATCH_ID,
-                _TERMINAL_ATTEMPT_ID,
-                "root",
-                None,
-                json.dumps(
-                    {
-                        "run_id": _TERMINAL_COMMAND_RUN_ID,
-                        "state": "failed",
-                        "summary": "command failed with exit code 7",
-                        "exit_code": 7,
-                        "signal": None,
-                        "ended_at": _TERMINAL_EVENT_TIME,
-                        "log_ref": _TERMINAL_LOG_REF,
-                    }
-                ),
-                "hash.task-event.human-request.terminal",
-                "hash.task-event.command-run.terminal",
-            ),
+            "node_invocations changed column logical_tool_name",
         ),
-    )
-
-
-def _legacyify_terminal_runtime_tables(database_path: Path) -> None:
-    with sqlite3.connect(database_path) as connection:
-        connection.execute("PRAGMA foreign_keys = OFF")
-        _rewrite_table_without_columns(
-            connection,
-            table_name="pending_human_requests",
-            removed_columns=(
-                "resolved_by_surface",
-                "resolution_policy_basis",
-                "resolution_note",
+        (
+            "dispatch_turns",
+            lambda ddl: ddl.replace(
+                "node_activity_revision INTEGER DEFAULT '0' NOT NULL",
+                "node_activity_revision INTEGER DEFAULT '1' NOT NULL",
             ),
-        )
-        _rewrite_table_without_columns(
-            connection,
-            table_name="command_runs",
-            removed_columns=("terminal_event_source", "terminal_actor_ref"),
-        )
-        connection.commit()
-
-
-def _rewrite_table_without_columns(
-    connection: sqlite3.Connection,
-    *,
+            "dispatch_turns changed column node_activity_revision",
+        ),
+        (
+            "flows",
+            lambda ddl: ddl.replace(
+                "CASE WHEN current_dispatch_id IS NULL THEN 0 ELSE 1 END",
+                "CASE WHEN current_dispatch_id IS NULL THEN 1 ELSE 0 END",
+            ),
+            "flows changed column current_dispatch_presence_marker",
+        ),
+        (
+            "flows",
+            lambda ddl: ddl.replace(
+                "current_dispatch_presence_marker INTEGER NOT NULL GENERATED ALWAYS AS "
+                "(CASE WHEN current_dispatch_id IS NULL THEN 0 ELSE 1 END) STORED",
+                "current_dispatch_presence_marker INTEGER NOT NULL GENERATED ALWAYS AS "
+                "(CASE WHEN current_dispatch_id IS NULL THEN 0 ELSE 1 END) VIRTUAL",
+            ),
+            "flows changed column current_dispatch_presence_marker",
+        ),
+        (
+            "tasks",
+            lambda ddl: ddl.replace(
+                "PRIMARY KEY (task_id)",
+                "PRIMARY KEY (task_key)",
+            ),
+            "tasks changed primary key",
+        ),
+        (
+            "compiled_plan_nodes",
+            lambda ddl: ddl.replace(
+                ", \n\tUNIQUE (compiled_plan_id, node_key)",
+                "",
+            ),
+            "compiled_plan_nodes missing unique constraint ('compiled_plan_id', 'node_key')",
+        ),
+        (
+            "node_invocations",
+            lambda ddl: ddl.replace(
+                ", \n\tCONSTRAINT fk_node_invocations_dispatch_owner "
+                "FOREIGN KEY(dispatch_id, task_id) REFERENCES dispatch_turns "
+                "(dispatch_id, task_id) DEFERRABLE INITIALLY DEFERRED",
+                "",
+            ),
+            "node_invocations missing foreign key",
+        ),
+        (
+            "node_invocations",
+            lambda ddl: ddl.replace(
+                "DEFERRABLE INITIALLY DEFERRED",
+                "NOT DEFERRABLE",
+            ),
+            "node_invocations missing foreign key",
+        ),
+        (
+            "task_events",
+            lambda ddl: ddl.replace("event_seq >= 1", "event_seq >= 0"),
+            "task_events missing or changed check constraint ck_task_events_event_seq",
+        ),
+        (
+            "task_event_stream_heads",
+            lambda ddl: ddl.replace("allocator_revision >= 0", "allocator_revision >= -1"),
+            "task_event_stream_heads missing or changed check constraint "
+            "ck_task_event_stream_heads_allocator_revision",
+        ),
+    ),
+    ids=(
+        "missing-column",
+        "column-type",
+        "column-nullability",
+        "server-default",
+        "computed-expression",
+        "computed-persistence",
+        "primary-key",
+        "unique-constraint",
+        "foreign-key",
+        "foreign-key-options",
+        "check-constraint",
+        "event-stream-head-check",
+    ),
+)
+def test_exact_schema_verifier_rejects_changed_table_contracts(
+    tmp_path: Path,
     table_name: str,
-    removed_columns: tuple[str, ...],
+    transform: Callable[[str], str],
+    expected_message: str,
 ) -> None:
-    current_columns = [
-        row[1]
-        for row in connection.execute(f"PRAGMA table_info('{table_name}')").fetchall()
-        if isinstance(row[1], str) and row[1] not in removed_columns
-    ]
-    projection = ", ".join(f'"{column_name}"' for column_name in current_columns)
-    legacy_table_name = f"{table_name}_legacy"
-    connection.execute(
-        f'CREATE TABLE "{legacy_table_name}" AS SELECT {projection} FROM "{table_name}"'
+    database_path = tmp_path / "runtime.sqlite"
+    engine = create_runtime_schema_engine(tmp_path)
+    engine.dispose()
+    rewrite_empty_sqlite_table(
+        database_path,
+        table_name=table_name,
+        transform=transform,
     )
-    connection.execute(f'DROP TABLE "{table_name}"')
-    connection.execute(f'ALTER TABLE "{legacy_table_name}" RENAME TO "{table_name}"')
+    engine = _create_runtime_schema_engine_for_existing_file(database_path)
+    try:
+        messages = _messages(engine)
+        assert any(expected_message in message for message in messages)
+        with pytest.raises(DatabaseSchemaMismatchError, match="autoclaw db reset"):
+            _verify(engine)
+    finally:
+        engine.dispose()
 
 
-def _legacy_command_run_model_for_readback(
-    *,
-    state: str,
-    terminal_summary: str | None,
-    ended_at: str | None,
-    cancellation_requested_by_actor_ref: str | None,
-) -> CommandRunModel:
-    created_at = datetime(2026, 5, 6, 0, 1, tzinfo=UTC)
-    started_at = datetime(2026, 5, 6, 0, 2, tzinfo=UTC)
-    ended_at_value = datetime.fromisoformat(ended_at) if ended_at is not None else None
-    terminal_log_ref = _TERMINAL_LOG_REF if terminal_summary is not None else None
-    latest_update = terminal_summary or "operator requested command-run cancellation"
-    return cast(
-        CommandRunModel,
-        SimpleNamespace(
-            run_id="command-run.legacy.readback",
-            task_id=_TERMINAL_TASK_ID,
-            dispatch_id=_TERMINAL_DISPATCH_ID,
-            attempt_id=_TERMINAL_ATTEMPT_ID,
-            command="pytest apps/api/tests/unit -q",
-            description="Run targeted tests.",
-            workdir="workspace",
-            state=state,
-            created_at=created_at,
-            started_at=started_at,
-            ended_at=ended_at_value,
-            timeout_seconds=600,
-            latest_update=latest_update,
-            latest_log_ref=_TERMINAL_LOG_REF,
-            cancellation_requested_at=created_at,
-            cancellation_requested_by_actor_ref=cancellation_requested_by_actor_ref,
-            terminal_summary=terminal_summary,
-            terminal_exit_code=7 if state == "failed" else None,
-            terminal_signal=None,
-            terminal_log_ref=terminal_log_ref,
-            terminal_event_source=None,
-            terminal_actor_ref=None,
+def test_exact_schema_verifier_rejects_missing_and_unexpected_tables(
+    tmp_path: Path,
+) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql("DROP TABLE node_invocations")
+            connection.exec_driver_sql("CREATE TABLE legacy_runtime_truth (id INTEGER)")
+            connection.exec_driver_sql("ALTER TABLE tasks ADD COLUMN compatibility_state TEXT")
+        messages = _messages(engine)
+        assert "missing table node_invocations" in messages
+        assert "unexpected table legacy_runtime_truth" in messages
+        assert "tasks unexpected column compatibility_state" in messages
+    finally:
+        engine.dispose()
+
+
+def test_exact_schema_verifier_rejects_a_missing_required_index(tmp_path: Path) -> None:
+    database_path = tmp_path / "runtime.sqlite"
+    engine = create_runtime_schema_engine(tmp_path)
+    engine.dispose()
+    rewrite_empty_sqlite_table(
+        database_path,
+        table_name="dispatch_turns",
+        transform=lambda ddl: ddl,
+        omitted_indexes=frozenset({"ix_dispatch_turns_start_due"}),
+    )
+    engine = _create_runtime_schema_engine_for_existing_file(database_path)
+    try:
+        assert any(
+            "dispatch_turns missing or changed index ix_dispatch_turns_start_due" in message
+            for message in _messages(engine)
+        )
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "index_transform",
+    (
+        lambda name, ddl: (
+            ddl.replace(
+                "(status, next_provider_start_at)",
+                "(status, created_at)",
+            )
+            if name == "ix_dispatch_turns_start_due"
+            else ddl
         ),
+        lambda name, ddl: (
+            ddl.replace("CREATE INDEX", "CREATE UNIQUE INDEX", 1)
+            if name == "ix_dispatch_turns_start_due"
+            else ddl
+        ),
+        lambda name, ddl: (
+            ddl.replace(
+                "status IN ('starting', 'open')",
+                "status = 'open'",
+            )
+            if name == "uq_dispatch_turns_one_current_per_flow"
+            else ddl
+        ),
+    ),
+    ids=("changed-columns", "changed-uniqueness", "changed-predicate"),
+)
+def test_exact_schema_verifier_rejects_changed_required_indexes(
+    tmp_path: Path,
+    index_transform: Callable[[str, str], str],
+) -> None:
+    database_path = tmp_path / "runtime.sqlite"
+    engine = create_runtime_schema_engine(tmp_path)
+    engine.dispose()
+    rewrite_empty_sqlite_table(
+        database_path,
+        table_name="dispatch_turns",
+        transform=lambda ddl: ddl,
+        index_transform=index_transform,
     )
+    engine = _create_runtime_schema_engine_for_existing_file(database_path)
+    try:
+        assert any(
+            "dispatch_turns missing or changed index" in message for message in _messages(engine)
+        )
+    finally:
+        engine.dispose()
+
+
+def _create_runtime_schema_engine_for_existing_file(database_path: Path) -> Engine:
+    return create_engine(f"sqlite:///{database_path}")

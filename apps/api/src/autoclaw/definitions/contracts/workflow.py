@@ -23,10 +23,34 @@ class NodeKind(StrEnum):
     WORKER = "worker"
 
 
-class ProviderPreference(StrEnum):
+class ProviderKind(StrEnum):
     OPENCLAW = "openclaw"
     CODEX = "codex"
     CLAUDE = "claude"
+
+
+class CodexProviderSelection(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal[ProviderKind.CODEX]
+
+
+class ClaudeProviderSelection(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal[ProviderKind.CLAUDE]
+
+
+class OpenClawProviderSelection(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal[ProviderKind.OPENCLAW]
+
+
+type ProviderSelection = Annotated[
+    CodexProviderSelection | ClaudeProviderSelection | OpenClawProviderSelection,
+    Field(discriminator="kind"),
+]
 
 
 class ConsumeSelector(BaseModel):
@@ -76,46 +100,34 @@ class ChildDefaults(BaseModel):
     criteria: list[SlotIdentifier] | None = None
 
 
-class WorkflowNodeInput(BaseModel):
+class WorkflowNodeInput[NodeKindT: NodeKind](BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     node_key: WorkflowIdentifier
-    kind: NodeKind
+    kind: NodeKindT
     title: NonEmptyText | None = None
     role_id: WorkflowIdentifier
     policy_id: WorkflowIdentifier
-    provider_preference: ProviderPreference | None = None
+    provider: ProviderSelection | None = None
     description: NonEmptyText
     instruction: NonEmptyText | None = None
 
 
-class NodeDefinitionInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    id: WorkflowIdentifier
-    title: NonEmptyText | None = None
-    role: WorkflowIdentifier
-    policy: WorkflowIdentifier | None = None
-    provider_preference: ProviderPreference | None = None
-    description: NonEmptyText
-    instruction: NonEmptyText | None = None
+class NodeDefinitionInput(WorkflowNodeInput[Literal[NodeKind.PARENT, NodeKind.WORKER]]):
     consumes: ConsumeBuckets | None = None
     produces: ProduceBuckets | None = None
     criteria: list[CriteriaDeclaration] | None = None
     child_defaults: ChildDefaults | None = None
     children: list[NodeDefinitionInput] | None = None
 
+    @model_validator(mode="after")
+    def validate_structural_kind(self) -> Self:
+        if self.kind == NodeKind.WORKER and self.children:
+            raise ValueError("worker workflow nodes must not contain children")
+        return self
 
-class RootNodeDefinition(BaseModel):
-    model_config = ConfigDict(extra="forbid")
 
-    id: Literal["root"]
-    title: NonEmptyText | None = None
-    role: WorkflowIdentifier
-    policy: WorkflowIdentifier | None = None
-    provider_preference: ProviderPreference | None = None
-    description: NonEmptyText
-    instruction: NonEmptyText | None = None
+class RootNodeDefinition(WorkflowNodeInput[Literal[NodeKind.ROOT]]):
     produces: ProduceBuckets | None = None
     criteria: list[CriteriaDeclaration] | None = None
     child_defaults: ChildDefaults | None = None
@@ -147,15 +159,19 @@ NodeDefinitionInput.model_rebuild()
 
 __all__ = [
     "ChildDefaults",
+    "ClaudeProviderSelection",
+    "CodexProviderSelection",
     "ConsumeBuckets",
     "ConsumeSelector",
     "CriteriaDeclaration",
     "NodeDefinitionInput",
     "NodeKind",
     "NonEmptyText",
+    "OpenClawProviderSelection",
     "ProduceBuckets",
     "ProduceSlot",
-    "ProviderPreference",
+    "ProviderKind",
+    "ProviderSelection",
     "RootNodeDefinition",
     "SlotIdentifier",
     "WorkflowDefinitionFile",

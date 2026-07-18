@@ -79,7 +79,6 @@ def sample_assignment(tmp_path: Path) -> AssignmentProjection:
                 description="Optional repro commands from the prior attempt.",
             ),
         ),
-        task_memory_search_hints=("auth refresh", "cookie rotation note"),
     )
 
 
@@ -114,7 +113,6 @@ def worker_request(tmp_path: Path, *, send_mode: PromptSendMode) -> PromptRender
         prompt_family=PromptFamily.WORKER_DISPATCH,
         send_mode=send_mode,
         task_id="task_2026_0042",
-        session_key="sess_worker_dispatch_01",
         current_node=ResolvedNodeContext(
             node_key="implement_fix",
             node_kind=NodeKind.WORKER,

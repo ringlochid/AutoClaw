@@ -44,7 +44,7 @@ def test_compile_workflow_fails_for_missing_or_incompatible_roles(
     error_pattern: str,
 ) -> None:
     payload = load_packaged_workflow_payload("bounded_change")
-    payload["root"]["children"][0]["role"] = node_role
+    payload["root"]["children"][0]["role_id"] = node_role
     workflow = WorkflowDefinitionFile.model_validate(payload)
 
     base_lookup = load_packaged_seed_lookup()
@@ -83,7 +83,7 @@ def test_compile_workflow_fails_for_missing_or_incompatible_policies(
     error_pattern: str,
 ) -> None:
     payload = load_packaged_workflow_payload("bounded_change")
-    payload["root"]["children"][0]["policy"] = node_policy
+    payload["root"]["children"][0]["policy_id"] = node_policy
     workflow = WorkflowDefinitionFile.model_validate(payload)
 
     with pytest.raises(ValueError, match=error_pattern):

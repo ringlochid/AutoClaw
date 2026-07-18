@@ -1,34 +1,12 @@
 from __future__ import annotations
 
-from autoclaw.interfaces.mcp.node.server import create_node_mcp_server
-from autoclaw.interfaces.mcp.operator.server import create_operator_mcp_server
-from tests.integration.mcp.support import default_transport_security
+from autoclaw.runtime.node_operations import NODE_OPERATION_CATALOG
 
 
-async def test_operator_mcp_server_instructions_teach_observe_vs_mutate() -> None:
-    server = create_operator_mcp_server(
-        transport_security=default_transport_security(host="127.0.0.1")
-    )
-    instructions = server.instructions
-    assert instructions is not None
-    assert "Observe first" in instructions
-    assert "Mutating controls" in instructions
-    assert "Support-state refs" in instructions
-    assert "Definition/task-start writes" in instructions
-    assert "Surface continuity" in instructions
-    assert "node-tool separation" in instructions
-
-
-async def test_node_mcp_server_instructions_teach_lookup_and_mutation() -> None:
-    server = create_node_mcp_server(
-        transport_security=default_transport_security(host="127.0.0.1"),
-    )
-    instructions = server.instructions
-    assert instructions is not None
-    assert "Lookup" in instructions
-    assert "Persist progress" in instructions
-    assert "Close the current turn" in instructions
-    assert "Open external waits" in instructions
-    assert "waiting_for_human_request" in instructions
-    assert "waiting_for_command_run" in instructions
-    assert "Not for operator control" in instructions
+def test_node_operation_catalog_owns_provider_neutral_teaching_metadata() -> None:
+    assert len(NODE_OPERATION_CATALOG) == 16
+    for descriptor in NODE_OPERATION_CATALOG:
+        assert descriptor.title.strip()
+        assert descriptor.description.strip()
+        assert "session_key" not in descriptor.description
+        assert "callback" not in descriptor.description.casefold()

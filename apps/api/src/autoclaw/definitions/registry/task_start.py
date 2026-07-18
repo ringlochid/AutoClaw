@@ -7,13 +7,14 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.config import get_settings
-from autoclaw.runtime import FlowStatus, RuntimeLaunchInput, launch_task_runtime
+from autoclaw.persistence.session_operations import write_session_operation
+from autoclaw.runtime import FlowStatus, RuntimeLaunchInput
 from autoclaw.runtime.contracts import TaskStartRequest, TaskStartResponse, WorkflowManifestRef
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.flow import WORKFLOW_MANIFEST_REF_DESCRIPTION
 from autoclaw.runtime.ids import compiled_plan_id_for_task, flow_id_for_task, flow_revision_id
-from autoclaw.runtime.post_commit.operations import write_runtime_operation_and_wait
+from autoclaw.runtime.launch.service import launch_task_runtime
 
 
 async def start_task_from_definition(
@@ -23,13 +24,12 @@ async def start_task_from_definition(
     session: AsyncSession | None = None,
 ) -> TaskStartResponse:
     task_data_dir = data_dir if data_dir is not None else get_settings().data_dir
-    return await write_runtime_operation_and_wait(
+    return await write_session_operation(
         lambda active_session: _start_task_from_definition(
             active_session,
             request,
             data_dir=task_data_dir,
         ),
-        task_id_getter=lambda response: response.task_id,
         session=session,
     )
 
@@ -43,7 +43,7 @@ async def _start_task_from_definition(
     task_id = _mint_task_id(request.task.key)
     task_root = data_dir / "tasks" / task_id
     try:
-        result = await launch_task_runtime(
+        await launch_task_runtime(
             session,
             RuntimeLaunchInput(
                 task_id=task_id,
@@ -60,7 +60,7 @@ async def _start_task_from_definition(
         active_flow_revision_id=flow_revision_id(flow_id_for_task(task_id), 1),
         flow_status=FlowStatus.RUNNING,
         workflow_manifest_ref=WorkflowManifestRef(
-            path=result.paths.runtime_path / "workflow-manifest.md",
+            path=Path("_runtime/workflow-manifest.md"),
             description=WORKFLOW_MANIFEST_REF_DESCRIPTION,
         ),
     )
@@ -91,8 +91,7 @@ def _translate_task_start_error(
     if "unknown definition key" in summary:
         return FileNotFoundError(summary)
     if (
-        "workspace host path already held by live task" in summary
-        or "host path does not exist" in summary
+        "host path does not exist" in summary
         or "does not match compiled plan workflow key" in summary
     ):
         return _task_start_invalid_error(summary)

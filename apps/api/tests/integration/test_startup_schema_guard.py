@@ -9,7 +9,8 @@ import autoclaw.interfaces.cli as cli
 import pytest
 from autoclaw.config import get_settings
 from autoclaw.main import create_app
-from autoclaw.persistence.session import dispose_test_db_engine
+from autoclaw.persistence.session import dispose_test_db_engine, get_async_engine
+from sqlalchemy import inspect
 from sqlalchemy.engine import make_url
 
 
@@ -64,3 +65,44 @@ async def test_lifespan_fails_closed_on_stale_runtime_schema(
                     pass
     finally:
         await dispose_test_db_engine()
+
+
+async def test_lifespan_creates_schema_only_for_genuinely_empty_database(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    monkeypatch.setenv("AUTOCLAW_ENV", "test")
+
+    try:
+        await cli.cmd_init(
+            argparse.Namespace(
+                config=str(config_path),
+                data_dir=str(data_dir),
+                database_url=None,
+                host="127.0.0.1",
+                port=8123,
+                log_level="INFO",
+                api_key="api-test-key",
+                force=True,
+                skip_db_upgrade=True,
+                json=False,
+            )
+        )
+
+        with cli.command_env(config_path=config_path, env="test"):
+            get_settings.cache_clear()
+            app = create_app()
+            async with app.router.lifespan_context(app):
+                engine = get_async_engine()
+                async with engine.connect() as connection:
+                    table_names = set(
+                        await connection.run_sync(
+                            lambda sync_connection: inspect(sync_connection).get_table_names()
+                        )
+                    )
+    finally:
+        await dispose_test_db_engine()
+
+    assert {"tasks", "role_definitions", "workflow_definitions"}.issubset(table_names)

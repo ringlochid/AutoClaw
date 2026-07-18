@@ -18,28 +18,22 @@ def resolve_task_root_paths(
     roots = task_compose.roots
     task_root_path = coerce_path(task_root)
     workspace_binding = _binding_or_default(roots.workspace if roots is not None else None)
-    context_binding = _binding_or_default(roots.context if roots is not None else None)
-    context_path = _resolve_bound_root(
-        task_root=task_root_path,
-        root_name="context",
-        binding=context_binding,
-    )
     runtime_path = task_root_path / "_runtime"
+    outputs_path = task_root_path / "outputs"
+    transfers_path = task_root_path / "tmp" / "transfers"
     return TaskRootPaths(
         task_root=task_root_path,
-        workspace_path=_resolve_bound_root(
+        workspace_path=_resolve_workspace_root(
             task_root=task_root_path,
-            root_name="workspace",
             binding=workspace_binding,
         ),
-        context_path=context_path,
-        criteria_path=runtime_path / "criteria",
-        wiki_path=context_path / "wiki",
-        outputs_path=task_root_path / "outputs",
-        artifacts_path=task_root_path / "outputs" / "artifacts",
+        outputs_path=outputs_path,
+        artifacts_path=outputs_path / "artifacts",
         tmp_path=task_root_path / "tmp",
-        transfers_path=task_root_path / "tmp" / "transfers",
+        transfers_path=transfers_path,
+        localized_path=transfers_path / "localized",
         runtime_path=runtime_path,
+        criteria_path=runtime_path / "criteria",
         attempts_path=runtime_path / "attempts",
         dispatch_path=runtime_path / "dispatch",
     )
@@ -49,14 +43,13 @@ def ensure_task_root_layout(paths: TaskRootPaths) -> None:
     for path in (
         paths.task_root,
         paths.workspace_path,
-        paths.context_path,
-        paths.criteria_path,
-        paths.wiki_path,
         paths.outputs_path,
         paths.artifacts_path,
         paths.tmp_path,
         paths.transfers_path,
+        paths.localized_path,
         paths.runtime_path,
+        paths.criteria_path,
         paths.attempts_path,
         paths.dispatch_path,
     ):
@@ -87,28 +80,12 @@ def transient_index_json_path(*, paths: TaskRootPaths, attempt_id: str) -> Path:
     return attempt_dir_path(paths=paths, attempt_id=attempt_id) / "transient-index.json"
 
 
-def prompt_markdown_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
-    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "prompt.md"
+def instructions_markdown_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
+    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "instructions.md"
 
 
-def prompt_request_json_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
-    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "prompt-request.json"
-
-
-def delivery_state_json_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
-    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "delivery-state.json"
-
-
-def continuity_state_json_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
-    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "continuity-state.json"
-
-
-def watchdog_state_json_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
-    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "watchdog-state.json"
-
-
-def provider_events_ndjson_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
-    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "provider-events.ndjson"
+def input_markdown_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
+    return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "input.md"
 
 
 def criteria_file_path(
@@ -117,9 +94,14 @@ def criteria_file_path(
     slot: str,
     version: int | None = None,
 ) -> Path:
+    return paths.task_root / criteria_logical_path(slot=slot, version=version)
+
+
+def criteria_logical_path(*, slot: str, version: int | None = None) -> Path:
+    criteria_root = Path("_runtime") / "criteria"
     if version is None:
-        return paths.criteria_path / f"{slot}.md"
-    return paths.criteria_path / f"{slot}.v{version:02d}.md"
+        return criteria_root / f"{slot}.md"
+    return criteria_root / f"{slot}.v{version:02d}.md"
 
 
 def manifest_json_path(paths: TaskRootPaths) -> Path:
@@ -157,19 +139,20 @@ def _binding_or_default(binding: TaskRootBindingInput | None) -> TaskRootBinding
     return TaskRootBindingInput()
 
 
-def _resolve_bound_root(
+def _resolve_workspace_root(
     *,
     task_root: Path,
-    root_name: str,
     binding: TaskRootBindingInput,
 ) -> Path:
     if binding.mode == TaskRootMode.ENSURE_TASK_DEFAULT:
-        return task_root / root_name
+        return task_root / "workspace"
 
     assert binding.host_path is not None
     host_path = coerce_path(binding.host_path)
     if binding.mode == TaskRootMode.USE_EXISTING_HOST and not host_path.exists():
         raise FileNotFoundError(
-            f"{root_name} host path does not exist for use_existing_host: {host_path}"
+            f"workspace host path does not exist for use_existing_host: {host_path}"
         )
+    if host_path.exists() and not host_path.is_dir():
+        raise NotADirectoryError(f"workspace host path is not a directory: {host_path}")
     return host_path

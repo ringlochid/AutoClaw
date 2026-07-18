@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from autoclaw.definitions.contracts import (
     DefinitionSummaryListResponse,
     DefinitionUploadRequest,
     RoleDefinitionInput,
+    WorkflowDefinitionInput,
 )
 from autoclaw.runtime import FlowStatus
 from autoclaw.runtime.contracts import TaskStartRequest, TaskStartResponse, WorkflowManifestRef
@@ -43,6 +45,44 @@ def test_definition_upload_request_requires_kind_to_match_content() -> None:
                 "kind": "policy",
                 "content": bounded_workflow_payload(),
             }
+        )
+
+
+def test_definition_upload_request_enforces_target_workflow_node_contract() -> None:
+    payload = bounded_workflow_payload()
+    request = DefinitionUploadRequest.model_validate({"kind": "workflow", "content": payload})
+
+    assert isinstance(request.content, WorkflowDefinitionInput)
+    assert request.content.root.node_key == "root"
+
+    legacy_payload = deepcopy(payload)
+    legacy_child = legacy_payload["root"]["children"][0]
+    legacy_child["id"] = legacy_child.pop("node_key")
+    with pytest.raises(ValidationError, match="id"):
+        DefinitionUploadRequest.model_validate({"kind": "workflow", "content": legacy_payload})
+
+    missing_policy_payload = deepcopy(payload)
+    missing_policy_payload["root"]["children"][0].pop("policy_id")
+    with pytest.raises(ValidationError, match="policy_id"):
+        DefinitionUploadRequest.model_validate(
+            {"kind": "workflow", "content": missing_policy_payload}
+        )
+
+    scalar_provider_payload = deepcopy(payload)
+    scalar_provider_payload["root"]["children"][0]["provider"] = "codex"
+    with pytest.raises(ValidationError, match="provider"):
+        DefinitionUploadRequest.model_validate(
+            {"kind": "workflow", "content": scalar_provider_payload}
+        )
+
+    invalid_provider_payload = deepcopy(payload)
+    invalid_provider_payload["root"]["children"][0]["provider"] = {
+        "kind": "codex",
+        "model": "gpt-5",
+    }
+    with pytest.raises(ValidationError, match=r"provider|model"):
+        DefinitionUploadRequest.model_validate(
+            {"kind": "workflow", "content": invalid_provider_payload}
         )
 
 

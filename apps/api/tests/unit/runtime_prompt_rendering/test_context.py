@@ -8,13 +8,14 @@ from autoclaw.runtime.contracts import (
     CommandRunRecord,
     CommandRunState,
     CommandRunTerminalResult,
+    HumanRequestContextRef,
     HumanRequestItem,
-    HumanRequestItemResponse,
     HumanRequestKind,
     HumanRequestOption,
     HumanRequestRead,
     HumanRequestResolution,
     HumanRequestResolutionKind,
+    HumanRequestResolutionSurface,
     HumanRequestStatus,
     HumanRequestTimeout,
     ManifestNodeProjection,
@@ -206,57 +207,85 @@ def test_worker_prompt_surfaces_terminal_command_run_context_without_raw_logs(
     assert "logs/raw-output.txt" not in command_run_section
 
 
+def _pending_review_request(task_id: str) -> PendingHumanRequest:
+    return PendingHumanRequest(
+        request_id="human-request.task_2026_0042.01",
+        task_id=task_id,
+        summary="A human review is required before the worker continues.",
+        kind=HumanRequestKind.REVIEW,
+        source_dispatch_id="dispatch.task_2026_0042.review_fix.01",
+        items=(
+            HumanRequestItem(
+                id="review_choice",
+                prompt="Should the worker proceed with the fix?",
+                options=(
+                    HumanRequestOption(id="approve", title="Approve"),
+                    HumanRequestOption(id="revise", title="Revise"),
+                ),
+            ),
+            HumanRequestItem(
+                id="review_notes",
+                prompt="Record the bounded review evidence.",
+                response_schema={
+                    "additionalProperties": False,
+                    "properties": {
+                        "notes": {
+                            "items": {"type": "string"},
+                            "type": "array",
+                        },
+                        "score": {"type": "integer"},
+                    },
+                    "required": ["notes", "score"],
+                    "type": "object",
+                },
+            ),
+        ),
+        context_refs=(
+            HumanRequestContextRef(
+                path="outputs/review/patch.md",
+                description="Patch evidence for the human review.",
+            ),
+        ),
+        timeout=HumanRequestTimeout(
+            due_at=datetime(2026, 6, 25, 12, 5, tzinfo=UTC),
+            default_behavior="Proceed with the recommended review option.",
+        ),
+        suggested_human_instruction="Inspect the patch before answering.",
+        opened_at=datetime(2026, 6, 25, 12, 0, tzinfo=UTC),
+        status=HumanRequestStatus.RESOLVED,
+    )
+
+
+def _answered_review_resolution(task_id: str) -> HumanRequestResolution:
+    return HumanRequestResolution(
+        request_id="human-request.task_2026_0042.01",
+        task_id=task_id,
+        resolution_kind=HumanRequestResolutionKind.ANSWERED,
+        item_responses={
+            "review_notes": {"score": 2, "notes": ["Looks good."]},
+            "review_choice": "approve",
+        },
+        policy_basis={
+            "revision": 2,
+            "source": "task_authorized_human_request_resolution",
+        },
+        summary="Human approved the fix after reviewing the evidence.",
+        resolved_at=datetime(2026, 6, 25, 12, 2, tzinfo=UTC),
+        resolved_by_actor_ref=None,
+        resolved_by_surface=HumanRequestResolutionSurface.OPERATOR_MCP,
+    )
+
+
 def test_worker_prompt_surfaces_terminal_human_request_context(
     tmp_path: Path,
 ) -> None:
     request = worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
+    continuation = HumanRequestRead(
+        request=_pending_review_request(request.task_id),
+        resolution=_answered_review_resolution(request.task_id),
+    )
     bundle = render_prompt_bundle(
-        request.model_copy(
-            update={
-                "human_request_continuation_context": HumanRequestRead(
-                    request=PendingHumanRequest(
-                        request_id="human-request.task_2026_0042.01",
-                        task_id=request.task_id,
-                        title="Review the scoped fix",
-                        summary="A human review is required before the worker continues.",
-                        kind=HumanRequestKind.REVIEW,
-                        requester_node="root",
-                        items=(
-                            HumanRequestItem(
-                                item_id="review_choice",
-                                prompt="Should the worker proceed with the fix?",
-                                options=(
-                                    HumanRequestOption(id="approve", title="Approve"),
-                                    HumanRequestOption(id="revise", title="Revise"),
-                                ),
-                                recommended_option="approve",
-                            ),
-                        ),
-                        timeout=HumanRequestTimeout(
-                            due_at=datetime(2026, 6, 25, 12, 5, tzinfo=UTC),
-                            default_behavior="Proceed with the recommended review option.",
-                        ),
-                        suggested_human_instruction="Inspect the patch before answering.",
-                        opened_at=datetime(2026, 6, 25, 12, 0, tzinfo=UTC),
-                        status=HumanRequestStatus.RESOLVED,
-                    ),
-                    resolution=HumanRequestResolution(
-                        request_id="human-request.task_2026_0042.01",
-                        task_id=request.task_id,
-                        resolution_kind=HumanRequestResolutionKind.ANSWERED,
-                        item_responses=(
-                            HumanRequestItemResponse(
-                                item_id="review_choice",
-                                selected_option="approve",
-                                extra_notes="Looks good.",
-                            ),
-                        ),
-                        resolved_at=datetime(2026, 6, 25, 12, 2, tzinfo=UTC),
-                        resolved_by_actor_ref=None,
-                    ),
-                )
-            }
-        )
+        request.model_copy(update={"human_request_continuation_context": continuation})
     )
 
     human_request_section = extract_section(
@@ -266,15 +295,35 @@ def test_worker_prompt_surfaces_terminal_human_request_context(
     )
 
     assert "human-request.task_2026_0042.01" in human_request_section
+    assert "source_dispatch_id: dispatch.task_2026_0042.review_fix.01" in human_request_section
     assert "resolution_kind: answered" in human_request_section
-    assert "resolved_by_actor_ref: None" in human_request_section
-    assert "recommended_option: approve" in human_request_section
+    assert "resolved_by_actor_ref: null" in human_request_section
+    assert "resolved_by_surface: operator_mcp" in human_request_section
+    assert "- id: review_choice" in human_request_section
+    assert "- id: review_notes" in human_request_section
+    assert 'response_schema: {"additionalProperties":false' in human_request_section
     assert "- id: approve" in human_request_section
     assert "- id: revise" in human_request_section
-    assert "selected_option: approve" in human_request_section
+    assert "path: outputs/review/patch.md" in human_request_section
+    assert "description: Patch evidence for the human review." in human_request_section
+    assert (
+        'item_responses: {"review_choice":"approve","review_notes":'
+        '{"notes":["Looks good."],"score":2}}'
+    ) in human_request_section
+    assert (
+        'policy_basis: {"revision":2,"source":"task_authorized_human_request_resolution"}'
+    ) in human_request_section
+    assert "resolution_summary: Human approved the fix" in human_request_section
     assert "timeout_default_behavior: Proceed with the recommended review option." in (
         human_request_section
     )
+    assert "suggested_human_instruction: Inspect the patch before answering." in (
+        human_request_section
+    )
+    assert "requester_node:" not in human_request_section
+    assert "item_id:" not in human_request_section
+    assert "recommended_option:" not in human_request_section
+    assert "selected_option:" not in human_request_section
 
 
 def test_parent_prompt_surfaces_current_decision_criteria_and_artifact_refs(

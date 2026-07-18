@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from contextlib import AbstractContextManager
-from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -17,12 +16,7 @@ from autoclaw.definitions.contracts import (
 from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
-PACKAGED_SEED_DEFINITIONS_ROOT = resources.files("autoclaw.definitions.seeds")
-WORKFLOW_EXAMPLES_ROOT = REPO_ROOT / "docs-internal" / "design" / "v1" / "workflows" / "examples"
 REFERENCE_DEFINITIONS_ROOT = REPO_ROOT / "docs" / "reference" / "definitions"
-WORKFLOW_SCHEMA_DOC = (
-    REPO_ROOT / "docs-internal" / "design" / "v1" / "workflows" / "workflow-definition-schema.md"
-)
 ROLE_POLICY_SCHEMA_DOC = (
     REPO_ROOT
     / "docs-internal"
@@ -103,8 +97,10 @@ def bounded_workflow_payload() -> dict[str, Any]:
             "Execute one small scoped change with one worker and root-owned evidence review."
         ),
         "root": {
-            "id": "root",
-            "role": "planning_lead",
+            "node_key": "root",
+            "kind": "root",
+            "role_id": "planning_lead",
+            "policy_id": "standard-root",
             "description": (
                 "Verify one bounded worker and close only when current evidence is sufficient."
             ),
@@ -121,9 +117,10 @@ def bounded_workflow_payload() -> dict[str, Any]:
             ],
             "children": [
                 {
-                    "id": "implement_change",
-                    "role": "engineer",
-                    "policy": "standard-worker",
+                    "node_key": "implement_change",
+                    "kind": "worker",
+                    "role_id": "engineer",
+                    "policy_id": "standard-worker",
                     "description": (
                         "Implement the change and publish patch plus verification evidence "
                         "only for the current bounded assignment."
@@ -235,24 +232,6 @@ def resolve_committed_seed_definitions_root() -> AbstractContextManager[Path]:
 def workflow_validation_context(definitions_root: Path) -> dict[str, Any]:
     roles, policies = load_registry_catalog(definitions_root)
     return {"roles": roles, "policies": policies}
-
-
-def load_workflow_schema_worked_examples() -> list[dict[str, Any]]:
-    examples: list[dict[str, Any]] = []
-
-    for yaml_fence in load_yaml_fences(WORKFLOW_SCHEMA_DOC):
-        if not re.search(r"^kind:\s+workflow\b", yaml_fence, re.MULTILINE):
-            continue
-        payload = yaml.safe_load(yaml_fence)
-        if not isinstance(payload, dict):
-            continue
-        if payload.get("id") == "string":
-            continue
-        if not isinstance(payload.get("root"), dict):
-            continue
-        examples.append(payload)
-
-    return examples
 
 
 def assert_expected_role_and_policy_ids(

@@ -11,15 +11,7 @@ from autoclaw.interfaces.cli.commands.config_view import (
     cmd_config_path,
     cmd_config_show,
 )
-from autoclaw.interfaces.cli.commands.configure import cmd_configure
 from autoclaw.interfaces.cli.commands.definitions import cmd_definitions_import
-from autoclaw.interfaces.cli.commands.doctor import cmd_doctor
-from autoclaw.interfaces.cli.commands.onboard import cmd_onboard
-from autoclaw.interfaces.cli.commands.openclaw.wrapper import (
-    cmd_openclaw_check,
-    cmd_openclaw_doctor,
-    cmd_openclaw_setup,
-)
 from autoclaw.interfaces.cli.commands.service import (
     DEFAULT_SERVICE_NAME,
     cmd_service_install,
@@ -41,16 +33,10 @@ __all__ = [
     "build_parser",
     "cmd_config_path",
     "cmd_config_show",
-    "cmd_configure",
     "cmd_db_reset",
     "cmd_db_upgrade",
     "cmd_definitions_import",
-    "cmd_doctor",
     "cmd_init",
-    "cmd_onboard",
-    "cmd_openclaw_check",
-    "cmd_openclaw_doctor",
-    "cmd_openclaw_setup",
     "cmd_serve",
     "cmd_service_install",
     "cmd_service_render",

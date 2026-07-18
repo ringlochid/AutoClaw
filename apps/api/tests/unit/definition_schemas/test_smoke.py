@@ -20,9 +20,9 @@ def test_bounded_workflow_fixture_validates_against_packaged_catalog() -> None:
     )
 
     assert validated.id == "bounded-change"
-    assert validated.root.id == "root"
+    assert validated.root.node_key == "root"
     assert validated.root.children is not None
-    assert [child.id for child in validated.root.children] == ["implement_change"]
+    assert [child.node_key for child in validated.root.children] == ["implement_change"]
 
 
 def test_definitions_package_does_not_export_private_validation_helpers() -> None:

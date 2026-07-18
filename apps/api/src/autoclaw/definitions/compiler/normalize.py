@@ -64,7 +64,7 @@ def build_authored_node_map(root: RootNodeDefinition) -> dict[str, WorkflowNode]
     authored_nodes_by_key: dict[str, WorkflowNode] = {}
 
     def visit(node: WorkflowNode) -> None:
-        authored_nodes_by_key[node.id] = node
+        authored_nodes_by_key[node.node_key] = node
         for child in node.children or ():
             visit(child)
 
@@ -99,8 +99,8 @@ def normalize_node(
             role=flattened_node.role,
             role_revision_no=resolved_role.revision_no,
             policy=flattened_node.policy,
-            policy_revision_no=resolved_policy.revision_no if resolved_policy else None,
-            provider_preference=authored_node.provider_preference,
+            policy_revision_no=resolved_policy.revision_no,
+            provider=authored_node.provider,
             description=authored_node.description,
             node_instruction=authored_node.instruction,
             consumes=expand_consumes(
@@ -384,10 +384,7 @@ def resolve_policy(
     *,
     flattened_node: FlattenedNode,
     lookup: RolePolicyLookup,
-) -> PolicyRevisionDefinition | None:
-    if flattened_node.policy is None:
-        return None
-
+) -> PolicyRevisionDefinition:
     resolved_policy = lookup.get_policy(flattened_node.policy)
     if resolved_policy is None:
         raise ValueError(

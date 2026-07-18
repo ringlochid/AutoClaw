@@ -178,7 +178,6 @@ class AssignmentProjection(BaseModel):
     consumes: tuple[AssignmentConsumeRef, ...] = ()
     produces: tuple[ProduceRequirement, ...] = ()
     transient_refs: tuple[EvidenceRef, ...] = ()
-    task_memory_search_hints: tuple[RuntimeText, ...] = ()
 
     @model_validator(mode="after")
     def validate_refs(self) -> AssignmentProjection:
@@ -213,7 +212,6 @@ class CheckpointProjection(BaseModel):
     handoff: CheckpointHandoff
     produced_artifacts: tuple[EvidenceRef, ...] = ()
     transient_refs: tuple[EvidenceRef, ...] = ()
-    task_memory_search_hints: tuple[RuntimeText, ...] = ()
 
     @model_validator(mode="after")
     def validate_projection(self) -> CheckpointProjection:
@@ -239,9 +237,9 @@ class ResolvedNodeContext(BaseModel):
     role_revision_no: int = Field(ge=1)
     role_description: RuntimeText
     role_instruction: RuntimeText | None = None
-    policy_key: RuntimeText | None = None
-    policy_revision_no: int | None = Field(default=None, ge=1)
-    policy_description: RuntimeText | None = None
+    policy_key: RuntimeText
+    policy_revision_no: int = Field(ge=1)
+    policy_description: RuntimeText
     policy_instruction: RuntimeText | None = None
 
 

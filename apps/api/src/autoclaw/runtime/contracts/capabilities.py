@@ -1,12 +1,42 @@
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.contracts.primitives import CapabilityDecision
+
+
+class CapabilitySource(StrEnum):
+    DEFAULT = "default"
+    POLICY_DEFINITION = "policy_definition"
+    TASK_POLICY = "task_policy"
+    CONTROLLER = "controller"
+
+
+class CapabilityCeilingSet(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
+
+    provider_native_access: ProviderNativeAccess | None = None
+    network_access: NetworkAccess | None = None
+
+
+class EffectiveProviderNativeAccess(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
+
+    effective: ProviderNativeAccess = ProviderNativeAccess.FULL
+    source: CapabilitySource = CapabilitySource.DEFAULT
+
+
+class EffectiveNetworkAccess(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
+
+    effective: NetworkAccess = NetworkAccess.ALLOW
+    source: CapabilitySource = CapabilitySource.DEFAULT
 
 
 class HumanRequestCapabilitySet(BaseModel):
@@ -18,13 +48,13 @@ class HumanRequestCapabilitySet(BaseModel):
     review: CapabilityDecision = CapabilityDecision.DENY
 
 
-type CapabilityExecutionScope = Literal["dispatch", "human_request_open", "command_run_start"]
-
-
 class EffectiveCapabilitySet(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
-    execution_scope: CapabilityExecutionScope
+    provider_native_access: EffectiveProviderNativeAccess = Field(
+        default_factory=EffectiveProviderNativeAccess
+    )
+    network_access: EffectiveNetworkAccess = Field(default_factory=EffectiveNetworkAccess)
     human_request: HumanRequestCapabilitySet = Field(default_factory=HumanRequestCapabilitySet)
     command_run: CapabilityDecision = CapabilityDecision.DENY
 
@@ -41,8 +71,11 @@ class CapabilityRejectionError(BaseModel):
 
 
 __all__ = [
-    "CapabilityExecutionScope",
+    "CapabilityCeilingSet",
     "CapabilityRejectionError",
+    "CapabilitySource",
     "EffectiveCapabilitySet",
+    "EffectiveNetworkAccess",
+    "EffectiveProviderNativeAccess",
     "HumanRequestCapabilitySet",
 ]

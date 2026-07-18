@@ -60,15 +60,6 @@ class CheckpointOutcome(StrEnum):
     BLOCKED = "blocked"
 
 
-class ParentRootToolName(StrEnum):
-    ASSIGN_CHILD = "assign_child"
-    ADD_CHILD = "add_child"
-    UPDATE_CHILD = "update_child"
-    REMOVE_CHILD = "remove_child"
-    RELEASE_GREEN = "release_green"
-    RELEASE_BLOCKED = "release_blocked"
-
-
 class DispatchDeliveryStatus(StrEnum):
     PREPARED = "prepared"
     ACCEPTED = "accepted"
@@ -78,19 +69,6 @@ class DispatchDeliveryStatus(StrEnum):
     TRANSPORT_FAILED = "transport_failed"
     TRANSPORT_AMBIGUOUS = "transport_ambiguous"
     SUPERSEDED = "superseded"
-
-
-class ProviderName(StrEnum):
-    OPENCLAW = "openclaw"
-    CODEX = "codex"
-    CLAUDE = "claude"
-
-
-class ProviderLaunchFailureStage(StrEnum):
-    PREFLIGHT = "preflight"
-    AUTH = "auth"
-    BOOTSTRAP = "bootstrap"
-    CONNECT = "connect"
 
 
 class WaitingCause(StrEnum):
@@ -154,14 +132,16 @@ class CommandRunState(StrEnum):
 class TaskEventSource(StrEnum):
     CONTROLLER = "controller"
     CONTROL_API = "control_api"
+    OPERATOR_MCP = "operator_mcp"
     NODE = "node"
-    PROVIDER = "provider"
-    ADAPTER = "adapter"
 
 
 class TaskEventType(StrEnum):
     TASK_STARTED = "task_started"
     DISPATCH_OPENED = "dispatch_opened"
+    DISPATCH_START_UPDATED = "dispatch_start_updated"
+    WORK_PLAN_SET = "work_plan_set"
+    WORK_PLAN_CLEARED = "work_plan_cleared"
     CHECKPOINT_RECORDED = "checkpoint_recorded"
     BOUNDARY_ACCEPTED = "boundary_accepted"
     CHILD_ASSIGNMENT_STAGED = "child_assignment_staged"
@@ -171,6 +151,7 @@ class TaskEventType(StrEnum):
     HUMAN_REQUEST_RESOLVED = "human_request_resolved"
     HUMAN_REQUEST_TIMED_OUT = "human_request_timed_out"
     HUMAN_REQUEST_CANCELLED = "human_request_cancelled"
+    COMMAND_RUN_OPENED = "command_run_opened"
     COMMAND_RUN_STARTED = "command_run_started"
     COMMAND_RUN_PROGRESSED = "command_run_progressed"
     COMMAND_RUN_CANCEL_REQUESTED = "command_run_cancel_requested"
@@ -217,7 +198,6 @@ class TaskComposeRootsInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     workspace: TaskRootBindingInput | None = None
-    context: TaskRootBindingInput | None = None
 
 
 class TaskComposeInput(BaseModel):
@@ -233,14 +213,13 @@ class TaskRootPaths(BaseModel):
 
     task_root: Path
     workspace_path: Path
-    context_path: Path
-    criteria_path: Path
-    wiki_path: Path
     outputs_path: Path
     artifacts_path: Path
     tmp_path: Path
     transfers_path: Path
+    localized_path: Path
     runtime_path: Path
+    criteria_path: Path
     attempts_path: Path
     dispatch_path: Path
 
@@ -302,9 +281,6 @@ __all__ = [
     "HumanRequestStatus",
     "NodeRuntimeFileKind",
     "NodeRuntimeFileRef",
-    "ParentRootToolName",
-    "ProviderLaunchFailureStage",
-    "ProviderName",
     "RuntimeContextRef",
     "RuntimeText",
     "SlotIdentifier",

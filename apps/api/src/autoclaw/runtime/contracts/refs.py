@@ -17,7 +17,6 @@ type SupportRuntimeFileKind = Literal[
     "delivery_state",
     "continuity_state",
     "watchdog_state",
-    "provider_events",
 ]
 
 type OperatorSupportSurfaceKind = (
@@ -40,7 +39,6 @@ _SUPPORT_RUNTIME_FILE_KIND_BY_FILENAME: dict[str, SupportRuntimeFileKind] = {
     "delivery-state.json": "delivery_state",
     "continuity-state.json": "continuity_state",
     "watchdog-state.json": "watchdog_state",
-    "provider-events.ndjson": "provider_events",
 }
 
 

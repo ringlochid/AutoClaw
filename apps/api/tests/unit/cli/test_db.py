@@ -2,27 +2,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import importlib.util
-import os
 import sqlite3
 from pathlib import Path
 
 import autoclaw.interfaces.cli as cli
 import pytest
-from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL, get_settings
-from autoclaw.interfaces.cli.bootstrap.legacy_copy import (
-    postgres_command_run_row,
-    postgres_pending_human_request_row,
-)
-from autoclaw.interfaces.cli.bootstrap.postgres_repair import (
-    postgres_constraint_with_not_valid,
-    postgres_rebound_constraint_definition,
-)
-from autoclaw.interfaces.cli.commands.bootstrap import (
-    ensure_database_ready_with_legacy_sqlite_repair,
-)
-from autoclaw.persistence.session import dispose_db_engine, get_async_engine
-from sqlalchemy import inspect, text
+from autoclaw.persistence.session import dispose_db_engine
 
 from .cli_test_support import assert_seeded_registry_is_bootstrapped, build_cli_init_args
 
@@ -32,10 +17,19 @@ async def test_db_reset_recreates_sqlite_database(tmp_path: Path) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     database_path = data_dir / "autoclaw.persistence"
+    sidecar_paths = tuple(
+        Path(f"{database_path}{suffix}") for suffix in ("-wal", "-shm", "-journal")
+    )
+    external_sidecar_target = tmp_path / "external-sidecar-target"
 
     try:
         await cli.cmd_init(build_cli_init_args(config_path, data_dir))
         database_path.write_bytes(b"stale")
+        for sidecar_path in sidecar_paths[:-1]:
+            sidecar_path.write_bytes(b"stale-sidecar")
+        external_sidecar_target.write_bytes(b"user-owned")
+        sidecar_paths[-1].symlink_to(external_sidecar_target)
+
         result = await cli.cmd_db_reset(
             argparse.Namespace(config=str(config_path), revision="head", json=False)
         )
@@ -44,11 +38,17 @@ async def test_db_reset_recreates_sqlite_database(tmp_path: Path) -> None:
 
     assert result == 0
     assert database_path.exists()
+    assert all(
+        not sidecar_path.exists() or sidecar_path.read_bytes() != b"stale-sidecar"
+        for sidecar_path in sidecar_paths
+    )
+    assert not sidecar_paths[-1].is_symlink()
+    assert external_sidecar_target.read_bytes() == b"user-owned"
     assert_seeded_registry_is_bootstrapped(database_path)
 
 
 @pytest.mark.asyncio
-async def test_db_upgrade_repairs_stale_sqlite_schema_through_shipped_path(
+async def test_db_upgrade_rejects_stale_sqlite_schema_with_reset_guidance(
     tmp_path: Path,
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
@@ -61,37 +61,25 @@ async def test_db_upgrade_repairs_stale_sqlite_schema_through_shipped_path(
         await cli.cmd_init(init_args)
         with sqlite3.connect(database_path) as connection:
             connection.execute(
-                """
-                CREATE TABLE flows (
-                    flow_id TEXT PRIMARY KEY,
-                    task_id TEXT UNIQUE,
-                    compiled_plan_id TEXT,
-                    status TEXT,
-                    active_flow_revision_id TEXT,
-                    current_open_dispatch_id TEXT,
-                    current_node_key TEXT,
-                    created_at TEXT,
-                    updated_at TEXT
-                )
-                """
+                "CREATE TABLE flows (task_id TEXT PRIMARY KEY, status TEXT NOT NULL)"
             )
             connection.commit()
 
-        upgrade_result = await asyncio.to_thread(
-            cli.cmd_db_upgrade,
-            argparse.Namespace(config=str(config_path)),
-        )
+        with pytest.raises(RuntimeError, match=r"Run `autoclaw db reset`"):
+            await asyncio.to_thread(
+                cli.cmd_db_upgrade,
+                argparse.Namespace(config=str(config_path)),
+            )
     finally:
         await dispose_db_engine()
 
-    assert upgrade_result == 0
-    assert_seeded_registry_is_bootstrapped(database_path)
+    with sqlite3.connect(database_path) as connection:
+        columns = {row[1] for row in connection.execute('PRAGMA table_info("flows")').fetchall()}
+    assert columns == {"task_id", "status"}
 
 
 @pytest.mark.asyncio
-async def test_db_upgrade_bootstraps_seeded_sqlite_database_on_shipped_path(
-    tmp_path: Path,
-) -> None:
+async def test_db_upgrade_bootstraps_empty_sqlite_database(tmp_path: Path) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
     database_path = data_dir / "autoclaw.persistence"
@@ -113,179 +101,28 @@ async def test_db_upgrade_bootstraps_seeded_sqlite_database_on_shipped_path(
 
 
 @pytest.mark.asyncio
-async def test_legacy_postgres_schema_repair_moves_tables_to_backup_schema(
+async def test_db_reset_rejects_symlinked_sqlite_database_without_touching_target(
     tmp_path: Path,
 ) -> None:
-    if importlib.util.find_spec("asyncpg") is None:
-        pytest.skip("asyncpg not installed")
-
-    database_url = os.environ.get("AUTOCLAW_TEST_POSTGRES_URL")
-    if not database_url:
-        pytest.skip("AUTOCLAW_TEST_POSTGRES_URL not set")
-
     config_path = tmp_path / "autoclaw-config.toml"
     data_dir = tmp_path / "autoclaw-data"
-    await cli.cmd_init(
-        argparse.Namespace(
-            config=str(config_path),
-            data_dir=str(data_dir),
-            database_url=database_url,
-            host="127.0.0.1",
-            port=DEFAULT_API_PORT,
-            log_level=DEFAULT_LOG_LEVEL,
-            api_key="test-api-key",
-            force=True,
-            skip_db_upgrade=True,
-            json=False,
-        )
-    )
+    database_path = data_dir / "autoclaw.persistence"
+    real_database_path = data_dir / "real.persistence"
 
-    with cli.command_env(config_path=config_path):
-        get_settings.cache_clear()
+    try:
+        await cli.cmd_init(build_cli_init_args(config_path, data_dir))
         await dispose_db_engine()
-        engine = get_async_engine()
-        async with engine.begin() as connection:
-            await connection.execute(text("DROP TABLE IF EXISTS flows CASCADE"))
-            await connection.execute(
-                text("CREATE TABLE flows (task_id TEXT PRIMARY KEY, status TEXT NOT NULL)")
+        database_path.replace(real_database_path)
+        database_path.symlink_to(real_database_path)
+
+        with pytest.raises(ValueError, match="symlinked SQLite database path"):
+            await cli.cmd_db_reset(
+                argparse.Namespace(config=str(config_path), revision="head", json=False)
             )
-        await dispose_db_engine()
-        repair = await ensure_database_ready_with_legacy_sqlite_repair(database_url)
-        assert repair is not None
-        assert repair.is_repaired is True
-        assert repair.backup_path.startswith("autoclaw_legacy")
-        engine = get_async_engine()
-        async with engine.begin() as connection:
-            public_tables = set(
-                await connection.run_sync(lambda conn: inspect(conn).get_table_names())
-            )
-            backup_tables = set(
-                await connection.run_sync(
-                    lambda conn: inspect(conn).get_table_names(schema=repair.backup_path)
-                )
-            )
+    finally:
         await dispose_db_engine()
 
-    assert "flows" in public_tables
-    assert "flow_revisions" in public_tables
-    assert "flows" in backup_tables
-
-
-def test_legacy_postgres_terminal_row_builders_keep_surface_and_clear_unknown_actor() -> None:
-    human_request_columns = [
-        "resolved_by_actor_ref",
-        "resolved_by_surface",
-        "resolution_policy_basis",
-        "resolution_note",
-    ]
-    human_request_values = postgres_pending_human_request_row(
-        {
-            "resolution_kind": "answered",
-            "resolved_by_actor_ref": "control_api",
-        },
-        human_request_columns,
-    )
-    human_request_row = dict(zip(human_request_columns, human_request_values, strict=True))
-
-    assert human_request_row == {
-        "resolved_by_actor_ref": None,
-        "resolved_by_surface": "control_api",
-        "resolution_policy_basis": "task_authorized_human_request_resolution",
-        "resolution_note": None,
-    }
-
-    command_run_columns = [
-        "terminal_event_source",
-        "terminal_actor_ref",
-    ]
-    command_run_values = postgres_command_run_row(
-        {
-            "state": "cancelled",
-            "terminal_summary": "command run cancelled because the task was cancelled",
-        },
-        command_run_columns,
-    )
-    command_run_row = dict(zip(command_run_columns, command_run_values, strict=True))
-
-    assert command_run_row == {
-        "terminal_event_source": "control_api",
-        "terminal_actor_ref": None,
-    }
-
-
-def test_legacy_postgres_constraint_rebinder_targets_public_schema_and_not_valid() -> None:
-    rebound = postgres_rebound_constraint_definition(
-        (
-            "FOREIGN KEY (flow_node_id) "
-            "REFERENCES autoclaw_legacy.flow_nodes(flow_node_id) "
-            "DEFERRABLE INITIALLY DEFERRED"
-        ),
-        "autoclaw_legacy",
-    )
-
-    assert rebound == (
-        "FOREIGN KEY (flow_node_id) "
-        "REFERENCES public.flow_nodes(flow_node_id) "
-        "DEFERRABLE INITIALLY DEFERRED"
-    )
-    assert postgres_constraint_with_not_valid(rebound).endswith(
-        "DEFERRABLE INITIALLY DEFERRED NOT VALID"
-    )
-
-
-def test_legacy_postgres_command_run_builder_preserves_cancellation_actor_ref() -> None:
-    command_run_columns = [
-        "terminal_event_source",
-        "terminal_actor_ref",
-        "cancellation_requested_by_actor_ref",
-    ]
-    command_run_values = postgres_command_run_row(
-        {
-            "state": "cancelled",
-            "terminal_actor_ref": "control_api",
-            "cancellation_requested_by_actor_ref": "operator.alice",
-        },
-        command_run_columns,
-    )
-    command_run_row = dict(zip(command_run_columns, command_run_values, strict=True))
-
-    assert command_run_row == {
-        "terminal_event_source": "control_api",
-        "terminal_actor_ref": "operator.alice",
-        "cancellation_requested_by_actor_ref": "operator.alice",
-    }
-
-
-@pytest.mark.parametrize(
-    ("state", "terminal_summary", "expected_terminal_event_source"),
-    (
-        ("cancellation_requested", None, None),
-        ("failed", "command failed with exit code 7", "controller"),
-        ("timed_out", "command timed out after 600 seconds", "controller"),
-    ),
-)
-def test_legacy_postgres_command_run_builder_only_backfills_cancel_provenance_for_cancelled_rows(
-    state: str,
-    terminal_summary: str | None,
-    expected_terminal_event_source: str | None,
-) -> None:
-    command_run_columns = [
-        "terminal_event_source",
-        "terminal_actor_ref",
-        "cancellation_requested_by_actor_ref",
-    ]
-    command_run_values = postgres_command_run_row(
-        {
-            "state": state,
-            "terminal_summary": terminal_summary,
-            "cancellation_requested_by_actor_ref": "operator.alice",
-        },
-        command_run_columns,
-    )
-    command_run_row = dict(zip(command_run_columns, command_run_values, strict=True))
-
-    assert command_run_row == {
-        "terminal_event_source": expected_terminal_event_source,
-        "terminal_actor_ref": None,
-        "cancellation_requested_by_actor_ref": "operator.alice",
-    }
+    assert database_path.is_symlink()
+    assert real_database_path.is_file()
+    with sqlite3.connect(real_database_path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM workflow_definitions").fetchone()[0] > 0

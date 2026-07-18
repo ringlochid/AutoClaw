@@ -1,316 +1,466 @@
 from __future__ import annotations
 
-import sqlite3
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from tests.integration.runtime_schema_contract.lineage_support import (
-    insert_dispatch_turn,
-    seed_runtime_lineage_scope_fixture,
+from autoclaw.persistence import RuntimeBase
+from sqlalchemy import Connection, select
+from sqlalchemy.exc import IntegrityError
+from tests.integration.runtime_schema_contract.catalog_fixture import seed_catalog
+from tests.integration.runtime_schema_contract.runtime_lineage_fixture import (
+    RuntimeIds,
+    seed_runtime_scope,
 )
-from tests.integration.runtime_schema_contract.support import (
-    initialize_runtime_schema_database,
-    table_columns,
+from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+    create_runtime_schema_engine,
 )
 
+Mutation = Callable[[Connection, dict[str, RuntimeIds]], None]
+NOW = datetime(2026, 7, 18, tzinfo=UTC)
 
-async def test_runtime_schema_rejects_cross_scope_parent_flow_revision_ids(
+
+def _assert_rejected(
+    tmp_path: Path,
+    mutation: Mutation,
+    *,
+    suffixes: tuple[str, ...] = ("a",),
+) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            scopes = {suffix: seed_runtime_scope(connection, suffix=suffix) for suffix in suffixes}
+        with pytest.raises(IntegrityError):
+            with engine.begin() as connection:
+                mutation(connection, scopes)
+    finally:
+        engine.dispose()
+
+
+def test_flow_start_source_cannot_consume_another_flows_root(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        sources = RuntimeBase.metadata.tables["flow_start_sources"]
+        connection.execute(
+            sources.update()
+            .where(sources.c.flow_id == scopes["a"].flow_id)
+            .values(successor_dispatch_id=scopes["b"].root_dispatch_id)
+        )
+
+    _assert_rejected(tmp_path, mutate, suffixes=("a", "b"))
+
+
+def test_boundary_successor_must_name_the_source_dispatch_as_predecessor(
     tmp_path: Path,
 ) -> None:
-    database_path = await initialize_runtime_schema_database(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        seed_runtime_lineage_scope_fixture(connection)
-        expect_foreign_key_failure(connection, insert_cross_scope_parent_flow_revision)
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        connection.execute(
+            RuntimeBase.metadata.tables["accepted_boundaries"].insert(),
+            {
+                "accepted_boundary_id": "boundary.invalid-successor",
+                "source_dispatch_id": ids.root_dispatch_id,
+                "task_id": ids.task_id,
+                "flow_id": ids.flow_id,
+                "assignment_id": ids.root_assignment_id,
+                "attempt_id": ids.root_attempt_id,
+                "outcome": "green",
+                "checkpoint_id": ids.root_checkpoint_id,
+                "assignment_decision_id": None,
+                "successor_dispatch_id": ids.current_dispatch_id,
+                "committed_at": NOW,
+            },
+        )
+
+    _assert_rejected(tmp_path, mutate)
 
 
-async def test_runtime_schema_rejects_cross_scope_parent_flow_node_ids(
+def test_boundary_decision_must_belong_to_the_same_source_dispatch(
     tmp_path: Path,
 ) -> None:
-    database_path = await initialize_runtime_schema_database(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        seed_runtime_lineage_scope_fixture(connection)
-        expect_foreign_key_failure(connection, insert_cross_scope_parent_flow_node)
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        connection.execute(
+            RuntimeBase.metadata.tables["assignment_decisions"].insert(),
+            {
+                "assignment_decision_id": "decision.child-release",
+                "source_dispatch_id": ids.child_dispatch_id,
+                "task_id": ids.task_id,
+                "flow_id": ids.flow_id,
+                "assignment_id": ids.child_assignment_id,
+                "attempt_id": ids.child_attempt_id,
+                "source_flow_revision_id": ids.flow_revision_id,
+                "decision_kind": "release_green",
+                "staged_child_assignment_id": None,
+                "staged_child_attempt_id": None,
+                "recorded_at": NOW,
+            },
+        )
+        connection.execute(
+            RuntimeBase.metadata.tables["accepted_boundaries"].insert(),
+            {
+                "accepted_boundary_id": "boundary.invalid-decision-source",
+                "source_dispatch_id": ids.root_dispatch_id,
+                "task_id": ids.task_id,
+                "flow_id": ids.flow_id,
+                "assignment_id": ids.root_assignment_id,
+                "attempt_id": ids.root_attempt_id,
+                "outcome": "green",
+                "checkpoint_id": ids.root_checkpoint_id,
+                "assignment_decision_id": "decision.child-release",
+                "successor_dispatch_id": None,
+                "committed_at": NOW,
+            },
+        )
+
+    _assert_rejected(tmp_path, mutate)
 
 
-async def test_runtime_schema_rejects_dispatch_flow_revision_from_another_flow(
-    tmp_path: Path,
-) -> None:
-    database_path = await initialize_runtime_schema_database(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        seed_runtime_lineage_scope_fixture(connection)
-        expect_foreign_key_failure(
-            connection,
-            lambda conn: insert_dispatch_turn(
-                conn,
-                dispatch_id="dispatch.alpha.invalid.flow-revision",
-                flow_id="flow.alpha.a",
-                flow_revision_id="flow-revision.alpha.b.1",
-                flow_node_id=None,
-                assignment_id=None,
-                attempt_id=None,
+def test_dispatch_node_must_belong_to_its_assignment(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        connection.execute(
+            RuntimeBase.metadata.tables["dispatch_turns"].insert(),
+            _closed_successor_row(
+                ids,
+                dispatch_id="dispatch.invalid-assignment-node",
+                node_key="child",
             ),
         )
 
+    _assert_rejected(tmp_path, mutate)
 
-async def test_runtime_schema_rejects_dispatch_flow_node_from_another_revision(
+
+@pytest.mark.parametrize(
+    ("table_name", "where_column", "where_value"),
+    (
+        ("compiled_plan_nodes", "compiled_plan_id", "compiled-plan.a"),
+        ("flow_nodes", "flow_node_id", "flow-node.a.root"),
+        ("node_plan_revisions", "flow_node_id", "flow-node.a.root"),
+    ),
+)
+@pytest.mark.parametrize("policy_field", ("policy_key", "policy_revision_no"))
+def test_runtime_node_policy_identity_and_revision_are_required(
     tmp_path: Path,
+    table_name: str,
+    where_column: str,
+    where_value: str,
+    policy_field: str,
 ) -> None:
-    database_path = await initialize_runtime_schema_database(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        seed_runtime_lineage_scope_fixture(connection)
-        expect_foreign_key_failure(
-            connection,
-            lambda conn: insert_dispatch_turn(
-                conn,
-                dispatch_id="dispatch.alpha.invalid.flow-node",
-                flow_id="flow.alpha.a",
-                flow_revision_id="flow-revision.alpha.a.2",
-                flow_node_id="flow-node.alpha.a.r1.root",
-                assignment_id=None,
-                attempt_id=None,
-            ),
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        del scopes
+        table = RuntimeBase.metadata.tables[table_name]
+        connection.execute(
+            table.update().where(table.c[where_column] == where_value).values({policy_field: None})
         )
 
+    _assert_rejected(tmp_path, mutate)
 
-async def test_runtime_schema_rejects_dispatch_attempt_from_another_assignment(
+
+@pytest.mark.parametrize("definition_kind", ("workflow", "role", "policy"))
+def test_definition_revision_numbers_are_positive(
     tmp_path: Path,
+    definition_kind: str,
 ) -> None:
-    database_path = await initialize_runtime_schema_database(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        seed_runtime_lineage_scope_fixture(connection)
-        expect_foreign_key_failure(
-            connection,
-            lambda conn: insert_dispatch_turn(
-                conn,
-                dispatch_id="dispatch.alpha.invalid.attempt",
-                flow_id="flow.alpha.a",
-                flow_revision_id="flow-revision.alpha.a.2",
-                flow_node_id="flow-node.alpha.a.r2.root",
-                assignment_id="assignment.alpha.a.r2.root",
-                attempt_id="attempt.alpha.a.r1.root.01",
-            ),
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        del scopes
+        tables = RuntimeBase.metadata.tables
+        key_column = f"{definition_kind}_key"
+        definition_key = f"{definition_kind}.invalid-revision"
+        connection.execute(
+            tables[f"{definition_kind}_definitions"].insert(),
+            {
+                key_column: definition_key,
+                "current_revision_no": None,
+                "created_at": NOW,
+                "updated_at": NOW,
+            },
+        )
+        connection.execute(
+            tables[f"{definition_kind}_revisions"].insert(),
+            {
+                f"{definition_kind}_revision_id": f"{definition_kind}-revision.invalid",
+                key_column: definition_key,
+                "revision_no": 0,
+                "content_hash": "invalid",
+                "content_json": {},
+                "source_path": None,
+                "created_at": NOW,
+            },
         )
 
+    _assert_rejected(tmp_path, mutate)
 
-async def test_runtime_schema_omits_removed_callback_authority_and_support_columns(
-    tmp_path: Path,
-) -> None:
-    database_path = await initialize_runtime_schema_database(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        table_names = {
-            row[0]
-            for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
-            if isinstance(row[0], str)
-        }
-        assert "dispatch_callback_bindings" not in table_names
-        assert "status" not in table_columns(connection, "dispatch_turns")
-        assert "controller_observation_state" not in table_columns(
-            connection, "dispatch_delivery_states"
+
+def test_required_json_contracts_reject_python_none(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        compiled_plans = RuntimeBase.metadata.tables["compiled_plans"]
+        connection.execute(
+            compiled_plans.update()
+            .where(compiled_plans.c.compiled_plan_id == ids.compiled_plan_id)
+            .values(snapshot_json=None)
         )
-        assert "continuity_state" not in table_columns(connection, "dispatch_continuity_states")
-        node_session_columns = {
-            row[1]: row
-            for row in connection.execute("PRAGMA table_info('node_sessions')").fetchall()
-            if isinstance(row[1], str)
-        }
-        assert node_session_columns["session_key"][3] == 1
+
+    _assert_rejected(tmp_path, mutate)
 
 
-async def test_runtime_schema_rejects_mismatched_checkpoint_flow_node_ids(
+def test_flow_cannot_have_two_current_dispatches(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        row = _closed_successor_row(ids, dispatch_id="dispatch.invalid-second-current")
+        row.update(
+            status="starting",
+            adapter_started_at=None,
+            closed_at=None,
+            closed_reason=None,
+            next_provider_start_at=NOW,
+            provider_start_retry_kind="initial",
+        )
+        connection.execute(RuntimeBase.metadata.tables["dispatch_turns"].insert(), row)
+
+    _assert_rejected(tmp_path, mutate)
+
+
+def test_closed_dispatch_candidates_cannot_duplicate_one_successor(
     tmp_path: Path,
 ) -> None:
-    database_path = await initialize_runtime_schema_database(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        seed_runtime_lineage_scope_fixture(connection)
-        expect_foreign_key_failure(connection, insert_mismatched_checkpoint)
+    engine = create_runtime_schema_engine(tmp_path)
+    dispatches = RuntimeBase.metadata.tables["dispatch_turns"]
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            ids = seed_runtime_scope(connection)
+            connection.execute(
+                dispatches.insert(),
+                _closed_successor_row(
+                    ids,
+                    dispatch_id="dispatch.closed-successor.first",
+                ),
+            )
+
+        with pytest.raises(IntegrityError):
+            with engine.begin() as connection:
+                connection.execute(
+                    dispatches.insert(),
+                    _closed_successor_row(
+                        ids,
+                        dispatch_id="dispatch.closed-successor.second",
+                    ),
+                )
+
+        with engine.connect() as connection:
+            committed_successors = tuple(
+                connection.execute(
+                    select(
+                        dispatches.c.dispatch_id,
+                        dispatches.c.active_status_marker,
+                    ).where(dispatches.c.predecessor_dispatch_id == ids.current_dispatch_id)
+                )
+            )
+    finally:
+        engine.dispose()
+
+    assert committed_successors == (("dispatch.closed-successor.first", None),)
 
 
-async def test_runtime_schema_rejects_mismatched_artifact_publication_flow_node_ids(
+def test_flow_cannot_have_two_root_dispatches(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        row = _closed_successor_row(ids, dispatch_id="dispatch.invalid-second-root")
+        row.update(
+            flow_start_source_flow_id=ids.flow_id,
+            predecessor_dispatch_id=None,
+            opened_reason="root",
+        )
+        connection.execute(RuntimeBase.metadata.tables["dispatch_turns"].insert(), row)
+
+    _assert_rejected(tmp_path, mutate)
+
+
+@pytest.mark.parametrize(
+    "closed_reason",
+    (
+        "boundary",
+        "human_request_wait",
+        "command_run_wait",
+        "paused",
+        "cancelled",
+        "control_failed",
+        "task_terminal",
+    ),
+)
+def test_current_starting_dispatch_accepts_each_canon_named_direct_close(
     tmp_path: Path,
+    closed_reason: str,
 ) -> None:
-    database_path = await initialize_runtime_schema_database(tmp_path)
-    with sqlite3.connect(database_path) as connection:
-        seed_runtime_lineage_scope_fixture(connection)
-        expect_foreign_key_failure(connection, insert_mismatched_artifact_publication)
+    engine = create_runtime_schema_engine(tmp_path)
+    dispatches = RuntimeBase.metadata.tables["dispatch_turns"]
+    flows = RuntimeBase.metadata.tables["flows"]
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            ids = seed_runtime_scope(connection)
+            connection.execute(
+                dispatches.update()
+                .where(dispatches.c.dispatch_id == ids.current_dispatch_id)
+                .values(
+                    status="starting",
+                    adapter_started_at=None,
+                    last_node_activity_at=None,
+                    next_provider_start_at=NOW,
+                    provider_start_retry_kind="initial",
+                )
+            )
+
+        with engine.begin() as connection:
+            connection.execute(
+                dispatches.update()
+                .where(
+                    dispatches.c.dispatch_id == ids.current_dispatch_id,
+                    dispatches.c.status == "starting",
+                    dispatches.c.adapter_started_at.is_(None),
+                )
+                .values(
+                    status="closed",
+                    next_provider_start_at=None,
+                    provider_start_retry_kind=None,
+                    closed_at=NOW,
+                    closed_reason=closed_reason,
+                )
+            )
+            connection.execute(
+                flows.update()
+                .where(
+                    flows.c.flow_id == ids.flow_id,
+                    flows.c.current_dispatch_id == ids.current_dispatch_id,
+                )
+                .values(current_dispatch_id=None)
+            )
+
+        with engine.connect() as connection:
+            dispatch = connection.execute(
+                select(dispatches).where(dispatches.c.dispatch_id == ids.current_dispatch_id)
+            ).one()
+            current_dispatch_id = connection.scalar(
+                select(flows.c.current_dispatch_id).where(flows.c.flow_id == ids.flow_id)
+            )
+    finally:
+        engine.dispose()
+
+    assert dispatch.status == "closed"
+    assert dispatch.adapter_started_at is None
+    assert dispatch.closed_reason == closed_reason
+    assert current_dispatch_id is None
 
 
-def expect_foreign_key_failure(
-    connection: sqlite3.Connection,
-    inserter: Callable[[sqlite3.Connection], None],
+def test_watchdog_close_is_illegal_before_provider_acceptance(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        row = _closed_successor_row(ids, dispatch_id="dispatch.invalid-starting-watchdog")
+        row.update(
+            adapter_started_at=None,
+            last_node_activity_at=None,
+            closed_reason="watchdog_superseded",
+        )
+        connection.execute(RuntimeBase.metadata.tables["dispatch_turns"].insert(), row)
+
+    _assert_rejected(tmp_path, mutate)
+
+
+@pytest.mark.parametrize(
+    "route_updates",
+    (
+        {"model_override": ""},
+        {"effort_override": "   "},
+        {
+            "requested_provider": "openclaw",
+            "resolved_provider": "openclaw",
+            "provider_route_kind": "openclaw",
+            "gateway_profile": "",
+        },
+        {"gateway_profile": "unexpected"},
+        {
+            "requested_provider": "openclaw",
+            "resolved_provider": "openclaw",
+            "provider_route_kind": "openclaw",
+            "gateway_profile": "default",
+            "model_override": "unexpected",
+        },
+    ),
+    ids=(
+        "empty-model-override",
+        "blank-effort-override",
+        "empty-gateway-profile",
+        "gateway-field-on-codex",
+        "model-field-on-openclaw",
+    ),
+)
+def test_dispatch_route_is_a_strict_nonempty_variant(
+    tmp_path: Path,
+    route_updates: dict[str, object],
 ) -> None:
-    with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY constraint failed"):
-        with connection:
-            inserter(connection)
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        row = _closed_successor_row(ids, dispatch_id="dispatch.invalid-provider-route")
+        row.update(route_updates)
+        connection.execute(RuntimeBase.metadata.tables["dispatch_turns"].insert(), row)
+
+    _assert_rejected(tmp_path, mutate)
 
 
-def insert_cross_scope_parent_flow_revision(connection: sqlite3.Connection) -> None:
-    connection.execute(
-        """
-        INSERT INTO flow_revisions (
-            flow_revision_id,
-            flow_id,
-            revision_no,
-            parent_flow_revision_id,
-            source_compiled_plan_id,
-            cause,
-            created_by_dispatch_id,
-            snapshot_json,
-            adopted_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            "flow-revision.alpha.a.3",
-            "flow.alpha.a",
-            3,
-            "flow-revision.alpha.b.1",
-            "compiled-plan.alpha.a",
-            "update_child",
-            None,
-            "{}",
-            "2026-05-06T00:00:00+00:00",
-        ),
-    )
+def test_flow_wait_requires_exactly_one_typed_source(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        connection.execute(
+            RuntimeBase.metadata.tables["flow_waits"].insert(),
+            {
+                "flow_id": ids.flow_id,
+                "task_id": ids.task_id,
+                "source_dispatch_id": ids.current_dispatch_id,
+                "human_request_id": None,
+                "command_run_id": None,
+                "created_at": NOW,
+            },
+        )
+
+    _assert_rejected(tmp_path, mutate)
 
 
-def insert_cross_scope_parent_flow_node(connection: sqlite3.Connection) -> None:
-    connection.execute(
-        """
-        INSERT INTO flow_nodes (
-            flow_node_id,
-            flow_id,
-            flow_revision_id,
-            node_key,
-            parent_flow_node_id,
-            parent_node_key,
-            node_kind,
-            role_key,
-            role_revision_no,
-            role_description,
-            role_instruction,
-            policy_key,
-            policy_revision_no,
-            policy_description,
-            policy_instruction,
-            description,
-            child_node_keys_json,
-            consumes_json,
-            produces_json,
-            criteria_json,
-            child_defaults_json,
-            state,
-            current_assignment_id,
-            order_index
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            "flow-node.alpha.a.r2.child",
-            "flow.alpha.a",
-            "flow-revision.alpha.a.2",
-            "child",
-            "flow-node.alpha.a.r1.root",
-            "root",
-            "worker",
-            "role.worker",
-            1,
-            "Worker role",
-            None,
-            None,
-            None,
-            None,
-            None,
-            "Child node with cross-revision authoritative parent id",
-            "[]",
-            None,
-            None,
-            "[]",
-            None,
-            "ready",
-            None,
-            1,
-        ),
-    )
-
-
-def insert_mismatched_checkpoint(connection: sqlite3.Connection) -> None:
-    connection.execute(
-        """
-        INSERT INTO attempt_checkpoints (
-            checkpoint_id,
-            assignment_id,
-            assignment_key,
-            attempt_id,
-            flow_node_id,
-            node_key,
-            checkpoint_kind,
-            outcome,
-            summary,
-            next_step,
-            blockers_json,
-            risks_json,
-            produced_artifact_claims_json,
-            produced_artifacts_json,
-            artifact_refs_json,
-            transient_refs_json,
-            task_memory_search_hints_json,
-            recorded_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            "checkpoint.alpha.invalid.owner",
-            "assignment.alpha.a.r1.root",
-            "assignment-key.alpha.a.r1.root",
-            "attempt.alpha.a.r1.root.01",
-            "flow-node.alpha.a.r2.root",
-            "root",
-            "progress",
-            None,
-            "Mismatched flow-node lineage.",
-            "This row should be rejected.",
-            "[]",
-            "[]",
-            "[]",
-            "[]",
-            "[]",
-            "[]",
-            "[]",
-            "2026-05-06T00:00:00+00:00",
-        ),
-    )
-
-
-def insert_mismatched_artifact_publication(connection: sqlite3.Connection) -> None:
-    connection.execute(
-        """
-        INSERT INTO artifact_publications (
-            artifact_publication_id,
-            task_id,
-            flow_node_id,
-            owner_node_key,
-            slot,
-            version,
-            path,
-            description,
-            assignment_key,
-            attempt_id,
-            published_at,
-            supersedes_version,
-            supersedes_path
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            "artifact-publication.alpha.invalid.owner",
-            "task.alpha.a",
-            "flow-node.alpha.a.r2.root",
-            "root",
-            "report",
-            1,
-            "/tmp/task-alpha-a/outputs/artifacts/root/report/report.v01.md",
-            "Mismatched flow-node lineage.",
-            "assignment-key.alpha.a.r1.root",
-            "attempt.alpha.a.r1.root.01",
-            "2026-05-06T00:00:00+00:00",
-            None,
-            None,
-        ),
-    )
+def _closed_successor_row(
+    ids: RuntimeIds,
+    *,
+    dispatch_id: str,
+    node_key: str = "root",
+) -> dict[str, object]:
+    return {
+        "dispatch_id": dispatch_id,
+        "task_id": ids.task_id,
+        "flow_id": ids.flow_id,
+        "assignment_id": ids.root_assignment_id,
+        "attempt_id": ids.root_attempt_id,
+        "node_key": node_key,
+        "flow_start_source_flow_id": None,
+        "predecessor_dispatch_id": ids.current_dispatch_id,
+        "status": "closed",
+        "opened_reason": "boundary",
+        "requested_provider": "codex",
+        "resolved_provider": "codex",
+        "provider_selection_basis": "default",
+        "provider_route_kind": "codex",
+        "model_override": None,
+        "effort_override": None,
+        "gateway_profile": None,
+        "provider_start_revision": 0,
+        "provider_start_attempt_count": 0,
+        "next_provider_start_at": None,
+        "provider_start_retry_kind": None,
+        "provider_start_last_error_code": None,
+        "created_at": NOW,
+        "adapter_started_at": NOW,
+        "last_node_activity_at": NOW,
+        "node_activity_revision": 0,
+        "closed_at": NOW,
+        "closed_reason": "boundary",
+    }

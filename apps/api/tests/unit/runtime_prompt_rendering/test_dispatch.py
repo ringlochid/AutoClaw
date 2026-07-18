@@ -7,6 +7,7 @@ import pytest
 from autoclaw.runtime import (
     CheckpointOutcome,
     PromptFamily,
+    PromptRenderRequest,
     PromptSendMode,
     PromptTransportRequest,
 )
@@ -404,13 +405,23 @@ def test_current_dispatch_uses_exact_worker_and_parent_boundary_wording(tmp_path
         "`yield` or a terminal boundary" in parent_dispatch
     )
     assert f"- task_id for node tools: {worker_request_model.task_id}" in worker_dispatch
-    assert f"- session_key for node tools: {worker_request_model.session_key}" in worker_dispatch
     assert f"- task_id for node tools: {parent_request_model.task_id}" in parent_dispatch
-    assert f"- session_key for node tools: {parent_request_model.session_key}" in parent_dispatch
     assert "`autoclaw-node__*` prefix" in worker_dispatch
-    assert "Do not print them in normal output, checkpoint prose, or artifacts." in worker_dispatch
+    assert "session_key" not in worker_dispatch
+    assert "session_key" not in parent_dispatch
     assert "X-Autoclaw-Session-Key" not in worker_dispatch
     assert "X-Autoclaw-Session-Key" not in parent_dispatch
+
+
+def test_prompt_request_rejects_legacy_session_key(tmp_path: Path) -> None:
+    payload = worker_request(
+        tmp_path,
+        send_mode=PromptSendMode.FULL_PROMPT,
+    ).model_dump(mode="python")
+    payload["session_key"] = "legacy-session-secret"
+
+    with pytest.raises(ValueError, match="session_key"):
+        PromptRenderRequest.model_validate(payload)
 
 
 def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup(
@@ -446,11 +457,7 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
         "constraints, what to read or compare before acting, and what evidence "
         "or outputs to return" in allowed_actions_section
     )
-    assert (
-        "use `task_memory_search_hints` as retrieval prompts for prior defects, "
-        "rejected approaches, root causes, or artifact names; do not use generic tags"
-        in allowed_actions_section
-    )
+    assert "task_memory_search_hints" not in allowed_actions_section
     assert "do bounded research to sharpen delegation" not in allowed_actions_section
     assert "research is for better assignment quality" not in allowed_actions_section
     assert (
@@ -492,7 +499,7 @@ def test_parent_allowed_actions_stay_palette_first_and_allow_current_only_lookup
     )
 
 
-def test_task_memory_section_teaches_retrieval_prompts_not_tags(tmp_path: Path) -> None:
+def test_task_memory_section_does_not_restore_removed_search_hints(tmp_path: Path) -> None:
     bundle = render_prompt_bundle(worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT))
 
     task_memory_section = extract_section(
@@ -501,12 +508,8 @@ def test_task_memory_section_teaches_retrieval_prompts_not_tags(tmp_path: Path) 
         "### Allowed Actions Now",
     )
 
-    assert "- search hints:" in task_memory_section
-    assert (
-        "- search hints are retrieval prompts for prior defects, rejected "
-        "approaches, root causes, or artifact names; they are not generic tags"
-        in task_memory_section
-    )
+    assert "task_memory_search_hints" not in task_memory_section
+    assert "- search hints:" not in task_memory_section
 
 
 def test_parent_prompt_surfaces_structural_edit_palette_in_manifest_and_instructions(

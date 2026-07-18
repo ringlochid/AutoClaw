@@ -1,135 +1,346 @@
 from __future__ import annotations
 
-from mcp.server.fastmcp import FastMCP
-from mcp.server.transport_security import TransportSecuritySettings
+import json
+from collections.abc import AsyncIterator, Mapping
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any
+
+from mcp import types
+from mcp.server.lowlevel import Server
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ValidationError as PydanticValidationError
 from starlette.applications import Starlette
-from starlette.types import Message, Receive, Scope, Send
+from starlette.middleware import Middleware
+from starlette.routing import Route
+from starlette.types import Receive, Scope, Send
 
-from ..mcp_operation_failures import ContractFastMCP
-from ..transport import default_transport_security
-from .contracts import NODE_TOOL_NAMES
-from .definition_tools import register_current_definition_tools
-from .runtime_tools import register_node_runtime_tools
+from autoclaw.interfaces.http.errors import operation_failure
+from autoclaw.interfaces.mcp.mcp_operation_failures import (
+    operation_failure_tool_result,
+    runtime_operation_failure,
+    validation_operation_failure,
+)
+from autoclaw.interfaces.mcp.transport import NodeMcpTransportPolicy
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
+from autoclaw.runtime.errors import RuntimeOperationError, illegal_caller_error
+from autoclaw.runtime.node_mcp import DispatchMcpBindingRegistry
+from autoclaw.runtime.node_operations import (
+    NODE_OPERATION_CATALOG,
+    NodeOperationDescriptor,
+    NodeOperationExecutor,
+    NodeOperationMutationKind,
+    NodeOperationScope,
+)
+
+from .http_admission import ManagedNodeMcpHttpAdmission, current_managed_binding
+from .schema_projection import (
+    compatibility_input_schema,
+    managed_input_schema,
+    operation_output_schema,
+)
+
+NODE_TOOL_NAMES: tuple[str, ...] = tuple(
+    str(descriptor.name) for descriptor in NODE_OPERATION_CATALOG
+)
 
 
-class MountedNodeMcpApp:
+class NodeMcpProjectionKind(StrEnum):
+    MANAGED = "managed"
+    COMPATIBILITY = "compatibility"
+
+
+@dataclass(frozen=True, slots=True)
+class NodeMcpApplications:
+    managed: Starlette
+    compatibility: Starlette
+
+
+class _CompatibilityScopeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    task_id: str = Field(min_length=1)
+    dispatch_id: str = Field(min_length=1)
+
+
+class _StreamableHttpRequestApp:
+    def __init__(self, session_manager: StreamableHTTPSessionManager) -> None:
+        self._session_manager = session_manager
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        await self._session_manager.handle_request(scope, receive, send)
+
+
+class _NodeMcpProjection:
     def __init__(
         self,
         *,
-        host: str,
-        transport_security: TransportSecuritySettings | None,
+        kind: NodeMcpProjectionKind,
+        operation_executor: NodeOperationExecutor,
+        binding_registry: DispatchMcpBindingRegistry | None,
     ) -> None:
-        self._host = host
-        self._transport_security = transport_security
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] == "lifespan":
-            await self._handle_lifespan(receive, send)
-            return
-
-        app = create_node_mcp_app(
-            host=self._host,
-            transport_security=self._transport_security,
+        self._kind = kind
+        self._operation_executor = operation_executor
+        self._binding_registry = binding_registry
+        self._descriptors_by_name = {
+            str(descriptor.name): descriptor for descriptor in NODE_OPERATION_CATALOG
+        }
+        server_name = (
+            "autoclaw-node-managed" if kind is NodeMcpProjectionKind.MANAGED else "autoclaw-node"
         )
-        proxied_scope = dict(scope)
-        proxied_scope["path"] = "/mcp"
-        proxied_scope["raw_path"] = b"/mcp"
-        async with app.router.lifespan_context(app):
-            await app(proxied_scope, receive, send)
+        self.server = Server(server_name, instructions=_server_instructions(kind))
+        self.server.list_tools()(self.list_tools)
+        self.server.call_tool(validate_input=False)(self.call_tool)
 
-    async def _handle_lifespan(self, receive: Receive, send: Send) -> None:
-        while True:
-            message: Message = await receive()
-            if message["type"] == "lifespan.startup":
-                await send({"type": "lifespan.startup.complete"})
-                continue
-            if message["type"] == "lifespan.shutdown":
-                await send({"type": "lifespan.shutdown.complete"})
-                return
+    async def list_tools(self) -> list[types.Tool]:
+        descriptors = await self._listed_descriptors()
+        return [self._tool_from_descriptor(descriptor) for descriptor in descriptors]
+
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+    ) -> types.CallToolResult:
+        descriptor = self._descriptors_by_name.get(name)
+        if descriptor is None:
+            return operation_failure_tool_result(
+                operation_failure(
+                    code=OperationFailureCode.INVALID_REQUEST_SHAPE,
+                    summary=f"unknown Node operation '{name}'",
+                    is_retryable=False,
+                    field_path="name",
+                    suggested_next_step="Reread the available Node tools before retrying.",
+                )
+            )
+
+        try:
+            scope, semantic_arguments = self._resolve_call_scope(
+                descriptor=descriptor,
+                arguments=arguments,
+            )
+            result = await self._operation_executor.execute(
+                scope=scope,
+                operation_name=descriptor.name,
+                arguments=semantic_arguments,
+            )
+        except PydanticValidationError as exc:
+            return operation_failure_tool_result(validation_operation_failure(exc))
+        except Exception as exc:
+            return operation_failure_tool_result(runtime_operation_failure(exc))
+        return _success_tool_result(result.model_dump(mode="json"))
+
+    async def _listed_descriptors(self) -> tuple[NodeOperationDescriptor, ...]:
+        if self._kind is NodeMcpProjectionKind.COMPATIBILITY:
+            return NODE_OPERATION_CATALOG
+
+        binding = current_managed_binding()
+        if self._binding_registry is None or not self._binding_registry.is_active(binding):
+            return ()
+        scope = NodeOperationScope(
+            task_id=binding.task_id,
+            dispatch_id=binding.dispatch_id,
+            provider_start_revision=binding.provider_start_revision,
+        )
+        descriptors = await self._operation_executor.list_operations(scope)
+        return tuple(
+            descriptor
+            for descriptor in descriptors
+            if str(descriptor.name) in binding.exposure_ceiling
+        )
+
+    def _resolve_call_scope(
+        self,
+        *,
+        descriptor: NodeOperationDescriptor,
+        arguments: Mapping[str, object],
+    ) -> tuple[NodeOperationScope, dict[str, object]]:
+        if self._kind is NodeMcpProjectionKind.COMPATIBILITY:
+            return _extract_compatibility_scope(arguments)
+
+        binding = current_managed_binding()
+        if self._binding_registry is None or not self._binding_registry.is_active(binding):
+            raise _managed_authentication_error()
+        if str(descriptor.name) not in binding.exposure_ceiling:
+            raise illegal_caller_error(
+                f"managed binding does not expose Node operation '{descriptor.name}'"
+            )
+        scope = NodeOperationScope(
+            task_id=binding.task_id,
+            dispatch_id=binding.dispatch_id,
+            provider_start_revision=binding.provider_start_revision,
+        )
+        semantic_arguments = dict(arguments)
+        if not self._binding_registry.is_active(binding):
+            raise _managed_authentication_error()
+        return scope, semantic_arguments
+
+    def _tool_from_descriptor(self, descriptor: NodeOperationDescriptor) -> types.Tool:
+        is_read_only = descriptor.mutation_kind is NodeOperationMutationKind.READ
+        input_schema = (
+            managed_input_schema(descriptor)
+            if self._kind is NodeMcpProjectionKind.MANAGED
+            else compatibility_input_schema(descriptor)
+        )
+        return types.Tool(
+            name=str(descriptor.name),
+            title=descriptor.title,
+            description=descriptor.description,
+            inputSchema=input_schema,
+            outputSchema=operation_output_schema(descriptor),
+            annotations=types.ToolAnnotations(
+                readOnlyHint=is_read_only,
+                destructiveHint=False if is_read_only else None,
+            ),
+        )
 
 
-def create_node_mcp_app(
+def create_node_mcp_apps(
     *,
-    host: str = "127.0.0.1",
-    transport_security: TransportSecuritySettings | None = None,
-) -> Starlette:
-    return create_node_mcp_server(
-        host=host,
-        transport_security=transport_security,
-    ).streamable_http_app()
-
-
-def create_node_mcp_mount_app(
-    *,
-    host: str = "127.0.0.1",
-    transport_security: TransportSecuritySettings | None = None,
-) -> MountedNodeMcpApp:
-    return MountedNodeMcpApp(
-        host=host,
-        transport_security=transport_security,
-    )
-
-
-def create_node_mcp_server(
-    *,
-    host: str = "127.0.0.1",
-    transport_security: TransportSecuritySettings | None = None,
-) -> FastMCP:
-    server = ContractFastMCP(
-        "autoclaw-node",
-        instructions=(
-            "Static explicit-arg AutoClaw node surface.\n\n"
-            "Lookup:\n"
-            "- search_definitions and get_definition are read-only "
-            "current-only lookup tools for the live structural-edit lane "
-            "when surfaced prompt or manifest context is insufficient.\n\n"
-            "Persist progress:\n"
-            "- record_checkpoint publishes durable semantic progress for "
-            "the current live node execution.\n\n"
-            "Close the current turn:\n"
-            "- return_boundary closes the current dispatch turn; yield is "
-            "non-terminal workflow progress, while green, retry, and blocked "
-            "are terminal for the current dispatch turn.\n"
-            "- after a successful return_boundary call, stop the current outer "
-            "assistant turn immediately rather than continuing with more tool "
-            "calls or prose.\n\n"
-            "Open external waits:\n"
-            "- open_human_request opens a typed pending human request when "
-            "the current node capability allows the requested kind.\n"
-            "- open_human_request creates waiting_for_human_request directly; "
-            "it is not a workflow boundary, generic chat continuation, "
-            "operator note, or task continue action.\n\n"
-            "- start_command_run starts a controller-managed long-running "
-            "command run when the current node command_run capability allows it.\n"
-            "- start_command_run creates waiting_for_command_run directly; "
-            "it is not a workflow boundary, task continue action, concrete "
-            "process runner, or raw log capture surface.\n\n"
-            "Mutate parent/root state:\n"
-            "- assign_child, add_child, update_child, remove_child, "
-            "release_green, and release_blocked perform dispatch-local "
-            "parent/root mutation only when the current dispatch allows "
-            "them.\n\n"
-            "Not for operator control:\n"
-            "- every node tool call must pass the current dispatch-local "
-            "session_key and task_id.\n"
-            "- server-side authority validation resolves that session "
-            "against the live NodeSession and current dispatch truth "
-            "before any node read or write runs.\n"
-            "- use operator MCP for runtime inspection, pause, continue, "
-            "cancel, definition upload, and task start."
+    binding_registry: DispatchMcpBindingRegistry,
+    operation_executor: NodeOperationExecutor,
+    transport_policy: NodeMcpTransportPolicy,
+) -> NodeMcpApplications:
+    return NodeMcpApplications(
+        managed=create_managed_node_mcp_app(
+            binding_registry=binding_registry,
+            operation_executor=operation_executor,
+            transport_policy=transport_policy,
         ),
-        json_response=True,
-        stateless_http=True,
-        transport_security=transport_security or default_transport_security(host=host),
+        compatibility=create_compatibility_node_mcp_app(
+            operation_executor=operation_executor,
+            transport_policy=transport_policy,
+        ),
     )
-    register_current_definition_tools(server)
-    register_node_runtime_tools(server)
-    return server
+
+
+def create_managed_node_mcp_app(
+    *,
+    binding_registry: DispatchMcpBindingRegistry,
+    operation_executor: NodeOperationExecutor,
+    transport_policy: NodeMcpTransportPolicy,
+) -> Starlette:
+    projection = _NodeMcpProjection(
+        kind=NodeMcpProjectionKind.MANAGED,
+        operation_executor=operation_executor,
+        binding_registry=binding_registry,
+    )
+    return _create_projection_app(
+        projection=projection,
+        transport_policy=transport_policy,
+        binding_registry=binding_registry,
+    )
+
+
+def create_compatibility_node_mcp_app(
+    *,
+    operation_executor: NodeOperationExecutor,
+    transport_policy: NodeMcpTransportPolicy,
+) -> Starlette:
+    projection = _NodeMcpProjection(
+        kind=NodeMcpProjectionKind.COMPATIBILITY,
+        operation_executor=operation_executor,
+        binding_registry=None,
+    )
+    return _create_projection_app(
+        projection=projection,
+        transport_policy=transport_policy,
+        binding_registry=None,
+    )
+
+
+def _create_projection_app(
+    *,
+    projection: _NodeMcpProjection,
+    transport_policy: NodeMcpTransportPolicy,
+    binding_registry: DispatchMcpBindingRegistry | None,
+) -> Starlette:
+    session_manager = StreamableHTTPSessionManager(
+        app=projection.server,
+        json_response=True,
+        stateless=True,
+        security_settings=transport_policy.as_sdk_settings(),
+    )
+
+    @asynccontextmanager
+    async def lifespan(_app: Starlette) -> AsyncIterator[None]:
+        async with session_manager.run():
+            try:
+                yield
+            finally:
+                if binding_registry is not None:
+                    binding_registry.revoke_all()
+
+    middleware = (
+        [
+            Middleware(
+                ManagedNodeMcpHttpAdmission,
+                binding_registry=binding_registry,
+            )
+        ]
+        if binding_registry is not None
+        else []
+    )
+    return Starlette(
+        routes=[Route("/mcp", endpoint=_StreamableHttpRequestApp(session_manager))],
+        middleware=middleware,
+        lifespan=lifespan,
+    )
+
+
+def _extract_compatibility_scope(
+    arguments: Mapping[str, object],
+) -> tuple[NodeOperationScope, dict[str, object]]:
+    semantic_arguments = dict(arguments)
+    scope_request = _CompatibilityScopeRequest.model_validate(
+        {
+            "task_id": semantic_arguments.pop("task_id", None),
+            "dispatch_id": semantic_arguments.pop("dispatch_id", None),
+        }
+    )
+    return (
+        NodeOperationScope(
+            task_id=scope_request.task_id,
+            dispatch_id=scope_request.dispatch_id,
+        ),
+        semantic_arguments,
+    )
+
+
+def _managed_authentication_error() -> ValueError:
+    return RuntimeOperationError(
+        code=OperationFailureCode.AUTHENTICATION_FAILED,
+        summary="managed Node MCP authentication failed",
+        is_retryable=False,
+    )
+
+
+def _success_tool_result(payload: dict[str, Any]) -> types.CallToolResult:
+    return types.CallToolResult(
+        content=[types.TextContent(type="text", text=json.dumps(payload, indent=2))],
+        structuredContent=payload,
+        isError=False,
+    )
+
+
+def _server_instructions(kind: NodeMcpProjectionKind) -> str:
+    if kind is NodeMcpProjectionKind.MANAGED:
+        return (
+            "Dispatch-scoped AutoClaw Node tools. Scope and exposure come from the private "
+            "managed binding; tool arguments contain semantic fields only."
+        )
+    return (
+        "Explicit-ID AutoClaw Node compatibility tools for user-configured OpenClaw. Every "
+        "call requires the full current task_id and dispatch_id."
+    )
 
 
 __all__ = [
     "NODE_TOOL_NAMES",
-    "create_node_mcp_app",
-    "create_node_mcp_mount_app",
-    "create_node_mcp_server",
+    "NodeMcpApplications",
+    "NodeMcpProjectionKind",
+    "create_compatibility_node_mcp_app",
+    "create_managed_node_mcp_app",
+    "create_node_mcp_apps",
 ]

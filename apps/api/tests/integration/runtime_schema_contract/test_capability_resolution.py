@@ -1,110 +1,77 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from pathlib import Path
 
-from autoclaw.persistence import PolicyDefinitionModel, PolicyRevisionModel, RuntimeBase
-from autoclaw.persistence.models import FlowNodeModel
-from autoclaw.runtime.capabilities import resolve_effective_capabilities_for_node
-from autoclaw.runtime.contracts import CapabilityDecision
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+import pytest
+from autoclaw.persistence import RuntimeBase
+from sqlalchemy.exc import IntegrityError
+from tests.integration.runtime_schema_contract.catalog_fixture import seed_catalog
+from tests.integration.runtime_schema_contract.runtime_lineage_fixture import (
+    seed_runtime_scope,
+)
+from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+    create_runtime_schema_engine,
+)
 
 
-async def test_effective_capabilities_use_pinned_policy_revision_not_current_policy(
+@pytest.mark.parametrize(
+    ("column_name", "invalid_value"),
+    (
+        ("provider_native_access", "implicit"),
+        ("provider_native_access_source", "provider"),
+        ("network_access", "inherit"),
+        ("network_access_source", "adapter"),
+        ("human_direction", "prompt"),
+        ("human_approval", "prompt"),
+        ("human_input", "prompt"),
+        ("human_review", "prompt"),
+        ("command_run", "prompt"),
+    ),
+)
+def test_frozen_dispatch_capability_values_are_closed_enums(
     tmp_path: Path,
+    column_name: str,
+    invalid_value: str,
 ) -> None:
-    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'capabilities.sqlite'}")
+    engine = create_runtime_schema_engine(tmp_path)
     try:
-        async with engine.begin() as connection:
-            await connection.run_sync(RuntimeBase.metadata.create_all)
-        session_factory = async_sessionmaker(engine, expire_on_commit=False)
-
-        async with session_factory() as session:
-            await _seed_interactive_worker_policy(session)
-            capabilities = await resolve_effective_capabilities_for_node(
-                session,
-                node=_pinned_interactive_worker_node(),
-                execution_scope="dispatch",
-            )
-
-        assert capabilities.human_request.direction == CapabilityDecision.DENY
-        assert capabilities.human_request.approval == CapabilityDecision.DENY
-        assert capabilities.human_request.input == CapabilityDecision.DENY
-        assert capabilities.human_request.review == CapabilityDecision.DENY
-        assert capabilities.command_run == CapabilityDecision.DENY
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            ids = seed_runtime_scope(connection)
+        capabilities = RuntimeBase.metadata.tables["dispatch_capability_sets"]
+        with pytest.raises(IntegrityError):
+            with engine.begin() as connection:
+                connection.execute(
+                    capabilities.update()
+                    .where(capabilities.c.dispatch_id == ids.current_dispatch_id)
+                    .values({column_name: invalid_value})
+                )
     finally:
-        await engine.dispose()
+        engine.dispose()
 
 
-async def _seed_interactive_worker_policy(session: AsyncSession) -> None:
-    policy_definition = PolicyDefinitionModel(
-        policy_key="interactive-worker",
-        current_revision_no=None,
-        created_at=datetime(2026, 6, 25, tzinfo=UTC),
-        updated_at=datetime(2026, 6, 25, tzinfo=UTC),
-    )
-    session.add(policy_definition)
-    await session.flush()
-    session.add_all(_interactive_worker_policy_revisions())
-    await session.flush()
-    policy_definition.current_revision_no = 2
-
-
-def _interactive_worker_policy_revisions() -> list[PolicyRevisionModel]:
-    return [
-        PolicyRevisionModel(
-            policy_revision_id="policy-revision.interactive-worker.1",
-            policy_key="interactive-worker",
-            revision_no=1,
-            content_hash="sha256:revision-1",
-            content_json={
-                "id": "interactive-worker",
-                "description": "Pinned policy denies special lanes.",
-                "applies_to": ["worker"],
-                "capabilities": {
-                    "human_request": {
-                        "mode": "deny",
-                        "allowed_kinds": ["review"],
+def test_each_dispatch_has_at_most_one_frozen_capability_set(tmp_path: Path) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            ids = seed_runtime_scope(connection)
+        with pytest.raises(IntegrityError):
+            with engine.begin() as connection:
+                connection.execute(
+                    RuntimeBase.metadata.tables["dispatch_capability_sets"].insert(),
+                    {
+                        "dispatch_id": ids.current_dispatch_id,
+                        "provider_native_access": "restricted",
+                        "provider_native_access_source": "controller",
+                        "network_access": "deny",
+                        "network_access_source": "controller",
+                        "human_direction": "deny",
+                        "human_approval": "deny",
+                        "human_input": "deny",
+                        "human_review": "deny",
+                        "command_run": "deny",
                     },
-                    "command_run": "deny",
-                },
-            },
-        ),
-        PolicyRevisionModel(
-            policy_revision_id="policy-revision.interactive-worker.2",
-            policy_key="interactive-worker",
-            revision_no=2,
-            content_hash="sha256:revision-2",
-            content_json={
-                "id": "interactive-worker",
-                "description": "Current policy grants special lanes.",
-                "applies_to": ["worker"],
-                "capabilities": {
-                    "human_request": {
-                        "mode": "allow",
-                        "allowed_kinds": ["direction", "approval", "input", "review"],
-                    },
-                    "command_run": "allow",
-                },
-            },
-        ),
-    ]
-
-
-def _pinned_interactive_worker_node() -> FlowNodeModel:
-    return FlowNodeModel(
-        flow_node_id="flow-node.capability.worker",
-        flow_revision_id="flow-revision.capability.1",
-        node_key="implement_change",
-        structural_kind="worker",
-        role_key="engineer",
-        role_revision_no=1,
-        role_description="Worker role.",
-        policy_key="interactive-worker",
-        policy_revision_no=1,
-        policy_description="Pinned policy.",
-        description="Implement a bounded change.",
-        child_node_keys_json=[],
-        criteria_json=[],
-        order_index=0,
-    )
+                )
+    finally:
+        engine.dispose()

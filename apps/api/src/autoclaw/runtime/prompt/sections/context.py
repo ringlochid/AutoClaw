@@ -55,9 +55,6 @@ def render_latest_checkpoint_context(
         for ref in checkpoint.transient_refs:
             lines.append(f"  - path: {ref.path}")
             lines.append(f"    description: {ref.description}")
-    if checkpoint.task_memory_search_hints:
-        lines.append("- task_memory_search_hints:")
-        lines.extend(f"  - {hint}" for hint in checkpoint.task_memory_search_hints)
     return render_markdown_section("Latest Checkpoint Context", lines, level=heading_level)
 
 
@@ -100,22 +97,12 @@ def render_task_memory(
     *,
     heading_level: int = 2,
 ) -> str | None:
-    hints = unique_task_memory_hints(request)
     context_refs = task_memory_context_refs(request)
-    if not hints and not context_refs:
+    if not context_refs:
         return None
-    lines: list[str] = []
-    if hints:
-        lines.append("- search hints:")
-        lines.extend(f"  - {hint}" for hint in hints)
-        lines.append(
-            "- search hints are retrieval prompts for prior defects, rejected "
-            "approaches, root causes, or artifact names; they are not generic tags"
-        )
-    if context_refs:
-        lines.append("- surfaced curated refs:")
-        for ref in context_refs:
-            lines.extend(f"  {line}" for line in render_ref_with_path(ref))
+    lines = ["- surfaced curated refs:"]
+    for ref in context_refs:
+        lines.extend(f"  {line}" for line in render_ref_with_path(ref))
     lines.append("- `context/wiki/` contains curated task-memory pages")
     lines.append("- other curated docs under `context/` are source/reference material")
     lines.append("- direct file/path search is the v1 retrieval model")
@@ -155,23 +142,6 @@ def task_memory_context_refs(request: PromptRenderRequest) -> tuple[EvidenceRef,
         seen.add(key)
         refs.append(ref)
     return tuple(refs)
-
-
-def unique_task_memory_hints(request: PromptRenderRequest) -> tuple[str, ...]:
-    hints: list[str] = []
-    seen: set[str] = set()
-    for hint in request.assignment.task_memory_search_hints:
-        if hint in seen:
-            continue
-        seen.add(hint)
-        hints.append(hint)
-    if request.latest_checkpoint is not None:
-        for hint in request.latest_checkpoint.task_memory_search_hints:
-            if hint in seen:
-                continue
-            seen.add(hint)
-            hints.append(hint)
-    return tuple(hints)
 
 
 def consumed_durable_ref_candidates(

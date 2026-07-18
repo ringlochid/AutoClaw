@@ -186,7 +186,7 @@ def stale_dispatch_error(
     return RuntimeOperationError(
         code=OperationFailureCode.STALE_DISPATCH,
         summary=summary,
-        is_retryable=True,
+        is_retryable=False,
         suggested_next_step=suggested_next_step,
     )
 

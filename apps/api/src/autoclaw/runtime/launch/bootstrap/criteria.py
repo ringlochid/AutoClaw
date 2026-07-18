@@ -6,21 +6,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.definitions.compiler import NormalizedCompiledNode
 from autoclaw.persistence.models import AssignmentCriteriaRefModel, AssignmentModel
-from autoclaw.runtime.contracts import TaskRootPaths
 from autoclaw.runtime.ids import assignment_criteria_ref_id
-from autoclaw.runtime.task_root import criteria_file_path
+from autoclaw.runtime.task_root import criteria_logical_path
 
 
 def build_node_criteria_json(
     *,
-    paths: TaskRootPaths,
     node: NormalizedCompiledNode,
 ) -> list[dict[str, Any]]:
     return [
         criteria.model_dump(mode="json")
         | {
             "version": 1,
-            "path": str(criteria_file_path(paths=paths, slot=criteria.slot, version=1)),
+            "path": str(criteria_logical_path(slot=criteria.slot, version=1)),
         }
         for criteria in node.criteria
     ]
@@ -40,7 +38,7 @@ def stage_assignment_criteria_refs(
                 ),
                 assignment_id=assignment.assignment_id,
                 slot=slot,
-                path=str(criteria["path"]),
+                logical_path=str(criteria["path"]),
                 description=str(criteria["description"]),
                 version=criteria.get("version"),
                 order_index=index,

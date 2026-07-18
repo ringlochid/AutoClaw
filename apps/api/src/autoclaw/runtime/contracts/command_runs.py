@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
 from autoclaw.runtime.contracts.primitives import (
@@ -36,14 +43,76 @@ COMMAND_RUN_TERMINAL_EVENT_TYPES = {
     CommandRunState.CANCELLED: TaskEventType.COMMAND_RUN_CANCELLED,
 }
 
+type CommandEnvironmentRef = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z][A-Za-z0-9_.-]*$",
+    ),
+]
+
+
+class CommandArgvSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["argv"]
+    argv: tuple[RuntimeSchemaText, ...] = Field(min_length=1, max_length=256)
+
+    @field_validator("argv")
+    @classmethod
+    def validate_argv(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if any("\x00" in argument for argument in value):
+            raise ValueError("command argv must not contain NUL bytes")
+        return value
+
+
+class CommandShellSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: Literal["shell"]
+    command: RuntimeSchemaText
+
+    @field_validator("command")
+    @classmethod
+    def validate_command(cls, value: str) -> str:
+        if "\x00" in value:
+            raise ValueError("shell command must not contain NUL bytes")
+        return value
+
+
+type CommandSpec = Annotated[
+    CommandArgvSpec | CommandShellSpec,
+    Field(discriminator="kind"),
+]
+
+
+class CommandExpectedOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    path: RuntimeSchemaText
+    description: RuntimeSchemaText
+
 
 class CommandRunStartRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    command: RuntimeSchemaText
-    description: RuntimeSchemaText
-    workdir: RuntimeSchemaText | None = None
+    command: CommandSpec
+    cwd: RuntimeSchemaText | None = None
+    environment: tuple[CommandEnvironmentRef, ...] = Field(default=(), max_length=32)
     timeout_seconds: int | None = Field(default=None, ge=1)
+    summary: RuntimeSchemaText
+    expected_outputs: tuple[CommandExpectedOutput, ...] = Field(default=(), max_length=32)
+
+    @model_validator(mode="after")
+    def validate_unique_references(self) -> CommandRunStartRequest:
+        if len(self.environment) != len(set(self.environment)):
+            raise ValueError("command environment references must be unique")
+        output_paths = [output.path for output in self.expected_outputs]
+        if len(output_paths) != len(set(output_paths)):
+            raise ValueError("command expected output paths must be unique")
+        return self
 
 
 class CommandRunStartResponse(BaseModel):
@@ -168,6 +237,10 @@ class CommandRunLogReadResponse(BaseModel):
 
 
 for _command_run_contract in (
+    CommandArgvSpec,
+    CommandShellSpec,
+    CommandExpectedOutput,
+    CommandRunStartRequest,
     CommandRunStartResponse,
     CommandRunTerminalResult,
     CommandRunRecord,
@@ -184,6 +257,9 @@ for _command_run_contract in (
 __all__ = [
     "COMMAND_RUN_TERMINAL_EVENT_TYPES",
     "TERMINAL_COMMAND_RUN_STATES",
+    "CommandArgvSpec",
+    "CommandEnvironmentRef",
+    "CommandExpectedOutput",
     "CommandRunCancelResponse",
     "CommandRunListItem",
     "CommandRunListResponse",
@@ -195,4 +271,6 @@ __all__ = [
     "CommandRunTerminalResult",
     "CommandRunTerminalResultRead",
     "CommandRunTerminalState",
+    "CommandShellSpec",
+    "CommandSpec",
 ]

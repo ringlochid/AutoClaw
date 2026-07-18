@@ -81,9 +81,9 @@ class _ContractTool(Tool):
         except UrlElicitationRequiredError:
             raise
         except PydanticValidationError as exc:
-            return operation_failure_tool_result(_validation_failure(exc))
+            return operation_failure_tool_result(validation_operation_failure(exc))
         except Exception as exc:
-            return operation_failure_tool_result(_runtime_failure(exc))
+            return operation_failure_tool_result(runtime_operation_failure(exc))
 
     run: ClassVar[Callable[..., Any]] = _run
 
@@ -124,18 +124,12 @@ def operation_failure_tool_result(failure: OperationFailure) -> CallToolResult:
     )
 
 
-def _convert_mcp_result(tool: Tool, result: Any) -> Any:
-    if isinstance(result, CallToolResult):
-        return result
-    return tool.fn_metadata.convert_result(result)
-
-
-def _runtime_failure(exc: Exception) -> OperationFailure:
+def runtime_operation_failure(exc: Exception) -> OperationFailure:
     _status_code, failure = runtime_exception_failure(exc)
     return failure
 
 
-def _validation_failure(exc: PydanticValidationError) -> OperationFailure:
+def validation_operation_failure(exc: PydanticValidationError) -> OperationFailure:
     first_error = exc.errors()[0] if exc.errors() else None
     loc = first_error.get("loc", ()) if first_error is not None else ()
     field_path = ".".join(str(part) for part in loc) or None
@@ -151,9 +145,17 @@ def _validation_failure(exc: PydanticValidationError) -> OperationFailure:
     )
 
 
+def _convert_mcp_result(tool: Tool, result: Any) -> Any:
+    if isinstance(result, CallToolResult):
+        return result
+    return tool.fn_metadata.convert_result(result)
+
+
 __all__ = [
     "OPERATION_FAILURE_OUTPUT_SCHEMA",
     "ContractFastMCP",
     "operation_failure_tool_result",
+    "runtime_operation_failure",
     "success_or_failure_output_schema",
+    "validation_operation_failure",
 ]

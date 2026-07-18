@@ -42,12 +42,16 @@ steps:
 Rules:
 
 - zero to nine steps are accepted;
+- each normalized step contains one to 512 Unicode characters;
+- the optional normalized explanation contains one to 1,024 Unicode characters;
 - `steps: []` explicitly clears the current plan;
 - at most one step may be `in_progress`;
 - all steps may be `completed`;
 - steps are ordered and replace the previous snapshot as one revision;
 - repeated or vague filler steps fail validation; and
 - an identical normalized request is an accepted no-op and creates no new plan revision or plan event.
+
+Normalization trims surrounding whitespace before persistence and equality comparison. For the meaningful-text check only, the controller case-folds the value and removes non-alphanumeric characters. An empty fingerprint or the whole-field fingerprints `todo` and `tbd` fail validation. This rejects whitespace, punctuation-only ellipses, and punctuated placeholder variants without rejecting prose that merely discusses a TODO or TBD.
 
 The assignment stores a monotonic `work_plan_revision`. A present current snapshot stores that revision, the normalized steps, optional explanation, authoring dispatch ID, and commit time. Clearing an existing plan increments the assignment revision and removes the current snapshot; clearing an absent plan is a no-op. This preserves unambiguous event ordering without treating an empty snapshot as a current plan.
 
@@ -117,6 +121,8 @@ A checkpoint binds at minimum:
 - the exact terminal outcome when the checkpoint supports a terminal boundary.
 
 Checkpoint bodies remain bounded controller data. Large artifacts and logs are stored behind logical refs rather than copied into the checkpoint row or generic event stream.
+
+The handoff summary contains one to 2,048 normalized Unicode characters and `next_step` contains one to 1,024. `blockers` and `risks` each contain zero to 16 entries, with one to 1,024 normalized Unicode characters per entry. These handoff text fields use the same narrow meaningful-text check as work-plan text.
 
 ## Boundary relationship
 

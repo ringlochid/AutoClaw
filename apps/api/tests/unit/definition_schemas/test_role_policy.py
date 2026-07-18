@@ -12,7 +12,7 @@ from autoclaw.definitions.contracts import (
 from autoclaw.definitions.contracts import (
     PolicyDefinitionFile,
     PolicyDefinitionInput,
-    ProviderPreference,
+    ProviderKind,
     RoleDefinitionFile,
     RoleDefinitionInput,
 )
@@ -22,7 +22,6 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.contracts import (
     HumanRequestKind as RuntimeHumanRequestKind,
 )
-from autoclaw.runtime.contracts import ProviderName
 from pydantic import ValidationError
 
 from .support import RoleOrPolicyDefinitionModel
@@ -205,6 +204,8 @@ def test_policy_definition_schema_accepts_missing_title_for_existing_definitions
     )
 
     assert policy.title is None
+    assert policy.capabilities.provider_native_access == "full"
+    assert policy.capabilities.network_access == "allow"
     assert policy.capabilities.human_request.mode == "deny"
     assert policy.capabilities.command_run == "deny"
 
@@ -219,10 +220,49 @@ def test_policy_definition_schema_defaults_to_denied_capabilities() -> None:
         }
     )
 
+    assert policy.capabilities.provider_native_access == "full"
+    assert policy.capabilities.network_access == "allow"
     assert policy.capabilities.human_request.mode == "deny"
     assert policy.capabilities.human_request.allowed_kinds == []
     assert policy.capabilities.command_run == "deny"
     assert policy.labels == []
+
+
+def test_policy_serialization_preserves_omitted_axis_provenance() -> None:
+    omitted = PolicyDefinitionInput.model_validate(
+        {
+            "id": "omitted-axis-policy",
+            "description": "Policy that inherits native and network defaults.",
+            "applies_to": ["worker"],
+        }
+    )
+    explicit = PolicyDefinitionInput.model_validate(
+        {
+            "id": "explicit-axis-policy",
+            "description": "Policy that explicitly authors the permissive values.",
+            "applies_to": ["worker"],
+            "capabilities": {
+                "provider_native_access": "full",
+                "network_access": "allow",
+            },
+        }
+    )
+
+    omitted_capabilities = omitted.model_dump(mode="json")["capabilities"]
+    explicit_capabilities = explicit.model_dump(mode="json")["capabilities"]
+
+    assert "provider_native_access" not in omitted_capabilities
+    assert "network_access" not in omitted_capabilities
+    assert explicit_capabilities["provider_native_access"] == "full"
+    assert explicit_capabilities["network_access"] == "allow"
+
+    persisted_omitted = PolicyDefinitionInput.model_validate(omitted.model_dump(mode="json"))
+    persisted_explicit = PolicyDefinitionInput.model_validate(explicit.model_dump(mode="json"))
+
+    assert "provider_native_access" not in persisted_omitted.capabilities.model_fields_set
+    assert "network_access" not in persisted_omitted.capabilities.model_fields_set
+    assert "provider_native_access" in persisted_explicit.capabilities.model_fields_set
+    assert "network_access" in persisted_explicit.capabilities.model_fields_set
 
 
 def test_policy_definition_schema_accepts_portable_capability_grants() -> None:
@@ -233,6 +273,8 @@ def test_policy_definition_schema_accepts_portable_capability_grants() -> None:
             "description": "Policy with explicit portable capabilities.",
             "applies_to": ["worker"],
             "capabilities": {
+                "provider_native_access": "restricted",
+                "network_access": "deny",
                 "human_request": {
                     "mode": "allow",
                     "allowed_kinds": ["direction", "review"],
@@ -243,6 +285,8 @@ def test_policy_definition_schema_accepts_portable_capability_grants() -> None:
         }
     )
 
+    assert policy.capabilities.provider_native_access == "restricted"
+    assert policy.capabilities.network_access == "deny"
     assert policy.capabilities.human_request.mode == "allow"
     assert policy.capabilities.human_request.allowed_kinds == ["direction", "review"]
     assert policy.capabilities.command_run == "allow"
@@ -288,6 +332,14 @@ def test_policy_definition_schema_denied_human_requests_ignore_stale_allowed_kin
             {"command_run": "prompt"},
             "command_run",
         ),
+        (
+            {"provider_native_access": "root"},
+            "provider_native_access",
+        ),
+        (
+            {"network_access": "prompt"},
+            "network_access",
+        ),
     ],
 )
 def test_policy_definition_schema_rejects_unknown_capability_grammar(
@@ -315,7 +367,9 @@ def test_definition_policy_and_runtime_capability_vocabularies_stay_aligned() ->
     }
 
 
-def test_workflow_provider_preference_matches_runtime_provider_names() -> None:
-    assert {provider.value for provider in ProviderPreference} == {
-        provider.value for provider in ProviderName
+def test_workflow_provider_kinds_are_exact() -> None:
+    assert {provider.value for provider in ProviderKind} == {
+        "claude",
+        "codex",
+        "openclaw",
     }

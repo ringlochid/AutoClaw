@@ -38,7 +38,7 @@ Use operator MCP for:
 - definition draft authoring stays on the trusted HTTP `/authoring` API, not operator MCP
 - support refs for deep diagnosis: `get_delivery_state_ref`, `get_continuity_state_ref`, `get_watchdog_state_ref`, `get_provider_events_ref`
 
-Do not use node MCP. Node MCP tools such as `record_checkpoint`, `return_boundary`, `assign_child`, `release_green`, and `release_blocked` belong to the current node dispatch, require dispatch-local `session_key` plus `task_id`, and are not operator control.
+Do not use Node MCP for operator work. Node operations such as `record_checkpoint`, `return_boundary`, `assign_child`, `release_green`, and `release_blocked` belong to the current node dispatch. For experimental OpenClaw, the user configures the `/node/mcp` compatibility server and its tool policy; AutoClaw does not inject or maintain that OpenClaw configuration. Every compatibility call supplies the full current `task_id` and `dispatch_id`. Those IDs select controller scope and do not grant operator authority. Operator MCP is a separate locally admitted surface and never inherits Node authority.
 
 ## Inspection Order
 

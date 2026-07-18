@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
 
+from autoclaw.persistence.session_operations import read_session_operation
 from autoclaw.runtime.contracts import ObservabilityFileRef
 from autoclaw.runtime.observability import (
     OBSERVABILITY_FILE_SPECS,
     observability_ref,
 )
-from autoclaw.runtime.post_commit.operations import read_session_operation
 
 from ..tool_teaching import (
     CONTROLLER_TRUTH_WINS_NOTE,

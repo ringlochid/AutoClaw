@@ -11,7 +11,6 @@ from autoclaw.interfaces.cli.terminal.theme import rich_enabled
 
 SENSITIVE_OPTION_NAMES = {
     "--api-key",
-    "--openclaw-gateway-token",
     "--password",
     "--token",
 }
@@ -29,7 +28,6 @@ RICH_TOPIC_SYMBOLS = {
     "server": "→",
     "database": "🗄",
     "seed": "🌱",
-    "openclaw": "🔌",
     "service": "⚙️",
     "command": "→",
 }

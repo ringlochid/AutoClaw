@@ -1,15 +1,24 @@
 from __future__ import annotations
 
 import os
+import re
 import tomllib
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+)
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
+from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.paths import default_config_path, default_data_dir, default_database_url
 from autoclaw.platform.environment import Environment
 
@@ -18,19 +27,33 @@ CONFIG_ENV_VAR = "AUTOCLAW_CONFIG"
 DEFAULT_LOG_LEVEL = "WARNING"
 DEFAULT_API_PORT = 18125
 _ENV_FILE = REPO_ROOT / ".env"
+ConfigText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+ProviderConfigText = Annotated[str, StringConstraints(strip_whitespace=True)]
+_POSTGRES_SCHEMA_PATTERN = re.compile(r"[a-z_][a-z0-9_$]{0,62}\Z")
+
+
+class CodexSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    enabled: bool = False
+    model: ProviderConfigText | None = None
+    effort: ProviderConfigText | None = None
+
+
+class ClaudeSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    enabled: bool = False
+    model: ProviderConfigText | None = None
+    effort: ProviderConfigText | None = None
 
 
 class OpenClawSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    base_url: str = "http://127.0.0.1:18789"
-    gateway_token: str = ""
-    gateway_password: str = ""
-    config_path: str = ""
-    binary_path: str = ""
-    agent_id: str = "autoclaw-worker"
-    operator_agent_id: str = ""
-    timeout_ms: int = 120000
+    enabled: bool = False
+    gateway_url: ProviderConfigText = "ws://127.0.0.1:18789"
+    gateway_profile: ProviderConfigText = "default"
 
 
 class RuntimeSettings(BaseModel):
@@ -41,15 +64,9 @@ class RuntimeSettings(BaseModel):
         serialize_by_alias=True,
     )
 
-    dispatch_drain_timeout_seconds: int = 30
-    dispatch_launch_retry_max_attempts: int = Field(default=3, ge=1)
+    default_provider: ProviderKind | None = None
     dispatch_launch_retry_initial_backoff_seconds: float = Field(default=1.0, ge=0.0)
     dispatch_launch_retry_max_backoff_seconds: float = Field(default=30.0, ge=0.0)
-    post_commit_reconcile_interval_seconds: float = 1
-    openclaw_event_poll_timeout_seconds: float = 1
-    provider_wait_timeout_slice_ms: int = 5000
-    terminal_truth_commit_grace_seconds: float = 0.5
-    terminal_truth_commit_poll_interval_seconds: float = 0.01
     is_watchdog_enabled: bool = Field(
         default=True,
         validation_alias=AliasChoices("watchdog_enabled", "is_watchdog_enabled"),
@@ -57,13 +74,7 @@ class RuntimeSettings(BaseModel):
     )
     watchdog_interval_seconds: int = Field(default=15, ge=1)
     watchdog_execution_stale_after_seconds: int = 300
-    watchdog_bootstrap_first_progress_timeout_seconds: int = Field(
-        default=120,
-        validation_alias=AliasChoices(
-            "watchdog_bootstrap_first_progress_timeout_seconds",
-            "watchdog_bootstrap_ack_timeout_seconds",
-        ),
-    )
+    watchdog_bootstrap_first_progress_timeout_seconds: int = Field(default=120)
     watchdog_same_attempt_redispatch_limit: int = 2
     should_watchdog_auto_recover: bool = Field(
         default=True,
@@ -102,6 +113,7 @@ class Settings(BaseSettings):
         serialization_alias="debug",
     )
     database_url: str = Field(default_factory=default_database_url)
+    postgres_schema: ConfigText = "autoclaw"
     should_echo_database: bool = Field(
         default=False,
         validation_alias=AliasChoices("database_echo", "should_echo_database"),
@@ -121,8 +133,22 @@ class Settings(BaseSettings):
     config_path: Path = Field(default_factory=default_config_path)
     data_dir: Path = Field(default_factory=default_data_dir)
     api_key: str = ""
+    codex: CodexSettings = Field(default_factory=CodexSettings)
+    claude: ClaudeSettings = Field(default_factory=ClaudeSettings)
     openclaw: OpenClawSettings = Field(default_factory=OpenClawSettings)
     runtime: RuntimeSettings = Field(default_factory=RuntimeSettings)
+
+    @field_validator("postgres_schema")
+    @classmethod
+    def validate_postgres_schema(cls, value: str) -> str:
+        if _POSTGRES_SCHEMA_PATTERN.fullmatch(value) is None:
+            raise ValueError(
+                "postgres_schema must be a lowercase unquoted PostgreSQL identifier "
+                "of at most 63 ASCII characters"
+            )
+        if value == "public" or value == "information_schema" or value.startswith("pg_"):
+            raise ValueError("postgres_schema must name a dedicated non-system schema")
+        return value
 
     @property
     def debug(self) -> bool:
@@ -237,6 +263,7 @@ def _load_toml_settings() -> dict[str, Any]:
 
     field_mapping = {
         "database_url": ("database", "url"),
+        "postgres_schema": ("database", "postgres_schema"),
         "database_echo": ("database", "echo"),
         "console_origins": ("server", "console_origins"),
         "api_host": ("server", "host"),
@@ -248,13 +275,10 @@ def _load_toml_settings() -> dict[str, Any]:
         value = _nested_get(payload, *key_path)
         if value is not None:
             loaded[field_name] = value
-    if isinstance(payload.get("openclaw"), dict):
-        loaded["openclaw"] = {
-            key: value
-            for key, value in payload["openclaw"].items()
-            if key != "account"
-        }
-    if isinstance(payload.get("runtime"), dict):
+    for provider in ("codex", "claude", "openclaw"):
+        if provider in payload:
+            loaded[provider] = payload[provider]
+    if "runtime" in payload:
         loaded["runtime"] = payload["runtime"]
     return loaded
 
@@ -263,6 +287,8 @@ __all__ = [
     "CONFIG_ENV_VAR",
     "DEFAULT_API_PORT",
     "DEFAULT_LOG_LEVEL",
+    "ClaudeSettings",
+    "CodexSettings",
     "Environment",
     "OpenClawSettings",
     "RuntimeSettings",

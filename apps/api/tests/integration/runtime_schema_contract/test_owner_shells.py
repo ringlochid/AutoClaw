@@ -1,71 +1,46 @@
 from __future__ import annotations
 
-import importlib
-import sys
-from collections.abc import Iterator
-from contextlib import contextmanager
-from pathlib import Path
+import autoclaw.persistence as persistence
+import autoclaw.persistence.models as persistence_models
+import autoclaw.persistence.models.runtime as runtime_models
+from autoclaw.persistence import session as persistence_session
 
-APPS_API_ROOT = Path(__file__).resolve().parents[3]
-SRC_ROOT = APPS_API_ROOT / "src"
-
-
-@contextmanager
-def use_src_autoclaw_package() -> Iterator[None]:
-    original_path = list(sys.path)
-    original_modules = {
-        name: module
-        for name, module in sys.modules.items()
-        if name == "autoclaw" or name.startswith("autoclaw.")
-    }
-
-    try:
-        sys.path = [str(SRC_ROOT), *[entry for entry in sys.path if entry != str(SRC_ROOT)]]
-        for name in list(original_modules):
-            sys.modules.pop(name, None)
-        yield
-    finally:
-        sys.path = original_path
-        for name in list(sys.modules):
-            if name == "autoclaw" or name.startswith("autoclaw."):
-                sys.modules.pop(name, None)
-        sys.modules.update(original_modules)
+REMOVED_MODEL_NAMES = {
+    "BudgetCounterModel",
+    "ContextItemModel",
+    "ContextSpaceModel",
+    "DispatchContinuityStateModel",
+    "DispatchDeliveryStateModel",
+    "DispatchWatchdogStateModel",
+    "FlowWaitStateModel",
+    "ManifestRootModel",
+    "NodeSessionModel",
+    "PendingHumanRequestModel",
+    "ProviderEventRecordModel",
+    "TaskResourceBindingModel",
+    "WorkspaceRootLeaseModel",
+    "WorkspaceRootModel",
+}
 
 
-def test_runtime_contract_and_persistence_landing_shells_share_owner_types() -> None:
-    with use_src_autoclaw_package():
-        persistence = importlib.import_module("autoclaw.persistence")
-        runtime = importlib.import_module("autoclaw.runtime")
-        runtime_contracts = importlib.import_module("autoclaw.runtime.contracts")
-        capability_contracts = importlib.import_module("autoclaw.runtime.contracts.capabilities")
-        command_run_contracts = importlib.import_module("autoclaw.runtime.contracts.command_runs")
-        human_request_contracts = importlib.import_module(
-            "autoclaw.runtime.contracts.human_requests"
-        )
-        launch_contracts = importlib.import_module("autoclaw.runtime.contracts.launch")
-        primitive_contracts = importlib.import_module("autoclaw.runtime.contracts.primitives")
-        projection_contracts = importlib.import_module("autoclaw.runtime.contracts.projection")
-        prompt_contracts = importlib.import_module("autoclaw.runtime.contracts.prompt")
-        provider_contracts = importlib.import_module(
-            "autoclaw.runtime.contracts.provider_resolution"
-        )
-        task_event_contracts = importlib.import_module("autoclaw.runtime.contracts.task_events")
+def test_persistence_owner_shells_reexport_one_model_identity() -> None:
+    for model_name in runtime_models.__all__:
+        runtime_model = getattr(runtime_models, model_name)
+        assert getattr(persistence_models, model_name) is runtime_model
+        assert getattr(persistence, model_name) is runtime_model
 
-        assert runtime.FlowStatus is runtime_contracts.FlowStatus
-        assert runtime.RuntimeLaunchInput is runtime_contracts.RuntimeLaunchInput
-        assert runtime.TaskStartRequest is runtime_contracts.TaskStartRequest
-        assert (
-            persistence.RuntimeBase is importlib.import_module("autoclaw.persistence").RuntimeBase
-        )
-        assert launch_contracts.RuntimeLaunchInput is runtime_contracts.RuntimeLaunchInput
-        assert primitive_contracts.FlowStatus is runtime_contracts.FlowStatus
-        assert primitive_contracts.ProviderName is runtime_contracts.ProviderName
-        assert provider_contracts.ProviderResolution is runtime_contracts.ProviderResolution
-        assert (
-            capability_contracts.EffectiveCapabilitySet is runtime_contracts.EffectiveCapabilitySet
-        )
-        assert human_request_contracts.PendingHumanRequest is runtime_contracts.PendingHumanRequest
-        assert command_run_contracts.CommandRunRecord is runtime_contracts.CommandRunRecord
-        assert task_event_contracts.TaskEventRecord is runtime_contracts.TaskEventRecord
-        assert projection_contracts.ManifestProjection is runtime_contracts.ManifestProjection
-        assert prompt_contracts.PromptFamily is runtime_contracts.PromptFamily
+
+def test_removed_runtime_models_have_no_compatibility_export() -> None:
+    for module in (persistence, persistence_models, runtime_models):
+        assert set(module.__all__).isdisjoint(REMOVED_MODEL_NAMES)
+        assert all(not hasattr(module, name) for name in REMOVED_MODEL_NAMES)
+
+
+def test_reset_only_schema_seams_stay_public_and_no_upgrade_seam_exists() -> None:
+    assert {
+        "create_empty_database_schema",
+        "ensure_database_schema",
+        "verify_database_schema",
+    } <= set(persistence_session.__all__)
+    assert not hasattr(persistence_session, "upgrade_database_schema")
+    assert not hasattr(persistence_session, "repair_database_schema")

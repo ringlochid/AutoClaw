@@ -7,6 +7,7 @@ from autoclaw.definitions.contracts import WorkflowDefinitionFile
 
 from .support import (
     WORKFLOW_COMPILER_TEST_VERSION,
+    compile_workflow_fixture,
     load_packaged_seed_lookup,
     node_by_key,
 )
@@ -24,37 +25,41 @@ def _edge_tuples(plan: Any) -> list[tuple[str, str, str, str]]:
     ]
 
 
-def test_compile_treats_dotted_node_ids_as_opaque_strings() -> None:
+def test_compile_treats_dotted_node_keys_as_opaque_strings() -> None:
     workflow = WorkflowDefinitionFile.model_validate(
         {
             "kind": "workflow",
             "id": "dotted-id-opacity",
-            "description": "Dotted node ids must not imply parenthood.",
+            "description": "Dotted node keys must not imply parenthood.",
             "root": {
-                "id": "root",
-                "role": "root_planning_lead",
-                "policy": "standard-root",
+                "node_key": "root",
+                "kind": "root",
+                "role_id": "root_planning_lead",
+                "policy_id": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {
-                        "id": "implementation",
-                        "role": "planning_lead",
-                        "policy": "standard-parent",
+                        "node_key": "implementation",
+                        "kind": "parent",
+                        "role_id": "planning_lead",
+                        "policy_id": "standard-parent",
                         "description": "Explicit parent branch.",
                         "children": [
                             {
-                                "id": "qa.sweep",
-                                "role": "engineer",
-                                "policy": "standard-worker",
-                                "description": "Nested worker with a dotted id.",
+                                "node_key": "qa.sweep",
+                                "kind": "worker",
+                                "role_id": "engineer",
+                                "policy_id": "standard-worker",
+                                "description": "Nested worker with a dotted node key.",
                             }
                         ],
                     },
                     {
-                        "id": "qa",
-                        "role": "reviewer",
-                        "policy": "standard-worker",
-                        "description": "Sibling whose id matches the dotted prefix.",
+                        "node_key": "qa",
+                        "kind": "worker",
+                        "role_id": "reviewer",
+                        "policy_id": "standard-worker",
+                        "description": "Sibling whose key matches the dotted prefix.",
                     },
                 ],
             },
@@ -83,26 +88,35 @@ def test_compile_treats_dotted_node_ids_as_opaque_strings() -> None:
     assert qa.parent_node_key == "root"
     assert plan.dependency_edges == ()
 
+    assert implementation.structural_kind == "parent"
+    assert implementation.role == "planning_lead"
+    assert implementation.role_revision_no > 0
+    assert implementation.policy == "standard-parent"
+    assert implementation.policy_revision_no is not None
+    assert implementation.policy_revision_no > 0
 
-def test_compile_preserves_portable_provider_preference() -> None:
+
+def test_compile_preserves_strict_portable_provider_selection() -> None:
     workflow = WorkflowDefinitionFile.model_validate(
         {
             "kind": "workflow",
-            "id": "provider-preference-preservation",
-            "description": "Preserve authored provider preference for runtime selection.",
+            "id": "provider-selection-preservation",
+            "description": "Preserve authored provider selection for runtime resolution.",
             "root": {
-                "id": "root",
-                "role": "root_planning_lead",
-                "policy": "standard-root",
-                "provider_preference": "codex",
+                "node_key": "root",
+                "kind": "root",
+                "role_id": "root_planning_lead",
+                "policy_id": "standard-root",
+                "provider": {"kind": "codex"},
                 "description": "Root coordinator.",
                 "children": [
                     {
-                        "id": "implementation",
-                        "role": "engineer",
-                        "policy": "standard-worker",
-                        "provider_preference": "claude",
-                        "description": "Worker with authored provider preference.",
+                        "node_key": "implementation",
+                        "kind": "worker",
+                        "role_id": "engineer",
+                        "policy_id": "standard-worker",
+                        "provider": {"kind": "claude"},
+                        "description": "Worker with authored provider selection.",
                     }
                 ],
             },
@@ -122,8 +136,10 @@ def test_compile_preserves_portable_provider_preference() -> None:
     root = node_by_key(plan, "root")
     implementation = node_by_key(plan, "implementation")
 
-    assert root.provider_preference == "codex"
-    assert implementation.provider_preference == "claude"
+    assert root.provider is not None
+    assert root.provider.kind == "codex"
+    assert implementation.provider is not None
+    assert implementation.provider.kind == "claude"
 
 
 def test_compile_preserves_node_instruction_as_source_disambiguated_field() -> None:
@@ -133,16 +149,18 @@ def test_compile_preserves_node_instruction_as_source_disambiguated_field() -> N
             "id": "node-instruction-preservation",
             "description": "Preserve node-local prompt guidance separately.",
             "root": {
-                "id": "root",
-                "role": "root_planning_lead",
-                "policy": "standard-root",
+                "node_key": "root",
+                "kind": "root",
+                "role_id": "root_planning_lead",
+                "policy_id": "standard-root",
                 "description": "Root coordinator.",
                 "instruction": "Coordinate only the current root decision.",
                 "children": [
                     {
-                        "id": "implementation",
-                        "role": "engineer",
-                        "policy": "standard-worker",
+                        "node_key": "implementation",
+                        "kind": "worker",
+                        "role_id": "engineer",
+                        "policy_id": "standard-worker",
                         "description": "Worker with node-local guidance.",
                         "instruction": "Read criteria before editing source.",
                     }
@@ -175,8 +193,10 @@ def test_compile_workflow_expands_child_defaults_only_to_direct_children() -> No
             "id": "child-defaults-direct-only",
             "description": "Validate direct-child-only child_defaults expansion.",
             "root": {
-                "id": "root",
-                "role": "root_planning_lead",
+                "node_key": "root",
+                "kind": "root",
+                "role_id": "root_planning_lead",
+                "policy_id": "standard-root",
                 "description": "Coordinate direct child defaults only.",
                 "produces": {
                     "artifacts": [
@@ -199,20 +219,26 @@ def test_compile_workflow_expands_child_defaults_only_to_direct_children() -> No
                 },
                 "children": [
                     {
-                        "id": "parent_branch",
-                        "role": "planning_lead",
+                        "node_key": "parent_branch",
+                        "kind": "parent",
+                        "role_id": "planning_lead",
+                        "policy_id": "standard-parent",
                         "description": "Direct child parent branch.",
                         "children": [
                             {
-                                "id": "grandchild_worker",
-                                "role": "engineer",
+                                "node_key": "grandchild_worker",
+                                "kind": "worker",
+                                "role_id": "engineer",
+                                "policy_id": "standard-worker",
                                 "description": "Grandchild should not inherit root defaults.",
                             }
                         ],
                     },
                     {
-                        "id": "direct_worker",
-                        "role": "engineer",
+                        "node_key": "direct_worker",
+                        "kind": "worker",
+                        "role_id": "engineer",
+                        "policy_id": "standard-worker",
                         "description": "Direct worker should inherit root defaults.",
                     },
                 ],
@@ -220,15 +246,7 @@ def test_compile_workflow_expands_child_defaults_only_to_direct_children() -> No
         }
     )
 
-    plan = compile_workflow(
-        workflow=workflow,
-        workflow_revision=WorkflowRevisionMetadata(
-            workflow_key=workflow.id,
-            definition_revision_no=3,
-        ),
-        compiler_version=WORKFLOW_COMPILER_TEST_VERSION,
-        lookup=load_packaged_seed_lookup(),
-    )
+    plan = compile_workflow_fixture(workflow, revision_no=3)
 
     parent_branch = node_by_key(plan, "parent_branch")
     direct_worker = node_by_key(plan, "direct_worker")
@@ -256,15 +274,17 @@ def test_compile_dedupes_repeated_child_default_criteria_slots() -> None:
             "id": "duplicate-child-default-criteria",
             "description": "Deduplicate repeated child-default criteria slots.",
             "root": {
-                "id": "root",
-                "role": "root_planning_lead",
-                "policy": "standard-root",
+                "node_key": "root",
+                "kind": "root",
+                "role_id": "root_planning_lead",
+                "policy_id": "standard-root",
                 "description": "Root coordinator.",
                 "children": [
                     {
-                        "id": "subtree",
-                        "role": "planning_lead",
-                        "policy": "standard-parent",
+                        "node_key": "subtree",
+                        "kind": "parent",
+                        "role_id": "planning_lead",
+                        "policy_id": "standard-parent",
                         "description": "Parent subtree.",
                         "criteria": [
                             {
@@ -278,8 +298,10 @@ def test_compile_dedupes_repeated_child_default_criteria_slots() -> None:
                         },
                         "children": [
                             {
-                                "id": "child_worker",
-                                "role": "engineer",
+                                "node_key": "child_worker",
+                                "kind": "worker",
+                                "role_id": "engineer",
+                                "policy_id": "standard-worker",
                                 "description": "Worker child.",
                             }
                         ],

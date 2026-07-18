@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from autoclaw.config import load_settings
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
@@ -38,6 +39,7 @@ def build_settings_payload(settings: Any, config_path: Path) -> dict[str, Any]:
         },
         "database": {
             "url": settings.database_url,
+            "postgres_schema": settings.postgres_schema,
             "echo": settings.database_echo,
         },
         "server": {
@@ -51,6 +53,8 @@ def build_settings_payload(settings: Any, config_path: Path) -> dict[str, Any]:
         "security": {
             "api_key": settings.api_key,
         },
+        "codex": settings.codex.model_dump(mode="json"),
+        "claude": settings.claude.model_dump(mode="json"),
         "openclaw": settings.openclaw.model_dump(mode="json"),
         "runtime": settings.runtime.model_dump(mode="json"),
     }
@@ -68,11 +72,19 @@ def _redact_config_payload(payload: dict[str, Any]) -> dict[str, Any]:
     openclaw = redacted.get("openclaw")
     if isinstance(openclaw, dict):
         openclaw = dict(openclaw)
-        for key in ("gateway_token", "gateway_password"):
-            if openclaw.get(key):
-                openclaw[key] = REDACTED_VALUE
+        gateway_url = openclaw.get("gateway_url")
+        if isinstance(gateway_url, str) and _url_contains_userinfo(gateway_url):
+            openclaw["gateway_url"] = REDACTED_VALUE
         redacted["openclaw"] = openclaw
     return redacted
+
+
+def _url_contains_userinfo(value: str) -> bool:
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return "@" in value
+    return parsed.username is not None or parsed.password is not None
 
 
 __all__ = [

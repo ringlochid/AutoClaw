@@ -19,7 +19,7 @@ def test_main_renders_friendly_unknown_command(capsys: pytest.CaptureFixture[str
 
 
 def test_main_renders_json_parse_errors(capsys: pytest.CaptureFixture[str]) -> None:
-    result = cli.main(["onboard", "--json", "--definitely-not-an-option"])
+    result = cli.main(["init", "--json", "--definitely-not-an-option"])
 
     payload = json.loads(capsys.readouterr().out)
     assert result == 2

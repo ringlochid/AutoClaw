@@ -36,11 +36,10 @@ async def test_init_writes_canonical_config_and_db_file(
     assert "definitions_root" not in config_text
     assert "[app]" not in config_text
     assert config_payload["database"]["echo"] is False
-    assert config_payload["openclaw"]["base_url"] == "http://127.0.0.1:18789"
-    assert config_payload["openclaw"]["agent_id"] == "autoclaw-worker"
-    assert config_payload["openclaw"]["operator_agent_id"] == "autoclaw-operator"
-    assert config_payload["openclaw"]["timeout_ms"] == 120000
-    assert config_payload["runtime"]["watchdog_enabled"] is True
+    assert "codex" not in config_payload
+    assert "claude" not in config_payload
+    assert "openclaw" not in config_payload
+    assert "runtime" not in config_payload
     assert_seeded_registry_is_bootstrapped(data_dir / "autoclaw.persistence")
     assert '"ok": true' in capsys.readouterr().out
 
@@ -69,8 +68,4 @@ def test_packaged_seed_definitions_are_available() -> None:
 
     assert definitions_root.joinpath("roles").joinpath("planning_lead.yaml").is_file()
     assert definitions_root.joinpath("policies").joinpath("standard_worker.yaml").is_file()
-    assert (
-        definitions_root.joinpath("workflows")
-        .joinpath("reviewed_change_release.yaml")
-        .is_file()
-    )
+    assert definitions_root.joinpath("workflows").joinpath("reviewed_change_release.yaml").is_file()

@@ -14,12 +14,20 @@ from autoclaw.definitions.registry import (
     upsert_role_definition,
     upsert_workflow_definition,
 )
+from autoclaw.definitions.registry.task_start import start_task_from_definition
 from autoclaw.persistence import (
+    AssignmentModel,
+    AttemptModel,
+    CompiledPlanNodeModel,
+    DispatchTurnModel,
+    FlowNodeModel,
     PolicyDefinitionModel,
     RoleDefinitionModel,
+    TaskEventStreamHeadModel,
     WorkflowDefinitionModel,
 )
-from sqlalchemy import select
+from autoclaw.runtime.contracts import TaskStartRequest
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 from tests.helpers.definition_registry_runtime import initialized_registry
 
@@ -251,3 +259,102 @@ async def test_launch_snapshot_pins_current_registry_workflow_role_and_policy_re
                 role_revision_no=role_revision.revision_no,
                 policy_revision_no=policy_revision.revision_no,
             )
+
+
+async def test_task_start_returns_a_logical_unmaterialized_manifest_ref(
+    tmp_path: Path,
+) -> None:
+    data_dir = tmp_path / "task-data"
+    request = TaskStartRequest.model_validate(
+        {
+            "task": {
+                "key": "logical-manifest-ref",
+                "title": "Keep task start source-only",
+                "summary": "Return the canonical manifest ref without projecting files.",
+            },
+            "workflow": {"key": "bounded-change"},
+        }
+    )
+
+    async with initialized_registry(tmp_path) as session_factory:
+        async with session_factory() as session:
+            response = await start_task_from_definition(
+                request,
+                data_dir=data_dir,
+                session=session,
+            )
+            dispatch_count = await session.scalar(
+                select(func.count())
+                .select_from(DispatchTurnModel)
+                .where(DispatchTurnModel.task_id == response.task_id)
+            )
+            event_stream_head = await session.get(TaskEventStreamHeadModel, response.task_id)
+
+    assert response.workflow_manifest_ref.path == Path("_runtime/workflow-manifest.md")
+    assert dispatch_count == 0
+    assert event_stream_head is not None
+    assert event_stream_head.allocator_revision == 0
+    assert event_stream_head.last_event_seq == 0
+    assert event_stream_head.last_event_hash is None
+    assert not (data_dir / "tasks" / response.task_id).exists()
+
+
+async def test_task_start_derives_runtime_identity_from_a_nonliteral_root_key(
+    tmp_path: Path,
+) -> None:
+    workflow_key = "nonliteral-root-launch"
+    data_dir = tmp_path / "task-data"
+    async with initialized_registry(tmp_path) as session_factory:
+        async with session_factory() as session:
+            baseline = await load_current_workflow(session, "bounded-change")
+            root = baseline.definition.root.model_copy(update={"node_key": "primary"})
+            definition = baseline.definition.model_copy(update={"id": workflow_key, "root": root})
+            await upsert_workflow_definition(
+                session,
+                definition,
+                source_path="test://nonliteral-root-launch",
+            )
+            await session.commit()
+
+        async with session_factory() as session:
+            response = await start_task_from_definition(
+                TaskStartRequest.model_validate(
+                    {
+                        "task": {
+                            "key": "nonliteral-root",
+                            "title": "Launch a nonliteral root",
+                            "summary": "Derive runtime identity from authored root truth.",
+                        },
+                        "workflow": {"key": workflow_key},
+                    }
+                ),
+                data_dir=data_dir,
+                session=session,
+            )
+            assignment = await session.scalar(
+                select(AssignmentModel).where(AssignmentModel.task_id == response.task_id)
+            )
+            attempt = await session.scalar(
+                select(AttemptModel).where(AttemptModel.task_id == response.task_id)
+            )
+            compiled_root = await session.scalar(
+                select(CompiledPlanNodeModel).where(
+                    CompiledPlanNodeModel.compiled_plan_id == response.compiled_plan_id,
+                    CompiledPlanNodeModel.structural_kind == "root",
+                )
+            )
+            flow_root = await session.scalar(
+                select(FlowNodeModel).where(
+                    FlowNodeModel.flow_revision_id == response.active_flow_revision_id,
+                    FlowNodeModel.structural_kind == "root",
+                )
+            )
+
+    assert assignment is not None
+    assert assignment.node_key == "primary"
+    assert assignment.assignment_key == f"{response.task_id}.primary.assign-01"
+    assert attempt is not None
+    assert attempt.node_key == "primary"
+    assert attempt.attempt_id == f"attempt.{response.task_id}.primary.01"
+    assert compiled_root is not None and compiled_root.node_key == "primary"
+    assert flow_root is not None and flow_root.node_key == "primary"

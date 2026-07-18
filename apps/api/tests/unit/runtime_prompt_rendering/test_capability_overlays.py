@@ -22,7 +22,6 @@ def test_capabilities_now_overlay_surfaces_explicit_decisions(tmp_path: Path) ->
     request = worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT).model_copy(
         update={
             "effective_capabilities": EffectiveCapabilitySet(
-                execution_scope="dispatch",
                 human_request=HumanRequestCapabilitySet(review=CapabilityDecision.ALLOW),
                 command_run=CapabilityDecision.ALLOW,
             )
@@ -68,7 +67,6 @@ def test_capability_instruction_overlays_render_independently(tmp_path: Path) ->
         base_request.model_copy(
             update={
                 "effective_capabilities": EffectiveCapabilitySet(
-                    execution_scope="dispatch",
                     human_request=HumanRequestCapabilitySet(
                         direction=CapabilityDecision.ALLOW,
                     ),
@@ -85,7 +83,6 @@ def test_capability_instruction_overlays_render_independently(tmp_path: Path) ->
         base_request.model_copy(
             update={
                 "effective_capabilities": EffectiveCapabilitySet(
-                    execution_scope="dispatch",
                     command_run=CapabilityDecision.ALLOW,
                 )
             }
@@ -99,7 +96,6 @@ def test_capability_instruction_overlays_render_independently(tmp_path: Path) ->
         base_request.model_copy(
             update={
                 "effective_capabilities": EffectiveCapabilitySet(
-                    execution_scope="dispatch",
                     human_request=HumanRequestCapabilitySet(
                         review=CapabilityDecision.ALLOW,
                     ),

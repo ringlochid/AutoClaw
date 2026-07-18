@@ -5,13 +5,6 @@ import sys
 from pathlib import Path
 
 from autoclaw.config import load_settings
-from autoclaw.interfaces.cli.commands.openclaw.mcp_config import (
-    reconcile_openclaw_mcp_server_config,
-)
-from autoclaw.interfaces.cli.commands.openclaw.support import (
-    collect_openclaw_preflight,
-    emit_openclaw_preflight_failure,
-)
 from autoclaw.interfaces.cli.commands.server_config import (
     build_server_bind_check_payload,
     emit_server_bind_check_failure,
@@ -67,14 +60,6 @@ def cmd_service_install(
 ) -> int:
     active_progress = progress or CliProgress.from_args(args)
     config_path = coerce_path(args.config)
-    active_progress.step("openclaw", "Checking OpenClaw support")
-    support_error = _require_openclaw_supported(
-        args,
-        command_name="AutoClaw service install",
-        stopped_before="stopped before managed service install",
-    )
-    if support_error is not None:
-        return support_error
     requested_port = getattr(args, "port", None)
     with command_env(config_path=config_path):
         initial_settings = load_settings()
@@ -97,12 +82,6 @@ def cmd_service_install(
     if requested_port is not None:
         active_progress.step("config", f"Persisting service port override {requested_port}")
         update_server_config_overrides(config_path, port=requested_port)
-        active_progress.step("openclaw", "Refreshing OpenClaw MCP server definitions")
-        reconcile_openclaw_mcp_server_config(
-            config_path,
-            command_observer=active_progress.command,
-            command_output_observer=active_progress.command_output,
-        )
 
     active_progress.step("service", "Writing managed service unit")
     SERVICE_MANAGER.install(
@@ -146,14 +125,6 @@ def cmd_service_status(args: argparse.Namespace) -> int:
 
 def cmd_service_start(args: argparse.Namespace) -> int:
     progress = CliProgress.from_args(args)
-    progress.step("openclaw", "Checking OpenClaw support")
-    support_error = _require_openclaw_supported(
-        args,
-        command_name="AutoClaw service start",
-        stopped_before="stopped before managed service start",
-    )
-    if support_error is not None:
-        return support_error
     return execute_service_lifecycle(args, "start", progress=progress)
 
 
@@ -163,14 +134,6 @@ def cmd_service_stop(args: argparse.Namespace) -> int:
 
 def cmd_service_restart(args: argparse.Namespace) -> int:
     progress = CliProgress.from_args(args)
-    progress.step("openclaw", "Checking OpenClaw support")
-    support_error = _require_openclaw_supported(
-        args,
-        command_name="AutoClaw service restart",
-        stopped_before="stopped before managed service restart",
-    )
-    if support_error is not None:
-        return support_error
     return execute_service_lifecycle(args, "restart", progress=progress)
 
 
@@ -217,24 +180,6 @@ def service_env_file_path(config_path: Path, explicit_env_file: str | None) -> P
     if explicit_env_file is not None:
         return coerce_path(explicit_env_file)
     return config_path.parent / "autoclaw.env"
-
-
-def _require_openclaw_supported(
-    args: argparse.Namespace,
-    *,
-    command_name: str,
-    stopped_before: str,
-) -> int | None:
-    config_path = coerce_path(args.config)
-    preflight = collect_openclaw_preflight(config_path=config_path)
-    if preflight.host_state.support_status == "supported":
-        return None
-    return emit_openclaw_preflight_failure(
-        command_name=command_name,
-        args=args,
-        openclaw_payload=preflight.payload,
-        stopped_before=stopped_before,
-    )
 
 
 def _print_service_status(snapshot: ManagedServiceStatus, *, is_rich: bool) -> None:

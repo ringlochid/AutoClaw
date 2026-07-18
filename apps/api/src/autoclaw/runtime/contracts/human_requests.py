@@ -3,12 +3,17 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from jsonschema import (  # type: ignore[import-untyped]
+    Draft202012Validator,
+    SchemaError,
+)
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
 from autoclaw.runtime.contracts.primitives import (
     HumanRequestKind,
     HumanRequestResolutionKind,
+    HumanRequestResolutionSurface,
     HumanRequestStatus,
     TaskIdentifier,
 )
@@ -22,22 +27,36 @@ class HumanRequestOption(BaseModel):
     description: RuntimeSchemaText | None = None
 
 
+class HumanRequestContextRef(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
+
+    path: RuntimeSchemaText
+    description: RuntimeSchemaText
+
+
 class HumanRequestItem(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
-    item_id: RuntimeSchemaText
+    id: RuntimeSchemaText
     prompt: RuntimeSchemaText
-    options: tuple[HumanRequestOption, ...] = ()
-    recommended_option: RuntimeSchemaText | None = None
-    input_payload_schema: dict[str, Any] | None = None
+    response_schema: dict[str, Any] | None = None
+    options: tuple[HumanRequestOption, ...] | None = None
 
     @model_validator(mode="after")
-    def validate_recommended_option(self) -> HumanRequestItem:
-        if self.recommended_option is None:
-            return self
-        option_ids = {option.id for option in self.options}
-        if self.recommended_option not in option_ids:
-            raise ValueError("recommended_option must match an item option id")
+    def validate_response_contract(self) -> HumanRequestItem:
+        if (self.response_schema is None) == (self.options is None):
+            raise ValueError("human request item requires exactly one response_schema or options")
+        if self.options is not None:
+            if not self.options:
+                raise ValueError("human request item options must not be empty")
+            option_ids = [option.id for option in self.options]
+            if len(option_ids) != len(set(option_ids)):
+                raise ValueError("human request item option ids must be unique")
+        if self.response_schema is not None:
+            try:
+                Draft202012Validator.check_schema(self.response_schema)
+            except SchemaError as exc:
+                raise ValueError("human request response_schema must be valid JSON Schema") from exc
         return self
 
 
@@ -47,20 +66,30 @@ class HumanRequestTimeout(BaseModel):
     due_at: datetime | None = None
     default_behavior: RuntimeSchemaText | None = None
 
+    @model_validator(mode="after")
+    def validate_deadline_policy(self) -> HumanRequestTimeout:
+        if self.default_behavior is not None and self.due_at is None:
+            raise ValueError("human request default_behavior requires due_at")
+        if self.due_at is not None and self.due_at.utcoffset() is None:
+            raise ValueError("human request due_at must include a timezone")
+        return self
+
 
 class HumanRequestOpenRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     kind: HumanRequestKind
-    title: RuntimeSchemaText
     summary: RuntimeSchemaText
-    items: tuple[HumanRequestItem, ...] = Field(min_length=1)
+    items: tuple[HumanRequestItem, ...] = Field(min_length=1, max_length=32)
+    context_refs: tuple[HumanRequestContextRef, ...] = Field(default=(), max_length=32)
     timeout: HumanRequestTimeout = Field(default_factory=HumanRequestTimeout)
-    suggested_human_instruction: RuntimeSchemaText
+    suggested_human_instruction: RuntimeSchemaText | None = None
 
     @model_validator(mode="after")
-    def validate_items_match_kind(self) -> HumanRequestOpenRequest:
-        _validate_items_match_kind(kind=self.kind, items=self.items)
+    def validate_item_ids(self) -> HumanRequestOpenRequest:
+        item_ids = [item.id for item in self.items]
+        if len(item_ids) != len(set(item_ids)):
+            raise ValueError("human request item ids must be unique")
         return self
 
 
@@ -83,36 +112,15 @@ class PendingHumanRequest(BaseModel):
 
     request_id: RuntimeSchemaText
     task_id: TaskIdentifier
-    title: RuntimeSchemaText
     summary: RuntimeSchemaText
     kind: HumanRequestKind
-    requester_node: RuntimeSchemaText
-    items: tuple[HumanRequestItem, ...] = Field(min_length=1)
+    source_dispatch_id: RuntimeSchemaText
+    items: tuple[HumanRequestItem, ...] = Field(min_length=1, max_length=32)
+    context_refs: tuple[HumanRequestContextRef, ...] = Field(default=(), max_length=32)
     timeout: HumanRequestTimeout = Field(default_factory=HumanRequestTimeout)
-    suggested_human_instruction: RuntimeSchemaText
+    suggested_human_instruction: RuntimeSchemaText | None = None
     opened_at: datetime
     status: HumanRequestStatus
-
-    @model_validator(mode="after")
-    def validate_items_match_kind(self) -> PendingHumanRequest:
-        _validate_items_match_kind(kind=self.kind, items=self.items)
-        return self
-
-
-class HumanRequestItemResponse(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
-
-    item_id: RuntimeSchemaText
-    selected_option: RuntimeSchemaText | None = None
-    freeform_answer: RuntimeSchemaText | None = None
-    extra_notes: RuntimeSchemaText | None = None
-    response_payload: dict[str, Any] | None = None
-
-    @model_validator(mode="after")
-    def validate_answer_shape(self) -> HumanRequestItemResponse:
-        if self.selected_option is not None and self.freeform_answer is not None:
-            raise ValueError("item response must not set both selected_option and freeform_answer")
-        return self
 
 
 class HumanRequestResolution(BaseModel):
@@ -121,9 +129,12 @@ class HumanRequestResolution(BaseModel):
     request_id: RuntimeSchemaText
     task_id: TaskIdentifier
     resolution_kind: HumanRequestResolutionKind
-    item_responses: tuple[HumanRequestItemResponse, ...] = ()
+    item_responses: dict[str, JsonValue] | None = None
+    policy_basis: dict[str, JsonValue] | None = None
+    summary: RuntimeSchemaText
     resolved_at: datetime
     resolved_by_actor_ref: RuntimeSchemaText | None = None
+    resolved_by_surface: HumanRequestResolutionSurface
 
     @model_validator(mode="after")
     def validate_resolution_shape(self) -> HumanRequestResolution:
@@ -131,7 +142,7 @@ class HumanRequestResolution(BaseModel):
             if not self.item_responses:
                 raise ValueError("answered human request resolutions require item_responses")
             return self
-        if self.item_responses:
+        if self.item_responses is not None:
             raise ValueError("terminal non-answer resolutions must not include item_responses")
         return self
 
@@ -139,7 +150,7 @@ class HumanRequestResolution(BaseModel):
 class HumanRequestResolveRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    item_responses: tuple[HumanRequestItemResponse, ...] = Field(min_length=1)
+    item_responses: dict[RuntimeSchemaText, JsonValue] = Field(min_length=1, max_length=32)
 
 
 class HumanRequestResolveResponse(BaseModel):
@@ -173,12 +184,12 @@ class HumanRequestListResponse(BaseModel):
 
 for _human_request_contract in (
     HumanRequestOption,
+    HumanRequestContextRef,
     HumanRequestItem,
     HumanRequestTimeout,
     HumanRequestOpenRequest,
     HumanRequestOpenResponse,
     PendingHumanRequest,
-    HumanRequestItemResponse,
     HumanRequestResolution,
     HumanRequestResolveRequest,
     HumanRequestResolveResponse,
@@ -188,27 +199,9 @@ for _human_request_contract in (
     _human_request_contract.model_rebuild(_types_namespace=globals())
 
 
-def _validate_items_match_kind(
-    *,
-    kind: HumanRequestKind,
-    items: tuple[HumanRequestItem, ...],
-) -> None:
-    if kind == HumanRequestKind.INPUT:
-        for item in items:
-            if item.input_payload_schema is None:
-                raise ValueError("input human request items require input_payload_schema")
-        return
-
-    for item in items:
-        if not item.options:
-            raise ValueError(f"{kind.value} human request items require options")
-        if item.input_payload_schema is not None:
-            raise ValueError(f"{kind.value} human request items must not set input_payload_schema")
-
-
 __all__ = [
+    "HumanRequestContextRef",
     "HumanRequestItem",
-    "HumanRequestItemResponse",
     "HumanRequestListResponse",
     "HumanRequestOpenRequest",
     "HumanRequestOpenResponse",

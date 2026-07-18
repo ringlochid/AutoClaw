@@ -12,9 +12,9 @@ def resolve_pinned_role_policy(
     *,
     role_key: str,
     role_revision_no: int,
-    policy_key: str | None,
-    policy_revision_no: int | None,
-) -> tuple[RoleRevisionDefinition, PolicyRevisionDefinition | None]:
+    policy_key: str,
+    policy_revision_no: int,
+) -> tuple[RoleRevisionDefinition, PolicyRevisionDefinition]:
     role = lookup.get_role(role_key)
     if role is None:
         raise ValueError(f"missing role definition for '{role_key}'")
@@ -25,15 +25,13 @@ def resolve_pinned_role_policy(
             f"{role_revision_no}"
         )
 
-    policy = None
-    if policy_key is not None:
-        policy = lookup.get_policy(policy_key)
-        if policy is None:
-            raise ValueError(f"missing policy definition for '{policy_key}'")
-        if policy.revision_no != policy_revision_no:
-            raise ValueError(
-                "policy "
-                f"'{policy_key}' resolved revision {policy.revision_no} but node pins "
-                f"{policy_revision_no}"
-            )
+    policy = lookup.get_policy(policy_key)
+    if policy is None:
+        raise ValueError(f"missing policy definition for '{policy_key}'")
+    if policy.revision_no != policy_revision_no:
+        raise ValueError(
+            "policy "
+            f"'{policy_key}' resolved revision {policy.revision_no} but node pins "
+            f"{policy_revision_no}"
+        )
     return role, policy

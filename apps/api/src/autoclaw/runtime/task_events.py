@@ -9,9 +9,8 @@ from typing import Any, NamedTuple, cast
 
 from sqlalchemy import Select, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.elements import ColumnElement
 
-from autoclaw.persistence.models import TaskEventModel, TaskModel
+from autoclaw.persistence.models import TaskEventModel, TaskEventStreamHeadModel
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
     TaskEventListQuery,
@@ -23,12 +22,17 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.ids import task_event_id
 
 _CURSOR_PREFIX = "task-event-cursor."
-_HIDDEN_TASK_EVENT_TYPES = ("provider_event_normalized", "provider_resolution_recorded")
 
 
 class _TaskEventAppendHead(NamedTuple):
     event_seq: int
     event_hash: str | None
+
+
+class _TaskEventAllocation(NamedTuple):
+    event_seq: int
+    previous_event_seq: int
+    previous_event_hash: str | None
 
 
 class TaskEventCursorResetRequiredError(ValueError):
@@ -37,6 +41,10 @@ class TaskEventCursorResetRequiredError(ValueError):
     def __init__(self, cursor: str) -> None:
         super().__init__(f"{self.code}: task event cursor cannot be resumed: {cursor}")
         self.cursor = cursor
+
+
+class TaskEventStreamIntegrityError(RuntimeError):
+    """Raised when a task's chronology-only sequencing head is absent or corrupt."""
 
 
 async def append_task_event(
@@ -54,12 +62,12 @@ async def append_task_event(
     actor_ref: str | None = None,
     payload: Mapping[str, Any] | None = None,
 ) -> TaskEventRecord:
-    await _lock_task_event_stream(session, task_id=task_id)
-    append_head = await _latest_task_event_head(session, task_id=task_id)
-    event_seq = append_head.event_seq + 1
+    """Append one chronology event without committing the caller's transaction."""
+
+    allocation = await _allocate_task_event_sequence(session, task_id=task_id)
     record = TaskEventRecord(
-        event_id=event_id or task_event_id(task_id, event_seq),
-        event_seq=event_seq,
+        event_id=event_id or task_event_id(task_id, allocation.event_seq),
+        event_seq=allocation.event_seq,
         task_id=task_id,
         event_type=_task_event_type_value(event_type),
         event_source=_task_event_source_value(event_source),
@@ -70,7 +78,7 @@ async def append_task_event(
         node_key=node_key,
         actor_ref=actor_ref,
         payload=dict(payload or {}),
-        prev_event_hash=append_head.event_hash,
+        prev_event_hash=allocation.previous_event_hash,
         event_hash="pending",
     )
     row = TaskEventModel(
@@ -91,6 +99,12 @@ async def append_task_event(
     )
     session.add(row)
     await session.flush((row,))
+    await _advance_task_event_stream_head(
+        session,
+        task_id=task_id,
+        allocation=allocation,
+        event_hash=row.event_hash,
+    )
     return task_event_record_from_model(row)
 
 
@@ -152,7 +166,6 @@ async def latest_task_event(
     row = await session.scalar(
         select(TaskEventModel)
         .where(TaskEventModel.task_id == task_id)
-        .where(_visible_task_event_clause())
         .order_by(TaskEventModel.event_seq.desc())
         .limit(1)
     )
@@ -200,10 +213,6 @@ def decode_task_event_cursor(cursor: str) -> str:
     return event_id
 
 
-def clear_task_event_allocator_state() -> None:
-    return None
-
-
 async def _cursor_event_seq(
     session: AsyncSession,
     *,
@@ -217,7 +226,6 @@ async def _cursor_event_seq(
         session,
         task_id=task_id,
         event_id=event_id,
-        include_hidden=True,
     )
     if row is None:
         raise TaskEventCursorResetRequiredError(cursor)
@@ -236,7 +244,6 @@ async def _through_event_seq(
         session,
         task_id=task_id,
         event_id=through_event_id,
-        include_hidden=True,
     )
     if row is None:
         raise TaskEventCursorResetRequiredError(through_event_id)
@@ -253,7 +260,6 @@ def _task_event_page_statement(
     statement = (
         select(TaskEventModel)
         .where(TaskEventModel.task_id == task_id, TaskEventModel.event_seq > start_after_seq)
-        .where(_visible_task_event_clause())
         .order_by(TaskEventModel.event_seq.asc())
         .limit(limit)
     )
@@ -267,14 +273,11 @@ async def _task_event_by_id(
     *,
     task_id: str,
     event_id: str,
-    include_hidden: bool = False,
 ) -> TaskEventModel | None:
     statement = select(TaskEventModel).where(
         TaskEventModel.task_id == task_id,
         TaskEventModel.event_id == event_id,
     )
-    if not include_hidden:
-        statement = statement.where(_visible_task_event_clause())
     return cast(
         TaskEventModel | None,
         await session.scalar(statement),
@@ -299,21 +302,72 @@ async def _latest_task_event_head(
     return _TaskEventAppendHead(event_seq=int(event_seq), event_hash=event_hash)
 
 
-async def _lock_task_event_stream(session: AsyncSession, *, task_id: str) -> None:
-    if _task_event_stream_row_lock_is_supported(session):
-        await session.scalar(
-            select(TaskModel.task_id).where(TaskModel.task_id == task_id).with_for_update()
+async def _allocate_task_event_sequence(
+    session: AsyncSession,
+    *,
+    task_id: str,
+) -> _TaskEventAllocation:
+    allocation_row = (
+        await session.execute(
+            update(TaskEventStreamHeadModel)
+            .where(TaskEventStreamHeadModel.task_id == task_id)
+            .values(
+                allocator_revision=TaskEventStreamHeadModel.allocator_revision + 1,
+            )
+            .returning(
+                TaskEventStreamHeadModel.allocator_revision,
+                TaskEventStreamHeadModel.last_event_seq,
+                TaskEventStreamHeadModel.last_event_hash,
+            )
         )
-        return
-    await session.execute(
-        update(TaskModel)
-        .where(TaskModel.task_id == task_id)
-        .values(updated_at=TaskModel.updated_at)
+    ).one_or_none()
+    if allocation_row is None:
+        raise TaskEventStreamIntegrityError(
+            f"task event stream head is missing for task '{task_id}'"
+        )
+
+    event_seq, previous_event_seq, previous_event_hash = allocation_row
+    append_head = await _latest_task_event_head(session, task_id=task_id)
+    if (
+        int(event_seq) != int(previous_event_seq) + 1
+        or append_head.event_seq != int(previous_event_seq)
+        or append_head.event_hash != previous_event_hash
+    ):
+        raise TaskEventStreamIntegrityError(
+            f"task event stream head does not match chronology for task '{task_id}'"
+        )
+    return _TaskEventAllocation(
+        event_seq=int(event_seq),
+        previous_event_seq=int(previous_event_seq),
+        previous_event_hash=previous_event_hash,
     )
 
 
-def _task_event_stream_row_lock_is_supported(session: AsyncSession) -> bool:
-    return session.get_bind().dialect.name != "sqlite"
+async def _advance_task_event_stream_head(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    allocation: _TaskEventAllocation,
+    event_hash: str,
+) -> None:
+    advanced_task_id = await session.scalar(
+        update(TaskEventStreamHeadModel)
+        .where(
+            TaskEventStreamHeadModel.task_id == task_id,
+            TaskEventStreamHeadModel.allocator_revision == allocation.event_seq,
+            TaskEventStreamHeadModel.last_event_seq == allocation.previous_event_seq,
+            TaskEventStreamHeadModel.last_event_hash == allocation.previous_event_hash,
+        )
+        .values(
+            last_event_seq=allocation.event_seq,
+            last_event_hash=event_hash,
+        )
+        .returning(TaskEventStreamHeadModel.task_id)
+    )
+    if advanced_task_id is None:
+        raise TaskEventStreamIntegrityError(
+            f"task event stream head changed during append for task '{task_id}'"
+        )
 
 
 def _task_event_hash_timestamp(value: datetime) -> str:
@@ -332,14 +386,10 @@ def _task_event_type_value(event_type: TaskEventType | str) -> TaskEventType:
     return event_type if isinstance(event_type, TaskEventType) else TaskEventType(event_type)
 
 
-def _visible_task_event_clause() -> ColumnElement[bool]:
-    return ~TaskEventModel.event_type.in_(_HIDDEN_TASK_EVENT_TYPES)
-
-
 __all__ = [
     "TaskEventCursorResetRequiredError",
+    "TaskEventStreamIntegrityError",
     "append_task_event",
-    "clear_task_event_allocator_state",
     "compute_task_event_hash",
     "decode_task_event_cursor",
     "encode_task_event_cursor",

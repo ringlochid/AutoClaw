@@ -6,6 +6,7 @@ from autoclaw.runtime import (
     CheckpointHandoff,
     CheckpointKind,
     CheckpointProjection,
+    EvidenceKind,
     NodeRuntimeFileKind,
     NodeRuntimeFileRef,
     PromptSendMode,
@@ -18,26 +19,11 @@ from .support import (
 )
 
 
-def test_task_memory_renders_assignment_hints_checkpoint_hints_and_surfaced_curated_refs(
+def test_task_memory_renders_only_surfaced_curated_refs(
     tmp_path: Path,
 ) -> None:
     request = worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
-    latest_checkpoint = request.latest_checkpoint
-    assert latest_checkpoint is not None
-    bundle = render_prompt_bundle(
-        request.model_copy(
-            update={
-                "latest_checkpoint": latest_checkpoint.model_copy(
-                    update={
-                        "task_memory_search_hints": (
-                            "checkpoint follow-up",
-                            "cookie rotation note",
-                        )
-                    }
-                )
-            }
-        )
-    )
+    bundle = render_prompt_bundle(request)
 
     task_memory_section = extract_section(
         bundle.full_markdown,
@@ -45,11 +31,8 @@ def test_task_memory_renders_assignment_hints_checkpoint_hints_and_surfaced_cura
         "### Allowed Actions Now",
     )
 
-    assert "- search hints:" in task_memory_section
-    assert "  - auth refresh" in task_memory_section
-    assert "  - cookie rotation note" in task_memory_section
-    assert "  - checkpoint follow-up" in task_memory_section
-    assert task_memory_section.count("  - cookie rotation note") == 1
+    assert "task_memory_search_hints" not in task_memory_section
+    assert "- search hints:" not in task_memory_section
     assert "- surfaced curated refs:" in task_memory_section
     assert "  - kind: wiki" in task_memory_section
     assert "    slot: auth_refresh_notes" in task_memory_section
@@ -63,34 +46,30 @@ def test_task_memory_renders_assignment_hints_checkpoint_hints_and_surfaced_cura
     )
 
 
-def test_task_memory_can_render_from_surfaced_curated_refs_without_assignment_hints(
+def test_task_memory_is_omitted_without_surfaced_curated_refs(
     tmp_path: Path,
 ) -> None:
     request = worker_request(tmp_path, send_mode=PromptSendMode.FULL_PROMPT)
-    latest_checkpoint = request.latest_checkpoint
-    assert latest_checkpoint is not None
+    retained_refs = tuple(
+        ref
+        for ref in request.manifest.current_context.current_relevant_paths
+        if ref.kind not in {EvidenceKind.WIKI, EvidenceKind.DOC}
+    )
     bundle = render_prompt_bundle(
         request.model_copy(
             update={
-                "assignment": request.assignment.model_copy(
-                    update={"task_memory_search_hints": ()}
-                ),
-                "latest_checkpoint": latest_checkpoint.model_copy(
-                    update={"task_memory_search_hints": ()}
+                "manifest": request.manifest.model_copy(
+                    update={
+                        "current_context": request.manifest.current_context.model_copy(
+                            update={"current_relevant_paths": retained_refs}
+                        )
+                    }
                 ),
             }
         )
     )
 
-    task_memory_section = extract_section(
-        bundle.full_markdown,
-        "### Task Memory",
-        "### Allowed Actions Now",
-    )
-
-    assert "- search hints:" not in task_memory_section
-    assert "- surfaced curated refs:" in task_memory_section
-    assert "auth-refresh-notes.md" in task_memory_section
+    assert "### Task Memory" not in bundle.input_text
 
 
 def test_latest_checkpoint_context_renders_stable_checkpoint_path(tmp_path: Path) -> None:

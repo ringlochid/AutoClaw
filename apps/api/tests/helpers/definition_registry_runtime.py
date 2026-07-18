@@ -9,7 +9,11 @@ from sqlite3 import Connection as SQLiteConnection
 import autoclaw.interfaces.cli as cli
 from autoclaw.config import get_settings
 from autoclaw.paths import default_database_url
-from autoclaw.persistence.session import RuntimeAsyncSession, dispose_test_db_engine
+from autoclaw.persistence.session import (
+    RuntimeAsyncSession,
+    dispose_test_db_engine,
+    install_sqlite_transaction_control,
+)
 from sqlalchemy import event
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import (
@@ -38,6 +42,7 @@ def _build_isolated_session_factory(database_url: str) -> tuple[AsyncEngine, Asy
         engine_kwargs["pool_pre_ping"] = True
     engine = create_async_engine(database_url, **engine_kwargs)
     if url.get_backend_name() == "sqlite":
+        install_sqlite_transaction_control(engine.sync_engine)
 
         @event.listens_for(engine.sync_engine, "connect")
         def _set_sqlite_pragma(

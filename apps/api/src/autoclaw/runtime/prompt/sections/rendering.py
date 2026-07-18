@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 
 from autoclaw.runtime.capabilities import (
@@ -153,7 +154,6 @@ def render_current_dispatch(request: PromptRenderRequest, *, heading_level: int 
             f"use control tools now, call `{_node_tool('record_checkpoint')}` if the "
             "reasoning must persist, then later emit `yield` or a terminal boundary"
         )
-    session_key = request.session_key or "unavailable until the live node session is opened"
     return render_markdown_section(
         "Current Dispatch",
         (
@@ -162,11 +162,8 @@ def render_current_dispatch(request: PromptRenderRequest, *, heading_level: int 
             f"- send mode: {request.send_mode.value}",
             f"- closure expectation: {closure}",
             f"- task_id for node tools: {request.task_id}",
-            f"- session_key for node tools: {session_key}",
             f"- model-visible node tool ids use the `{NODE_TOOL_PREFIX}*` prefix; use the "
             "exact prefixed tool ids surfaced below when calling node tools.",
-            "- When calling node tools, include the exact `task_id` and `session_key` shown "
-            "here. Do not print them in normal output, checkpoint prose, or artifacts.",
         ),
         level=heading_level,
     )
@@ -181,7 +178,12 @@ def render_capabilities_now(request: PromptRenderRequest, *, heading_level: int 
             "- adapter, local-tool, or UI restrictions may narrow it but must not widen it",
             "- human_request and command_run are controller capabilities, not generic "
             "adapter approval prompts",
-            f"- execution_scope: {capabilities.execution_scope}",
+            "- provider_native_access: "
+            f"{capabilities.provider_native_access.effective.value}; source: "
+            f"{capabilities.provider_native_access.source.value}",
+            "- network_access: "
+            f"{capabilities.network_access.effective.value}; source: "
+            f"{capabilities.network_access.source.value}",
             _human_request_capability_line(request, HumanRequestKind.DIRECTION),
             _human_request_capability_line(request, HumanRequestKind.APPROVAL),
             _human_request_capability_line(request, HumanRequestKind.INPUT),
@@ -239,10 +241,6 @@ def render_current_assignment(request: PromptRenderRequest, *, heading_level: in
         for ref in assignment.transient_refs:
             lines.append(f"  - path: {ref.path}")
             lines.append(f"    description: {ref.description}")
-    if assignment.task_memory_search_hints:
-        lines.append("- task_memory_search_hints:")
-        for hint in assignment.task_memory_search_hints:
-            lines.append(f"  - {hint}")
     return render_markdown_section("Current Assignment", lines, level=heading_level)
 
 
@@ -261,43 +259,45 @@ def render_human_request_continuation_context(
         "- source: controller-owned terminal human-request truth",
         f"- request_id: {request_record.request_id}",
         f"- kind: {request_record.kind.value}",
-        f"- title: {request_record.title}",
         f"- summary: {request_record.summary}",
-        f"- requester_node: {request_record.requester_node}",
+        f"- source_dispatch_id: {request_record.source_dispatch_id}",
         f"- status: {request_record.status.value}",
         f"- opened_at: {request_record.opened_at.isoformat()}",
         f"- timeout_due_at: {_optional_datetime(request_record.timeout.due_at)}",
-        f"- timeout_default_behavior: {request_record.timeout.default_behavior}",
-        f"- suggested_human_instruction: {request_record.suggested_human_instruction}",
-        f"- resolution_kind: {resolution.resolution_kind.value}",
-        f"- resolved_at: {resolution.resolved_at.isoformat()}",
-        f"- resolved_by_actor_ref: {resolution.resolved_by_actor_ref}",
+        f"- timeout_default_behavior: {_optional_text(request_record.timeout.default_behavior)}",
+        "- suggested_human_instruction: "
+        f"{_optional_text(request_record.suggested_human_instruction)}",
+        "- items:",
     ]
     for item in request_record.items:
-        lines.append(f"- item_id: {item.item_id}")
-        lines.append(f"  prompt: {item.prompt}")
-        lines.append(f"  recommended_option: {item.recommended_option}")
-        if item.options:
-            lines.append("  options:")
-            for option in item.options:
-                lines.append(f"    - id: {option.id}")
-                lines.append(f"      title: {option.title}")
-                lines.append(f"      description: {option.description}")
+        lines.append(f"  - id: {item.id}")
+        lines.append(f"    prompt: {item.prompt}")
+        if item.response_schema is not None:
+            lines.append(f"    response_schema: {_render_json(item.response_schema)}")
         else:
-            lines.append("  options: []")
-    if resolution.item_responses:
-        lines.append("- item_responses:")
-        for item_response in resolution.item_responses:
-            lines.append(f"  - item_id: {item_response.item_id}")
-            lines.append(f"    selected_option: {item_response.selected_option}")
-            lines.append(f"    freeform_answer: {item_response.freeform_answer}")
-            lines.append(f"    extra_notes: {item_response.extra_notes}")
-            lines.append(f"    response_payload: {item_response.response_payload}")
-    return render_markdown_section(
-        "Human Request Continuation Context",
-        lines,
-        level=heading_level,
-    )
+            lines.append("    options:")
+            assert item.options is not None
+            for option in item.options:
+                lines.append(f"      - id: {option.id}")
+                lines.append(f"        title: {option.title}")
+                lines.append(f"        description: {_optional_text(option.description)}")
+    if request_record.context_refs:
+        lines.append("- context_refs:")
+        for context_ref in request_record.context_refs:
+            lines.append(f"  - path: {context_ref.path}")
+            lines.append(f"    description: {context_ref.description}")
+    else:
+        lines.append("- context_refs: []")
+    lines += [
+        f"- resolution_kind: {resolution.resolution_kind.value}",
+        f"- item_responses: {_render_json(resolution.item_responses)}",
+        f"- policy_basis: {_render_json(resolution.policy_basis)}",
+        f"- resolution_summary: {resolution.summary}",
+        f"- resolved_at: {resolution.resolved_at.isoformat()}",
+        f"- resolved_by_actor_ref: {_optional_text(resolution.resolved_by_actor_ref)}",
+        f"- resolved_by_surface: {resolution.resolved_by_surface.value}",
+    ]
+    return render_markdown_section("Human Request Continuation Context", lines, level=heading_level)
 
 
 def render_command_run_continuation_context(
@@ -405,8 +405,7 @@ def _initial_boundary_followup_lines() -> tuple[str, ...]:
     return (
         "- boundary context: initial or ordinary current dispatch without a "
         "terminal handoff outcome",
-        "- start from manifest, assignment, current refs, and surfaced "
-        "task-memory hints before acting",
+        "- start from manifest, assignment, and current refs before acting",
     )
 
 
@@ -470,7 +469,6 @@ def _worker_allowed_action_lines() -> tuple[str, ...]:
         "- close with `green`, `retry`, or `blocked` only when justified by "
         "the current assignment and its current surfaced evidence",
         "- do not use parent/root control tools from this dispatch",
-        "- callback remains a write-only semantic lane and not a context-discovery helper",
     )
 
 
@@ -517,8 +515,6 @@ def _parent_root_allowed_action_lines(node_kind: NodeKind) -> tuple[str, ...]:
         "scope boundaries and what not to touch, the key surfaced refs and "
         "constraints, what to read or compare before acting, and what evidence "
         "or outputs to return",
-        "- use `task_memory_search_hints` as retrieval prompts for prior defects, "
-        "rejected approaches, root causes, or artifact names; do not use generic tags",
         "- if the same issue class repeats, choose explicitly between: "
         "reassign the same child for another bounded delta when the same role "
         "still fits; assign a different specialist child when the work type "
@@ -556,9 +552,15 @@ def _node_tool(tool_name: str) -> str:
 
 
 def _optional_datetime(value: datetime | None) -> str:
-    if value is None:
-        return "null"
-    return value.isoformat()
+    return "null" if value is None else value.isoformat()
+
+
+def _optional_text(value: str | None) -> str:
+    return "null" if value is None else value
+
+
+def _render_json(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
 
 
 def _human_request_capability_line(

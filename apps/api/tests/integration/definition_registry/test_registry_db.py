@@ -112,9 +112,7 @@ async def test_seed_registry_appends_seed_revision_without_clobbering_controller
         async with session_factory() as session:
             current = await load_current_workflow(session, "bounded-change")
             revision_count = await session.scalar(
-                select(func.count()).where(
-                    WorkflowRevisionModel.workflow_key == "bounded-change"
-                )
+                select(func.count()).where(WorkflowRevisionModel.workflow_key == "bounded-change")
             )
             appended_seed_revision = await session.scalar(
                 select(WorkflowRevisionModel).where(
@@ -186,9 +184,7 @@ async def test_seed_registry_promotes_changed_packaged_workflow_revision_when_se
             assert current_revision is not None
             assert current.revision_no == 2
             assert current.definition.description == updated_description
-            assert current_revision.source_path == (
-                "seed://packaged/workflows/bounded_change.yaml"
-            )
+            assert current_revision.source_path == ("seed://packaged/workflows/bounded_change.yaml")
             assert revision_history == [
                 (1, baseline_description),
                 (2, updated_description),
@@ -203,7 +199,7 @@ async def test_invalid_workflow_does_not_advance_registry_currentness(
             current = await load_current_workflow(session, "bounded-change")
             invalid_definition = WorkflowDefinitionInput.model_validate(
                 current.definition.model_dump()
-                | {"root": current.definition.root.model_dump() | {"role": "missing-role"}}
+                | {"root": current.definition.root.model_dump() | {"role_id": "missing-role"}}
             )
 
             with pytest.raises(ValueError, match="role 'missing-role'"):
@@ -217,9 +213,7 @@ async def test_invalid_workflow_does_not_advance_registry_currentness(
         async with session_factory() as session:
             current = await load_current_workflow(session, "bounded-change")
             revision_count = await session.scalar(
-                select(func.count()).where(
-                    WorkflowRevisionModel.workflow_key == "bounded-change"
-                )
+                select(func.count()).where(WorkflowRevisionModel.workflow_key == "bounded-change")
             )
 
             assert current.revision_no == 1

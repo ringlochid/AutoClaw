@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from importlib import import_module
-from typing import TYPE_CHECKING, Any
-
 from autoclaw.runtime.contracts import (
     PROMPT_FAMILY_NODE_KINDS,
     AssignmentConsumeRef,
@@ -29,7 +26,6 @@ from autoclaw.runtime.contracts import (
     NodeKind,
     NodeRuntimeFileKind,
     NodeRuntimeFileRef,
-    ParentRootToolName,
     PersistedPromptRecord,
     ProduceRequirement,
     PromptFamily,
@@ -38,7 +34,7 @@ from autoclaw.runtime.contracts import (
     PromptTransportRequest,
     RenderedPromptBundle,
     ResolvedNodeContext,
-    RuntimeBootstrapProjectionInput,
+    RuntimeBootstrapInput,
     RuntimeBootstrapResult,
     RuntimeContextRef,
     RuntimeLaunchInput,
@@ -66,96 +62,6 @@ from autoclaw.runtime.contracts import (
     validate_prompt_render_request,
 )
 
-if TYPE_CHECKING:
-    from autoclaw.runtime.boundary import accept_boundary
-    from autoclaw.runtime.capabilities import (
-        capability_rejection_for_command_run,
-        capability_rejection_for_human_request,
-        denied_effective_capabilities,
-        resolve_effective_capabilities,
-        resolve_effective_capabilities_for_node,
-        resolve_effective_capabilities_from_policy_content,
-    )
-    from autoclaw.runtime.checkpoint import record_checkpoint
-    from autoclaw.runtime.flow import (
-        cancel_runtime_flow,
-        continue_runtime_flow,
-        list_runtime_flows,
-        pause_runtime_flow,
-        runtime_flow_read,
-    )
-    from autoclaw.runtime.launch import launch_task_runtime
-    from autoclaw.runtime.node_tools.parent_tools import call_parent_tool
-    from autoclaw.runtime.observability import (
-        observability_ref,
-        operator_snapshot,
-        operator_trace,
-    )
-    from autoclaw.runtime.prompt import render_prompt_bundle
-    from autoclaw.runtime.task_events import (
-        append_task_event,
-        latest_task_event,
-        list_task_events,
-        read_task_event,
-    )
-    from autoclaw.runtime.task_root import localize_external_resource, resolve_task_root_paths
-
-_LAZY_EXPORTS: dict[str, tuple[str, str]] = {
-    "accept_boundary": ("autoclaw.runtime.boundary", "accept_boundary"),
-    "call_parent_tool": ("autoclaw.runtime.node_tools.parent_tools", "call_parent_tool"),
-    "capability_rejection_for_command_run": (
-        "autoclaw.runtime.capabilities",
-        "capability_rejection_for_command_run",
-    ),
-    "capability_rejection_for_human_request": (
-        "autoclaw.runtime.capabilities",
-        "capability_rejection_for_human_request",
-    ),
-    "cancel_runtime_flow": ("autoclaw.runtime.flow", "cancel_runtime_flow"),
-    "continue_runtime_flow": ("autoclaw.runtime.flow", "continue_runtime_flow"),
-    "denied_effective_capabilities": (
-        "autoclaw.runtime.capabilities",
-        "denied_effective_capabilities",
-    ),
-    "launch_task_runtime": ("autoclaw.runtime.launch", "launch_task_runtime"),
-    "list_runtime_flows": ("autoclaw.runtime.flow", "list_runtime_flows"),
-    "localize_external_resource": ("autoclaw.runtime.task_root", "localize_external_resource"),
-    "observability_ref": ("autoclaw.runtime.observability", "observability_ref"),
-    "operator_snapshot": ("autoclaw.runtime.observability", "operator_snapshot"),
-    "operator_trace": ("autoclaw.runtime.observability", "operator_trace"),
-    "pause_runtime_flow": ("autoclaw.runtime.flow", "pause_runtime_flow"),
-    "record_checkpoint": ("autoclaw.runtime.checkpoint", "record_checkpoint"),
-    "render_prompt_bundle": ("autoclaw.runtime.prompt", "render_prompt_bundle"),
-    "resolve_task_root_paths": ("autoclaw.runtime.task_root", "resolve_task_root_paths"),
-    "runtime_flow_read": ("autoclaw.runtime.flow", "runtime_flow_read"),
-    "resolve_effective_capabilities": (
-        "autoclaw.runtime.capabilities",
-        "resolve_effective_capabilities",
-    ),
-    "resolve_effective_capabilities_for_node": (
-        "autoclaw.runtime.capabilities",
-        "resolve_effective_capabilities_for_node",
-    ),
-    "resolve_effective_capabilities_from_policy_content": (
-        "autoclaw.runtime.capabilities",
-        "resolve_effective_capabilities_from_policy_content",
-    ),
-    "append_task_event": ("autoclaw.runtime.task_events", "append_task_event"),
-    "latest_task_event": ("autoclaw.runtime.task_events", "latest_task_event"),
-    "list_task_events": ("autoclaw.runtime.task_events", "list_task_events"),
-    "read_task_event": ("autoclaw.runtime.task_events", "read_task_event"),
-}
-
-
-def __getattr__(name: str) -> Any:
-    module_name, attribute_name = _LAZY_EXPORTS.get(name, (None, None))
-    if module_name is None or attribute_name is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-    value = getattr(import_module(module_name), attribute_name)
-    globals()[name] = value
-    return value
-
-
 __all__ = [
     "PROMPT_FAMILY_NODE_KINDS",
     "AssignmentConsumeRef",
@@ -182,7 +88,6 @@ __all__ = [
     "NodeKind",
     "NodeRuntimeFileKind",
     "NodeRuntimeFileRef",
-    "ParentRootToolName",
     "PersistedPromptRecord",
     "ProduceRequirement",
     "PromptFamily",
@@ -191,7 +96,7 @@ __all__ = [
     "PromptTransportRequest",
     "RenderedPromptBundle",
     "ResolvedNodeContext",
-    "RuntimeBootstrapProjectionInput",
+    "RuntimeBootstrapInput",
     "RuntimeBootstrapResult",
     "RuntimeContextRef",
     "RuntimeLaunchInput",
@@ -214,32 +119,7 @@ __all__ = [
     "TaskStartRequest",
     "TaskStartResponse",
     "WorkflowManifestRef",
-    "accept_boundary",
-    "append_task_event",
-    "call_parent_tool",
-    "cancel_runtime_flow",
-    "capability_rejection_for_command_run",
-    "capability_rejection_for_human_request",
-    "continue_runtime_flow",
-    "denied_effective_capabilities",
-    "latest_task_event",
-    "launch_task_runtime",
-    "list_runtime_flows",
-    "list_task_events",
-    "localize_external_resource",
-    "observability_ref",
-    "operator_snapshot",
-    "operator_trace",
-    "pause_runtime_flow",
     "prompt_family_for_node_kind",
-    "read_task_event",
-    "record_checkpoint",
-    "render_prompt_bundle",
-    "resolve_effective_capabilities",
-    "resolve_effective_capabilities_for_node",
-    "resolve_effective_capabilities_from_policy_content",
-    "resolve_task_root_paths",
-    "runtime_flow_read",
     "validate_prompt_family_for_node_kind",
     "validate_prompt_render_request",
 ]

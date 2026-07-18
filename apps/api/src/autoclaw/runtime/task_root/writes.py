@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Sequence
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -12,7 +11,6 @@ from autoclaw.runtime.contracts import (
     AssignmentProjection,
     CheckpointProjection,
     ManifestProjection,
-    PersistedPromptRecord,
     TaskRootPaths,
 )
 from autoclaw.runtime.prompt.bundle import (
@@ -92,48 +90,7 @@ def write_checkpoint_projection(
     )
 
 
-def write_prompt_artifact(
-    *,
-    paths: TaskRootPaths,
-    prompt_record: PersistedPromptRecord,
-    full_markdown: str,
-) -> None:
-    del paths
-    prompt_path = prompt_record.rendered_markdown_path
-    prompt_path.parent.mkdir(parents=True, exist_ok=True)
-    prompt_path.write_text(full_markdown, encoding="utf-8")
-    write_json_file(
-        prompt_record.transport_request_path,
-        {
-            "dispatch_id": prompt_record.dispatch_id,
-            "node_key": prompt_record.node_key,
-            "attempt_id": prompt_record.attempt_id,
-            "assignment_key": prompt_record.assignment_key,
-            "prompt_name": prompt_record.prompt_name,
-            "send_mode": prompt_record.send_mode,
-            "instructions_text": prompt_record.transport_request.instructions_text,
-            "input_text": prompt_record.transport_request.input_text,
-            "content_hash": prompt_record.content_hash,
-            "transport_request_hash": prompt_record.transport_request_hash,
-            "rendered_at": prompt_record.rendered_at.isoformat(),
-        },
-    )
-
-
 def write_json_file(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     materialized = payload.model_dump(mode="json") if isinstance(payload, BaseModel) else payload
     path.write_text(json.dumps(materialized, indent=2, sort_keys=True), encoding="utf-8")
-
-
-def write_ndjson_file(path: Path, rows: Sequence[object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    encoded_rows: list[str] = []
-    for row in rows:
-        materialized: object
-        if isinstance(row, BaseModel):
-            materialized = row.model_dump(mode="json")
-        else:
-            materialized = row
-        encoded_rows.append(json.dumps(materialized, sort_keys=True))
-    path.write_text("\n".join(encoded_rows) + ("\n" if encoded_rows else ""), encoding="utf-8")

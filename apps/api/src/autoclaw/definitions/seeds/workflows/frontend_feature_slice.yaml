@@ -2,9 +2,10 @@ kind: workflow
 id: frontend-feature-slice
 description: Plan, implement, visually verify, review, and close one bounded frontend feature slice.
 root:
-    id: root
-    role: root_planning_lead
-    policy: standard-root
+    node_key: root
+    kind: root
+    role_id: root_planning_lead
+    policy_id: standard-root
     description: Preserve frontend feature intent and release only when contract, implementation, visual verification, and review evidence agree.
     instruction: >-
       Keep the frontend slice bounded to the accepted user workflow, route or component ownership, design reference, and API or view-model contract. Route design, contract, accessibility, or visual contradictions to focused review before release.
@@ -16,9 +17,10 @@ root:
               - implementation, verification, and review evidence refer to the same frontend slice and accepted contract
               - unresolved contract drift, broken state handling, visual regression, inaccessible interaction, text overflow, blank screen, or unverified critical path blocks release
     children:
-        - id: plan_frontend_contract
-          role: frontend_contract_integrator
-          policy: standard-worker
+        - node_key: plan_frontend_contract
+          kind: worker
+          role_id: frontend_contract_integrator
+          policy_id: standard-worker
           description: Inspect frontend context and publish the slice contract, state, fixture, and verification plan.
           instruction: >-
             Publish only contract, state, fixture, route, component, and verification evidence needed to implement the frontend slice safely.
@@ -27,9 +29,10 @@ root:
                   - slot: frontend_contract_plan
                     file_hint: frontend_contract_plan.md
                     description: Frontend slice scope, design reference, route and component boundary, API or view-model contract, visible states, fixtures, checks, non-goals, and risks.
-        - id: implement_frontend_slice
-          role: frontend_engineer
-          policy: standard-worker
+        - node_key: implement_frontend_slice
+          kind: worker
+          role_id: frontend_engineer
+          policy_id: standard-worker
           description: Implement the accepted frontend slice.
           instruction: >-
             Read the contract plan first. Keep the patch aligned with existing component primitives, routing, styling, state boundaries, and tests.
@@ -48,9 +51,10 @@ root:
                   - slot: frontend_patch
                     file_hint: frontend_patch.diff
                     description: Patch for the bounded frontend implementation.
-        - id: verify_frontend_slice
-          role: frontend_visual_verifier
-          policy: standard-worker-command-run
+        - node_key: verify_frontend_slice
+          kind: worker
+          role_id: frontend_visual_verifier
+          policy_id: standard-worker-command-run
           description: Verify frontend behavior, visual fit, responsiveness, accessibility, and regression-sensitive paths.
           instruction: >-
             Verify accepted states and critical interactions with the smallest evidence set that proves the slice. Include mobile and desktop evidence when layout changes.
@@ -65,9 +69,10 @@ root:
                   - slot: frontend_verification_report
                     file_hint: frontend_verification_report.md
                     description: Verification evidence for frontend behavior, visual fit, responsiveness, accessibility, command results, screenshots, and untested areas.
-        - id: review_frontend_slice
-          role: frontend_code_reviewer
-          policy: standard-worker
+        - node_key: review_frontend_slice
+          kind: worker
+          role_id: frontend_code_reviewer
+          policy_id: standard-worker
           description: Review the frontend implementation and verification evidence.
           instruction: >-
             Focus on user workflow correctness, contract fit, component and state boundaries, accessibility, visual regressions, styling consistency, and missing tests.
@@ -83,9 +88,10 @@ root:
                   - slot: frontend_review_report
                     file_hint: frontend_review_report.md
                     description: Review findings for the frontend implementation and verification evidence.
-        - id: release_closure
-          role: release_operator
-          policy: standard-worker
+        - node_key: release_closure
+          kind: worker
+          role_id: release_operator
+          policy_id: standard-worker
           description: Perform final bounded frontend release or closure work from current surfaced evidence.
           instruction: >-
             Use only frontend contract plan, patch, verification, review evidence, and release criteria. Do not widen into unrelated frontend cleanup.

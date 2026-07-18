@@ -23,13 +23,13 @@ from autoclaw.definitions.registry.definition_catalog import (
 )
 from autoclaw.definitions.registry.definition_history import get_definition_history
 from autoclaw.definitions.registry.task_start import start_task_from_definition
+from autoclaw.persistence.session_operations import read_session_operation
 from autoclaw.platform.file_entrypoints import (
     definition_upload_request_from_path,
     task_start_request_from_path,
 )
 from autoclaw.runtime import NodeKind
 from autoclaw.runtime.contracts import TaskStartResponse
-from autoclaw.runtime.post_commit.operations import read_session_operation
 
 from ..tool_teaching import (
     AUDIT_ONLY_NOTE,

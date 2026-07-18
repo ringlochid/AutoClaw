@@ -65,9 +65,9 @@ def test_packaged_workflow_seed_definitions_validate_against_packaged_catalog() 
     assert workflow_ids == EXPECTED_WORKFLOW_IDS
 
 
-def test_packaged_workflow_seed_nodes_attach_seed_policies() -> None:
+def test_packaged_workflow_seed_nodes_use_target_portable_contract() -> None:
     with resolve_committed_seed_definitions_root() as definitions_root:
-        _, policies = load_registry_catalog(definitions_root)
+        roles, policies = load_registry_catalog(definitions_root)
         packaged_tree = load_definition_tree(definitions_root)
 
         for relative_path, workflow in packaged_tree.items():
@@ -76,11 +76,24 @@ def test_packaged_workflow_seed_nodes_attach_seed_policies() -> None:
             root = workflow["root"]
             assert isinstance(root, dict)
             for node in _iter_workflow_nodes(root):
-                node_id = node.get("id")
-                assert isinstance(node_id, str)
-                policy_id = node.get("policy")
+                node_key = node.get("node_key")
+                assert isinstance(node_key, str)
+                assert {"id", "role", "policy", "provider_preference"}.isdisjoint(node)
+
+                expected_kind = (
+                    "root" if node is root else "parent" if node.get("children") else "worker"
+                )
+                assert node.get("kind") == expected_kind, (
+                    f"{relative_path}:{node_key} must declare kind {expected_kind}"
+                )
+
+                role_id = node.get("role_id")
+                assert isinstance(role_id, str) and role_id in roles, (
+                    f"{relative_path}:{node_key} must attach a packaged seed role"
+                )
+                policy_id = node.get("policy_id")
                 assert isinstance(policy_id, str) and policy_id in policies, (
-                    f"{relative_path}:{node_id} must attach a packaged seed policy"
+                    f"{relative_path}:{node_key} must attach a packaged seed policy"
                 )
 
 
@@ -141,26 +154,15 @@ def test_packaged_seed_tree_contains_expected_definition_files() -> None:
     }
 
 
-def test_reference_definition_pages_mirror_packaged_seed_definitions() -> None:
-    workflow_page_stems_by_seed_stem = {
-        "bounded_change": "bounded-change",
-        "reviewed_change_release": "reviewed-change-release",
-        "staged_delivery_release": "staged-delivery-release",
-    }
-
+def test_reference_role_and_policy_pages_mirror_packaged_seed_definitions() -> None:
     with resolve_committed_seed_definitions_root() as definitions_root:
         packaged_tree = load_definition_tree(definitions_root)
 
     for relative_path, seed_payload in packaged_tree.items():
-        category, file_name = relative_path.split("/")
-        seed_stem = file_name.removesuffix(".yaml")
+        category, _ = relative_path.split("/")
         if category == "workflows":
-            page_stem = workflow_page_stems_by_seed_stem.get(
-                seed_stem,
-                seed_payload["id"],
-            )
-        else:
-            page_stem = seed_payload["id"].replace("_", "-")
+            continue
+        page_stem = seed_payload["id"].replace("_", "-")
 
         reference_payload = load_first_yaml_fence(
             REFERENCE_DEFINITIONS_ROOT / category / f"{page_stem}.md"

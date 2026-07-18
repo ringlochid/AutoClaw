@@ -1,283 +1,447 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
-from autoclaw.runtime.contracts import (
-    COMMAND_RUN_TERMINAL_EVENT_TYPES,
-    BoundaryStateTransition,
-    CapabilityRejectionError,
-    CommandRunRecord,
-    CommandRunStartResponse,
-    CommandRunState,
-    CommandRunTerminalResult,
-    EffectiveCapabilitySet,
-    HumanRequestOpenRequest,
-    HumanRequestResolution,
-    HumanRequestStatus,
-    HumanRequestTimeout,
-    OperationFailureCode,
-    PendingHumanRequest,
-    ProviderLaunchFailure,
-    ProviderResolution,
-    TaskEventListResponse,
-    TaskEventRecord,
-    TaskEventSource,
-    TaskEventType,
-    WaitingCause,
+from autoclaw.persistence import RuntimeBase
+from sqlalchemy import Connection, select
+from sqlalchemy.exc import IntegrityError
+from tests.integration.runtime_schema_contract.catalog_fixture import seed_catalog
+from tests.integration.runtime_schema_contract.runtime_lineage_fixture import (
+    RuntimeIds,
+    seed_runtime_scope,
 )
-from pydantic import ValidationError
+from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+    create_runtime_schema_engine,
+)
+
+NOW = datetime(2026, 7, 18, tzinfo=UTC)
+Mutation = Callable[[Connection, dict[str, RuntimeIds]], None]
 
 
-def test_provider_resolution_contracts_keep_logical_provider_names() -> None:
-    resolution = ProviderResolution.model_validate(
-        {
-            "requested_provider": "codex",
-            "resolved_provider": "openclaw",
-        }
-    )
-    failure = ProviderLaunchFailure.model_validate(
-        {
-            "requested_provider": "codex",
-            "attempted_provider": "openclaw",
-            "stage": "connect",
-            "message": "default provider failed before dispatch acceptance",
-        }
-    )
-
-    assert resolution.model_dump(mode="json") == {
-        "requested_provider": "codex",
-        "resolved_provider": "openclaw",
-    }
-    assert failure.code == "provider_launch_failed"
-    assert failure.stage == "connect"
+def _assert_rejected(
+    tmp_path: Path,
+    mutation: Mutation,
+    *,
+    suffixes: tuple[str, ...] = ("a",),
+) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            scopes = {suffix: seed_runtime_scope(connection, suffix=suffix) for suffix in suffixes}
+        with pytest.raises(IntegrityError):
+            with engine.begin() as connection:
+                mutation(connection, scopes)
+    finally:
+        engine.dispose()
 
 
-def test_capability_contracts_expose_denied_defaults_and_structured_rejection() -> None:
-    capability_set = EffectiveCapabilitySet.model_validate(
-        {
-            "execution_scope": "dispatch",
-            "human_request": {"review": "allow"},
-        }
-    )
-    rejection = CapabilityRejectionError(
-        capability="human_request.review",
-        message="current worker policy does not allow review requests from this node",
-        next_legal_action="record_checkpoint_or_choose_another_allowed_boundary",
-    )
+def test_staged_child_binds_direct_parent_authoring_dispatch_and_source_revision(
+    tmp_path: Path,
+) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            ids = seed_runtime_scope(connection)
+            _set_child_authoring_dispatch(
+                connection,
+                ids,
+                dispatch_id=ids.root_dispatch_id,
+            )
+            _insert_staged_child_decision(connection, ids)
+        with engine.connect() as connection:
+            decision = connection.execute(
+                select(RuntimeBase.metadata.tables["assignment_decisions"])
+            ).one()
+        assert decision.staged_child_assignment_id == ids.child_assignment_id
+        assert decision.source_flow_revision_id == ids.flow_revision_id
+    finally:
+        engine.dispose()
 
-    assert capability_set.human_request.direction == "deny"
-    assert capability_set.human_request.review == "allow"
-    assert capability_set.command_run == "deny"
-    assert rejection.code == OperationFailureCode.CAPABILITY_REJECTED
+
+def test_staged_child_rejects_a_different_authoring_dispatch(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        _set_child_authoring_dispatch(
+            connection,
+            ids,
+            dispatch_id=ids.child_dispatch_id,
+        )
+        _insert_staged_child_decision(connection, ids)
+
+    _assert_rejected(tmp_path, mutate)
 
 
-def _human_review_request_payload(*, recommended_option: str = "approve") -> dict[str, object]:
-    return {
-        "kind": "review",
-        "title": "Review implementation patch",
-        "summary": "The node needs a human review before continuing.",
-        "items": [
+def test_assignment_decision_rejects_a_different_same_flow_revision(
+    tmp_path: Path,
+) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        revisions = RuntimeBase.metadata.tables["flow_revisions"]
+        connection.execute(
+            revisions.insert(),
             {
-                "item_id": "review_choice",
-                "prompt": "Should the node proceed with this patch?",
-                "options": [
-                    {"id": "approve", "title": "Approve"},
-                    {"id": "revise", "title": "Revise"},
-                ],
-                "recommended_option": recommended_option,
-            }
-        ],
-        "timeout": {"due_at": None, "default_behavior": None},
-        "suggested_human_instruction": "Inspect the patch before answering.",
-    }
+                "flow_revision_id": "flow-revision.a.2",
+                "flow_id": ids.flow_id,
+                "revision_no": 2,
+                "parent_flow_revision_id": ids.flow_revision_id,
+                "source_compiled_plan_id": ids.compiled_plan_id,
+                "cause": "update_child",
+                "created_by_dispatch_id": ids.root_dispatch_id,
+                "snapshot_json": {},
+                "adopted_at": NOW,
+            },
+        )
+        _insert_release_decision(
+            connection,
+            ids,
+            decision_id="decision.wrong-source-revision",
+            source_flow_revision_id="flow-revision.a.2",
+        )
+
+    _assert_rejected(tmp_path, mutate)
 
 
-def test_human_request_contracts_accept_pending_item_and_resolution_shapes() -> None:
-    now = datetime(2026, 6, 24, 17, 0, tzinfo=UTC)
-    open_request = HumanRequestOpenRequest.model_validate(_human_review_request_payload())
-    pending_request = PendingHumanRequest(
-        request_id="human-request.1",
-        task_id="task.1",
-        title=open_request.title,
-        summary=open_request.summary,
-        kind=open_request.kind,
-        requester_node="implement_slice",
-        items=open_request.items,
-        timeout=HumanRequestTimeout(),
-        suggested_human_instruction=open_request.suggested_human_instruction,
-        opened_at=now,
-        status=HumanRequestStatus.OPEN,
-    )
-    resolution = HumanRequestResolution.model_validate(
-        {
-            "request_id": "human-request.1",
-            "task_id": "task.1",
-            "resolution_kind": "answered",
-            "item_responses": [
+def test_source_dispatch_accepts_at_most_one_terminal_checkpoint(
+    tmp_path: Path,
+) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        connection.execute(
+            RuntimeBase.metadata.tables["attempt_checkpoints"].insert(),
+            {
+                "checkpoint_id": "checkpoint.a.root.duplicate-terminal",
+                "task_id": ids.task_id,
+                "flow_id": ids.flow_id,
+                "assignment_id": ids.root_assignment_id,
+                "attempt_id": ids.root_attempt_id,
+                "authoring_dispatch_id": ids.root_dispatch_id,
+                "checkpoint_kind": "terminal",
+                "outcome": "blocked",
+                "summary": "A conflicting terminal checkpoint.",
+                "evidence_json": {},
+                "criteria_results_json": [],
+                "recorded_at": NOW,
+            },
+        )
+
+    _assert_rejected(tmp_path, mutate)
+
+
+def test_root_release_decision_can_select_exact_descendant_evidence(
+    tmp_path: Path,
+) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            ids = seed_runtime_scope(connection)
+            _insert_release_decision(connection, ids, decision_id="decision.release-blocked")
+            connection.execute(
+                RuntimeBase.metadata.tables["assignment_decision_checkpoints"].insert(),
                 {
-                    "item_id": "review_choice",
-                    "selected_option": "approve",
-                    "freeform_answer": None,
-                    "extra_notes": "Looks good.",
-                    "response_payload": None,
-                }
-            ],
-            "resolved_at": now,
-            "resolved_by_actor_ref": "operator.alice",
-        }
-    )
+                    "assignment_decision_checkpoint_id": "decision-checkpoint.child",
+                    "assignment_decision_id": "decision.release-blocked",
+                    "task_id": ids.task_id,
+                    "flow_id": ids.flow_id,
+                    "evidence_assignment_id": ids.child_assignment_id,
+                    "evidence_attempt_id": ids.child_attempt_id,
+                    "checkpoint_id": ids.child_checkpoint_id,
+                    "order_index": 0,
+                },
+            )
+            _insert_publication(
+                connection,
+                ids,
+                publication_id="publication.child.result.1",
+                version=1,
+                slot="result",
+                assignment_id=ids.child_assignment_id,
+                attempt_id=ids.child_attempt_id,
+                checkpoint_id=ids.child_checkpoint_id,
+            )
+            connection.execute(
+                RuntimeBase.metadata.tables["assignment_decision_artifacts"].insert(),
+                {
+                    "assignment_decision_artifact_id": "decision-artifact.child",
+                    "assignment_decision_id": "decision.release-blocked",
+                    "task_id": ids.task_id,
+                    "flow_id": ids.flow_id,
+                    "evidence_assignment_id": ids.child_assignment_id,
+                    "evidence_attempt_id": ids.child_attempt_id,
+                    "checkpoint_id": ids.child_checkpoint_id,
+                    "slot": "result",
+                    "version": 1,
+                    "artifact_publication_id": "publication.child.result.1",
+                    "order_index": 0,
+                },
+            )
+        with engine.connect() as connection:
+            row = connection.execute(
+                select(RuntimeBase.metadata.tables["assignment_decision_checkpoints"])
+            ).one()
+        assert row.evidence_assignment_id == ids.child_assignment_id
+        assert row.evidence_attempt_id == ids.child_attempt_id
+    finally:
+        engine.dispose()
 
-    assert pending_request.status == "open"
-    assert resolution.resolution_kind == "answered"
 
-
-def test_human_request_contracts_reject_unknown_recommended_option() -> None:
-    with pytest.raises(ValidationError, match="recommended_option"):
-        HumanRequestOpenRequest.model_validate(
-            _human_review_request_payload(recommended_option="missing")
-        )
-
-
-def test_human_request_contracts_require_schema_for_input_items() -> None:
-    with pytest.raises(ValidationError, match="input_payload_schema"):
-        HumanRequestOpenRequest.model_validate(
+def test_release_decision_rejects_evidence_from_another_task_or_flow(
+    tmp_path: Path,
+) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        owner = scopes["a"]
+        evidence = scopes["b"]
+        _insert_release_decision(connection, owner, decision_id="decision.cross-flow")
+        connection.execute(
+            RuntimeBase.metadata.tables["assignment_decision_checkpoints"].insert(),
             {
-                "kind": "input",
-                "title": "Need missing field",
-                "summary": "The node needs structured input.",
-                "items": [{"item_id": "field", "prompt": "Provide the field."}],
-                "suggested_human_instruction": "Answer the structured input.",
-            }
+                "assignment_decision_checkpoint_id": "decision-checkpoint.cross-flow",
+                "assignment_decision_id": "decision.cross-flow",
+                "task_id": owner.task_id,
+                "flow_id": owner.flow_id,
+                "evidence_assignment_id": evidence.child_assignment_id,
+                "evidence_attempt_id": evidence.child_attempt_id,
+                "checkpoint_id": evidence.child_checkpoint_id,
+                "order_index": 0,
+            },
         )
 
+    _assert_rejected(tmp_path, mutate, suffixes=("a", "b"))
 
-def test_command_run_contracts_validate_terminal_state_shape() -> None:
-    now = datetime(2026, 6, 24, 17, 0, tzinfo=UTC)
-    response = CommandRunStartResponse(
-        run_id="command-run.1",
-        task_id="task.1",
-        state=CommandRunState.RUNNING,
-    )
-    record = CommandRunRecord(
-        run_id=response.run_id,
-        task_id=response.task_id,
-        dispatch_id="dispatch.1",
-        command="pytest apps/api/tests/unit/definition_schemas -q",
-        description="Run focused definition schema tests.",
-        state=CommandRunState.SUCCEEDED,
-        created_at=now,
-        started_at=now,
-        ended_at=now,
-        terminal_result=CommandRunTerminalResult(
-            summary="all focused definition schema tests passed",
-            exit_code=0,
-            signal=None,
-            log_ref=None,
-        ),
-        terminal_event_source=TaskEventSource.CONTROLLER,
-    )
 
-    assert record.state == "succeeded"
-    assert record.terminal_result is not None
-    assert record.terminal_result.exit_code == 0
+def test_artifact_versions_supersede_only_the_same_assignment_slot(
+    tmp_path: Path,
+) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            ids = seed_runtime_scope(connection)
+            _insert_publication(
+                connection,
+                ids,
+                publication_id="publication.root.output.1",
+                version=1,
+            )
+            _insert_publication(
+                connection,
+                ids,
+                publication_id="publication.root.output.2",
+                version=2,
+                supersedes_publication_id="publication.root.output.1",
+                supersedes_version=1,
+            )
+            connection.execute(
+                RuntimeBase.metadata.tables["artifact_current_pointers"].insert(),
+                {
+                    "artifact_current_pointer_id": "current.root.output",
+                    "task_id": ids.task_id,
+                    "flow_id": ids.flow_id,
+                    "assignment_id": ids.root_assignment_id,
+                    "slot": "output",
+                    "current_publication_id": "publication.root.output.2",
+                    "current_version": 2,
+                    "attempt_id": ids.root_attempt_id,
+                    "checkpoint_id": ids.root_checkpoint_id,
+                    "updated_at": NOW,
+                },
+            )
+        with engine.connect() as connection:
+            pointer = connection.execute(
+                select(RuntimeBase.metadata.tables["artifact_current_pointers"])
+            ).one()
+        assert pointer.current_publication_id == "publication.root.output.2"
+        assert pointer.current_version == 2
+    finally:
+        engine.dispose()
 
-    with pytest.raises(ValidationError, match="terminal_result"):
-        CommandRunRecord(
-            run_id="command-run.2",
-            task_id="task.1",
-            dispatch_id="dispatch.1",
-            command="pytest",
-            description="Run tests.",
-            state=CommandRunState.SUCCEEDED,
-            created_at=now,
-            ended_at=now,
+
+def test_artifact_cannot_supersede_a_different_slot(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        _insert_publication(
+            connection,
+            ids,
+            publication_id="publication.output.1",
+            version=1,
+        )
+        _insert_publication(
+            connection,
+            ids,
+            publication_id="publication.other.2",
+            version=2,
+            slot="other",
+            supersedes_publication_id="publication.output.1",
+            supersedes_version=1,
         )
 
-    with pytest.raises(ValidationError, match="terminal_result"):
-        CommandRunRecord(
-            run_id="command-run.3",
-            task_id="task.1",
-            dispatch_id="dispatch.1",
-            command="pytest",
-            description="Run tests.",
-            state=CommandRunState.RUNNING,
-            created_at=now,
-            terminal_result=CommandRunTerminalResult(summary="still running"),
+    _assert_rejected(tmp_path, mutate)
+
+
+def test_artifact_current_pointer_requires_the_exact_publication_version(
+    tmp_path: Path,
+) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        _insert_publication(
+            connection,
+            ids,
+            publication_id="publication.output.1",
+            version=1,
+        )
+        connection.execute(
+            RuntimeBase.metadata.tables["artifact_current_pointers"].insert(),
+            {
+                "artifact_current_pointer_id": "current.invalid-version",
+                "task_id": ids.task_id,
+                "flow_id": ids.flow_id,
+                "assignment_id": ids.root_assignment_id,
+                "slot": "output",
+                "current_publication_id": "publication.output.1",
+                "current_version": 2,
+                "attempt_id": ids.root_attempt_id,
+                "checkpoint_id": ids.root_checkpoint_id,
+                "updated_at": NOW,
+            },
         )
 
-
-def test_runtime_contracts_expose_waiting_and_event_vocabulary() -> None:
-    assert [cause.value for cause in WaitingCause] == [
-        "paused_by_operator",
-        "waiting_for_human_request",
-        "waiting_for_command_run",
-        "waiting_for_internal_fencing",
-        "waiting_for_adapter_reconnect",
-    ]
-    assert [transition.value for transition in BoundaryStateTransition] == [
-        "operator_resume",
-        "human_request_terminal",
-        "command_run_terminal",
-        "adapter_reconnected",
-        "internal_fencing_cleared",
-    ]
-    assert [event_type.value for event_type in TaskEventType] == [
-        "task_started",
-        "dispatch_opened",
-        "checkpoint_recorded",
-        "boundary_accepted",
-        "child_assignment_staged",
-        "child_assignment_committed",
-        "structural_revision_adopted",
-        "human_request_opened",
-        "human_request_resolved",
-        "human_request_timed_out",
-        "human_request_cancelled",
-        "command_run_started",
-        "command_run_progressed",
-        "command_run_cancel_requested",
-        "command_run_succeeded",
-        "command_run_failed",
-        "command_run_timed_out",
-        "command_run_cancelled",
-        "task_paused",
-        "task_resumed",
-        "task_cancelled",
-    ]
-    assert COMMAND_RUN_TERMINAL_EVENT_TYPES == {
-        CommandRunState.SUCCEEDED: TaskEventType.COMMAND_RUN_SUCCEEDED,
-        CommandRunState.FAILED: TaskEventType.COMMAND_RUN_FAILED,
-        CommandRunState.TIMED_OUT: TaskEventType.COMMAND_RUN_TIMED_OUT,
-        CommandRunState.CANCELLED: TaskEventType.COMMAND_RUN_CANCELLED,
-    }
+    _assert_rejected(tmp_path, mutate)
 
 
-def test_task_event_contracts_expose_replay_cursor_shape() -> None:
-    now = datetime(2026, 6, 24, 17, 0, tzinfo=UTC)
-    event = TaskEventRecord(
-        event_id="event.1",
-        event_seq=1,
-        task_id="task.1",
-        event_type=TaskEventType.HUMAN_REQUEST_OPENED,
-        event_source=TaskEventSource.CONTROLLER,
-        occurred_at=now,
-        flow_revision_id="flow-revision.1",
-        dispatch_id="dispatch.1",
-        attempt_id="attempt.1",
-        node_key="implement_slice",
-        actor_ref=None,
-        payload={"request_id": "human-request.1"},
-        prev_event_hash=None,
-        event_hash="hash.1",
-    )
-    response = TaskEventListResponse(
-        task_id="task.1",
-        items=(event,),
-        next_cursor="event.1",
-        through_event_id="event.1",
+def test_work_plan_rejects_more_than_one_in_progress_step(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        ids = scopes["a"]
+        assignments = RuntimeBase.metadata.tables["assignments"]
+        connection.execute(
+            assignments.update()
+            .where(assignments.c.assignment_id == ids.root_assignment_id)
+            .values(work_plan_revision=1)
+        )
+        connection.execute(
+            RuntimeBase.metadata.tables["assignment_work_plans"].insert(),
+            {
+                "assignment_id": ids.root_assignment_id,
+                "revision": 1,
+                "explanation": "Target plan",
+                "authoring_dispatch_id": ids.current_dispatch_id,
+                "committed_at": NOW,
+            },
+        )
+        steps = RuntimeBase.metadata.tables["assignment_work_plan_steps"]
+        connection.execute(
+            steps.insert(),
+            [
+                {
+                    "work_plan_step_id": "plan-step.1",
+                    "assignment_id": ids.root_assignment_id,
+                    "order_index": 0,
+                    "step": "First",
+                    "status": "in_progress",
+                },
+                {
+                    "work_plan_step_id": "plan-step.2",
+                    "assignment_id": ids.root_assignment_id,
+                    "order_index": 1,
+                    "step": "Second",
+                    "status": "in_progress",
+                },
+            ],
+        )
+
+    _assert_rejected(tmp_path, mutate)
+
+
+def _insert_release_decision(
+    connection: Connection,
+    ids: RuntimeIds,
+    *,
+    decision_id: str,
+    source_flow_revision_id: str | None = None,
+) -> None:
+    connection.execute(
+        RuntimeBase.metadata.tables["assignment_decisions"].insert(),
+        {
+            "assignment_decision_id": decision_id,
+            "source_dispatch_id": ids.root_dispatch_id,
+            "task_id": ids.task_id,
+            "flow_id": ids.flow_id,
+            "assignment_id": ids.root_assignment_id,
+            "attempt_id": ids.root_attempt_id,
+            "source_flow_revision_id": source_flow_revision_id or ids.flow_revision_id,
+            "decision_kind": "release_blocked",
+            "staged_child_assignment_id": None,
+            "staged_child_attempt_id": None,
+            "recorded_at": NOW,
+        },
     )
 
-    assert response.items[0].event_type == "human_request_opened"
-    assert response.items[0].payload == {"request_id": "human-request.1"}
-    assert response.next_cursor == "event.1"
+
+def _set_child_authoring_dispatch(
+    connection: Connection,
+    ids: RuntimeIds,
+    *,
+    dispatch_id: str,
+) -> None:
+    assignments = RuntimeBase.metadata.tables["assignments"]
+    connection.execute(
+        assignments.update()
+        .where(assignments.c.assignment_id == ids.child_assignment_id)
+        .values(created_by_dispatch_id=dispatch_id)
+    )
+
+
+def _insert_staged_child_decision(connection: Connection, ids: RuntimeIds) -> None:
+    connection.execute(
+        RuntimeBase.metadata.tables["assignment_decisions"].insert(),
+        {
+            "assignment_decision_id": "decision.staged-child",
+            "source_dispatch_id": ids.root_dispatch_id,
+            "task_id": ids.task_id,
+            "flow_id": ids.flow_id,
+            "assignment_id": ids.root_assignment_id,
+            "attempt_id": ids.root_attempt_id,
+            "source_flow_revision_id": ids.flow_revision_id,
+            "decision_kind": "staged_child",
+            "staged_child_assignment_id": ids.child_assignment_id,
+            "staged_child_attempt_id": ids.child_attempt_id,
+            "recorded_at": NOW,
+        },
+    )
+
+
+def _insert_publication(
+    connection: Connection,
+    ids: RuntimeIds,
+    *,
+    publication_id: str,
+    version: int,
+    slot: str = "output",
+    assignment_id: str | None = None,
+    attempt_id: str | None = None,
+    checkpoint_id: str | None = None,
+    supersedes_publication_id: str | None = None,
+    supersedes_version: int | None = None,
+) -> None:
+    connection.execute(
+        RuntimeBase.metadata.tables["artifact_publications"].insert(),
+        {
+            "artifact_publication_id": publication_id,
+            "task_id": ids.task_id,
+            "flow_id": ids.flow_id,
+            "assignment_id": assignment_id or ids.root_assignment_id,
+            "attempt_id": attempt_id or ids.root_attempt_id,
+            "checkpoint_id": checkpoint_id or ids.root_checkpoint_id,
+            "slot": slot,
+            "version": version,
+            "logical_path": f"outputs/artifacts/{slot}/{version}",
+            "description": "Target artifact.",
+            "supersedes_publication_id": supersedes_publication_id,
+            "supersedes_version": supersedes_version,
+            "published_at": NOW,
+        },
+    )

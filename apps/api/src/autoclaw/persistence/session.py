@@ -7,8 +7,8 @@ from sqlite3 import Connection as SQLiteConnection
 from typing import Any
 from weakref import WeakSet
 
-from sqlalchemy import event, inspect, text
-from sqlalchemy.engine import Connection, make_url
+from sqlalchemy import event, text
+from sqlalchemy.engine import Connection, Engine, make_url
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -18,182 +18,30 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool, StaticPool
 
 from autoclaw.config import get_settings
-from autoclaw.persistence.models.runtime.task_events import (
-    TASK_EVENT_SOURCE_VALUES,
-    TASK_EVENT_TYPE_VALUES,
+from autoclaw.persistence.schema_contract import (
+    DatabaseSchemaMismatchError,
+    create_configured_schema,
+    list_schema_table_names,
+    raise_schema_mismatch,
+    verify_schema_contract,
 )
 from autoclaw.platform.environment import Environment
-from autoclaw.runtime.post_commit.queue import (
-    clear_post_commit_actions,
-    execute_post_commit_actions,
-    pop_post_commit_actions,
-)
 
 _ENGINE_BY_LOOP: dict[int, AsyncEngine] = {}
 _SESSION_FACTORY_BY_LOOP: dict[int, async_sessionmaker[AsyncSession]] = {}
 _OPEN_SESSIONS_BY_LOOP: dict[int, WeakSet[RuntimeAsyncSession]] = {}
-SchemaForeignKeySignature = tuple[tuple[str, ...], str, tuple[str, ...]]
-REQUIRED_SCHEMA_FOREIGN_KEYS: dict[str, set[SchemaForeignKeySignature]] = {
-    "workflow_definitions": {
-        (
-            ("workflow_key", "current_revision_no"),
-            "workflow_revisions",
-            ("workflow_key", "revision_no"),
-        )
-    },
-    "role_definitions": {
-        (("role_key", "current_revision_no"), "role_revisions", ("role_key", "revision_no"))
-    },
-    "policy_definitions": {
-        (("policy_key", "current_revision_no"), "policy_revisions", ("policy_key", "revision_no"))
-    },
-    "task_composes": {
-        (
-            ("workflow_key", "workflow_revision_no"),
-            "workflow_revisions",
-            ("workflow_key", "revision_no"),
-        )
-    },
-    "compiled_plans": {
-        (
-            ("workflow_key", "definition_revision_no"),
-            "workflow_revisions",
-            ("workflow_key", "revision_no"),
-        )
-    },
-    "compiled_plan_nodes": {
-        (
-            ("compiled_plan_id", "parent_node_key"),
-            "compiled_plan_nodes",
-            ("compiled_plan_id", "node_key"),
-        ),
-        (("role_key", "role_revision_no"), "role_revisions", ("role_key", "revision_no")),
-        (("policy_key", "policy_revision_no"), "policy_revisions", ("policy_key", "revision_no")),
-    },
-    "compiled_plan_edges": {
-        (
-            ("compiled_plan_id", "provider_node_key"),
-            "compiled_plan_nodes",
-            ("compiled_plan_id", "node_key"),
-        ),
-        (
-            ("compiled_plan_id", "consumer_node_key"),
-            "compiled_plan_nodes",
-            ("compiled_plan_id", "node_key"),
-        ),
-    },
-    "flows": {
-        (("flow_id", "active_flow_revision_id"), "flow_revisions", ("flow_id", "flow_revision_id")),
-        (("flow_id", "current_open_dispatch_id"), "dispatch_turns", ("flow_id", "dispatch_id")),
-    },
-    "flow_nodes": {
-        (("flow_revision_id", "parent_node_key"), "flow_nodes", ("flow_revision_id", "node_key")),
-        (("role_key", "role_revision_no"), "role_revisions", ("role_key", "revision_no")),
-        (("policy_key", "policy_revision_no"), "policy_revisions", ("policy_key", "revision_no")),
-        (
-            ("current_assignment_id", "flow_node_id"),
-            "assignments",
-            ("assignment_id", "flow_node_id"),
-        ),
-    },
-    "flow_edges": {
-        (("flow_revision_id", "provider_node_key"), "flow_nodes", ("flow_revision_id", "node_key")),
-        (("flow_revision_id", "consumer_node_key"), "flow_nodes", ("flow_revision_id", "node_key")),
-    },
-    "node_plan_revisions": {
-        (("role_key", "role_revision_no"), "role_revisions", ("role_key", "revision_no")),
-        (("policy_key", "policy_revision_no"), "policy_revisions", ("policy_key", "revision_no")),
-    },
-    "assignments": {
-        (("current_attempt_id", "assignment_id"), "attempts", ("attempt_id", "assignment_id"))
-    },
-    "attempts": {
-        (
-            ("latest_checkpoint_id", "attempt_id"),
-            "attempt_checkpoints",
-            ("checkpoint_id", "attempt_id"),
-        )
-    },
-    "task_events": {
-        (("task_id",), "tasks", ("task_id",)),
-        (("flow_revision_id",), "flow_revisions", ("flow_revision_id",)),
-        (("dispatch_id",), "dispatch_turns", ("dispatch_id",)),
-        (("attempt_id",), "attempts", ("attempt_id",)),
-    },
-    "pending_human_requests": {
-        (("task_id",), "tasks", ("task_id",)),
-        (("flow_id",), "flows", ("flow_id",)),
-        (("flow_id", "flow_revision_id"), "flow_revisions", ("flow_id", "flow_revision_id")),
-        (
-            ("flow_id", "flow_revision_id", "flow_node_id"),
-            "flow_nodes",
-            ("flow_id", "flow_revision_id", "flow_node_id"),
-        ),
-        (("assignment_id",), "assignments", ("assignment_id",)),
-        (("attempt_id", "assignment_id"), "attempts", ("attempt_id", "assignment_id")),
-        (("dispatch_id",), "dispatch_turns", ("dispatch_id",)),
-    },
-    "command_runs": {
-        (("task_id",), "tasks", ("task_id",)),
-        (("flow_id",), "flows", ("flow_id",)),
-        (("flow_id", "flow_revision_id"), "flow_revisions", ("flow_id", "flow_revision_id")),
-        (
-            ("flow_id", "flow_revision_id", "flow_node_id"),
-            "flow_nodes",
-            ("flow_id", "flow_revision_id", "flow_node_id"),
-        ),
-        (("assignment_id",), "assignments", ("assignment_id",)),
-        (("attempt_id", "assignment_id"), "attempts", ("attempt_id", "assignment_id")),
-        (("dispatch_id",), "dispatch_turns", ("dispatch_id",)),
-    },
-    "flow_wait_states": {
-        (("flow_id",), "flows", ("flow_id",)),
-        (("task_id",), "tasks", ("task_id",)),
-        (("pending_human_request_id",), "pending_human_requests", ("request_id",)),
-        (("command_run_id",), "command_runs", ("run_id",)),
-        (("created_by_dispatch_id",), "dispatch_turns", ("dispatch_id",)),
-    },
-}
-REQUIRED_SCHEMA_INDEXES: dict[str, set[str]] = {
-    "flows": {"ix_flows_status_updated_at"},
-    "attempt_checkpoints": {"ix_attempt_checkpoints_attempt_recorded_at"},
-    "dispatch_turns": {"ix_dispatch_turns_task_node_rendered_at"},
-    "node_sessions": {"ix_node_sessions_session_key"},
-    "task_events": {"ix_task_events_task_seq", "ix_task_events_task_event"},
-    "pending_human_requests": {"ix_pending_human_requests_task_status"},
-    "command_runs": {"ix_command_runs_task_created", "ix_command_runs_task_state"},
-    "flow_wait_states": {"ix_flow_wait_states_task_cause"},
-}
-REQUIRED_SCHEMA_CHECK_CONSTRAINT_TOKENS: dict[str, dict[str, tuple[str, ...]]] = {
-    "task_events": {
-        "ck_task_events_event_source": TASK_EVENT_SOURCE_VALUES,
-        "ck_task_events_event_type": TASK_EVENT_TYPE_VALUES,
-    }
-}
 _TEST_SQLITE_CLOSE_SETTLE_SECONDS = 0.2
 
 
 class RuntimeAsyncSession(AsyncSession):
+    """Async session with loop-scoped disposal tracking and ordinary commits."""
+
     _owner_loop_id: int
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._owner_loop_id = _loop_id()
         _register_open_session(self)
-
-    async def commit(self) -> None:
-        staged_actions = self.info.pop("_pre_popped_post_commit_actions", None)
-        if staged_actions is None:
-            staged_actions = pop_post_commit_actions(self)
-        await super().commit()
-        # Local-tool-first contract: commit controller truth first, then apply the
-        # owned task-root projections synchronously in the same request path.
-        # We do not keep a durable replay queue for these post-commit writes.
-        await execute_post_commit_actions(self, staged_actions)
-
-    async def rollback(self) -> None:
-        clear_post_commit_actions(self)
-        await super().rollback()
 
     async def close(self) -> None:
         try:
@@ -202,10 +50,39 @@ class RuntimeAsyncSession(AsyncSession):
             _discard_open_session(self)
 
 
-async def get_db_session() -> AsyncIterator[AsyncSession]:
-    session_factory = get_session_factory()
-    async with session_factory() as session:
-        yield session
+async def ensure_database_schema() -> None:
+    """Create a genuinely empty database or exactly verify a nonempty one."""
+
+    engine = get_async_engine()
+    async with engine.connect() as connection:
+        existing_tables = await connection.run_sync(_table_names)
+    if existing_tables:
+        await verify_database_schema()
+        return
+    await create_empty_database_schema()
+
+
+async def create_empty_database_schema() -> None:
+    """Create the current schema only when the configured database has no tables."""
+
+    from autoclaw.persistence import RuntimeBase
+
+    engine = get_async_engine()
+    async with engine.begin() as connection:
+        await connection.run_sync(_create_configured_schema)
+        existing_tables = await connection.run_sync(_table_names)
+        if existing_tables:
+            raise_schema_mismatch(["database is not empty: " + ", ".join(sorted(existing_tables))])
+        await connection.run_sync(RuntimeBase.metadata.create_all)
+        await connection.run_sync(_verify_database_schema_contract)
+
+
+async def verify_database_schema() -> None:
+    """Verify the configured database without issuing schema DDL."""
+
+    engine = get_async_engine()
+    async with engine.connect() as connection:
+        await connection.run_sync(_verify_database_schema_contract)
 
 
 async def ping_database() -> None:
@@ -213,19 +90,10 @@ async def ping_database() -> None:
         await session.execute(text("SELECT 1"))
 
 
-async def verify_database_schema() -> None:
-    engine = get_async_engine()
-    async with engine.begin() as connection:
-        await connection.run_sync(_verify_database_schema_contract)
-
-
-async def ensure_database_schema() -> None:
-    from autoclaw.persistence import RuntimeBase
-
-    engine = get_async_engine()
-    async with engine.begin() as connection:
-        await connection.run_sync(RuntimeBase.metadata.create_all)
-        await connection.run_sync(_verify_database_schema_contract)
+async def get_db_session() -> AsyncIterator[AsyncSession]:
+    session_factory = get_session_factory()
+    async with session_factory() as session:
+        yield session
 
 
 async def dispose_db_engine() -> None:
@@ -249,14 +117,21 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     return _SESSION_FACTORY_BY_LOOP[loop_id]
 
 
+def get_database_schema_name() -> str | None:
+    """Return the configured PostgreSQL schema, or ``None`` for SQLite."""
+
+    settings = get_settings()
+    if make_url(settings.database_url).get_backend_name() != "postgresql":
+        return None
+    return settings.postgres_schema
+
+
 def get_async_engine() -> AsyncEngine:
     settings = get_settings()
     loop_id = _loop_id()
     if loop_id not in _ENGINE_BY_LOOP:
         url = make_url(settings.database_url)
-        engine_kwargs: dict[str, object] = {
-            "echo": settings.database_echo,
-        }
+        engine_kwargs: dict[str, object] = {"echo": settings.database_echo}
         if url.get_backend_name() == "sqlite":
             engine_kwargs["connect_args"] = {"check_same_thread": False}
             if url.database in {None, "", ":memory:"}:
@@ -265,12 +140,13 @@ def get_async_engine() -> AsyncEngine:
                 engine_kwargs["poolclass"] = NullPool
         else:
             engine_kwargs["pool_pre_ping"] = True
+            postgres_schema = settings.postgres_schema
+            engine_kwargs["connect_args"] = {"server_settings": {"search_path": postgres_schema}}
+            engine_kwargs["execution_options"] = {"schema_translate_map": {None: postgres_schema}}
 
-        engine = create_async_engine(
-            settings.database_url,
-            **engine_kwargs,
-        )
+        engine = create_async_engine(settings.database_url, **engine_kwargs)
         if url.get_backend_name() == "sqlite":
+            install_sqlite_transaction_control(engine.sync_engine)
 
             @event.listens_for(engine.sync_engine, "connect")
             def _set_sqlite_pragma(
@@ -280,9 +156,6 @@ def get_async_engine() -> AsyncEngine:
                 del connection_record
                 cursor = dbapi_connection.cursor()
                 cursor.execute("PRAGMA foreign_keys=ON")
-                # The local SQLite lane runs concurrent control, runtime, runner, and
-                # watchdog sessions in one process. Keep reads and writes from tripping
-                # over immediate file-level locks during those short-lived overlaps.
                 cursor.execute("PRAGMA busy_timeout=5000")
                 cursor.execute("PRAGMA journal_mode=WAL")
                 cursor.close()
@@ -291,25 +164,36 @@ def get_async_engine() -> AsyncEngine:
     return _ENGINE_BY_LOOP[loop_id]
 
 
+def install_sqlite_transaction_control(engine: Engine) -> None:
+    """Make SQLAlchemy own SQLite ``BEGIN`` so savepoints stay transactional."""
+
+    if engine.dialect.name != "sqlite":
+        return
+
+    @event.listens_for(engine, "connect")
+    def _disable_legacy_sqlite_begin(
+        dbapi_connection: SQLiteConnection,
+        connection_record: object,
+    ) -> None:
+        del connection_record
+        dbapi_connection.isolation_level = None
+
+    @event.listens_for(engine, "begin")
+    def _begin_sqlite_transaction(connection: Connection) -> None:
+        connection.exec_driver_sql("BEGIN")
+
+
 def _loop_id() -> int:
     return id(asyncio.get_running_loop())
 
 
 async def _dispose_db_engine(*, wait_for_sqlite_close_settle: bool) -> None:
-
-    from autoclaw.runtime.dispatch.provider_events import (
-        clear_provider_event_allocator_state,
-    )
-    from autoclaw.runtime.task_events import clear_task_event_allocator_state
-
     sessions_by_loop = tuple(tuple(sessions) for sessions in _OPEN_SESSIONS_BY_LOOP.values())
     _OPEN_SESSIONS_BY_LOOP.clear()
     for sessions in sessions_by_loop:
         for session in sessions:
             with suppress(Exception):
                 await session.close()
-    clear_provider_event_allocator_state()
-    clear_task_event_allocator_state()
     engines = tuple(_ENGINE_BY_LOOP.values())
     for engine in engines:
         await engine.dispose()
@@ -317,8 +201,6 @@ async def _dispose_db_engine(*, wait_for_sqlite_close_settle: bool) -> None:
     _SESSION_FACTORY_BY_LOOP.clear()
 
     if wait_for_sqlite_close_settle and any(_is_sqlite_engine(engine) for engine in engines):
-        # The aiosqlite test harness still needs a short settle window so pytest
-        # does not inspect thread-close callbacks before they land.
         await asyncio.sleep(_TEST_SQLITE_CLOSE_SETTLE_SECONDS)
 
 
@@ -343,134 +225,36 @@ def _session_loop_id(session: RuntimeAsyncSession) -> int:
     return session._owner_loop_id
 
 
+def _configured_schema(connection: Connection) -> str | None:
+    if connection.dialect.name != "postgresql":
+        return None
+    return get_settings().postgres_schema
+
+
+def _create_configured_schema(connection: Connection) -> None:
+    create_configured_schema(connection, _configured_schema(connection))
+
+
 def _table_names(connection: Connection) -> set[str]:
-    return {str(table_name) for table_name in inspect(connection).get_table_names()}
-
-
-def _column_names(connection: Connection, table_name: str) -> set[str]:
-    return {
-        str(column["name"])
-        for column in inspect(connection).get_columns(table_name)
-        if column.get("name")
-    }
-
-
-def _required_schema_columns() -> dict[str, set[str]]:
-    from autoclaw.persistence import RuntimeBase
-
-    return {
-        table_name: {str(column.name) for column in table.columns}
-        for table_name, table in RuntimeBase.metadata.tables.items()
-    }
-
-
-def _missing_table_or_column_messages(connection: Connection) -> list[str]:
-    missing: list[str] = []
-    actual_tables = _table_names(connection)
-    for table_name, expected_columns in sorted(_required_schema_columns().items()):
-        if table_name not in actual_tables:
-            missing.append(f"missing table {table_name}")
-            continue
-        actual_columns = _column_names(connection, table_name)
-        for column_name in sorted(expected_columns - actual_columns):
-            missing.append(f"{table_name} missing column {column_name}")
-    return missing
-
-
-def _foreign_key_signatures(
-    connection: Connection,
-    table_name: str,
-) -> set[tuple[tuple[str, ...], str, tuple[str, ...]]]:
-    signatures: set[tuple[tuple[str, ...], str, tuple[str, ...]]] = set()
-    for foreign_key in inspect(connection).get_foreign_keys(table_name):
-        signatures.add(
-            (
-                tuple(str(column) for column in foreign_key.get("constrained_columns") or []),
-                str(foreign_key.get("referred_table")),
-                tuple(str(column) for column in foreign_key.get("referred_columns") or []),
-            )
-        )
-    return signatures
-
-
-def _index_names(connection: Connection, table_name: str) -> set[str]:
-    return {
-        str(index["name"])
-        for index in inspect(connection).get_indexes(table_name)
-        if index.get("name")
-    }
-
-
-def _check_constraint_sql_by_name(connection: Connection, table_name: str) -> dict[str, str]:
-    constraints: dict[str, str] = {}
-    for constraint in inspect(connection).get_check_constraints(table_name):
-        name = constraint.get("name")
-        sqltext = constraint.get("sqltext")
-        if isinstance(name, str) and isinstance(sqltext, str):
-            constraints[name] = sqltext
-    return constraints
-
-
-def _missing_foreign_key_messages(connection: Connection) -> list[str]:
-    missing: list[str] = []
-    actual_tables = _table_names(connection)
-    for table_name, expected_targets in REQUIRED_SCHEMA_FOREIGN_KEYS.items():
-        if table_name not in actual_tables:
-            continue
-        actual_targets = _foreign_key_signatures(connection, table_name)
-        for constrained_columns, referred_table, referred_columns in sorted(expected_targets):
-            if (constrained_columns, referred_table, referred_columns) in actual_targets:
-                continue
-            missing.append(
-                f"{table_name} missing foreign key "
-                f"{constrained_columns}->{referred_table}{referred_columns}"
-            )
-    return missing
-
-
-def _missing_index_messages(connection: Connection) -> list[str]:
-    missing: list[str] = []
-    actual_tables = _table_names(connection)
-    for table_name, expected_indexes in REQUIRED_SCHEMA_INDEXES.items():
-        if table_name not in actual_tables:
-            continue
-        actual_indexes = _index_names(connection, table_name)
-        for index_name in sorted(expected_indexes):
-            if index_name in actual_indexes:
-                continue
-            missing.append(f"{table_name} missing index {index_name}")
-    return missing
-
-
-def _missing_check_constraint_messages(connection: Connection) -> list[str]:
-    missing: list[str] = []
-    actual_tables = _table_names(connection)
-    for table_name, expected_constraints in REQUIRED_SCHEMA_CHECK_CONSTRAINT_TOKENS.items():
-        if table_name not in actual_tables:
-            continue
-        actual_constraints = _check_constraint_sql_by_name(connection, table_name)
-        for constraint_name, expected_tokens in expected_constraints.items():
-            sqltext = actual_constraints.get(constraint_name)
-            if sqltext is None:
-                missing.append(f"{table_name} missing check constraint {constraint_name}")
-                continue
-            for expected_token in expected_tokens:
-                if expected_token not in sqltext:
-                    missing.append(
-                        f"{table_name} missing check constraint {constraint_name} token "
-                        f"{expected_token}"
-                    )
-    return missing
+    return list_schema_table_names(connection, _configured_schema(connection))
 
 
 def _verify_database_schema_contract(connection: Connection) -> None:
-    missing = _missing_table_or_column_messages(connection)
-    missing.extend(_missing_foreign_key_messages(connection))
-    missing.extend(_missing_index_messages(connection))
-    missing.extend(_missing_check_constraint_messages(connection))
-    if missing:
-        joined = "; ".join(missing)
-        raise RuntimeError(
-            "existing database schema cannot be upgraded in place to the current "
-            f"runtime schema contract: {joined}. Run `autoclaw db reset`."
-        )
+    verify_schema_contract(connection, _configured_schema(connection))
+
+
+__all__ = [
+    "DatabaseSchemaMismatchError",
+    "RuntimeAsyncSession",
+    "create_empty_database_schema",
+    "dispose_db_engine",
+    "dispose_test_db_engine",
+    "ensure_database_schema",
+    "get_async_engine",
+    "get_database_schema_name",
+    "get_db_session",
+    "get_session_factory",
+    "install_sqlite_transaction_control",
+    "ping_database",
+    "verify_database_schema",
+]

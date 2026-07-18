@@ -163,9 +163,6 @@ def render_assignment_markdown(assignment: AssignmentProjection) -> str:
         lines.append("- transient_refs:")
         for ref in assignment.transient_refs:
             lines.extend(f"  {line}" for line in render_ref_with_path(ref))
-    if assignment.task_memory_search_hints:
-        lines.append("- task_memory_search_hints:")
-        lines.extend(f"  - {hint}" for hint in assignment.task_memory_search_hints)
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -192,9 +189,6 @@ def render_checkpoint_markdown(checkpoint: CheckpointProjection) -> str:
         lines.append("- transient_refs:")
         for ref in checkpoint.transient_refs:
             lines.extend(f"  {line}" for line in render_ref_with_path(ref))
-    if checkpoint.task_memory_search_hints:
-        lines.append("- task_memory_search_hints:")
-        lines.extend(f"  - {hint}" for hint in checkpoint.task_memory_search_hints)
     return "\n".join(lines).rstrip() + "\n"
 
 

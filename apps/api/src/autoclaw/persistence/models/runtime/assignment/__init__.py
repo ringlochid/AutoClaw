@@ -1,14 +1,16 @@
 from autoclaw.persistence.models.runtime.assignment.artifacts import (
     ArtifactCurrentPointerModel,
     ArtifactPublicationModel,
+    CheckpointTransientModel,
+    TransientLocalizationModel,
 )
 from autoclaw.persistence.models.runtime.assignment.execution import (
     AssignmentCriteriaRefModel,
     AssignmentModel,
+    AssignmentWorkPlanModel,
+    AssignmentWorkPlanStepModel,
     AttemptCheckpointModel,
-    AttemptConsumedRefModel,
     AttemptModel,
-    AttemptProducedRefModel,
 )
 
 __all__ = [
@@ -16,8 +18,10 @@ __all__ = [
     "ArtifactPublicationModel",
     "AssignmentCriteriaRefModel",
     "AssignmentModel",
+    "AssignmentWorkPlanModel",
+    "AssignmentWorkPlanStepModel",
     "AttemptCheckpointModel",
-    "AttemptConsumedRefModel",
     "AttemptModel",
-    "AttemptProducedRefModel",
+    "CheckpointTransientModel",
+    "TransientLocalizationModel",
 ]

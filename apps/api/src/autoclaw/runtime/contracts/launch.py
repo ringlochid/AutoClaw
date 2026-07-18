@@ -13,36 +13,24 @@ from autoclaw.runtime.contracts.primitives import (
     TaskIdentifier,
     TaskRootPaths,
 )
-from autoclaw.runtime.contracts.projection import (
-    AssignmentProjection,
-    CheckpointProjection,
-    ManifestProjection,
-    StructuralEditPaletteProjection,
-)
-from autoclaw.runtime.contracts.prompt import PersistedPromptRecord, RenderedPromptBundle
+from autoclaw.runtime.contracts.projection import AssignmentProjection
 
 
-class RuntimeBootstrapProjectionInput(BaseModel):
+class RuntimeBootstrapInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     task_id: TaskIdentifier
     active_flow_revision_id: RuntimeText
     attempt_id: RuntimeText
     assignment_key: RuntimeText
-    dispatch_id: RuntimeText
     task_root: Path
     task_compose: TaskComposeInput
     workflow_definition: WorkflowDefinitionInput
     compiled_plan: NormalizedCompiledPlan
     role_policy_lookup: MappingRolePolicyLookup
-    structural_edit_palette: StructuralEditPaletteProjection | None = None
-    current_node_key: RuntimeText = "root"
-    owner_node_key: RuntimeText | None = None
-    assignment: AssignmentProjection | None = None
-    latest_checkpoint: CheckpointProjection | None = None
 
     @model_validator(mode="after")
-    def validate_workflow_alignment(self) -> RuntimeBootstrapProjectionInput:
+    def validate_workflow_alignment(self) -> RuntimeBootstrapInput:
         if self.task_compose.workflow.key != self.compiled_plan.workflow_key:
             raise ValueError(
                 "task compose workflow key "
@@ -62,11 +50,7 @@ class RuntimeBootstrapResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     paths: TaskRootPaths
-    manifest: ManifestProjection
     assignment: AssignmentProjection
-    latest_checkpoint: CheckpointProjection | None = None
-    prompt_bundle: RenderedPromptBundle
-    prompt_record: PersistedPromptRecord
 
 
 class RuntimeLaunchInput(BaseModel):
@@ -79,7 +63,7 @@ class RuntimeLaunchInput(BaseModel):
 
 
 __all__ = [
-    "RuntimeBootstrapProjectionInput",
+    "RuntimeBootstrapInput",
     "RuntimeBootstrapResult",
     "RuntimeLaunchInput",
 ]
