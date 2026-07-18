@@ -5,6 +5,7 @@ from typing import Any
 import click
 
 from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL
+from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.interfaces.cli.commands.bootstrap import (
     cmd_db_reset,
     cmd_db_upgrade,
@@ -13,6 +14,15 @@ from autoclaw.interfaces.cli.commands.bootstrap import (
 )
 from autoclaw.interfaces.cli.commands.config_view import cmd_config_path, cmd_config_show
 from autoclaw.interfaces.cli.commands.definitions import cmd_definitions_import
+from autoclaw.interfaces.cli.commands.providers import (
+    cmd_providers_check,
+    cmd_providers_configure,
+    cmd_providers_identity,
+    cmd_providers_list,
+    cmd_providers_set_default,
+    cmd_providers_status,
+    cmd_setup,
+)
 from autoclaw.interfaces.cli.commands.service import (
     DEFAULT_SERVICE_NAME,
     cmd_service_install,
@@ -23,6 +33,7 @@ from autoclaw.interfaces.cli.commands.service import (
     cmd_service_stop,
     cmd_service_uninstall,
 )
+from autoclaw.interfaces.cli.commands.status import cmd_status
 from autoclaw.interfaces.cli.commands.task_compose import cmd_task_compose_start
 
 from .context import CliContext
@@ -30,16 +41,21 @@ from .help import ROOT_HELP_EPILOG
 from .root_support import (
     build_argument_namespace,
     config_option,
+    default_config_text,
     invoke_handler_result,
     output_options,
     package_version,
 )
+
+PROVIDER_CHOICE = click.Choice([provider.value for provider in ProviderKind])
 
 
 @click.group(
     context_settings={"help_option_names": ["-h", "--help"]},
     epilog=ROOT_HELP_EPILOG,
     help="AutoClaw local-first workflow control plane.",
+    invoke_without_command=True,
+    no_args_is_help=False,
 )
 @click.option(
     "--debug",
@@ -49,9 +65,12 @@ from .root_support import (
 )
 @click.version_option(package_version(), "--version", "-V")
 @click.pass_context
-def cli(ctx: click.Context, is_debug: bool) -> None:
+def cli(ctx: click.Context, is_debug: bool) -> int | None:
     runtime = ctx.obj if isinstance(ctx.obj, CliContext) else CliContext()
     ctx.obj = runtime.overlay(is_debug=runtime.is_debug or is_debug)
+    if ctx.invoked_subcommand is None:
+        return cmd_status(build_argument_namespace(config=default_config_text(), json=False))
+    return None
 
 
 @cli.command("init")
@@ -75,6 +94,134 @@ def init_command(**kwargs: Any) -> int:
 @config_option
 def serve_command(config: str) -> int:
     return invoke_handler_result(cmd_serve(build_argument_namespace(config=config)))
+
+
+@cli.command("status")
+@config_option
+@click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
+def status_command(config: str, is_json_output: bool) -> int:
+    return invoke_handler_result(
+        cmd_status(build_argument_namespace(config=config, json=is_json_output))
+    )
+
+
+@cli.command("setup")
+@config_option
+@click.option("--provider", type=PROVIDER_CHOICE)
+@click.option("--model")
+@click.option("--effort")
+@click.option("--gateway-url")
+@click.option("--gateway-profile")
+@click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
+def setup_command(**kwargs: Any) -> int:
+    return invoke_handler_result(
+        cmd_setup(build_argument_namespace(**kwargs, json=kwargs["is_json_output"]))
+    )
+
+
+@cli.group("providers")
+def providers_group() -> None:
+    return None
+
+
+@providers_group.command("list")
+@click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
+def providers_list_command(is_json_output: bool) -> int:
+    return invoke_handler_result(cmd_providers_list(build_argument_namespace(json=is_json_output)))
+
+
+@providers_group.command("status")
+@config_option
+@click.argument("provider", required=False, type=PROVIDER_CHOICE)
+@click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
+def providers_status_command(
+    config: str,
+    provider: str | None,
+    is_json_output: bool,
+) -> int:
+    return invoke_handler_result(
+        cmd_providers_status(
+            build_argument_namespace(
+                config=config,
+                provider=provider,
+                json=is_json_output,
+            )
+        )
+    )
+
+
+@providers_group.command("check")
+@config_option
+@click.argument("provider", type=PROVIDER_CHOICE)
+@click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
+def providers_check_command(config: str, provider: str, is_json_output: bool) -> int:
+    return invoke_handler_result(
+        cmd_providers_check(
+            build_argument_namespace(
+                config=config,
+                provider=provider,
+                json=is_json_output,
+            )
+        )
+    )
+
+
+@providers_group.command("configure")
+@config_option
+@click.argument("provider", type=PROVIDER_CHOICE)
+@click.option("--model")
+@click.option("--effort")
+@click.option("--gateway-url")
+@click.option("--gateway-profile")
+@click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
+def providers_configure_command(**kwargs: Any) -> int:
+    return invoke_handler_result(
+        cmd_providers_configure(build_argument_namespace(**kwargs, json=kwargs["is_json_output"]))
+    )
+
+
+@providers_group.command("set-default")
+@config_option
+@click.argument("provider", type=PROVIDER_CHOICE)
+@click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
+def providers_set_default_command(
+    config: str,
+    provider: str,
+    is_json_output: bool,
+) -> int:
+    return invoke_handler_result(
+        cmd_providers_set_default(
+            build_argument_namespace(
+                config=config,
+                provider=provider,
+                json=is_json_output,
+            )
+        )
+    )
+
+
+@providers_group.command("login")
+@click.argument("provider", type=PROVIDER_CHOICE)
+@click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
+def providers_login_command(provider: str, is_json_output: bool) -> int:
+    return invoke_handler_result(
+        cmd_providers_identity(
+            build_argument_namespace(provider=provider, json=is_json_output),
+            "login",
+        )
+    )
+
+
+@providers_group.command("logout")
+@click.argument("provider", type=PROVIDER_CHOICE)
+@click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
+def providers_logout_command(provider: str, is_json_output: bool) -> int:
+    return invoke_handler_result(
+        cmd_providers_identity(
+            build_argument_namespace(provider=provider, json=is_json_output),
+            "logout",
+        )
+    )
 
 
 @cli.group("config")

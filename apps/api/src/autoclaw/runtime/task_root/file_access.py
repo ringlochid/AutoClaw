@@ -114,6 +114,39 @@ def read_logical_text_file(
     return resolved.logical_path, "".join(selected), len(selected), has_more, next_start_line
 
 
+def read_logical_regular_file_bytes(
+    paths: object,
+    logical_path: str,
+    *,
+    byte_limit: int = DEFAULT_FILE_READ_BYTE_LIMIT,
+) -> bytes:
+    """Read one contained regular file through descriptor-relative traversal."""
+    from autoclaw.runtime.contracts import TaskRootPaths
+
+    if not isinstance(paths, TaskRootPaths):
+        raise TypeError("paths must be TaskRootPaths")
+    if byte_limit < 0:
+        raise ValueError("byte_limit must be non-negative")
+
+    resolved = resolve_logical_task_path(paths, logical_path)
+    assert resolved is not None
+    _require_descriptor_access(needs_scandir=False)
+    with _opened_resolved_target(resolved, require_directory=False) as file_fd:
+        metadata = os.fstat(file_fd)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise _file_error(
+                OperationFailureCode.NOT_A_FILE,
+                "task path is not a regular file",
+            )
+        if metadata.st_size > byte_limit:
+            raise _file_read_limit_error()
+        payload = _read_bounded_bytes(file_fd, byte_limit=byte_limit)
+
+    if len(payload) > byte_limit:
+        raise _file_read_limit_error()
+    return payload
+
+
 def publish_logical_regular_file(
     paths: object,
     source_logical_path: str,

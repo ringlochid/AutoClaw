@@ -18,7 +18,11 @@ from autoclaw.definitions.contracts import (
     OpenClawProviderSelection,
     ProviderKind,
 )
+from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
 from autoclaw.runtime.contracts import (
+    CapabilitySource,
+    EffectiveCapabilitySet,
+    EffectiveNetworkAccess,
     ProviderResolution,
     ProviderRoute,
     ProviderSelectionBasis,
@@ -26,7 +30,9 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.providers import (
     ProviderResolutionError,
     ProviderResolutionErrorCode,
+    apply_provider_capability_ceiling,
     resolve_provider_route,
+    validate_provider_execution_policy,
 )
 from pydantic import TypeAdapter, ValidationError
 
@@ -153,6 +159,90 @@ def test_selected_provider_rejects_explicit_blank_values(
 
     assert error.value.code == ProviderResolutionErrorCode.INVALID_CONFIGURATION
     assert error.value.provider == selection.kind
+
+
+@pytest.mark.parametrize(
+    ("selection", "settings"),
+    [
+        (
+            CodexProviderSelection(kind=ProviderKind.CODEX),
+            _settings(codex=CodexSettings(enabled=True, effort="impossible")),
+        ),
+        (
+            ClaudeProviderSelection(kind=ProviderKind.CLAUDE),
+            _settings(claude=ClaudeSettings(enabled=True, effort="minimal")),
+        ),
+    ],
+)
+def test_selected_provider_rejects_unsupported_effort_before_dispatch(
+    selection: CodexProviderSelection | ClaudeProviderSelection,
+    settings: Settings,
+) -> None:
+    with pytest.raises(ProviderResolutionError) as error:
+        resolve_provider_route(
+            provider=selection,
+            settings=settings,
+            available_adapter_kinds=set(ProviderKind),
+        )
+
+    assert error.value.code == ProviderResolutionErrorCode.INVALID_CONFIGURATION
+    assert error.value.provider == selection.kind
+
+
+@pytest.mark.parametrize(
+    ("provider_native_access", "network_access"),
+    (
+        (ProviderNativeAccess.DENIED, NetworkAccess.ALLOW),
+        (ProviderNativeAccess.FULL, NetworkAccess.DENY),
+    ),
+)
+def test_codex_unsupported_policy_combinations_are_rejected_before_dispatch(
+    provider_native_access: ProviderNativeAccess,
+    network_access: NetworkAccess,
+) -> None:
+    resolution = resolve_provider_route(
+        provider=CodexProviderSelection(kind=ProviderKind.CODEX),
+        settings=_settings(codex=CodexSettings(enabled=True)),
+        available_adapter_kinds={ProviderKind.CODEX},
+    )
+
+    with pytest.raises(ProviderResolutionError) as error:
+        validate_provider_execution_policy(
+            route=resolution.route,
+            provider_native_access=provider_native_access,
+            network_access=network_access,
+        )
+
+    assert error.value.code == ProviderResolutionErrorCode.UNSUPPORTED_CAPABILITY
+    assert error.value.provider == ProviderKind.CODEX
+
+
+def test_codex_network_deny_applies_an_attributed_native_access_ceiling() -> None:
+    resolution = resolve_provider_route(
+        provider=CodexProviderSelection(kind=ProviderKind.CODEX),
+        settings=_settings(codex=CodexSettings(enabled=True)),
+        available_adapter_kinds={ProviderKind.CODEX},
+    )
+    capabilities = EffectiveCapabilitySet(
+        network_access=EffectiveNetworkAccess(
+            effective=NetworkAccess.DENY,
+            source=CapabilitySource.POLICY_DEFINITION,
+        )
+    )
+
+    effective = apply_provider_capability_ceiling(
+        route=resolution.route,
+        capabilities=capabilities,
+    )
+
+    assert effective.provider_native_access.effective is ProviderNativeAccess.RESTRICTED
+    assert effective.provider_native_access.source is CapabilitySource.CONTROLLER
+    assert effective.network_access == capabilities.network_access
+    validate_provider_execution_policy(
+        route=resolution.route,
+        provider_native_access=effective.provider_native_access.effective,
+        network_access=effective.network_access.effective,
+    )
 
 
 def test_toml_source_loads_sparse_provider_sections(

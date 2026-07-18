@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
+
 from autoclaw.config import load_settings
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
 from autoclaw.interfaces.cli.terminal.theme import accent, rich_enabled
@@ -38,7 +41,7 @@ def build_settings_payload(settings: Any, config_path: Path) -> dict[str, Any]:
             "data_dir": str(settings.data_dir),
         },
         "database": {
-            "url": settings.database_url,
+            "url": redact_database_url(settings.database_url),
             "postgres_schema": settings.postgres_schema,
             "echo": settings.database_echo,
         },
@@ -87,8 +90,17 @@ def _url_contains_userinfo(value: str) -> bool:
     return parsed.username is not None or parsed.password is not None
 
 
+def redact_database_url(value: str) -> str:
+    """Render a database URL without its password or unsafe malformed userinfo."""
+    try:
+        return make_url(value).render_as_string(hide_password=True)
+    except (ArgumentError, ValueError):
+        return REDACTED_VALUE if "@" in value else value
+
+
 __all__ = [
     "build_settings_payload",
     "cmd_config_path",
     "cmd_config_show",
+    "redact_database_url",
 ]

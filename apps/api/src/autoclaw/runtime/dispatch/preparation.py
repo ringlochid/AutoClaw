@@ -18,6 +18,7 @@ from autoclaw.runtime.dispatch.request_pair import (
 )
 from autoclaw.runtime.post_commit import RuntimeEffectPublisher
 from autoclaw.runtime.prompt import render_dispatch_request
+from autoclaw.runtime.providers.resolution import validate_provider_execution_policy
 
 
 class DispatchRequestPairPublisher(Protocol):
@@ -77,6 +78,11 @@ def prepare_dispatch_request(
     capabilities: EffectiveCapabilitySet,
     request: DispatchRequestRenderInput,
 ) -> PreparedDispatchRequest:
+    validate_provider_execution_policy(
+        route=provider.route,
+        provider_native_access=capabilities.provider_native_access.effective,
+        network_access=capabilities.network_access.effective,
+    )
     rendered = render_dispatch_request(request)
     refs = dependencies.request_pair_publisher(
         paths=paths,

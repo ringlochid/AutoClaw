@@ -1,0 +1,112 @@
+from __future__ import annotations
+
+import asyncio
+from collections.abc import AsyncIterator, Callable
+from typing import cast
+
+import pytest
+from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
+from autoclaw.definitions.contracts.workflow import ProviderKind
+from autoclaw.integrations.claude import ClaudeAdapter
+from autoclaw.runtime.contracts.provider_resolution import ClaudeProviderRoute
+from autoclaw.runtime.providers.contracts import (
+    DispatchStartRequest,
+    ManagedNodeMcpConnection,
+    ProviderStopOutcome,
+)
+from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
+from pydantic import SecretStr
+
+
+class _FakeClaudeClient:
+    def __init__(self, options: ClaudeAgentOptions) -> None:
+        self.options = options
+        self.query_input: str | None = None
+        self.was_connected = False
+        self.was_interrupted = False
+        self.was_disconnected = False
+        self._done = asyncio.Event()
+
+    async def connect(self) -> None:
+        self.was_connected = True
+
+    async def query(self, dispatch_input: str) -> None:
+        self.query_input = dispatch_input
+
+    async def receive_response(self) -> AsyncIterator[object]:
+        await self._done.wait()
+        if False:
+            yield object()
+
+    async def interrupt(self) -> None:
+        self.was_interrupted = True
+        self._done.set()
+
+    async def disconnect(self) -> None:
+        self.was_disconnected = True
+
+
+def _request() -> DispatchStartRequest:
+    return DispatchStartRequest(
+        task_id="task-1",
+        dispatch_id="dispatch-1",
+        provider_start_revision=0,
+        working_directory="/tmp/workspace",
+        instructions=b"exact instructions",
+        input=b"exact input",
+        provider_route=ClaudeProviderRoute(
+            kind=ProviderKind.CLAUDE,
+            model_override="claude-sonnet-4-5",
+            effort_override="high",
+        ),
+        provider_native_access=ProviderNativeAccess.RESTRICTED,
+        network_access=NetworkAccess.DENY,
+        managed_node_mcp=ManagedNodeMcpConnection(
+            url="http://127.0.0.1:8123/_internal/node/mcp",
+            bearer_token=SecretStr("binding-secret"),
+            enabled_tools=("record_checkpoint", "return_boundary"),
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_claude_start_uses_disposable_scoped_client_and_returns_before_output() -> None:
+    clients: list[_FakeClaudeClient] = []
+
+    def build_client(options: ClaudeAgentOptions) -> _FakeClaudeClient:
+        client = _FakeClaudeClient(options)
+        clients.append(client)
+        return client
+
+    adapter = ClaudeAdapter(
+        client_factory=cast(Callable[[ClaudeAgentOptions], ClaudeSDKClient], build_client),
+    )
+
+    async with adapter.lifespan():
+        await adapter.start(_request())
+        client = clients[0]
+
+        assert client.was_connected is True
+        assert client.query_input == "exact input"
+        assert str(client.options.cwd) == "/tmp/workspace"
+        assert client.options.system_prompt == {
+            "type": "preset",
+            "preset": "claude_code",
+            "append": "exact instructions",
+        }
+        assert client.options.permission_mode == "dontAsk"
+        assert client.options.strict_mcp_config is True
+        assert client.options.setting_sources == ["user", "project", "local"]
+        assert "AskUserQuestion" in client.options.disallowed_tools
+        assert "WebFetch" in client.options.disallowed_tools
+        assert client.options.sandbox is not None
+        sandbox = cast(dict[str, object], client.options.sandbox)
+        assert sandbox["failIfUnavailable"] is True
+        assert sandbox["allowUnsandboxedCommands"] is False
+        assert "mcp__autoclaw_node__record_checkpoint" in client.options.allowed_tools
+        mcp_config = client.options.mcp_servers["autoclaw_node"]
+        assert mcp_config["headers"] == {"Authorization": "Bearer binding-secret"}
+
+        assert await adapter.stop("dispatch-1") is ProviderStopOutcome.STOPPED
+        assert client.was_interrupted is True
+        assert client.was_disconnected is True

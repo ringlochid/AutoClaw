@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from pydantic import TypeAdapter, ValidationError, WebsocketUrl
 
 from autoclaw.config import Settings
+from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
 from autoclaw.definitions.contracts.workflow import (
     ClaudeProviderSelection,
     CodexProviderSelection,
@@ -14,21 +15,30 @@ from autoclaw.definitions.contracts.workflow import (
     ProviderKind,
     ProviderSelection,
 )
+from autoclaw.runtime.contracts.capabilities import (
+    CapabilitySource,
+    EffectiveCapabilitySet,
+    EffectiveProviderNativeAccess,
+)
 from autoclaw.runtime.contracts.provider_resolution import (
     ClaudeProviderRoute,
     CodexProviderRoute,
     OpenClawProviderRoute,
     ProviderResolution,
+    ProviderRoute,
     ProviderSelectionBasis,
 )
 
 _WEBSOCKET_URL_ADAPTER = TypeAdapter(WebsocketUrl)
+_CODEX_EFFORTS = frozenset({"none", "minimal", "low", "medium", "high", "xhigh"})
+_CLAUDE_EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
 
 
 class ProviderResolutionErrorCode(StrEnum):
     DEFAULT_NOT_CONFIGURED = "provider_default_not_configured"
     PROVIDER_DISABLED = "provider_disabled"
     INVALID_CONFIGURATION = "provider_invalid_configuration"
+    UNSUPPORTED_CAPABILITY = "provider_capability_unsupported"
     ADAPTER_UNAVAILABLE = "provider_adapter_unavailable"
 
 
@@ -90,6 +100,58 @@ def provider_selection_from_kind(
             return OpenClawProviderSelection(kind=ProviderKind.OPENCLAW)
 
 
+def validate_provider_execution_policy(
+    *,
+    route: ProviderRoute,
+    provider_native_access: ProviderNativeAccess,
+    network_access: NetworkAccess,
+) -> None:
+    """Reject deterministic adapter-policy gaps before a dispatch is created."""
+
+    if route.kind is ProviderKind.CODEX and provider_native_access is ProviderNativeAccess.DENIED:
+        raise ProviderResolutionError(
+            code=ProviderResolutionErrorCode.UNSUPPORTED_CAPABILITY,
+            provider=ProviderKind.CODEX,
+            message=(
+                "the pinned Codex app-server cannot enforce an MCP-only "
+                "provider-native access policy"
+            ),
+        )
+    if (
+        route.kind is ProviderKind.CODEX
+        and provider_native_access is ProviderNativeAccess.FULL
+        and network_access is NetworkAccess.DENY
+    ):
+        raise ProviderResolutionError(
+            code=ProviderResolutionErrorCode.UNSUPPORTED_CAPABILITY,
+            provider=ProviderKind.CODEX,
+            message="the Codex provider-local capability ceiling was not applied",
+        )
+
+
+def apply_provider_capability_ceiling(
+    *,
+    route: ProviderRoute,
+    capabilities: EffectiveCapabilitySet,
+) -> EffectiveCapabilitySet:
+    """Apply one provider-local hard ceiling before prompt and D2 persistence."""
+
+    if (
+        route.kind is ProviderKind.CODEX
+        and capabilities.provider_native_access.effective is ProviderNativeAccess.FULL
+        and capabilities.network_access.effective is NetworkAccess.DENY
+    ):
+        return capabilities.model_copy(
+            update={
+                "provider_native_access": EffectiveProviderNativeAccess(
+                    effective=ProviderNativeAccess.RESTRICTED,
+                    source=CapabilitySource.CONTROLLER,
+                )
+            }
+        )
+    return capabilities
+
+
 def _select_provider(
     provider: ProviderSelection | None,
     *,
@@ -130,10 +192,11 @@ def _build_provider_route(
                     provider=ProviderKind.CODEX,
                     field_name="codex.model",
                 ),
-                effort_override=_validate_optional_override(
+                effort_override=_validate_optional_effort(
                     settings.codex.effort,
                     provider=ProviderKind.CODEX,
                     field_name="codex.effort",
+                    supported=_CODEX_EFFORTS,
                 ),
             )
         case ProviderKind.CLAUDE:
@@ -144,10 +207,11 @@ def _build_provider_route(
                     provider=ProviderKind.CLAUDE,
                     field_name="claude.model",
                 ),
-                effort_override=_validate_optional_override(
+                effort_override=_validate_optional_effort(
                     settings.claude.effort,
                     provider=ProviderKind.CLAUDE,
                     field_name="claude.effort",
+                    supported=_CLAUDE_EFFORTS,
                 ),
             )
         case ProviderKind.OPENCLAW:
@@ -171,6 +235,30 @@ def _validate_optional_override(
     if value is None:
         return None
     return _validate_required_value(value, provider=provider, field_name=field_name)
+
+
+def _validate_optional_effort(
+    value: str | None,
+    *,
+    provider: ProviderKind,
+    field_name: str,
+    supported: frozenset[str],
+) -> str | None:
+    normalized = _validate_optional_override(
+        value,
+        provider=provider,
+        field_name=field_name,
+    )
+    if normalized is None:
+        return None
+    if normalized not in supported:
+        choices = ", ".join(sorted(supported))
+        raise ProviderResolutionError(
+            code=ProviderResolutionErrorCode.INVALID_CONFIGURATION,
+            provider=provider,
+            message=f"{field_name} must be one of: {choices}",
+        )
+    return normalized
 
 
 def _validate_required_value(
@@ -228,6 +316,8 @@ def _validate_openclaw_gateway_url(value: str) -> None:
 __all__ = [
     "ProviderResolutionError",
     "ProviderResolutionErrorCode",
+    "apply_provider_capability_ceiling",
     "provider_selection_from_kind",
     "resolve_provider_route",
+    "validate_provider_execution_policy",
 ]

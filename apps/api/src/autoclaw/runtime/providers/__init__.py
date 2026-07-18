@@ -1,13 +1,45 @@
+from autoclaw.runtime.providers.contracts import (
+    DEFAULT_PROVIDER_STOP_TIMEOUT_SECONDS,
+    CompatibilityNodeMcpConnection,
+    DispatchStartRequest,
+    ManagedNodeMcpConnection,
+    ProviderAdapter,
+    ProviderCheckResult,
+    ProviderCheckStatus,
+    ProviderStartAccepted,
+    ProviderStartError,
+    ProviderStartErrorCode,
+    ProviderStartFailureKind,
+    ProviderStopOutcome,
+)
+from autoclaw.runtime.providers.registry import ProviderAdapterRegistry
 from autoclaw.runtime.providers.resolution import (
     ProviderResolutionError,
     ProviderResolutionErrorCode,
+    apply_provider_capability_ceiling,
     provider_selection_from_kind,
     resolve_provider_route,
+    validate_provider_execution_policy,
 )
 
 __all__ = [
+    "DEFAULT_PROVIDER_STOP_TIMEOUT_SECONDS",
+    "CompatibilityNodeMcpConnection",
+    "DispatchStartRequest",
+    "ManagedNodeMcpConnection",
+    "ProviderAdapter",
+    "ProviderAdapterRegistry",
+    "ProviderCheckResult",
+    "ProviderCheckStatus",
     "ProviderResolutionError",
     "ProviderResolutionErrorCode",
+    "ProviderStartAccepted",
+    "ProviderStartError",
+    "ProviderStartErrorCode",
+    "ProviderStartFailureKind",
+    "ProviderStopOutcome",
+    "apply_provider_capability_ceiling",
     "provider_selection_from_kind",
     "resolve_provider_route",
+    "validate_provider_execution_policy",
 ]

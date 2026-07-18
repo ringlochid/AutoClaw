@@ -1,28 +1,157 @@
 from __future__ import annotations
 
-from typing import NoReturn
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from uuid import uuid4
 
 from autoclaw.config import OpenClawSettings, Settings, get_settings
+from autoclaw.definitions.contracts.workflow import ProviderKind
+from autoclaw.integrations.openclaw.gateway.cli_transport import (
+    OpenClawGatewayCliError,
+    OpenClawGatewayFailureCode,
+    call_openclaw_gateway,
+)
+from autoclaw.runtime.contracts.provider_resolution import OpenClawProviderRoute
+from autoclaw.runtime.providers.contracts import (
+    DispatchStartRequest,
+    ProviderCheckResult,
+    ProviderCheckStatus,
+    ProviderStartAccepted,
+    ProviderStartError,
+    ProviderStartErrorCode,
+    ProviderStartFailureKind,
+    ProviderStopOutcome,
+)
 
 
-class OpenClawAdapterUnavailableError(RuntimeError):
-    """OpenClaw provider execution is not implemented in this build."""
+@dataclass(frozen=True, slots=True)
+class _OpenClawRunHandle:
+    gateway_profile: str
+    session_key: str
+    run_id: str
 
 
 class OpenClawGatewayAdapter:
-    """Compile-safe provider seam for an unavailable OpenClaw adapter."""
+    """Narrow experimental start/stop adapter over the user-owned Gateway CLI."""
+
+    kind = ProviderKind.OPENCLAW
 
     def __init__(self, *, config: OpenClawSettings) -> None:
         self.config = config
+        self._run_handles: dict[str, _OpenClawRunHandle] = {}
+        self._is_in_lifespan = False
 
-    async def start(self, _request: object) -> NoReturn:
-        _raise_unavailable()
+    @asynccontextmanager
+    async def lifespan(self) -> AsyncIterator[None]:
+        if self._is_in_lifespan:
+            raise RuntimeError("OpenClaw adapter lifespan cannot be re-entered")
+        self._is_in_lifespan = True
+        try:
+            yield
+        finally:
+            await asyncio.gather(
+                *(self.stop(dispatch_id) for dispatch_id in tuple(self._run_handles)),
+                return_exceptions=True,
+            )
+            self._run_handles.clear()
+            self._is_in_lifespan = False
 
-    async def stop(self, _dispatch_id: str) -> NoReturn:
-        _raise_unavailable()
+    async def start(self, request: DispatchStartRequest) -> ProviderStartAccepted:
+        route = request.provider_route
+        if not isinstance(route, OpenClawProviderRoute):
+            raise ProviderStartError(
+                kind=ProviderStartFailureKind.DEFINITE_FAILURE,
+                code=ProviderStartErrorCode.CONFIGURATION,
+            )
+        try:
+            instructions = request.instructions.decode("utf-8")
+            input_text = request.input.decode("utf-8")
+        except UnicodeDecodeError:
+            raise ProviderStartError(
+                kind=ProviderStartFailureKind.DEFINITE_FAILURE,
+                code=ProviderStartErrorCode.CONFIGURATION,
+            ) from None
 
-    async def check(self) -> NoReturn:
-        _raise_unavailable()
+        session_key = f"autoclaw-{uuid4().hex}"
+        idempotency_key = (
+            f"autoclaw:{request.dispatch_id}:provider-start:{request.provider_start_revision}"
+        )
+        try:
+            response = await call_openclaw_gateway(
+                profile=route.gateway_profile,
+                gateway_url=self.config.gateway_url,
+                method="agent",
+                params={
+                    "sessionKey": session_key,
+                    "message": input_text,
+                    "extraSystemPrompt": instructions,
+                    "idempotencyKey": idempotency_key,
+                },
+                working_directory=request.working_directory,
+            )
+        except OpenClawGatewayCliError as exc:
+            raise _build_provider_start_error(exc) from None
+
+        status = response.get("status")
+        run_id = response.get("runId")
+        if status not in {"accepted", "in_flight"} or not isinstance(run_id, str) or not run_id:
+            raise ProviderStartError(
+                kind=ProviderStartFailureKind.UNCERTAIN_ACCEPTANCE,
+                code=ProviderStartErrorCode.UNCERTAIN,
+            )
+        self._run_handles[request.dispatch_id] = _OpenClawRunHandle(
+            gateway_profile=route.gateway_profile,
+            session_key=session_key,
+            run_id=run_id,
+        )
+        return ProviderStartAccepted()
+
+    async def stop(self, dispatch_id: str) -> ProviderStopOutcome:
+        run_handle = self._run_handles.pop(dispatch_id, None)
+        if run_handle is None:
+            return ProviderStopOutcome.NOT_RUNNING
+        try:
+            response = await call_openclaw_gateway(
+                profile=run_handle.gateway_profile,
+                gateway_url=self.config.gateway_url,
+                method="sessions.abort",
+                params={
+                    "key": run_handle.session_key,
+                    "runId": run_handle.run_id,
+                },
+            )
+        except OpenClawGatewayCliError:
+            return ProviderStopOutcome.FAILED
+
+        if response.get("ok") is not True:
+            return ProviderStopOutcome.FAILED
+        if response.get("status") == "no-active-run":
+            return ProviderStopOutcome.NOT_RUNNING
+        if response.get("status") == "aborted":
+            return ProviderStopOutcome.STOPPED
+        return ProviderStopOutcome.FAILED
+
+    async def check(self) -> ProviderCheckResult:
+        try:
+            await call_openclaw_gateway(
+                profile=self.config.gateway_profile,
+                gateway_url=self.config.gateway_url,
+                method="health",
+                params={},
+            )
+        except OpenClawGatewayCliError as exc:
+            return ProviderCheckResult(
+                kind=self.kind,
+                status=ProviderCheckStatus.UNAVAILABLE,
+                code=exc.code.value,
+            )
+        return ProviderCheckResult(
+            kind=self.kind,
+            status=ProviderCheckStatus.LIMITED,
+            code="openclaw_experimental",
+        )
 
 
 def build_openclaw_gateway_adapter(settings: Settings | None = None) -> OpenClawGatewayAdapter:
@@ -30,15 +159,24 @@ def build_openclaw_gateway_adapter(settings: Settings | None = None) -> OpenClaw
     return OpenClawGatewayAdapter(config=loaded.openclaw)
 
 
-def _raise_unavailable() -> NoReturn:
-    raise OpenClawAdapterUnavailableError(
-        "OpenClaw provider execution is not available in this build; retrying the "
-        "same operation will not succeed"
-    )
+def _build_provider_start_error(exc: OpenClawGatewayCliError) -> ProviderStartError:
+    kind = ProviderStartFailureKind.DEFINITE_FAILURE
+    if exc.may_have_been_accepted:
+        kind = ProviderStartFailureKind.UNCERTAIN_ACCEPTANCE
+    code = {
+        OpenClawGatewayFailureCode.NOT_INSTALLED: ProviderStartErrorCode.UNAVAILABLE,
+        OpenClawGatewayFailureCode.PROCESS_LAUNCH_FAILED: ProviderStartErrorCode.UNAVAILABLE,
+        OpenClawGatewayFailureCode.AUTHENTICATION_FAILED: ProviderStartErrorCode.AUTHENTICATION,
+        OpenClawGatewayFailureCode.UNREACHABLE: ProviderStartErrorCode.CONNECTION,
+        OpenClawGatewayFailureCode.REJECTED: ProviderStartErrorCode.REJECTED,
+        OpenClawGatewayFailureCode.TIMEOUT: ProviderStartErrorCode.TIMEOUT,
+        OpenClawGatewayFailureCode.INVALID_RESPONSE: ProviderStartErrorCode.UNCERTAIN,
+        OpenClawGatewayFailureCode.CALL_FAILED: ProviderStartErrorCode.UNCERTAIN,
+    }[exc.code]
+    return ProviderStartError(kind=kind, code=code)
 
 
 __all__ = [
-    "OpenClawAdapterUnavailableError",
     "OpenClawGatewayAdapter",
     "build_openclaw_gateway_adapter",
 ]

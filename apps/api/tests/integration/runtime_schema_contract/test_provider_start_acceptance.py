@@ -71,11 +71,15 @@ async def test_exact_current_provider_acceptance_opens_once_and_clears_retry_sta
         dispatch_id=database.ids.current_dispatch_id,
         provider_start_revision=PROVIDER_START_REVISION,
         is_accepted=True,
+        provider_start_attempt_count=4,
+        adapter_started_at=ACCEPTED_AT,
+        node_activity_revision=0,
+        last_node_activity_at=None,
     )
     assert repeated.is_accepted is False
     assert dispatch.status == "open"
     assert dispatch.adapter_started_at.replace(tzinfo=UTC) == ACCEPTED_AT
-    assert dispatch.provider_start_attempt_count == 3
+    assert dispatch.provider_start_attempt_count == 4
     assert dispatch.next_provider_start_at is None
     assert dispatch.provider_start_retry_kind is None
     assert dispatch.provider_start_last_error_code is None
@@ -274,6 +278,8 @@ async def _accept_start(
             task_id=task_id or database.ids.task_id,
             dispatch_id=database.ids.current_dispatch_id,
             expected_provider_start_revision=expected_provider_start_revision,
+            expected_provider_start_attempt_count=3,
+            expected_due_at=START_DUE_AT,
             accepted_at=ACCEPTED_AT,
         )
         await session.commit()

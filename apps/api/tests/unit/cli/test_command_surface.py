@@ -24,16 +24,29 @@ def test_build_parser_supports_baseline_commands() -> None:
     assert "doctor" not in parser.commands
     assert "--port INTEGER" in service_install_help.output
     assert "openclaw" not in parser.commands
+    assert "status" in parser.commands
+    assert "setup" in parser.commands
+    assert "providers" in parser.commands
     assert "service" in parser.commands
     assert "definitions" in parser.commands
     assert "task-compose" in parser.commands
     service_group = cast(Group, parser.commands["service"])
     definitions_group = cast(Group, parser.commands["definitions"])
     task_compose_group = cast(Group, parser.commands["task-compose"])
+    providers_group = cast(Group, parser.commands["providers"])
     assert "install" in service_group.commands
     assert "status" in service_group.commands
     assert "import" in definitions_group.commands
     assert "start" in task_compose_group.commands
+    assert set(providers_group.commands) == {
+        "check",
+        "configure",
+        "list",
+        "login",
+        "logout",
+        "set-default",
+        "status",
+    }
 
 
 def test_render_service_unit_uses_python_module_entrypoint(tmp_path: Path) -> None:

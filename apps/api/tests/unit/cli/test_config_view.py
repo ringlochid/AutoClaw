@@ -45,3 +45,13 @@ def test_config_readback_retains_non_secret_openclaw_gateway_url(tmp_path: Path)
     )
 
     assert payload["openclaw"]["gateway_url"] == "ws://127.0.0.1:18789"
+
+
+def test_config_readback_redacts_database_password(tmp_path: Path) -> None:
+    payload = build_settings_payload(
+        Settings(database_url="postgresql+asyncpg://operator:secret@localhost/autoclaw"),
+        tmp_path / "config.toml",
+    )
+
+    assert payload["database"]["url"] == ("postgresql+asyncpg://operator:***@localhost/autoclaw")
+    assert "secret" not in str(payload)

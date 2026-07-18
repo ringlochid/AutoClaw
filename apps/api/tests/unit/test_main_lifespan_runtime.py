@@ -55,10 +55,12 @@ async def test_lifespan_keeps_publishers_alive_until_runtime_owners_stop(
         return {}
 
     async def audit_runtime(**kwargs: object) -> dict[str, object]:
-        assert kwargs["publish"] == router.publish_startup
+        publish = kwargs["publish"]
+        assert callable(publish)
+        assert await publish(DispatchStartDue("dispatch.startup", 1, main_module.utc_now()))
         routed_signal_types = kwargs["routed_signal_types"]
         assert isinstance(routed_signal_types, tuple)
-        assert DispatchStartDue not in routed_signal_types
+        assert DispatchStartDue in routed_signal_types
         events.append("runtime_audit")
         return {}
 

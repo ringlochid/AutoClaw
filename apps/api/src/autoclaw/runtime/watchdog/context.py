@@ -32,7 +32,11 @@ from autoclaw.runtime.dispatch.ordinary_context import (
 )
 from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.post_commit import WatchdogDue
-from autoclaw.runtime.providers import provider_selection_from_kind, resolve_provider_route
+from autoclaw.runtime.providers import (
+    apply_provider_capability_ceiling,
+    provider_selection_from_kind,
+    resolve_provider_route,
+)
 from autoclaw.runtime.task_root import read_task_root_paths
 from autoclaw.runtime.watchdog.deadline import calculate_watchdog_due_at
 from autoclaw.runtime.work_plan import read_assignment_work_plan
@@ -98,6 +102,10 @@ async def read_watchdog_recovery_snapshot(
         provider=provider_selection_from_kind(context.node.provider_kind),
         settings=dependencies.settings,
         available_adapter_kinds=dependencies.available_adapter_kinds,
+    )
+    capabilities = apply_provider_capability_ceiling(
+        route=provider.route,
+        capabilities=capabilities,
     )
     paths = await read_task_root_paths(session, context.task.task_id)
     workflow_description = workflow.content_json.get("description")

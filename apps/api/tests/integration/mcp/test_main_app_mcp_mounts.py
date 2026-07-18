@@ -45,6 +45,8 @@ def test_sync_app_construction_defers_loop_scoped_session_factory(
     app = create_app(should_enable_mcp_mounts=True)
 
     assert isinstance(app.state.dispatch_mcp_binding_registry, DispatchMcpBindingRegistry)
+    assert app.state.node_operation_executor is not None
+    assert app.state.dispatch_starter is not None
     assert len(app.state.mcp_lifespan_apps) == 3
 
 

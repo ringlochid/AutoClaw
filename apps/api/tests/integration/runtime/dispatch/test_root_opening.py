@@ -4,7 +4,9 @@ from contextlib import AbstractAsyncContextManager
 from pathlib import Path
 from typing import cast
 
+import pytest
 from autoclaw.config import CodexSettings, Settings
+from autoclaw.definitions.contracts.registry import NetworkAccess
 from autoclaw.persistence.models import (
     DispatchCapabilitySetModel,
     DispatchPromptRefsModel,
@@ -35,11 +37,29 @@ from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
 )
 
 
+@pytest.mark.parametrize(
+    ("network_access", "expected_native_access", "expected_native_source"),
+    (
+        (None, "full", "default"),
+        (NetworkAccess.DENY, "restricted", "controller"),
+    ),
+)
 async def test_root_start_materializes_then_commits_one_starting_dispatch(
     tmp_path: Path,
+    network_access: NetworkAccess | None,
+    expected_native_access: str,
+    expected_native_source: str,
 ) -> None:
     engine = create_runtime_schema_engine(tmp_path, name="root-opening.sqlite")
     role, policy, workflow = build_launch_foundation_definitions()
+    if network_access is not None:
+        policy = policy.model_copy(
+            update={
+                "capabilities": policy.capabilities.model_copy(
+                    update={"network_access": network_access}
+                )
+            }
+        )
     assert workflow.root.provider is not None
     bootstrap_input = build_launch_foundation_input(
         tmp_path,
@@ -100,8 +120,12 @@ async def test_root_start_materializes_then_commits_one_starting_dispatch(
     assert dispatch.provider_start_retry_kind == "initial"
     assert refs is not None and refs.dynamic_input_version == 1
     assert capabilities is not None
-    assert capabilities.provider_native_access == "full"
-    assert capabilities.provider_native_access_source == "default"
+    assert capabilities.provider_native_access == expected_native_access
+    assert capabilities.provider_native_access_source == expected_native_source
+    assert capabilities.network_access == (network_access or NetworkAccess.ALLOW).value
+    assert capabilities.network_access_source == (
+        "policy_definition" if network_access is not None else "default"
+    )
     assert source is not None and source.successor_dispatch_id == dispatch.dispatch_id
     assert flow is not None and flow.current_dispatch_id == dispatch.dispatch_id
     assert root_page.sources == (FlowStartCommitted("flow.task.launch-foundation"),)

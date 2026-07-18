@@ -51,6 +51,7 @@ from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.post_commit import BoundaryAccepted
 from autoclaw.runtime.providers import (
     ProviderResolutionError,
+    apply_provider_capability_ceiling,
     provider_selection_from_kind,
     resolve_provider_route,
 )
@@ -348,6 +349,10 @@ async def _read_target_snapshot(
         provider=provider_selection_from_kind(node.provider_kind),
         settings=dependencies.settings,
         available_adapter_kinds=dependencies.available_adapter_kinds,
+    )
+    capabilities = apply_provider_capability_ceiling(
+        route=provider.route,
+        capabilities=capabilities,
     )
     paths = await read_task_root_paths(session, task.task_id)
     description = workflow.content_json.get("description")
