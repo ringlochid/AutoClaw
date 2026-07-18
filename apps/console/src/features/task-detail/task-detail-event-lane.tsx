@@ -169,10 +169,10 @@ function eventInlineRows(
 ): readonly { readonly label: string; readonly value: string }[] {
     const payload = event.record.payload;
     const keysByType: Partial<Record<TaskEventRow["eventType"], readonly string[]>> = {
-        boundary_accepted: ["boundary", "resulting_flow_status"],
+        boundary_accepted: ["outcome", "resulting_flow_status"],
         checkpoint_recorded: ["checkpoint_kind", "outcome"],
-        dispatch_opened: ["delivery_status", "control_state"],
-        task_started: ["workflow_key", "initial_node_key"],
+        dispatch_opened: ["status", "resolved_provider"],
+        task_started: ["workflow_key", "manifest_ref"],
     };
     const keys = keysByType[event.eventType] ?? [];
     return keys.flatMap((key) => {
@@ -182,10 +182,10 @@ function eventInlineRows(
 }
 
 function readDisplayString(value: unknown, key: string): string | null {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    if (!isRecord(value)) {
         return null;
     }
-    const item = (value as Record<string, unknown>)[key];
+    const item = value[key];
     if (typeof item === "string" && item.trim().length > 0) {
         return item;
     }
@@ -193,4 +193,8 @@ function readDisplayString(value: unknown, key: string): string | null {
         return String(item);
     }
     return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
 }

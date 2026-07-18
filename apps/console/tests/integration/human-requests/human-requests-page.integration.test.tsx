@@ -8,9 +8,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { components } from "../../../src/api/generated/openapi";
 import { HumanRequestsPage } from "../../../src/features/human-requests/HumanRequestsPage";
 import {
-    createBackendOperationFailureBody,
+    createOperationFailureBody,
     TEST_API_BASE_URL,
-    TEST_API_KEY,
     createRuntimeFlowRead,
 } from "../../fixtures/console-api";
 import { installTestConsoleConfig } from "../../fixtures/console-config";
@@ -28,7 +27,6 @@ beforeAll(() => {
 
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
-    vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
     installTestConsoleConfig();
     server.use(
         http.get("*/control/tasks/:taskId", () =>
@@ -45,7 +43,7 @@ beforeEach(() => {
 afterEach(() => {
     cleanup();
     server.resetHandlers();
-    installTestConsoleConfig(null);
+    installTestConsoleConfig();
     vi.unstubAllEnvs();
 });
 
@@ -54,7 +52,7 @@ afterAll(() => {
 });
 
 describe("HumanRequestsPage", () => {
-    it("resolves a multi-item direction request with per-item response memory", async () => {
+    it("resolves a multi-item direction request with mapping-shaped responses", async () => {
         const user = userEvent.setup();
         const requestBodies: components["schemas"]["HumanRequestResolveRequest"][] = [];
         mockHumanRequests({ requestBodies });
@@ -76,22 +74,14 @@ describe("HumanRequestsPage", () => {
         ).toBeVisible();
 
         await user.click(screen.getByLabelText(/Use due fallback/));
-        await user.type(screen.getByLabelText("Notes"), "Use fallback unless a reviewer objects.");
         await user.click(screen.getByRole("button", { name: "Next" }));
-
-        await user.type(
-            screen.getByLabelText("Freeform answer"),
-            "Keep this inside the page slice.",
-        );
+        await user.click(screen.getByLabelText(/Whole task check/));
         await user.click(screen.getByRole("button", { name: "Next" }));
         await user.click(screen.getByLabelText(/Answer only/));
         await user.click(screen.getByRole("button", { name: "Previous" }));
         await user.click(screen.getByRole("button", { name: "Previous" }));
 
         expect(screen.getByLabelText(/Use due fallback/)).toBeChecked();
-        expect(screen.getByLabelText("Notes")).toHaveValue(
-            "Use fallback unless a reviewer objects.",
-        );
 
         await user.click(getWorkbenchResolveButton());
 
@@ -100,33 +90,15 @@ describe("HumanRequestsPage", () => {
             expect(requestBodies).toHaveLength(1);
         });
         expect(requestBodies[0]).toEqual({
-            item_responses: [
-                {
-                    extra_notes: "Use fallback unless a reviewer objects.",
-                    freeform_answer: null,
-                    item_id: "due_handling",
-                    response_payload: null,
-                    selected_option: "use-fallback",
-                },
-                {
-                    extra_notes: null,
-                    freeform_answer: "Keep this inside the page slice.",
-                    item_id: "next_scope",
-                    response_payload: null,
-                    selected_option: null,
-                },
-                {
-                    extra_notes: null,
-                    freeform_answer: null,
-                    item_id: "next_context",
-                    response_payload: null,
-                    selected_option: "answer-only",
-                },
-            ],
+            item_responses: {
+                due_handling: "use-fallback",
+                next_context: "answer-only",
+                next_scope: "whole-task",
+            },
         });
     });
 
-    it("validates schema-backed input and submits response_payload with notes", async () => {
+    it("validates schema-backed input and submits the item response value", async () => {
         const user = userEvent.setup();
         const requestBodies: components["schemas"]["HumanRequestResolveRequest"][] = [];
         mockHumanRequests({ requestBodies });
@@ -149,22 +121,15 @@ describe("HumanRequestsPage", () => {
             screen.getByLabelText("Constraint"),
             "Use controller-owned request data only.",
         );
-        await user.type(screen.getByLabelText("Notes"), "Use the structured handoff as written.");
         await user.click(getWorkbenchResolveButton());
 
         await waitFor(() => {
             expect(requestBodies).toHaveLength(1);
         });
-        expect(requestBodies[0]?.item_responses[0]).toEqual({
-            extra_notes: "Use the structured handoff as written.",
-            freeform_answer: null,
-            item_id: "handoff_payload",
-            response_payload: {
-                constraint: "Use controller-owned request data only.",
-                expected_output: "validated artifact list",
-                target_node: "release_gate",
-            },
-            selected_option: null,
+        expect(requestBodies[0]?.item_responses.handoff_payload).toEqual({
+            constraint: "Use controller-owned request data only.",
+            expected_output: "validated artifact list",
+            target_node: "release_gate",
         });
         expect(await screen.findByText("Resolved request")).toBeVisible();
         expect(await screen.findByText(/"target_node": "release_gate"/)).toBeVisible();
@@ -200,7 +165,7 @@ describe("HumanRequestsPage", () => {
         mockHumanRequests({
             readLog,
             resolveStatus: 409,
-            resolveBody: createBackendOperationFailureBody({
+            resolveBody: createOperationFailureBody({
                 code: "stale_flow_revision",
                 retryable: true,
                 summary: "The request was already resolved by another operator.",
@@ -254,11 +219,11 @@ describe("HumanRequestsPage", () => {
         server.use(
             http.get("*/control/tasks/:taskId/human-requests", () =>
                 HttpResponse.json(
-                    createBackendOperationFailureBody({
+                    createOperationFailureBody({
                         code: "illegal_caller",
                         retryable: false,
-                        summary: "The AutoClaw API key is missing or invalid.",
-                        suggested_next_step: "Provide a valid operator API key.",
+                        summary: "The unsafe request Origin is not allowed.",
+                        suggested_next_step: "Use the packaged same-origin loopback console.",
                     }),
                     { status: 401 },
                 ),
@@ -267,14 +232,14 @@ describe("HumanRequestsPage", () => {
 
         renderHumanRequestsPage();
         expect(await screen.findByText("Access to Human Requests failed")).toBeVisible();
-        expect(screen.getByText("The AutoClaw API key is missing or invalid.")).toBeVisible();
+        expect(screen.getByText("The unsafe request Origin is not allowed.")).toBeVisible();
     });
 
     it("renders non-auth read errors as read failures", async () => {
         server.use(
             http.get("*/control/tasks/:taskId/human-requests", () =>
                 HttpResponse.json(
-                    createBackendOperationFailureBody({
+                    createOperationFailureBody({
                         code: "internal_error",
                         retryable: true,
                         summary: "The human-request read model is temporarily unavailable.",

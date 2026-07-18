@@ -19,12 +19,11 @@ from autoclaw.runtime.contracts import (
     HumanRequestResolveResponse,
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,
+    RuntimeLifecycleStatus,
     TaskStartResponse,
     WorkflowManifestRef,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-
-_API_HEADERS = {"X-AutoClaw-API-Key": "autoclaw-operator-test-key"}
 
 
 async def _fake_session() -> AsyncIterator[AsyncSession]:
@@ -79,11 +78,10 @@ async def test_task_start_route_injects_app_owned_effect_publishers(
     )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
+        base_url="http://127.0.0.1:18125",
     ) as client:
         response = await client.post(
             "/tasks/start",
-            headers=_API_HEADERS,
             json={
                 "task": {
                     "key": "http-injection",
@@ -143,18 +141,17 @@ async def test_human_resolution_route_injects_app_owned_runtime_publisher(
     )
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
+        base_url="http://127.0.0.1:18125",
     ) as client:
         response = await client.post(
             "/control/tasks/task.http-injection/human-requests/request.http-injection/resolve",
-            headers={**_API_HEADERS, "X-AutoClaw-Actor-Ref": "operator.http"},
             json={"item_responses": {"direction": "a"}},
         )
 
     assert response.status_code == 200
     assert captured == {
         "runtime": app.state.runtime_effect_publisher,
-        "actor_ref": "operator.http",
+        "actor_ref": "local_operator",
     }
 
 
@@ -206,12 +203,11 @@ async def test_flow_control_routes_inject_current_guards_and_runtime_owners(
     }
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
+        base_url="http://127.0.0.1:18125",
     ) as client:
         responses = [
             await client.post(
                 f"/control/tasks/task.http-injection/{operation}",
-                headers=_API_HEADERS,
                 params=query,
             )
             for operation in ("pause", "continue", "cancel")
@@ -223,7 +219,7 @@ async def test_flow_control_routes_inject_current_guards_and_runtime_owners(
     expected_guards = {
         "expected_active_flow_revision_id": "flow-revision.http-injection.1",
         "expected_control_revision": 7,
-        "actor_ref": None,
+        "actor_ref": "local_operator",
     }
     assert captured["pause"] == {
         **expected_guards,
@@ -244,7 +240,7 @@ def _runtime_flow_read(task_id: str, *, control_revision: int) -> RuntimeFlowRea
         task_id=task_id,
         task_title="HTTP publisher injection",
         task_summary="Keep flow-control runtime ownership explicit.",
-        status=FlowStatus.RUNNING,
+        status=RuntimeLifecycleStatus.RUNNING,
         active_flow_revision_id="flow-revision.http-injection.1",
         control_revision=control_revision,
         workflow_manifest_ref=WorkflowManifestRef(

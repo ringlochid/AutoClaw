@@ -8,9 +8,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { components } from "../../../src/api/generated/openapi";
 import { CommandRunsPage } from "../../../src/features/command-runs/CommandRunsPage";
 import {
-    createBackendOperationFailureBody,
+    createOperationFailureBody,
     TEST_API_BASE_URL,
-    TEST_API_KEY,
     createRuntimeFlowRead,
 } from "../../fixtures/console-api";
 import { installTestConsoleConfig } from "../../fixtures/console-config";
@@ -31,14 +30,13 @@ beforeAll(() => {
 
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
-    vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
     installTestConsoleConfig();
 });
 
 afterEach(() => {
     cleanup();
     server.resetHandlers();
-    installTestConsoleConfig(null);
+    installTestConsoleConfig();
     vi.unstubAllEnvs();
 });
 
@@ -64,6 +62,7 @@ describe("CommandRunsPage", () => {
         expect(screen.getByText("Failed")).toBeVisible();
         expect(screen.getByText("Timed out")).toBeVisible();
         expect(screen.getByText("Cancelled")).toBeVisible();
+        expect(screen.getByText("Abandoned")).toBeVisible();
         expect(screen.queryByText(/continuation context missing terminal/)).not.toBeInTheDocument();
 
         await user.click(screen.getByText("Check prompt continuation rendering."));
@@ -101,7 +100,7 @@ describe("CommandRunsPage", () => {
     it("surfaces stale cancel errors near the cancel action", async () => {
         mockCommandRuns({
             cancelStatus: 409,
-            cancelBody: createBackendOperationFailureBody({
+            cancelBody: createOperationFailureBody({
                 code: "illegal_state",
                 retryable: true,
                 summary: "The command run was already updated by the controller.",
@@ -121,7 +120,7 @@ describe("CommandRunsPage", () => {
         expect(screen.getByText("Reread command-run truth before retrying cancel.")).toBeVisible();
     });
 
-    it("renders missing-log, empty, auth, and task-detail navigation states", async () => {
+    it("renders missing-log, empty, local-admission, and task-detail navigation states", async () => {
         mockCommandRuns();
         const user = userEvent.setup();
 
@@ -152,20 +151,22 @@ describe("CommandRunsPage", () => {
         server.use(
             http.get("*/control/tasks/:taskId/command-runs", () =>
                 HttpResponse.json(
-                    createBackendOperationFailureBody({
-                        code: "illegal_caller",
+                    createOperationFailureBody({
+                        code: "local_admission_denied",
                         retryable: false,
-                        summary: "The AutoClaw API key is missing or invalid.",
-                        suggested_next_step: "Provide a valid operator API key.",
+                        summary: "The browser Origin is not allowed by the loopback control plane.",
+                        suggested_next_step: "Use the configured loopback console origin.",
                     }),
-                    { status: 401 },
+                    { status: 403 },
                 ),
             ),
         );
 
         renderCommandRunsPage();
         expect(await screen.findByText("Access to Command Runs failed")).toBeVisible();
-        expect(screen.getByText("The AutoClaw API key is missing or invalid.")).toBeVisible();
+        expect(
+            screen.getByText("The browser Origin is not allowed by the loopback control plane."),
+        ).toBeVisible();
     });
 });
 

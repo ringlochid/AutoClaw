@@ -2,15 +2,28 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Collection
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.config import get_settings
+from autoclaw.config import Settings, get_settings
+from autoclaw.definitions.contracts.workflow import ProviderKind
+from autoclaw.definitions.registry.current import compile_current_workflow_launch_snapshot
 from autoclaw.persistence.session import get_session_factory
 from autoclaw.runtime import FlowStatus, RuntimeLaunchInput
-from autoclaw.runtime.contracts import TaskStartRequest, TaskStartResponse, WorkflowManifestRef
+from autoclaw.runtime.capabilities import resolve_effective_capabilities_from_policy_content
+from autoclaw.runtime.contracts import (
+    TaskComposeNodePreview,
+    TaskComposePreviewIssue,
+    TaskComposePreviewProviderResolution,
+    TaskComposePreviewResponse,
+    TaskStartRequest,
+    TaskStartResponse,
+    WorkflowManifestRef,
+)
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.flow import WORKFLOW_MANIFEST_REF_DESCRIPTION
@@ -18,8 +31,118 @@ from autoclaw.runtime.ids import compiled_plan_id_for_task, flow_id_for_task, fl
 from autoclaw.runtime.launch.service import StagedRuntimeLaunch, launch_task_runtime
 from autoclaw.runtime.node_operations.follow_on import SupportProjectionPublisher
 from autoclaw.runtime.post_commit import FlowStartCommitted, RuntimeEffectPublisher
+from autoclaw.runtime.providers import (
+    ProviderResolutionError,
+    apply_provider_capability_ceiling,
+    resolve_provider_route,
+    validate_provider_execution_policy,
+)
+from autoclaw.runtime.task_root import resolve_task_root_paths
 
 logger = logging.getLogger(__name__)
+
+
+async def preview_task_compose(
+    session: AsyncSession,
+    request: TaskStartRequest,
+    *,
+    settings: Settings,
+    available_adapter_kinds: Collection[ProviderKind],
+) -> TaskComposePreviewResponse:
+    """Compile and resolve a task start without reserving or mutating anything."""
+
+    try:
+        resolve_task_root_paths(
+            task_root=settings.data_dir / "tasks" / "_task-compose-preview",
+            task_compose=request,
+        )
+    except (FileNotFoundError, NotADirectoryError, ValueError) as exc:
+        return _invalid_preview(exc, kind="path", code="task_root_invalid")
+
+    try:
+        snapshot = await compile_current_workflow_launch_snapshot(
+            session,
+            workflow_key=request.workflow.key,
+            compiler_version="definition-start-preview",
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        return _invalid_preview(exc, kind="cross_reference", code="definition_invalid")
+
+    nodes: list[TaskComposeNodePreview] = []
+    errors: list[TaskComposePreviewIssue] = []
+    for node in snapshot.compiled_plan.nodes:
+        policy = snapshot.role_policy_lookup.get_policy(node.policy)
+        if policy is None:
+            errors.append(
+                TaskComposePreviewIssue(
+                    code="policy_not_found",
+                    message=f"unknown current policy '{node.policy}'",
+                    path=f"workflow.nodes.{node.node_key}.policy",
+                    kind="cross_reference",
+                )
+            )
+            continue
+        try:
+            provider = resolve_provider_route(
+                provider=node.provider,
+                settings=settings,
+                available_adapter_kinds=available_adapter_kinds,
+            )
+            capabilities = resolve_effective_capabilities_from_policy_content(policy.definition)
+            capabilities = apply_provider_capability_ceiling(
+                route=provider.route,
+                capabilities=capabilities,
+            )
+            validate_provider_execution_policy(
+                route=provider.route,
+                provider_native_access=capabilities.provider_native_access.effective,
+                network_access=capabilities.network_access.effective,
+            )
+        except ProviderResolutionError as exc:
+            errors.append(
+                TaskComposePreviewIssue(
+                    code=exc.code.value,
+                    message=str(exc),
+                    path=f"workflow.nodes.{node.node_key}.provider",
+                    kind="provider",
+                )
+            )
+            continue
+        nodes.append(
+            TaskComposeNodePreview(
+                node_key=node.node_key,
+                provider_resolution=TaskComposePreviewProviderResolution(
+                    requested_provider=provider.requested_provider,
+                    resolved_provider=provider.resolved_provider,
+                    selection_basis=provider.selection_basis,
+                ),
+                provider_native_access=capabilities.provider_native_access,
+                network_access=capabilities.network_access,
+            )
+        )
+    return TaskComposePreviewResponse(
+        status="invalid" if errors else "ready",
+        nodes=tuple(nodes),
+        errors=tuple(errors),
+    )
+
+
+def _invalid_preview(
+    exc: Exception,
+    *,
+    kind: Literal["schema", "cross_reference", "provider", "path"],
+    code: str,
+) -> TaskComposePreviewResponse:
+    return TaskComposePreviewResponse(
+        status="invalid",
+        errors=(
+            TaskComposePreviewIssue(
+                code=code,
+                message=str(exc),
+                kind=kind,
+            ),
+        ),
+    )
 
 
 async def start_task_from_definition(
@@ -160,4 +283,4 @@ def _translate_task_start_error(
     return exc
 
 
-__all__ = ["start_task_from_definition"]
+__all__ = ["preview_task_compose", "start_task_from_definition"]

@@ -24,17 +24,40 @@ from autoclaw.definitions.authoring import (
     write_definition_draft,
 )
 from autoclaw.definitions.contracts import DefinitionKind
-from autoclaw.interfaces.http.dependencies import require_api_key
+from autoclaw.definitions.registry.task_start import preview_task_compose
+from autoclaw.interfaces.http.dependencies import read_dispatch_opening_dependencies
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session
+from autoclaw.runtime.contracts import TaskComposePreviewResponse, TaskStartRequest
+from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 
 router = APIRouter(
     prefix="/authoring",
     tags=["authoring"],
-    dependencies=[Depends(require_api_key)],
 )
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 type DefinitionDraftListParams = Annotated[DefinitionDraftListQuery, Query()]
+type DispatchOpeningDependenciesDep = Annotated[
+    DispatchOpeningDependencies,
+    Depends(read_dispatch_opening_dependencies),
+]
+
+
+@router.post("/task-compose/preview", response_model=TaskComposePreviewResponse)
+async def post_task_compose_preview(
+    request: TaskStartRequest,
+    session: DBSession,
+    dependencies: DispatchOpeningDependenciesDep,
+) -> TaskComposePreviewResponse:
+    try:
+        return await preview_task_compose(
+            session,
+            request,
+            settings=dependencies.settings,
+            available_adapter_kinds=dependencies.available_adapter_kinds,
+        )
+    except Exception as exc:  # pragma: no cover - thin HTTP wrapper
+        raise_runtime_exception(exc)
 
 
 @router.get("/definition-drafts", response_model=DefinitionDraftListResponse)

@@ -104,9 +104,6 @@ export async function requestJson<TResponse>({
     const url = resolveApiUrl(path, config, query);
 
     const headers = new Headers({ Accept: "application/json" });
-    if (config.apiKey !== null) {
-        headers.set("X-AutoClaw-API-Key", config.apiKey);
-    }
     if (body !== undefined) {
         headers.set("Content-Type", "application/json");
     }
@@ -175,9 +172,11 @@ function normalizeResponseError(
 ): ConsoleErrorView {
     const operationFailure = readOperationFailure(parsedBody);
     if (operationFailure !== null) {
+        const isValidationFailure =
+            response.status === 400 && operationFailure.code === "invalid_request_shape";
         return {
             code: operationFailure.code,
-            title: titleFromCode(operationFailure.code),
+            title: isValidationFailure ? "Validation Error" : titleFromCode(operationFailure.code),
             summary: operationFailure.summary,
             status: response.status,
             isRetryable: operationFailure.isRetryable,
@@ -192,21 +191,7 @@ function normalizeResponseError(
                               path: operationFailure.fieldPath,
                           },
                       ],
-            source: "operation_failure",
-        };
-    }
-
-    const validationErrors = readValidationErrors(parsedBody);
-    if (validationErrors.length > 0) {
-        return {
-            code: "validation_error",
-            title: "Validation Error",
-            summary: validationErrors.map((fieldError) => fieldError.message).join("; "),
-            status: response.status,
-            isRetryable: false,
-            suggestedNextStep: "Review the highlighted fields and retry the request.",
-            fieldErrors: validationErrors,
-            source: "validation",
+            source: isValidationFailure ? "validation" : "operation_failure",
         };
     }
 
@@ -241,37 +226,23 @@ function readOperationFailure(parsedBody: unknown): {
     readonly suggestedNextStep: string | null;
     readonly summary: string;
 } | null {
-    const directFailure = readOperationFailureCandidate(parsedBody);
-    if (directFailure !== null) {
-        return directFailure;
-    }
-
     if (!isRecord(parsedBody)) {
         return null;
     }
 
-    return readOperationFailureCandidate(parsedBody.detail);
-}
+    const code = parsedBody.code;
+    const fieldPath = parsedBody.field_path;
+    const ok = parsedBody.ok;
+    const retryable = parsedBody.retryable;
+    const suggestedNextStep = parsedBody.suggested_next_step;
+    const summary = parsedBody.summary;
 
-function readOperationFailureCandidate(value: unknown): {
-    readonly code: string;
-    readonly fieldPath: string | null;
-    readonly isRetryable: boolean;
-    readonly suggestedNextStep: string | null;
-    readonly summary: string;
-} | null {
-    if (!isRecord(value)) {
-        return null;
-    }
-
-    const code = value.code;
-    const summary = value.summary;
-    const retryable = value.retryable;
-    const isRetryable = value.is_retryable;
-    const fieldPath = value.field_path;
-    const suggestedNextStep = value.suggested_next_step;
-
-    if (typeof code !== "string" || typeof summary !== "string") {
+    if (
+        ok !== false ||
+        typeof code !== "string" ||
+        typeof retryable !== "boolean" ||
+        typeof summary !== "string"
+    ) {
         return null;
     }
 
@@ -279,41 +250,9 @@ function readOperationFailureCandidate(value: unknown): {
         code,
         summary,
         fieldPath: typeof fieldPath === "string" ? fieldPath : null,
-        isRetryable:
-            typeof retryable === "boolean"
-                ? retryable
-                : typeof isRetryable === "boolean"
-                  ? isRetryable
-                  : false,
+        isRetryable: retryable,
         suggestedNextStep: typeof suggestedNextStep === "string" ? suggestedNextStep : null,
     };
-}
-
-function readValidationErrors(parsedBody: unknown): readonly ConsoleFieldError[] {
-    if (!isRecord(parsedBody) || !Array.isArray(parsedBody.detail)) {
-        return [];
-    }
-
-    return parsedBody.detail.flatMap((entry): ConsoleFieldError[] => {
-        if (!isRecord(entry)) {
-            return [];
-        }
-
-        const message = entry.msg;
-        const type = entry.type;
-        const location = entry.loc;
-        if (typeof message !== "string" || typeof type !== "string" || !Array.isArray(location)) {
-            return [];
-        }
-
-        return [
-            {
-                code: type,
-                message,
-                path: location.map((part) => String(part)).join("."),
-            },
-        ];
-    });
 }
 
 function codeFromHttpStatus(status: number): string {

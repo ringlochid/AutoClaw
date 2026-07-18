@@ -15,7 +15,7 @@ export type WorkflowRootDefinition = components["schemas"]["RootNodeDefinition-O
 export type WorkflowNodeDefinition = components["schemas"]["NodeDefinitionInput-Output"];
 
 type RoleContent = components["schemas"]["RoleDefinitionInput"];
-type PolicyContent = components["schemas"]["PolicyDefinitionInput"];
+type PolicyContent = components["schemas"]["PolicyDefinitionInput-Output"];
 type WorkflowContent = components["schemas"]["WorkflowDefinitionInput-Output"];
 
 export interface DefinitionKindOption {
@@ -39,10 +39,10 @@ export interface WorkflowNodeSummary {
     readonly childCount: number;
     readonly description: string;
     readonly depth: number;
-    readonly id: string;
-    readonly policy: string | null;
+    readonly nodeKey: string;
+    readonly policyId: string;
     readonly producedSlots: readonly string[];
-    readonly role: string;
+    readonly roleId: string;
     readonly title: string | null;
 }
 
@@ -169,11 +169,11 @@ export function mapDefinitionDetail(
     detail: DefinitionRevisionDetailResponse,
 ): DefinitionDetailView {
     if (kind === "policy") {
-        const content = detail.content as Partial<PolicyContent>;
+        const content = detail.content as PolicyContent;
         return {
-            appliesTo: content.applies_to ?? [],
+            appliesTo: content.applies_to,
             budgetSpec: content.budget_spec ?? null,
-            description: content.description ?? detail.key,
+            description: content.description,
             instruction: content.instruction ?? null,
             key: detail.key,
             kind,
@@ -184,11 +184,11 @@ export function mapDefinitionDetail(
     }
 
     if (kind === "workflow") {
-        const content = detail.content as Partial<WorkflowContent>;
-        const root = content.root ?? fallbackWorkflowRoot(detail.key, content.description);
+        const content = detail.content as WorkflowContent;
+        const root = content.root;
         const visibleNodes = summarizeWorkflowNodes(root);
         return {
-            description: content.description ?? detail.key,
+            description: content.description,
             firstLevelNodes: (root.children ?? []).map((node) => summarizeWorkflowNode(node, 1)),
             key: detail.key,
             kind,
@@ -202,10 +202,10 @@ export function mapDefinitionDetail(
         };
     }
 
-    const content = detail.content as Partial<RoleContent>;
+    const content = detail.content as RoleContent;
     return {
-        allowedNodeKinds: content.allowed_node_kinds ?? [],
-        description: content.description ?? detail.key,
+        allowedNodeKinds: content.allowed_node_kinds,
+        description: content.description,
         instruction: content.instruction ?? null,
         key: detail.key,
         kind,
@@ -297,10 +297,10 @@ function summarizeWorkflowNode(
         childCount: node.children?.length ?? 0,
         description: node.description,
         depth,
-        id: node.id,
-        policy: node.policy ?? null,
+        nodeKey: node.node_key,
+        policyId: node.policy_id,
         producedSlots: producedArtifactSlots(node),
-        role: node.role,
+        roleId: node.role_id,
         title: node.title ?? null,
     };
 }
@@ -346,23 +346,4 @@ function countWorkflowProducedArtifacts(
             0,
         )
     );
-}
-
-function fallbackWorkflowRoot(
-    key: string,
-    description: string | null | undefined,
-): WorkflowRootDefinition {
-    return {
-        child_defaults: null,
-        children: null,
-        criteria: null,
-        description: description ?? key,
-        id: "root",
-        instruction: null,
-        policy: null,
-        produces: null,
-        provider_preference: null,
-        role: key,
-        title: null,
-    };
 }

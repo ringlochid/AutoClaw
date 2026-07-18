@@ -36,6 +36,7 @@ from autoclaw.runtime.contracts.capabilities import EffectiveCapabilitySet
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.contracts.primitives import TaskRootPaths
 from autoclaw.runtime.contracts.provider_resolution import ProviderResolution
+from autoclaw.runtime.dispatch.opening import TaskResumeEventBasis
 from autoclaw.runtime.dispatch.ordinary_continuation import publish_dispatch_start_due
 from autoclaw.runtime.dispatch.preparation import (
     DispatchOpeningDependencies,
@@ -166,6 +167,7 @@ async def continue_paused_boundary(
     expected_active_flow_revision_id: str,
     expected_control_revision: int,
     dependencies: DispatchOpeningDependencies,
+    resume_event: TaskResumeEventBasis,
 ) -> BoundaryOpeningResult:
     """Directly consume one repaired boundary retained by an exact paused flow."""
 
@@ -193,6 +195,7 @@ async def continue_paused_boundary(
         session,
         snapshot=snapshot,
         prepared=prepared,
+        resume_event=resume_event,
     ):
         raise _boundary_continue_conflict("another controller transition won during continue")
     publish_dispatch_start_due(dependencies, prepared)

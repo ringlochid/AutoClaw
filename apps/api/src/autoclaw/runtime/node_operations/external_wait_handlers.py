@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shlex
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,8 @@ from autoclaw.runtime.contracts import (
     CommandRunStartResponse,
     CommandRunState,
     HumanRequestOpenResponse,
+    TaskEventSource,
+    TaskEventType,
 )
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.dispatch.authority import NodeOperationAuthority
@@ -19,6 +22,7 @@ from autoclaw.runtime.node_operations.contracts import (
     StartCommandRunRequest,
 )
 from autoclaw.runtime.node_operations.source_transitions import close_source_dispatch
+from autoclaw.runtime.task_events import append_task_event
 from autoclaw.runtime.task_root.logical_paths import normalize_logical_task_path
 
 
@@ -78,6 +82,25 @@ async def open_human_request(
             command_run_id=None,
         )
     )
+    await append_task_event(
+        session,
+        task_id=authority.task_id,
+        event_type=TaskEventType.HUMAN_REQUEST_OPENED,
+        event_source=TaskEventSource.NODE,
+        occurred_at=now,
+        flow_revision_id=authority.flow_revision_id,
+        dispatch_id=authority.dispatch_id,
+        attempt_id=authority.attempt_id,
+        node_key=authority.node_key,
+        payload={
+            "request_id": request_id,
+            "kind": body.kind.value,
+            "summary": body.summary,
+            "source_dispatch_id": authority.dispatch_id,
+            "due_at": body.timeout.due_at,
+            "opened_at": now,
+        },
+    )
     await session.commit()
     return HumanRequestOpenResponse(request_id=request_id, task_id=authority.task_id)
 
@@ -133,6 +156,29 @@ async def start_command_run(
             human_request_id=None,
             command_run_id=run_id,
         )
+    )
+    command = shlex.join(body.command.argv) if body.command.kind == "argv" else body.command.command
+    await append_task_event(
+        session,
+        task_id=authority.task_id,
+        event_type=TaskEventType.COMMAND_RUN_OPENED,
+        event_source=TaskEventSource.NODE,
+        occurred_at=now,
+        flow_revision_id=authority.flow_revision_id,
+        dispatch_id=authority.dispatch_id,
+        attempt_id=authority.attempt_id,
+        node_key=authority.node_key,
+        payload={
+            "run_id": run_id,
+            "source_dispatch_id": authority.dispatch_id,
+            "state": CommandRunState.PENDING_START.value,
+            "command": command,
+            "description": body.summary,
+            "workdir": cwd,
+            "created_at": now,
+            "timeout_seconds": body.timeout_seconds,
+            "ownership_revision": 0,
+        },
     )
     await session.commit()
     return CommandRunStartResponse(

@@ -103,19 +103,7 @@ export function RootsSection({ controller }: { readonly controller: TaskStartCon
                     controller.setField("workspaceHostPath", value);
                 }}
                 onModeChange={(mode) => {
-                    controller.setRootMode("workspace", mode);
-                }}
-            />
-            <RootBindingControl
-                error={controller.formErrors.contextHostPath}
-                hostPath={controller.form.contextHostPath}
-                label="Context"
-                mode={controller.form.contextMode}
-                onHostPathChange={(value) => {
-                    controller.setField("contextHostPath", value);
-                }}
-                onModeChange={(mode) => {
-                    controller.setRootMode("context", mode);
+                    controller.setWorkspaceMode(mode);
                 }}
             />
         </div>
@@ -183,7 +171,7 @@ function RootBindingControl({
                             onChange={(event) => {
                                 onHostPathChange(event.target.value);
                             }}
-                            placeholder={rootHostPathPlaceholder(label, mode)}
+                            placeholder={rootHostPathPlaceholder(mode)}
                             value={hostPath}
                         />
                     </FormField>
@@ -236,12 +224,8 @@ function RootModeButtons({
     );
 }
 
-function rootHostPathPlaceholder(label: string, mode: TaskRootMode): string {
-    if (label === "Workspace") {
-        return mode === "ensure_host_path" ? "/workspaces/new-task" : "/workspaces/existing-root";
-    }
-
-    return "/contexts/source-material";
+function rootHostPathPlaceholder(mode: TaskRootMode): string {
+    return mode === "ensure_host_path" ? "/workspaces/new-task" : "/workspaces/existing-root";
 }
 
 export function TaskStartActions({ controller }: { readonly controller: TaskStartController }) {
@@ -332,12 +316,6 @@ export function PreviewPanel({
                         {preview.workspaceModeLabel}
                     </p>
                     <p className="mt-1 text-compact text-muted">{preview.workspaceSummary}</p>
-                </PreviewReadbackRow>
-                <PreviewReadbackRow label="Context">
-                    <p className="font-display text-compact font-semibold text-foreground">
-                        {preview.contextModeLabel}
-                    </p>
-                    <p className="mt-1 text-compact text-muted">{preview.contextSummary}</p>
                 </PreviewReadbackRow>
             </dl>
         </TaskStartDialog>

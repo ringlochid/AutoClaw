@@ -38,6 +38,14 @@ from autoclaw.runtime.contracts.command_runs import (
     CommandSpec,
 )
 from autoclaw.runtime.contracts.flow import (
+    CommandRunSummary,
+    DispatchOpenedReason,
+    DispatchRuntimeRead,
+    DispatchRuntimeStatus,
+    EffectiveCapabilityReadback,
+    HumanRequestSummary,
+    ProviderStartReadback,
+    ProviderStartRetryKind,
     RuntimeFlowControlQuery,
     RuntimeFlowPauseReason,
     RuntimeFlowPauseResponse,
@@ -45,7 +53,10 @@ from autoclaw.runtime.contracts.flow import (
     RuntimeFlowSummary,
     RuntimeFlowSummaryListResponse,
     RuntimeFlowWaitingCause,
+    RuntimeLifecycleStatus,
     RuntimeTaskListQuery,
+    WorkPlanRead,
+    WorkPlanStepRead,
 )
 from autoclaw.runtime.contracts.human_requests import (
     HumanRequestContextRef,
@@ -66,7 +77,6 @@ from autoclaw.runtime.contracts.launch import (
     RuntimeBootstrapResult,
     RuntimeLaunchInput,
 )
-from autoclaw.runtime.contracts.observability import ObservabilityFileRef
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.contracts.operator import (
     BoundaryHistoryEntry,
@@ -100,13 +110,11 @@ from autoclaw.runtime.contracts.parent_tools import (
     UpdateChildSuccess,
 )
 from autoclaw.runtime.contracts.primitives import (
-    BoundaryStateTransition,
     CapabilityDecision,
     CheckpointKind,
     CheckpointOutcome,
     CommandRunState,
     CommandRunTerminalSource,
-    DispatchDeliveryStatus,
     EgressBoundary,
     EvidenceKind,
     EvidenceRef,
@@ -130,7 +138,6 @@ from autoclaw.runtime.contracts.primitives import (
     TaskRootBindingInput,
     TaskRootMode,
     TaskRootPaths,
-    WaitingCause,
 )
 from autoclaw.runtime.contracts.projection import (
     AssignmentProjection,
@@ -208,7 +215,14 @@ from autoclaw.runtime.contracts.refs import (
     WikiRef,
     WorkflowManifestRef,
 )
-from autoclaw.runtime.contracts.start import TaskStartRequest, TaskStartResponse
+from autoclaw.runtime.contracts.start import (
+    TaskComposeNodePreview,
+    TaskComposePreviewIssue,
+    TaskComposePreviewProviderResolution,
+    TaskComposePreviewResponse,
+    TaskStartRequest,
+    TaskStartResponse,
+)
 from autoclaw.runtime.contracts.task_events import (
     TaskEventListQuery,
     TaskEventListResponse,
@@ -235,7 +249,6 @@ __all__ = [
     "AssignmentProjection",
     "BoundaryHistoryEntry",
     "BoundaryRead",
-    "BoundaryStateTransition",
     "BoundaryWrite",
     "CapabilityCeilingSet",
     "CapabilityDecision",
@@ -270,16 +283,20 @@ __all__ = [
     "CommandRunStartRequest",
     "CommandRunStartResponse",
     "CommandRunState",
+    "CommandRunSummary",
     "CommandRunTerminalResult",
     "CommandRunTerminalResultRead",
     "CommandRunTerminalSource",
     "CommandShellSpec",
     "CommandSpec",
     "CriteriaRef",
-    "DispatchDeliveryStatus",
     "DispatchHistoryEntry",
+    "DispatchOpenedReason",
     "DispatchRequestRenderInput",
+    "DispatchRuntimeRead",
+    "DispatchRuntimeStatus",
     "DocRef",
+    "EffectiveCapabilityReadback",
     "EffectiveCapabilitySet",
     "EffectiveNetworkAccess",
     "EffectiveProviderNativeAccess",
@@ -302,6 +319,7 @@ __all__ = [
     "HumanRequestResolveRequest",
     "HumanRequestResolveResponse",
     "HumanRequestStatus",
+    "HumanRequestSummary",
     "HumanRequestTimeout",
     "HumanResultTrigger",
     "ManifestCurrentContextProjection",
@@ -317,7 +335,6 @@ __all__ = [
     "NodeKind",
     "NodeRuntimeFileKind",
     "NodeRuntimeFileRef",
-    "ObservabilityFileRef",
     "OpenClawProviderRoute",
     "OperationFailureCode",
     "OperatorContinueTrigger",
@@ -350,6 +367,8 @@ __all__ = [
     "ProviderResolution",
     "ProviderRoute",
     "ProviderSelectionBasis",
+    "ProviderStartReadback",
+    "ProviderStartRetryKind",
     "ReleaseBlockedPayload",
     "ReleaseBlockedSuccess",
     "ReleaseGreenPayload",
@@ -370,6 +389,7 @@ __all__ = [
     "RuntimeFlowSummaryListResponse",
     "RuntimeFlowWaitingCause",
     "RuntimeLaunchInput",
+    "RuntimeLifecycleStatus",
     "RuntimeTaskListQuery",
     "RuntimeText",
     "SemanticRetryTrigger",
@@ -380,6 +400,10 @@ __all__ = [
     "SupplementalDurableContext",
     "SupplementalSlot",
     "TaskComposeInput",
+    "TaskComposeNodePreview",
+    "TaskComposePreviewIssue",
+    "TaskComposePreviewProviderResolution",
+    "TaskComposePreviewResponse",
     "TaskComposeRootsInput",
     "TaskComposeTaskInput",
     "TaskComposeWorkflowInput",
@@ -402,9 +426,10 @@ __all__ = [
     "TransientSurfaceWrite",
     "UpdateChildPayload",
     "UpdateChildSuccess",
-    "WaitingCause",
     "WatchdogRecoveryTrigger",
     "WikiRef",
+    "WorkPlanRead",
+    "WorkPlanStepRead",
     "WorkflowManifestRef",
     "prompt_family_for_node_kind",
 ]

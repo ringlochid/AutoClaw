@@ -48,22 +48,37 @@ from ..tool_teaching import (
 SEARCH_DEFINITIONS_TEACHING = read_only_tool_teaching(
     name="search_definitions",
     summary="Search current controller-owned role, policy, or workflow definitions.",
-    details=(DISCOVER_CANDIDATES_NOTE,),
+    details=(
+        DISCOVER_CANDIDATES_NOTE,
+        "Returns current published registry entries, not drafts or revision history.",
+    ),
 )
 GET_DEFINITION_TEACHING = read_only_tool_teaching(
     name="get_definition",
     summary="Inspect one current definition revision.",
-    details=(INSPECT_CURRENT_REVISION_NOTE,),
+    details=(
+        INSPECT_CURRENT_REVISION_NOTE,
+        "Returns the current published registry revision, not a workbench draft.",
+    ),
 )
 LIST_DEFINITION_VERSIONS_TEACHING = read_only_tool_teaching(
     name="list_definition_versions",
     summary="Inspect definition revision history.",
-    details=(AUDIT_ONLY_NOTE,),
+    details=(
+        AUDIT_ONLY_NOTE,
+        "History is immutable readback; it does not change the current revision.",
+    ),
 )
 UPLOAD_DEFINITION_TEACHING = mutating_tool_teaching(
     name="upload_definition",
     summary="Load one definition file and create or update controller-owned definition truth.",
-    details=(LOCAL_FILE_PATH_NOTE, RUNTIME_STATE_WARNING, INSPECT_IF_UNSURE_NOTE),
+    details=(
+        LOCAL_FILE_PATH_NOTE,
+        "Creates a new published registry revision for future resolution.",
+        "Already pinned tasks and dispatches are unchanged.",
+        "The response means the registry transaction committed; it starts no task or provider.",
+        INSPECT_IF_UNSURE_NOTE,
+    ),
 )
 START_TASK_TEACHING = mutating_tool_teaching(
     name="start_task",
@@ -73,6 +88,9 @@ START_TASK_TEACHING = mutating_tool_teaching(
         RUNTIME_STATE_WARNING,
         REAL_RUNTIME_EFFECTS_NOTE,
         "This is not a dry run.",
+        "The response means task bootstrap and its flow-start source committed.",
+        "Root dispatch opening and provider start happen asynchronously after that commit; "
+        "the response does not mean an assignment or provider turn completed.",
     ),
 )
 

@@ -1,5 +1,6 @@
 import type { components } from "../../api/generated/openapi";
 import { mapCommandRunRow, mapHumanRequestQueueItem } from "../../api/view-models";
+import type { TaskEventType } from "../../api/view-models";
 import type { TaskDetailBootstrap } from "./task-detail-data";
 import { taskEventTone } from "./task-detail-tones";
 import type {
@@ -49,7 +50,7 @@ export function buildTaskDetailView({
     readonly bootstrap: TaskDetailBootstrap;
     readonly events: readonly components["schemas"]["TaskEventRecord"][];
 }): TaskDetailView {
-    const eventRows = events.filter(isVisibleTaskEventRecord).map(mapTaskEventRow);
+    const eventRows = events.map(mapTaskEventRow);
     const graphNodes = buildGraphNodes(bootstrap, eventRows);
     const graphEdges = buildGraphEdges(bootstrap, eventRows, graphNodes);
 
@@ -157,13 +158,6 @@ export function buildSelectedContext({
     };
 }
 
-function isVisibleTaskEventRecord(event: components["schemas"]["TaskEventRecord"]): boolean {
-    const eventType: string = event.event_type;
-    return (
-        eventType !== "provider_event_normalized" && eventType !== "provider_resolution_recorded"
-    );
-}
-
 function mapTaskEventRow(event: components["schemas"]["TaskEventRecord"]): TaskEventRow {
     return {
         actorRef: event.actor_ref ?? null,
@@ -231,19 +225,17 @@ function buildGraphNodes(
             attemptId: dispatch?.attempt_id ?? eventsForNode.at(-1)?.attemptId ?? null,
             checkpointSummary: checkpoint?.summary ?? null,
             eventCount: eventsForNode.length,
-            isActive:
-                isCurrent ||
-                dispatch?.delivery_status === "accepted" ||
-                dispatch?.delivery_status === "provider_signal_seen",
+            isActive: isCurrent,
             isCurrent,
             nodeKey,
             order: graphNode?.order_index ?? index + graphNodeEntries.length,
             status: resolveNodeStatus(isCurrent, dispatch, checkpoint),
             summary:
                 checkpoint?.summary ??
-                dispatch?.assignment_summary ??
                 graphNode?.description ??
-                dispatch?.delivery_status ??
+                (dispatch === undefined
+                    ? undefined
+                    : `Dispatch ${dispatch.status} via ${dispatch.resolved_provider}.`) ??
                 eventsForNode.at(-1)?.payloadSummary ??
                 "Controller-backed task context.",
         };
@@ -292,11 +284,11 @@ function buildGraphEdges(
             event.eventType === "child_assignment_committed" ||
             event.eventType === "child_assignment_staged"
         ) {
-            addEdge(
-                readString(payload, "parent_node_key"),
-                readString(payload, "target_node_key"),
-                "staged",
-            );
+            const parentAssignmentId = readString(payload, "parent_assignment_id");
+            const parentNodeKey = bootstrap.trace.dispatch_history.find(
+                (dispatch) => dispatch.assignment_id === parentAssignmentId,
+            )?.node_key;
+            addEdge(parentNodeKey ?? null, readString(payload, "child_node_key"), "staged");
         }
     }
 
@@ -375,22 +367,22 @@ function collectRefsFromPayload(payload: unknown, fallbackLabel: string): readon
     }
 
     const refs: TaskDetailRef[] = [];
-    const checkpointRef = readRecord(payload, "checkpoint_ref");
-    const latestCheckpointRef = readRecord(payload, "latest_checkpoint_ref");
-    const workflowManifestRef = readRecord(payload, "workflow_manifest_ref");
+    const checkpointRef = readString(payload, "checkpoint_ref");
+    const manifestRef = readString(payload, "manifest_ref");
+    const inputRef = readString(payload, "input_ref");
+    const instructionsRef = readString(payload, "instructions_ref");
 
     if (checkpointRef !== null) {
-        refs.push(refFromUnknownRecord(checkpointRef, "checkpoint_ref", fallbackLabel));
+        refs.push(refFromPath(checkpointRef, "checkpoint_ref", fallbackLabel));
     }
-    if (latestCheckpointRef !== null) {
-        refs.push(
-            refFromUnknownRecord(latestCheckpointRef, "latest_checkpoint_ref", fallbackLabel),
-        );
+    if (manifestRef !== null) {
+        refs.push(refFromPath(manifestRef, "manifest_ref", fallbackLabel));
     }
-    if (workflowManifestRef !== null) {
-        refs.push(
-            refFromUnknownRecord(workflowManifestRef, "workflow_manifest_ref", fallbackLabel),
-        );
+    if (inputRef !== null) {
+        refs.push(refFromPath(inputRef, "input_ref", fallbackLabel));
+    }
+    if (instructionsRef !== null) {
+        refs.push(refFromPath(instructionsRef, "instructions_ref", fallbackLabel));
     }
 
     refs.push(
@@ -399,8 +391,8 @@ function collectRefsFromPayload(payload: unknown, fallbackLabel: string): readon
         ),
     );
     refs.push(
-        ...readRecordArray(payload, "transient_refs").map((ref, index) =>
-            refFromUnknownRecord(ref, `transient ref ${String(index + 1)}`, fallbackLabel),
+        ...readRecordArray(payload, "transient_surfaces").map((ref, index) =>
+            refFromUnknownRecord(ref, `transient surface ${String(index + 1)}`, fallbackLabel),
         ),
     );
     return refs;
@@ -432,7 +424,7 @@ function buildCheckpointRows(
     const checkpointKind = readString(payload, "checkpoint_kind");
     const outcome = readString(payload, "outcome");
     const summary = readString(payload, "summary");
-    const nextStep = readString(payload, "next_step");
+    const checkpointRef = readString(payload, "checkpoint_ref");
     const selectedAttemptId = event?.attemptId ?? node?.attemptId ?? null;
     const checkpoint = findCheckpointEntry(view.trace.checkpoints, {
         attemptId: selectedAttemptId,
@@ -444,7 +436,7 @@ function buildCheckpointRows(
         detailRow("Kind", checkpointKind ?? checkpoint?.checkpoint_kind),
         detailRow("Outcome", outcome ?? checkpoint?.outcome),
         detailRow("Summary", summary ?? checkpoint?.summary),
-        detailRow("Next step", nextStep),
+        detailRow("Checkpoint ref", checkpointRef),
     ]);
 }
 
@@ -461,16 +453,11 @@ function buildAssignmentRows(
 
     return compactRows([
         detailRow("Node", node?.nodeKey ?? event?.nodeKey),
-        detailRow(
-            "Assignment key",
-            readString(payload, "assignment_key") ?? dispatch?.assignment_key,
-        ),
+        detailRow("Assignment", readString(payload, "assignment_id") ?? dispatch?.assignment_id),
         detailRow("Attempt", dispatch?.attempt_id ?? event?.attemptId),
-        detailRow("Delivery status", dispatch?.delivery_status),
-        detailRow(
-            "Assignment summary",
-            readString(payload, "assignment_summary") ?? dispatch?.assignment_summary,
-        ),
+        detailRow("Dispatch status", dispatch?.status),
+        detailRow("Opened reason", dispatch?.opened_reason),
+        detailRow("Provider", dispatch?.resolved_provider),
     ]);
 }
 
@@ -483,18 +470,14 @@ function buildBoundaryRows(
     const boundary = findBoundaryEntry(view.trace.boundaries, node, event);
 
     return compactRows([
-        detailRow("Boundary", readString(payload, "boundary") ?? boundary?.boundary),
+        detailRow("Boundary", readString(payload, "outcome") ?? boundary?.boundary),
+        detailRow("Node", boundary?.node_key ?? node?.nodeKey ?? event?.nodeKey),
         detailRow(
-            "Previous node",
-            readString(payload, "previous_node_key") ??
-                boundary?.previous_node_key ??
-                boundary?.node_key,
+            "Source dispatch",
+            readString(payload, "source_dispatch_id") ?? boundary?.source_dispatch_id,
         ),
-        detailRow("Next node", readString(payload, "next_node_key") ?? boundary?.next_node_key),
-        detailRow(
-            "Resulting status",
-            readString(payload, "resulting_flow_status") ?? boundary?.resulting_flow_status,
-        ),
+        detailRow("Successor dispatch", boundary?.successor_dispatch_id),
+        detailRow("Resulting status", readString(payload, "resulting_flow_status")),
         detailRow(
             "Occurred",
             readString(payload, "boundary") !== null || boundary !== undefined
@@ -541,16 +524,14 @@ function findBoundaryEntry(
     event: TaskEventRow | null,
 ): BoundaryHistoryEntry | undefined {
     const payload = event?.eventType === "boundary_accepted" ? event.record.payload : null;
-    const payloadBoundary = readString(payload, "boundary");
-    const payloadPrevious = readString(payload, "previous_node_key");
-    const payloadNext = readString(payload, "next_node_key");
+    const payloadBoundary = readString(payload, "outcome");
+    const sourceDispatchId = readString(payload, "source_dispatch_id");
 
-    if (payloadBoundary !== null || payloadPrevious !== null || payloadNext !== null) {
+    if (payloadBoundary !== null || sourceDispatchId !== null) {
         const payloadMatch = [...boundaries].reverse().find((boundary) => {
             return (
                 (payloadBoundary === null || boundary.boundary === payloadBoundary) &&
-                (payloadPrevious === null || boundary.previous_node_key === payloadPrevious) &&
-                (payloadNext === null || boundary.next_node_key === payloadNext)
+                (sourceDispatchId === null || boundary.source_dispatch_id === sourceDispatchId)
             );
         });
         if (payloadMatch !== undefined) {
@@ -560,11 +541,7 @@ function findBoundaryEntry(
 
     if (node !== null) {
         const nodeMatch = [...boundaries].reverse().find((boundary) => {
-            return (
-                boundary.node_key === node.nodeKey ||
-                boundary.previous_node_key === node.nodeKey ||
-                boundary.next_node_key === node.nodeKey
-            );
+            return boundary.node_key === node.nodeKey;
         });
         if (nodeMatch !== undefined) {
             return nodeMatch;
@@ -574,8 +551,8 @@ function findBoundaryEntry(
     return undefined;
 }
 
-function buildActionMode(status: components["schemas"]["FlowStatus"]): TaskActionMode {
-    if (status === "succeeded" || status === "cancelled") {
+function buildActionMode(status: components["schemas"]["RuntimeLifecycleStatus"]): TaskActionMode {
+    if (status === "completed" || status === "cancelled") {
         return {
             canCancel: false,
             canContinue: false,
@@ -612,16 +589,13 @@ function resolveNodeStatus(
     if (checkpoint?.outcome === "green" || checkpoint?.checkpoint_kind === "terminal") {
         return "done";
     }
-    if (dispatch?.delivery_status === "prepared") {
+    if (dispatch?.status === "starting") {
         return "staged";
     }
     return "quiet";
 }
 
-function summarizePayload(
-    eventType: components["schemas"]["TaskEventType"],
-    payload: unknown,
-): string {
+function summarizePayload(eventType: TaskEventType, payload: unknown): string {
     if (!isRecord(payload)) {
         return eventType;
     }
@@ -629,7 +603,6 @@ function summarizePayload(
     return (
         readString(payload, "summary") ??
         readString(payload, "task_title") ??
-        readString(payload, "assignment_summary") ??
         readString(payload, "description") ??
         readString(payload, "state") ??
         readString(payload, "status") ??
@@ -638,10 +611,7 @@ function summarizePayload(
     );
 }
 
-function collectPayloadNodeKeys(
-    eventType: components["schemas"]["TaskEventType"],
-    payload: unknown,
-): readonly string[] {
+function collectPayloadNodeKeys(eventType: TaskEventType, payload: unknown): readonly string[] {
     if (!isRecord(payload)) {
         return [];
     }
@@ -649,7 +619,7 @@ function collectPayloadNodeKeys(
     const nodeKeys = [
         readString(payload, "initial_node_key"),
         readString(payload, "node_key"),
-        readString(payload, "parent_node_key"),
+        readString(payload, "child_node_key"),
     ].filter((value): value is string => value !== null);
 
     if (
@@ -665,6 +635,16 @@ function collectPayloadNodeKeys(
 
     nodeKeys.push(...readStringArray(payload, "affected_node_keys"));
     return nodeKeys;
+}
+
+function refFromPath(path: string, label: string, description: string): TaskDetailRef {
+    return {
+        description,
+        kind: label,
+        label,
+        path,
+        slot: null,
+    };
 }
 
 function refFromWorkflowManifest(ref: components["schemas"]["WorkflowManifestRef"]): TaskDetailRef {
@@ -737,15 +717,6 @@ function readString(value: unknown, key: string): string | null {
         return String(item);
     }
     return null;
-}
-
-function readRecord(value: unknown, key: string): Record<string, unknown> | null {
-    if (!isRecord(value)) {
-        return null;
-    }
-
-    const item = value[key];
-    return isRecord(item) ? item : null;
 }
 
 function readRecordArray(value: unknown, key: string): readonly Record<string, unknown>[] {

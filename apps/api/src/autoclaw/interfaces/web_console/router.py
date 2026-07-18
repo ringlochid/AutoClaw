@@ -7,7 +7,6 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
-from autoclaw.config import get_settings
 from autoclaw.interfaces.web_console import (
     get_packaged_web_console_assets_root,
     is_packaged_web_console_available,
@@ -21,7 +20,6 @@ class WebConsoleRuntimeConfig(BaseModel):
     model_config = ConfigDict(frozen=True, populate_by_name=True, serialize_by_alias=True)
 
     api_base_url: str = Field(serialization_alias="apiBaseUrl")
-    api_key: str = Field(serialization_alias="apiKey")
 
 
 def mount_packaged_web_console(app: FastAPI) -> None:
@@ -41,10 +39,8 @@ def mount_packaged_web_console(app: FastAPI) -> None:
 
 @web_console_router.get("/console/config")
 async def get_web_console_runtime_config(request: Request) -> JSONResponse:
-    settings = get_settings()
     runtime_config = WebConsoleRuntimeConfig(
         api_base_url=_request_origin(request),
-        api_key=settings.api_key,
     )
     return JSONResponse(
         content=runtime_config.model_dump(mode="json", by_alias=True),

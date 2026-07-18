@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import ipaddress
 import os
 import re
 import tomllib
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import (
     AliasChoices,
@@ -30,6 +32,60 @@ _ENV_FILE = REPO_ROOT / ".env"
 ConfigText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 ProviderConfigText = Annotated[str, StringConstraints(strip_whitespace=True)]
 _POSTGRES_SCHEMA_PATTERN = re.compile(r"[a-z_][a-z0-9_$]{0,62}\Z")
+
+
+def normalize_loopback_host(value: str) -> str:
+    """Return one canonical loopback listener host or reject it."""
+    normalized_host = value.strip()
+    has_opening_bracket = normalized_host.startswith("[")
+    has_closing_bracket = normalized_host.endswith("]")
+    if has_opening_bracket != has_closing_bracket:
+        raise ValueError("api_host has mismatched IPv6 brackets")
+    if has_opening_bracket:
+        normalized_host = normalized_host[1:-1]
+    elif "[" in normalized_host or "]" in normalized_host:
+        raise ValueError("api_host has invalid IPv6 brackets")
+    if "%" in normalized_host:
+        raise ValueError("api_host must not contain an IPv6 scope identifier")
+    if normalized_host.casefold() == "localhost":
+        return "localhost"
+    try:
+        parsed_host = ipaddress.ip_address(normalized_host)
+    except ValueError as exc:
+        raise ValueError("api_host must be a loopback IP address or localhost") from exc
+    if not parsed_host.is_loopback:
+        raise ValueError("api_host must be loopback-only")
+    return parsed_host.compressed
+
+
+def format_loopback_authority(host: str, port: int) -> str:
+    """Render a validated loopback host and port as an HTTP authority."""
+    normalized_host = normalize_loopback_host(host)
+    rendered_host = f"[{normalized_host}]" if ":" in normalized_host else normalized_host
+    return f"{rendered_host}:{port}"
+
+
+def normalize_loopback_origin(value: str) -> str:
+    """Return one canonical absolute loopback HTTP origin or reject it."""
+    normalized_value = value.strip()
+    parsed_origin = urlsplit(normalized_value)
+    if parsed_origin.scheme.casefold() not in {"http", "https"}:
+        raise ValueError("console origins must use HTTP or HTTPS")
+    if parsed_origin.hostname is None:
+        raise ValueError("console origins must be absolute")
+    if parsed_origin.username is not None or parsed_origin.password is not None:
+        raise ValueError("console origins must not contain user information")
+    if parsed_origin.path not in {"", "/"} or parsed_origin.query or parsed_origin.fragment:
+        raise ValueError("console origins must not contain a path, query, or fragment")
+    try:
+        port = parsed_origin.port
+    except ValueError as exc:
+        raise ValueError("console origins must contain a valid port") from exc
+
+    host = normalize_loopback_host(parsed_origin.hostname)
+    rendered_host = f"[{host}]" if ":" in host else host
+    netloc = rendered_host if port is None else f"{rendered_host}:{port}"
+    return urlunsplit((parsed_origin.scheme.casefold(), netloc, "", "", ""))
 
 
 class CodexSettings(BaseModel):
@@ -97,12 +153,11 @@ class Settings(BaseSettings):
             "http://localhost:4173",
         ]
     )
-    api_host: str = "127.0.0.1"
-    api_port: int = DEFAULT_API_PORT
+    api_host: ConfigText = "127.0.0.1"
+    api_port: int = Field(default=DEFAULT_API_PORT, ge=1, le=65535)
     log_level: str = DEFAULT_LOG_LEVEL
     config_path: Path = Field(default_factory=default_config_path)
     data_dir: Path = Field(default_factory=default_data_dir)
-    api_key: str = ""
     codex: CodexSettings = Field(default_factory=CodexSettings)
     claude: ClaudeSettings = Field(default_factory=ClaudeSettings)
     openclaw: OpenClawSettings = Field(default_factory=OpenClawSettings)
@@ -119,6 +174,16 @@ class Settings(BaseSettings):
         if value == "public" or value == "information_schema" or value.startswith("pg_"):
             raise ValueError("postgres_schema must name a dedicated non-system schema")
         return value
+
+    @field_validator("api_host")
+    @classmethod
+    def validate_api_host(cls, value: str) -> str:
+        return normalize_loopback_host(value)
+
+    @field_validator("console_origins")
+    @classmethod
+    def validate_console_origins(cls, values: list[str]) -> list[str]:
+        return list(dict.fromkeys(normalize_loopback_origin(value) for value in values))
 
     @property
     def debug(self) -> bool:
@@ -167,13 +232,7 @@ class TomlConfigSettingsSource(PydanticBaseSettingsSource):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    settings = load_settings()
-    if settings.env == Environment.TEST:
-        return settings
-
-    if not settings.api_key:
-        raise RuntimeError("AUTOCLAW_API_KEY is required for non-test environments")
-    return settings
+    return load_settings()
 
 
 def load_settings() -> Settings:
@@ -188,9 +247,6 @@ def load_settings() -> Settings:
     settings.data_dir = _coerce_path(settings.data_dir)
     if "database_url" not in settings.model_fields_set:
         settings.database_url = default_database_url(settings.data_dir)
-    if settings.env == Environment.TEST:
-        if not settings.api_key:
-            settings.api_key = "autoclaw-test-key"
     return settings
 
 
@@ -239,7 +295,6 @@ def _load_toml_settings() -> dict[str, Any]:
         "api_host": ("server", "host"),
         "api_port": ("server", "port"),
         "log_level": ("logging", "level"),
-        "api_key": ("security", "api_key"),
     }
     for field_name, key_path in field_mapping.items():
         value = _nested_get(payload, *key_path)
@@ -264,6 +319,9 @@ __all__ = [
     "RuntimeSettings",
     "Settings",
     "TomlConfigSettingsSource",
+    "format_loopback_authority",
     "get_settings",
     "load_settings",
+    "normalize_loopback_host",
+    "normalize_loopback_origin",
 ]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shlex
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -144,9 +145,15 @@ async def mark_command_run_running(
         attempt_id=claim.attempt_id,
         payload={
             "run_id": claim.run_id,
+            "source_dispatch_id": claim.source_dispatch_id,
             "state": CommandRunState.RUNNING.value,
+            "command": _command_display(claim.request),
+            "description": claim.request.summary,
+            "workdir": claim.request.cwd,
+            "started_at": started_at,
             "ownership_revision": claim.ownership_revision,
-            "due_at": due_at.isoformat() if due_at is not None else None,
+            "due_at": due_at,
+            "log_refs": [claim.stdout_log_ref, claim.stderr_log_ref],
         },
     )
     await session.commit()
@@ -273,10 +280,19 @@ async def terminalize_command_run(
         actor_ref=actor_ref,
         payload={
             "run_id": source.run_id,
+            "source_dispatch_id": source.source_dispatch_id,
             "state": terminal_state.value,
+            "summary": summary,
+            "started_at": source.started_at,
+            "ended_at": ended_at,
             "exit_code": exit_code,
             "failure_code": failure_code,
             "ownership_revision": expected_ownership_revision,
+            "log_refs": [
+                ref
+                for ref in (source.stdout_logical_path, source.stderr_logical_path)
+                if ref is not None
+            ],
         },
     )
     await session.commit()
@@ -302,6 +318,12 @@ def command_run_request_from_model(source: CommandRunModel) -> CommandRunStartRe
             "expected_outputs": source.expected_outputs_json or (),
         }
     )
+
+
+def _command_display(request: CommandRunStartRequest) -> str:
+    if request.command.kind == "argv":
+        return shlex.join(request.command.argv)
+    return request.command.command
 
 
 __all__ = [

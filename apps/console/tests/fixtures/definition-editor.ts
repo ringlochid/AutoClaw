@@ -185,19 +185,6 @@ export function createDefinitionEditorPublish(
     };
 }
 
-export function createDefinitionEditorAuthFailure() {
-    return {
-        detail: {
-            code: "illegal_caller",
-            field_path: null,
-            ok: false,
-            retryable: false,
-            suggested_next_step: "Provide a valid operator API key.",
-            summary: "Definition authoring requires an operator API key.",
-        },
-    };
-}
-
 export function bodyForKind(
     kind: components["schemas"]["DefinitionKind"],
     key: string,

@@ -9,15 +9,14 @@ from fastapi import APIRouter, Depends, Header, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from autoclaw.interfaces.http.contracts.operation_failure import OperationFailure
 from autoclaw.interfaces.http.dependencies import (
     read_control_actor_ref,
     read_dispatch_opening_dependencies,
     read_runtime_effect_publisher,
-    require_api_key,
 )
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session, get_session_factory
-from autoclaw.persistence.session_operations import write_session_operation
 from autoclaw.runtime.command_run.service import (
     cancel_command_run,
     list_command_runs,
@@ -59,7 +58,7 @@ from autoclaw.runtime.task_events import (
     list_task_events,
 )
 
-router = APIRouter(prefix="/control", tags=["control"], dependencies=[Depends(require_api_key)])
+router = APIRouter(prefix="/control", tags=["control"])
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 type ControlActorRefDep = Annotated[str | None, Depends(read_control_actor_ref)]
 type RuntimeEffectPublisherDep = Annotated[
@@ -74,7 +73,7 @@ type OperatorTraceParams = Annotated[OperatorFlowTraceQuery, Query()]
 type TaskEventListParams = Annotated[TaskEventListQuery, Query()]
 type RuntimeFlowControlParams = Annotated[RuntimeFlowControlQuery, Query()]
 type CommandRunCursor = Annotated[str | None, Query(min_length=1)]
-type CommandRunLimit = Annotated[int, Query(ge=1, le=250)]
+type CommandRunLimit = Annotated[int, Query(ge=1, le=200)]
 type TaskEventStreamCursor = Annotated[str | None, Query(min_length=1)]
 type LastEventIdHeader = Annotated[str | None, Header(alias="Last-Event-ID", min_length=1)]
 
@@ -102,16 +101,13 @@ async def pause_control_task(
     runtime_effect_publisher: RuntimeEffectPublisherDep,
 ) -> RuntimeFlowPauseResponse:
     try:
-        return await write_session_operation(
-            lambda active_session: pause_runtime_flow(
-                active_session,
-                task_id,
-                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
-                expected_control_revision=query.expected_control_revision,
-                actor_ref=actor_ref,
-                runtime_effect_publisher=runtime_effect_publisher,
-            ),
-            session=session,
+        return await pause_runtime_flow(
+            session,
+            task_id,
+            expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+            expected_control_revision=query.expected_control_revision,
+            actor_ref=actor_ref,
+            runtime_effect_publisher=runtime_effect_publisher,
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
@@ -126,16 +122,13 @@ async def continue_control_task(
     dependencies: DispatchOpeningDependenciesDep,
 ) -> RuntimeFlowRead:
     try:
-        return await write_session_operation(
-            lambda active_session: continue_runtime_flow(
-                active_session,
-                task_id,
-                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
-                expected_control_revision=query.expected_control_revision,
-                dependencies=dependencies,
-                actor_ref=actor_ref,
-            ),
-            session=session,
+        return await continue_runtime_flow(
+            session,
+            task_id,
+            expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+            expected_control_revision=query.expected_control_revision,
+            dependencies=dependencies,
+            actor_ref=actor_ref,
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
@@ -150,16 +143,13 @@ async def cancel_control_task(
     runtime_effect_publisher: RuntimeEffectPublisherDep,
 ) -> RuntimeFlowRead:
     try:
-        return await write_session_operation(
-            lambda active_session: cancel_runtime_flow(
-                active_session,
-                task_id,
-                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
-                expected_control_revision=query.expected_control_revision,
-                actor_ref=actor_ref,
-                runtime_effect_publisher=runtime_effect_publisher,
-            ),
-            session=session,
+        return await cancel_runtime_flow(
+            session,
+            task_id,
+            expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+            expected_control_revision=query.expected_control_revision,
+            actor_ref=actor_ref,
+            runtime_effect_publisher=runtime_effect_publisher,
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
@@ -289,21 +279,22 @@ async def cancel_control_command_run(
     runtime_effect_publisher: RuntimeEffectPublisherDep,
 ) -> CommandRunCancelResponse:
     try:
-        return await write_session_operation(
-            lambda active_session: cancel_command_run(
-                active_session,
-                task_id=task_id,
-                run_id=run_id,
-                actor_ref=actor_ref,
-                runtime_effect_publisher=runtime_effect_publisher,
-            ),
-            session=session,
+        return await cancel_command_run(
+            session,
+            task_id=task_id,
+            run_id=run_id,
+            actor_ref=actor_ref,
+            runtime_effect_publisher=runtime_effect_publisher,
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
 
 
-@router.get("/tasks/{task_id}/events", response_model=TaskEventListResponse)
+@router.get(
+    "/tasks/{task_id}/events",
+    response_model=TaskEventListResponse,
+    responses={410: {"model": OperationFailure}},
+)
 async def get_control_task_events(
     task_id: str,
     session: DBSession,
@@ -322,7 +313,10 @@ async def get_control_task_events(
         raise_runtime_exception(exc)
 
 
-@router.get("/tasks/{task_id}/events/stream")
+@router.get(
+    "/tasks/{task_id}/events/stream",
+    responses={410: {"model": OperationFailure}},
+)
 async def stream_control_task_events(
     task_id: str,
     cursor: TaskEventStreamCursor = None,
@@ -389,7 +383,6 @@ async def _stream_task_event_records(
     task_id: str,
     cursor: str | None,
 ) -> AsyncIterator[str]:
-    delivered_event_ids: set[str] = set()
     current_cursor = cursor
     while True:
         async with get_session_factory()() as session:
@@ -400,10 +393,7 @@ async def _stream_task_event_records(
                 limit=_TASK_EVENT_STREAM_PAGE_SIZE,
             )
         for event in event_page.items:
-            if event.event_id in delivered_event_ids:
-                continue
             yield _render_task_event_sse(event)
-            delivered_event_ids.add(event.event_id)
             current_cursor = event.event_id
         await asyncio.sleep(_TASK_EVENT_STREAM_POLL_SECONDS)
 

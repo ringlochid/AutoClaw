@@ -16,12 +16,15 @@ export interface TaskEventItem {
     readonly eventId: string;
     readonly eventSeq: number;
     readonly eventSource: components["schemas"]["TaskEventSource"];
-    readonly eventType: components["schemas"]["TaskEventType"];
+    readonly eventType: TaskEventType;
     readonly flowRevisionId: string | null;
     readonly nodeKey: string | null;
     readonly occurredAt: string;
     readonly taskId: string;
 }
+
+export type TaskEventRecord = components["schemas"]["TaskEventRecord"];
+export type TaskEventType = TaskEventRecord["event_type"];
 
 export interface HumanRequestQueueItem {
     readonly itemCount: number;
@@ -115,7 +118,7 @@ export function mapHumanRequestQueueItem(
         status: request.status,
         summary: request.summary,
         taskId: request.task_id,
-        title: request.title,
+        title: request.summary,
     };
 }
 

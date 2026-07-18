@@ -14,7 +14,6 @@ import pytest_asyncio
 
 os.environ["AUTOCLAW_ENV"] = "test"
 os.environ["AUTOCLAW_DEBUG"] = "false"
-os.environ["AUTOCLAW_API_KEY"] = "autoclaw-operator-test-key"
 _TEST_CONFIG_PATH = Path(gettempdir()) / (f"autoclaw-pytest-{os.getpid()}-{uuid4().hex}.toml")
 if _TEST_CONFIG_PATH.exists():
     raise RuntimeError(f"pytest config isolation path unexpectedly exists: {_TEST_CONFIG_PATH}")

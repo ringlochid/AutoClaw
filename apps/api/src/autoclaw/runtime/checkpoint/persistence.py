@@ -19,12 +19,14 @@ from autoclaw.persistence.models import (
     TransientLocalizationModel,
 )
 from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.contracts import TaskEventSource, TaskEventType
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.dispatch.authority import (
     NodeOperationAuthority,
     exact_node_operation_authority_exists,
 )
 from autoclaw.runtime.errors import RuntimeOperationError
+from autoclaw.runtime.task_events import append_task_event
 
 from .models import ArtifactBodyPreparation, CheckpointPreparation
 
@@ -66,6 +68,46 @@ async def commit_checkpoint_preparation(
             now=now,
         )
         await _advance_attempt_latest_checkpoint(session, authority, preparation)
+        await append_task_event(
+            session,
+            task_id=authority.task_id,
+            event_type=TaskEventType.CHECKPOINT_RECORDED,
+            event_source=TaskEventSource.NODE,
+            occurred_at=now,
+            flow_revision_id=authority.flow_revision_id,
+            dispatch_id=authority.dispatch_id,
+            attempt_id=authority.attempt_id,
+            node_key=authority.node_key,
+            payload={
+                "checkpoint_id": preparation.checkpoint_id,
+                "assignment_id": authority.assignment_id,
+                "attempt_id": authority.attempt_id,
+                "checkpoint_kind": body.checkpoint_kind.value,
+                "outcome": body.outcome.value if body.outcome is not None else None,
+                "summary": body.handoff.summary,
+                "checkpoint_ref": (
+                    f"_runtime/attempts/{authority.attempt_id}/latest-checkpoint.md"
+                ),
+                "produced_artifacts": [
+                    {
+                        "publication_id": artifact.artifact_publication_id,
+                        "slot": artifact.slot,
+                        "path": artifact.final_logical_path,
+                        "version": artifact.version,
+                    }
+                    for artifact in preparation.artifacts
+                ],
+                "transient_surfaces": [
+                    {
+                        "localization_id": transient.transient_localization_id,
+                        "path": transient.final_logical_path,
+                        "description": transient.description,
+                    }
+                    for transient in preparation.transients
+                ],
+                "authored_by_dispatch_id": authority.dispatch_id,
+            },
+        )
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()

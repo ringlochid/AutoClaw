@@ -10,7 +10,6 @@ from typing import TextIO
 from autoclaw.interfaces.cli.terminal.theme import rich_enabled
 
 SENSITIVE_OPTION_NAMES = {
-    "--api-key",
     "--password",
     "--token",
 }

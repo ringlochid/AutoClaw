@@ -57,6 +57,19 @@ def test_node_transport_policy_accepts_only_exact_loopback_authorities() -> None
         )
 
 
+def test_node_transport_policy_formats_ipv6_authorities_for_http_headers() -> None:
+    policy = node_mcp_transport_policy(
+        host="::1",
+        port=18125,
+        allowed_origins=("http://[::1]:5173",),
+    )
+
+    assert "[::1]:18125" in policy.allowed_hosts
+    assert "http://[::1]:18125" in policy.allowed_origins
+    assert "http://[::1]:5173" in policy.allowed_origins
+    assert not any("*" in value for value in (*policy.allowed_hosts, *policy.allowed_origins))
+
+
 async def _initialize(
     app: Starlette,
     *,
@@ -66,7 +79,7 @@ async def _initialize(
     request_headers = {**_MCP_HEADERS, **dict(headers or {})}
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app, client=(client_host, 43125)),
-        base_url="http://127.0.0.1",
+        base_url="http://127.0.0.1:18125",
     ) as client:
         return await client.post("/mcp", headers=request_headers, json=_INITIALIZE_REQUEST)
 

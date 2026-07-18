@@ -10,19 +10,6 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from autoclaw.platform.file_entrypoints import load_yaml_mapping, resolved_input_path
 
-_DEFAULT_ALLOWED_HOSTS = (
-    "127.0.0.1",
-    "127.0.0.1:*",
-    "localhost",
-    "localhost:*",
-)
-_DEFAULT_ALLOWED_ORIGINS = (
-    "http://127.0.0.1",
-    "http://127.0.0.1:*",
-    "http://localhost",
-    "http://localhost:*",
-)
-
 
 @dataclass(frozen=True, slots=True)
 class NodeMcpTransportPolicy:
@@ -37,28 +24,17 @@ class NodeMcpTransportPolicy:
         )
 
 
-def default_transport_security(
+def local_mcp_transport_security(
     *,
     host: str,
-    extra_hosts: Sequence[str] = (),
-    extra_origins: Sequence[str] = (),
+    port: int,
+    allowed_origins: Sequence[str] = (),
 ) -> TransportSecuritySettings:
-    allowed_hosts = list(dict.fromkeys((*_DEFAULT_ALLOWED_HOSTS, host, f"{host}:*", *extra_hosts)))
-    allowed_origins = list(
-        dict.fromkeys(
-            (
-                *_DEFAULT_ALLOWED_ORIGINS,
-                f"http://{host}",
-                f"http://{host}:*",
-                *extra_origins,
-            )
-        )
-    )
-    return TransportSecuritySettings(
-        enable_dns_rebinding_protection=True,
-        allowed_hosts=allowed_hosts,
+    return node_mcp_transport_policy(
+        host=host,
+        port=port,
         allowed_origins=allowed_origins,
-    )
+    ).as_sdk_settings()
 
 
 def node_mcp_transport_policy(
@@ -71,9 +47,7 @@ def node_mcp_transport_policy(
     if not 1 <= port <= 65535:
         raise ValueError("Node MCP port must be between 1 and 65535")
     host_aliases = {"127.0.0.1", "localhost", "[::1]", _host_header_name(host)}
-    host_values = {
-        value for host_alias in host_aliases for value in (host_alias, f"{host_alias}:{port}")
-    }
+    host_values = {f"{host_alias}:{port}" for host_alias in host_aliases}
     api_origins = {f"http://{host_alias}:{port}" for host_alias in host_aliases}
     normalized_origins = {_require_loopback_origin(origin) for origin in allowed_origins}
     return NodeMcpTransportPolicy(
@@ -127,8 +101,8 @@ def _require_loopback_origin(origin: str) -> str:
 
 __all__ = [
     "NodeMcpTransportPolicy",
-    "default_transport_security",
     "load_yaml_mapping",
+    "local_mcp_transport_security",
     "node_mcp_transport_policy",
     "resolved_path",
 ]

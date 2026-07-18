@@ -23,7 +23,6 @@ async def test_readyz_uses_real_database(tmp_path: Path) -> None:
                 host="127.0.0.1",
                 port=8123,
                 log_level="INFO",
-                api_key="api-test-key",
                 force=True,
                 skip_db_upgrade=False,
                 json=False,
@@ -35,7 +34,7 @@ async def test_readyz_uses_real_database(tmp_path: Path) -> None:
             app = create_app()
             async with AsyncClient(
                 transport=ASGITransport(app=app),
-                base_url="http://test",
+                base_url="http://127.0.0.1:8123",
             ) as client:
                 response = await client.get("/readyz")
     finally:

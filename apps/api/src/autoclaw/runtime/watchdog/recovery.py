@@ -213,7 +213,7 @@ async def _commit_watchdog_replacement(
         await session.rollback()
         return False
 
-    stage_starting_dispatch(
+    await stage_starting_dispatch(
         session,
         basis=StartingDispatchBasis(
             task_id=prompt.task_id,
@@ -226,23 +226,6 @@ async def _commit_watchdog_replacement(
             flow_start_source_flow_id=None,
         ),
         prepared=prepared,
-    )
-    await append_task_event(
-        session,
-        task_id=prompt.task_id,
-        event_type=TaskEventType.DISPATCH_OPENED,
-        event_source=TaskEventSource.CONTROLLER,
-        occurred_at=committed_at,
-        flow_revision_id=prompt.flow_revision_id,
-        dispatch_id=prepared.dispatch_id,
-        attempt_id=prompt.attempt_id,
-        node_key=prompt.node_key,
-        payload={
-            "opened_reason": "watchdog_recovery",
-            "predecessor_dispatch_id": prompt.predecessor_dispatch_id,
-            "recovery_count": snapshot.same_attempt_replacement_count + 1,
-            "status": "starting",
-        },
     )
     try:
         await session.commit()
@@ -470,7 +453,12 @@ async def _commit_watchdog_pause(
         attempt_id=attempt_id,
         node_key=node_key,
         actor_ref="controller.runtime",
-        payload={"reason": pause_reason, **details},
+        payload={
+            "pause_reason": pause_reason,
+            "control_revision": control_revision + 1,
+            "actor_ref": "controller.runtime",
+            "summary": _pause_event_summary(pause_reason, details),
+        },
     )
     try:
         await session.commit()
@@ -478,6 +466,13 @@ async def _commit_watchdog_pause(
         await session.rollback()
         raise
     return True
+
+
+def _pause_event_summary(pause_reason: str, details: dict[str, object]) -> str:
+    failure_code = details.get("failure_code")
+    if isinstance(failure_code, str):
+        return f"Runtime recovery paused the task: {failure_code}."
+    return f"Runtime recovery paused the task: {pause_reason}."
 
 
 def _publish_dispatch_start(

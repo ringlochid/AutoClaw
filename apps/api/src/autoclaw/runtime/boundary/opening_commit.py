@@ -18,7 +18,11 @@ from autoclaw.persistence.models import (
     TaskModel,
     WorkspaceBindingModel,
 )
-from autoclaw.runtime.dispatch.opening import StartingDispatchBasis, stage_starting_dispatch
+from autoclaw.runtime.dispatch.opening import (
+    StartingDispatchBasis,
+    TaskResumeEventBasis,
+    stage_starting_dispatch,
+)
 from autoclaw.runtime.dispatch.preparation import PreparedDispatchRequest
 from autoclaw.runtime.dispatch.prompt_snapshot import BoundaryPromptSnapshot
 
@@ -69,6 +73,7 @@ async def commit_boundary_dispatch_if_current(
     *,
     snapshot: BoundaryOpeningCommitSnapshot,
     prepared: PreparedDispatchRequest,
+    resume_event: TaskResumeEventBasis | None = None,
 ) -> bool:
     prompt = snapshot.prompt
     claimed = await session.scalar(
@@ -118,7 +123,7 @@ async def commit_boundary_dispatch_if_current(
     if updated_flow is None:
         await session.rollback()
         return False
-    stage_starting_dispatch(
+    await stage_starting_dispatch(
         session,
         basis=StartingDispatchBasis(
             task_id=prompt.task_id,
@@ -129,6 +134,7 @@ async def commit_boundary_dispatch_if_current(
             opened_reason=snapshot.opened_reason,
             predecessor_dispatch_id=prompt.predecessor_dispatch_id,
             flow_start_source_flow_id=None,
+            resume_event=resume_event,
         ),
         prepared=prepared,
     )

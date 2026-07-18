@@ -5,13 +5,11 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from autoclaw.definitions.contracts.workflow import NodeKind
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
-from autoclaw.runtime.contracts.flow import RuntimeFlowRead
+from autoclaw.runtime.contracts.flow import EffectiveCapabilityReadback, RuntimeFlowRead
 from autoclaw.runtime.contracts.primitives import (
     CheckpointKind,
     CheckpointOutcome,
-    DispatchDeliveryStatus,
     EgressBoundary,
-    FlowStatus,
 )
 from autoclaw.runtime.contracts.refs import (
     ArtifactIndexRef,
@@ -21,7 +19,6 @@ from autoclaw.runtime.contracts.refs import (
     CriteriaRef,
     DocRef,
     OperatorSupportSurfaceRef,
-    SupportRuntimeFileRef,
     TransientIndexRef,
     TransientRef,
     WikiRef,
@@ -35,7 +32,6 @@ type OperatorSupportSurfaceCarrier = (
     | CheckpointFileRef
     | ArtifactIndexRef
     | TransientIndexRef
-    | SupportRuntimeFileRef
     | ArtifactRef
     | CriteriaRef
     | DocRef
@@ -71,12 +67,23 @@ class OperatorFlowSnapshotResponse(BaseModel):
 class DispatchHistoryEntry(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
+    dispatch_id: RuntimeSchemaText
+    predecessor_dispatch_id: RuntimeSchemaText | None = None
+    assignment_id: RuntimeSchemaText
     attempt_id: RuntimeSchemaText
-    assignment_key: RuntimeSchemaText | None = None
-    assignment_summary: RuntimeSchemaText | None = None
     node_key: RuntimeSchemaText
-    delivery_status: DispatchDeliveryStatus
-    rendered_at: datetime
+    status: Literal["starting", "open", "closed"]
+    opened_reason: RuntimeSchemaText
+    closed_reason: RuntimeSchemaText | None = None
+    requested_provider: Literal["codex", "claude", "openclaw"]
+    resolved_provider: Literal["codex", "claude", "openclaw"]
+    selection_basis: Literal["explicit", "default"]
+    adapter_started_at: datetime | None = None
+    last_node_activity_at: datetime | None = None
+    node_activity_revision: int = Field(ge=0)
+    effective_capabilities: EffectiveCapabilityReadback
+    created_at: datetime
+    closed_at: datetime | None = None
 
 
 class CheckpointHistoryEntry(BaseModel):
@@ -91,24 +98,13 @@ class CheckpointHistoryEntry(BaseModel):
 
 
 class BoundaryHistoryEntry(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        from_attributes=True,
-        populate_by_name=True,
-        serialize_by_alias=True,
-    )
+    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
+    source_dispatch_id: RuntimeSchemaText
     node_key: RuntimeSchemaText
     boundary: EgressBoundary
-    previous_node_key: RuntimeSchemaText
-    next_node_key: RuntimeSchemaText | None = None
-    next_attempt_id: RuntimeSchemaText | None = None
-    resulting_flow_status: FlowStatus | None = None
-    should_reopen_after_inactivity: bool | None = Field(
-        default=None,
-        alias="requires_reopen_after_inactivity",
-    )
+    checkpoint_id: RuntimeSchemaText | None = None
+    successor_dispatch_id: RuntimeSchemaText | None = None
     occurred_at: datetime
 
 

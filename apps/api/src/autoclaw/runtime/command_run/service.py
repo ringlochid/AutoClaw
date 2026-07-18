@@ -4,11 +4,12 @@ import logging
 import shlex
 from typing import cast
 
-from sqlalchemy import and_, or_, select, update
+from sqlalchemy import and_, exists, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload
+from sqlalchemy.sql.elements import ColumnElement
 
-from autoclaw.persistence.models import CommandRunModel, FlowModel
+from autoclaw.persistence.models import CommandRunModel, FlowModel, FlowWaitModel
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
     TERMINAL_COMMAND_RUN_STATES,
@@ -174,6 +175,10 @@ async def request_command_run_cancellation(
     state = CommandRunState(source.state)
     if state in TERMINAL_COMMAND_RUN_STATES:
         return source, False
+    if not await session.scalar(select(_current_command_wait_exists(source))):
+        raise _command_run_conflict(
+            f"command run '{run_id}' no longer owns the task's exact current wait"
+        )
     if state == CommandRunState.CANCELLATION_REQUESTED:
         if is_already_requested_allowed:
             return source, False
@@ -191,6 +196,7 @@ async def request_command_run_cancellation(
             CommandRunModel.run_id == run_id,
             CommandRunModel.state == state.value,
             CommandRunModel.ownership_revision == source.ownership_revision,
+            _current_command_wait_exists(source),
         )
         .values(
             state=CommandRunState.CANCELLATION_REQUESTED.value,
@@ -213,7 +219,9 @@ async def request_command_run_cancellation(
         actor_ref=actor_ref,
         payload={
             "run_id": source.run_id,
+            "source_dispatch_id": source.source_dispatch_id,
             "state": CommandRunState.CANCELLATION_REQUESTED.value,
+            "requested_at": requested_at,
             "ownership_revision": source.ownership_revision,
         },
     )
@@ -221,6 +229,22 @@ async def request_command_run_cancellation(
     source.cancellation_requested_at = requested_at
     source.cancellation_requested_by_actor_ref = actor_ref
     return source, True
+
+
+def _current_command_wait_exists(source: CommandRunModel) -> ColumnElement[bool]:
+    return exists().where(
+        FlowModel.flow_id == source.flow_id,
+        FlowModel.task_id == source.task_id,
+        FlowModel.status.in_(("running", "paused")),
+        FlowModel.current_dispatch_id.is_(None),
+        FlowModel.waiting_cause == "command_run",
+        FlowModel.waiting_source_id == source.run_id,
+    ) & exists().where(
+        FlowWaitModel.flow_id == source.flow_id,
+        FlowWaitModel.task_id == source.task_id,
+        FlowWaitModel.command_run_id == source.run_id,
+        FlowWaitModel.source_dispatch_id == source.source_dispatch_id,
+    )
 
 
 def command_run_record_from_model(source: CommandRunModel) -> CommandRunRecord:

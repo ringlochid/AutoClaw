@@ -4,6 +4,7 @@ from typing import NoReturn
 
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 
 import autoclaw.interfaces.http.runtime_exception_mapping as runtime_exception_mapping
 from autoclaw.interfaces.http.contracts.operation_failure import OperationFailure
@@ -45,6 +46,17 @@ def request_validation_failure(exc: RequestValidationError) -> OperationFailure:
             "required fields."
         ),
     )
+
+
+def operation_failure_from_http_exception(
+    exc: HTTPException,
+) -> OperationFailure | None:
+    """Recover the shared failure contract from a FastAPI exception detail."""
+
+    try:
+        return OperationFailure.model_validate(exc.detail)
+    except ValidationError:
+        return None
 
 
 def runtime_exception_failure(exc: Exception) -> tuple[int, OperationFailure]:

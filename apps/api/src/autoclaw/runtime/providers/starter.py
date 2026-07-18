@@ -668,7 +668,12 @@ async def _fail_invalid_request(
         attempt_id=candidate.attempt_id,
         node_key=candidate.node_key,
         actor_ref="controller.runtime",
-        payload={"reason": "runtime_transition_failed", **details},
+        payload={
+            "pause_reason": "runtime_transition_failed",
+            "control_revision": candidate.flow_control_revision + 1,
+            "actor_ref": "controller.runtime",
+            "summary": f"Provider start could not continue: {failure_code}.",
+        },
     )
     try:
         await session.commit()

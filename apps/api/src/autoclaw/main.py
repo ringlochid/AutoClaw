@@ -6,15 +6,18 @@ from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontext
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.config import Environment, Settings, get_settings
+from autoclaw.config import Environment, Settings, format_loopback_authority, get_settings
 from autoclaw.integrations.provider_registry import build_provider_adapter_registry
-from autoclaw.interfaces.http.errors import request_validation_failure
+from autoclaw.interfaces.http.errors import (
+    operation_failure_from_http_exception,
+    request_validation_failure,
+)
+from autoclaw.interfaces.http.local_admission import add_local_control_plane_middleware
 from autoclaw.interfaces.http.router import api_router
 from autoclaw.interfaces.mcp.node.server import create_node_mcp_apps
 from autoclaw.interfaces.mcp.operator.server import (
@@ -195,13 +198,20 @@ def create_app(
     app.state.node_operation_executor = node_operation_executor
     app.state.dispatch_starter = dispatch_starter
     app.state.mcp_lifespan_apps = ()
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.console_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    add_local_control_plane_middleware(app, settings)
+
+    @app.exception_handler(HTTPException)
+    async def _http_exception_handler(
+        _request: object,
+        exc: HTTPException,
+    ) -> JSONResponse:
+        failure = operation_failure_from_http_exception(exc)
+        content = failure.model_dump(mode="json") if failure is not None else {"detail": exc.detail}
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=content,
+            headers=exc.headers,
+        )
 
     @app.exception_handler(RequestValidationError)
     async def _request_validation_handler(
@@ -219,6 +229,8 @@ def create_app(
     if should_enable_mcp_mounts:
         operator_mcp_app = create_operator_mcp_app(
             host=settings.api_host,
+            port=settings.api_port,
+            allowed_origins=tuple(settings.console_origins),
             effect_publishers=OperatorEffectPublishers(
                 runtime_effect_publisher=runtime_effect_router,
                 support_projection_publisher=support_projection_owner,
@@ -370,8 +382,7 @@ def _register_runtime_effect_routes(
 
 
 def _node_mcp_url(settings: Settings, *, path: str) -> str:
-    host = "[::1]" if settings.api_host == "::1" else "127.0.0.1"
-    return f"http://{host}:{settings.api_port}{path}"
+    return f"http://{format_loopback_authority(settings.api_host, settings.api_port)}{path}"
 
 
 def _runtime_session_context() -> AbstractAsyncContextManager[AsyncSession]:

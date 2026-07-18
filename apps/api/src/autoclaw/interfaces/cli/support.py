@@ -23,7 +23,6 @@ def command_env(
     api_host: str | None = None,
     api_port: int | None = None,
     log_level: str | None = None,
-    api_key: str | None = None,
     env: str | None = None,
 ) -> Iterator[None]:
     overrides = {
@@ -33,7 +32,6 @@ def command_env(
         "AUTOCLAW_API_HOST": api_host,
         "AUTOCLAW_API_PORT": str(api_port) if api_port is not None else None,
         "AUTOCLAW_LOG_LEVEL": log_level,
-        "AUTOCLAW_API_KEY": api_key,
         "AUTOCLAW_ENV": env,
     }
     with temporary_env(overrides):

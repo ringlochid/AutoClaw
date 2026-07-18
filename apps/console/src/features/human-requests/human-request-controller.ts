@@ -142,7 +142,7 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
     const selectedItem = selectedRead?.request.items[selectedItemIndex] ?? null;
     const selectedItemDraft =
         selectedRead !== null && selectedItem !== null
-            ? (drafts[selectedRead.request.request_id]?.items[selectedItem.item_id] ?? null)
+            ? (drafts[selectedRead.request.request_id]?.items[selectedItem.id] ?? null)
             : null;
 
     const selectRequest = useCallback((requestId: string) => {
@@ -180,15 +180,15 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
                 const requestDraft =
                     currentDrafts[requestId] ?? createDraftForRequest(selectedRead.request);
                 const itemDraft =
-                    requestDraft.items[selectedItem.item_id] ??
-                    createDraftForRequest(selectedRead.request).items[selectedItem.item_id];
+                    requestDraft.items[selectedItem.id] ??
+                    createDraftForRequest(selectedRead.request).items[selectedItem.id];
 
                 return {
                     ...currentDrafts,
                     [requestId]: {
                         items: {
                             ...requestDraft.items,
-                            [selectedItem.item_id]: {
+                            [selectedItem.id]: {
                                 ...itemDraft,
                                 ...patch,
                             },

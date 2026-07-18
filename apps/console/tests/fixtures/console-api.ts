@@ -2,30 +2,8 @@ import type { ConsoleMockScenario, TaskEventStreamFixture } from "../../src/mock
 import type { components } from "../../src/api/generated/openapi";
 
 export const TEST_API_BASE_URL = "http://127.0.0.1:18125";
-export const TEST_API_KEY = "autoclaw-console-test-key";
 export const TEST_TASK_ID = "task-console-fixture";
 export const TEST_UPDATED_AT = "2026-06-29T14:00:00Z";
-
-export interface OperationFailureBody {
-    readonly code: string;
-    readonly field_path?: string | null;
-    readonly is_retryable: boolean;
-    readonly suggested_next_step?: string | null;
-    readonly summary: string;
-}
-
-export interface BackendOperationFailureDetail {
-    readonly code: string;
-    readonly field_path: string | null;
-    readonly ok: false;
-    readonly retryable: boolean;
-    readonly suggested_next_step?: string | null;
-    readonly summary: string;
-}
-
-export interface BackendOperationFailureBody {
-    readonly detail: BackendOperationFailureDetail;
-}
 
 export interface TaskEventStreamFixtureOptions {
     readonly chunks?: readonly string[];
@@ -34,6 +12,11 @@ export interface TaskEventStreamFixtureOptions {
     readonly events?: readonly components["schemas"]["TaskEventRecord"][];
 }
 
+type TaskStartedEventRecord = Extract<
+    components["schemas"]["TaskEventRecord"],
+    { readonly event_type: "task_started" }
+>;
+
 export function createConsoleMockScenario(
     overrides: Partial<ConsoleMockScenario> = {},
 ): ConsoleMockScenario {
@@ -41,7 +24,6 @@ export function createConsoleMockScenario(
     const firstEvent = createTaskEventRecord({ event_id: "evt-001", event_seq: 1 });
 
     const scenario: ConsoleMockScenario = {
-        apiKey: TEST_API_KEY,
         ...createCommandRunScenario(),
         ...createDefinitionScenario(),
         ...createDraftScenario(),
@@ -211,17 +193,18 @@ function createHumanRequestScenario(): Pick<
         },
         humanRequestResolve: {
             resolution: {
-                item_responses: [
-                    {
+                item_responses: {
+                    "request-item-1": {
                         extra_notes: "Operator approved.",
-                        item_id: "request-item-1",
                         selected_option: "approve",
                     },
-                ],
+                },
                 request_id: humanRequest.request.request_id,
                 resolution_kind: "answered",
                 resolved_at: TEST_UPDATED_AT,
-                resolved_by_actor_ref: "operator:test",
+                resolved_by_actor_ref: "local_operator",
+                resolved_by_surface: "control_ui",
+                summary: "The operator approved the request.",
                 task_id: TEST_TASK_ID,
             },
             task_id: TEST_TASK_ID,
@@ -328,7 +311,26 @@ export function createRuntimeFlowRead(
     overrides: Partial<components["schemas"]["RuntimeFlowRead"]> = {},
 ): components["schemas"]["RuntimeFlowRead"] {
     return {
-        ...createRuntimeFlowSummary(),
+        active_assignment_id: "assignment-001",
+        active_attempt_id: "attempt-001",
+        active_flow_revision_id: "flow-revision-001",
+        control_revision: 1,
+        current_command_run: null,
+        current_dispatch: null,
+        current_human_request: null,
+        current_node_key: "implement_frontend_scope",
+        current_plan: null,
+        latest_dispatch_id: "dispatch-001",
+        pause_reason: null,
+        status: "running",
+        task_id: TEST_TASK_ID,
+        task_summary: "Implement the console frontend foundation.",
+        task_title: "Console Frontend Foundation",
+        updated_at: TEST_UPDATED_AT,
+        waiting_cause: null,
+        watchdog_recovery_count: 0,
+        workflow_key: "frontend-console-continuation-delivery",
+        workflow_manifest_ref: createWorkflowManifestRef(),
         ...overrides,
     };
 }
@@ -341,8 +343,8 @@ export function createWorkflowManifestRef(): components["schemas"]["WorkflowMani
 }
 
 export function createTaskEventRecord(
-    overrides: Partial<components["schemas"]["TaskEventRecord"]> = {},
-): components["schemas"]["TaskEventRecord"] {
+    overrides: Partial<TaskStartedEventRecord> = {},
+): TaskStartedEventRecord {
     const eventId = overrides.event_id ?? "evt-001";
     return {
         actor_ref: "controller",
@@ -356,7 +358,13 @@ export function createTaskEventRecord(
         flow_revision_id: "flow-revision-001",
         node_key: "root",
         occurred_at: TEST_UPDATED_AT,
-        payload: { summary: "Task started." },
+        payload: {
+            compiled_plan_id: "compiled-plan-001",
+            flow_id: "flow-001",
+            manifest_ref: "_runtime/workflow-manifest.md",
+            workflow_key: "frontend-console-continuation-delivery",
+            workflow_revision_no: 1,
+        },
         prev_event_hash: null,
         task_id: TEST_TASK_ID,
         ...overrides,
@@ -409,10 +417,10 @@ export function createHumanRequestRead(
     const kind = overrides.kind ?? "direction";
     return {
         request: {
+            context_refs: [],
             items: [
                 {
-                    input_payload_schema: kind === "input" ? { type: "object" } : null,
-                    item_id: "request-item-1",
+                    id: "request-item-1",
                     options:
                         kind === "approval"
                             ? [
@@ -429,13 +437,13 @@ export function createHumanRequestRead(
                               ]
                             : [],
                     prompt: "Choose the next operator action.",
-                    recommended_option: kind === "approval" ? "approve" : null,
+                    response_schema: kind === "input" ? { type: "object" } : null,
                 },
             ],
             kind,
             opened_at: TEST_UPDATED_AT,
             request_id: "human-request-001",
-            requester_node: "implement_frontend_scope",
+            source_dispatch_id: "dispatch-001",
             status: "open",
             suggested_human_instruction: "Review the request and answer the current item.",
             summary: "Operator input is needed.",
@@ -444,7 +452,6 @@ export function createHumanRequestRead(
                 default_behavior: "block",
                 due_at: "2026-06-29T16:00:00Z",
             },
-            title: "Review requested",
             ...overrides,
         },
         resolution: null,
@@ -599,10 +606,6 @@ export function createDraftValidation(): components["schemas"]["DefinitionDraftV
 export function createTaskStartRequest(): components["schemas"]["TaskStartRequest"] {
     return {
         roots: {
-            context: {
-                host_path: "/home/ubuntu/leo/projects/autoclaw/tmp",
-                mode: "ensure_host_path",
-            },
             workspace: {
                 host_path: null,
                 mode: "ensure_task_default",
@@ -631,44 +634,16 @@ export function createTaskStartResponse(): components["schemas"]["TaskStartRespo
 }
 
 export function createOperationFailureBody(
-    overrides: Partial<OperationFailureBody> = {},
-): OperationFailureBody {
+    overrides: Partial<components["schemas"]["OperationFailure"]> = {},
+): components["schemas"]["OperationFailure"] {
     return {
         code: "stale_flow_revision",
-        is_retryable: true,
+        field_path: null,
+        ok: false,
+        retryable: true,
         suggested_next_step: "Reread current task state and retry.",
         summary: "The active flow revision is stale.",
         ...overrides,
-    };
-}
-
-export function createBackendOperationFailureBody(
-    overrides: Partial<BackendOperationFailureDetail> = {},
-): BackendOperationFailureBody {
-    return {
-        detail: {
-            code: "stale_flow_revision",
-            field_path: null,
-            ok: false,
-            retryable: true,
-            suggested_next_step: "Reread current task state and retry.",
-            summary: "The active flow revision is stale.",
-            ...overrides,
-        },
-    };
-}
-
-export function createValidationErrorBody(): components["schemas"]["HTTPValidationError"] {
-    return {
-        detail: [
-            {
-                ctx: {},
-                input: "",
-                loc: ["body", "task", "key"],
-                msg: "String should have at least 1 character",
-                type: "string_too_short",
-            },
-        ],
     };
 }
 
@@ -701,12 +676,13 @@ function createDefinitionContent(
                 children: null,
                 criteria: null,
                 description: "Root node",
-                id: "root",
                 instruction: "Coordinate the work.",
-                policy: "standard-parent",
+                kind: "root",
+                node_key: "root",
+                policy_id: "standard-parent",
                 produces: null,
-                provider_preference: null,
-                role: "root_planning_lead",
+                provider: null,
+                role_id: "root_planning_lead",
                 title: "Root",
             },
         };

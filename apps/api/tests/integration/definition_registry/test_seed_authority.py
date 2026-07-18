@@ -36,7 +36,6 @@ async def test_init_fails_when_packaged_seed_definitions_are_missing(
                     host="127.0.0.1",
                     port=8123,
                     log_level="INFO",
-                    api_key="api-test-key",
                     force=True,
                     skip_db_upgrade=False,
                     json=False,

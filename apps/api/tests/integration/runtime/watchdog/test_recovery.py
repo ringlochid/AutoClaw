@@ -199,7 +199,9 @@ async def test_watchdog_replaces_one_stale_dispatch_and_duplicate_signal_loses(
     )
     assert '"kind": "watchdog_recovery"' in input_text
     assert '"recovery_count": 1' in input_text
-    assert event is not None and event.payload["recovery_count"] == 1
+    assert event is not None
+    assert event.payload["opened_reason"] == "watchdog_recovery"
+    assert event.payload["predecessor_dispatch_id"] == ids.current_dispatch_id
     assert len(publisher.signals) == 1
     assert isinstance(publisher.signals[0], DispatchStartDue)
     assert publisher.signals[0].dispatch_id == first.dispatch_id

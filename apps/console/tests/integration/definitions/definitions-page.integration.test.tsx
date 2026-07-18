@@ -7,11 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import type { components } from "../../../src/api/generated/openapi";
 import { DefinitionsPage } from "../../../src/features/definitions/DefinitionsPage";
-import {
-    createBackendOperationFailureBody,
-    TEST_API_BASE_URL,
-    TEST_API_KEY,
-} from "../../fixtures/console-api";
+import { createOperationFailureBody, TEST_API_BASE_URL } from "../../fixtures/console-api";
 import {
     POLICY_KEY,
     ROLE_KEY,
@@ -34,14 +30,13 @@ beforeAll(() => {
 
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
-    vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
     installTestConsoleConfig();
 });
 
 afterEach(() => {
     cleanup();
     server.resetHandlers();
-    installTestConsoleConfig(null);
+    installTestConsoleConfig();
     vi.unstubAllEnvs();
 });
 
@@ -231,20 +226,21 @@ describe("DefinitionsPage", () => {
         server.use(
             http.get("*/definitions/roles", () =>
                 HttpResponse.json(
-                    createBackendOperationFailureBody({
-                        code: "illegal_caller",
+                    createOperationFailureBody({
+                        code: "local_admission_denied",
                         retryable: false,
-                        summary: "The AutoClaw API key is missing or invalid.",
-                        suggested_next_step: "Provide a valid operator API key.",
+                        summary: "The request was not admitted by the loopback control plane.",
                     }),
-                    { status: 401 },
+                    { status: 403 },
                 ),
             ),
         );
 
         renderDefinitionsPage();
         expect(await screen.findByText("Access to Definitions failed")).toBeVisible();
-        expect(screen.getByText("The AutoClaw API key is missing or invalid.")).toBeVisible();
+        expect(
+            screen.getByText("The request was not admitted by the loopback control plane."),
+        ).toBeVisible();
 
         cleanup();
         server.resetHandlers();

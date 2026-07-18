@@ -607,11 +607,9 @@ function WorkflowDetail({
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <StatusChip>root</StatusChip>
                         <span className="break-words font-display text-compact font-semibold text-foreground">
-                            {detail.root.role}
+                            {detail.root.roleId}
                         </span>
-                        {detail.root.policy === null ? null : (
-                            <StatusChip>{detail.root.policy}</StatusChip>
-                        )}
+                        <StatusChip>{detail.root.policyId}</StatusChip>
                     </div>
                     <p className="mt-3 max-w-3xl break-words text-compact text-muted">
                         {detail.root.description}
@@ -632,7 +630,7 @@ function WorkflowDetail({
                 </p>
                 <ol className="mt-3 space-y-3" aria-label="Workflow first-level nodes">
                     {detail.firstLevelNodes.map((node) => (
-                        <WorkflowNodeRow key={node.id} node={node} />
+                        <WorkflowNodeRow key={node.nodeKey} node={node} />
                     ))}
                 </ol>
             </div>
@@ -653,11 +651,11 @@ function WorkflowNodeRow({ node }: { readonly node: WorkflowNodeSummary }) {
     return (
         <li className="rounded-card border border-outline-soft bg-surface px-3 py-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <StatusChip>{node.id}</StatusChip>
+                <StatusChip>{node.nodeKey}</StatusChip>
                 <span className="break-words font-display text-compact font-semibold text-foreground">
-                    {node.role}
+                    {node.roleId}
                 </span>
-                {node.policy === null ? null : <StatusChip>{node.policy}</StatusChip>}
+                <StatusChip>{node.policyId}</StatusChip>
             </div>
             <p className="mt-2 break-words text-compact text-muted">{node.description}</p>
             {node.childCount === 0 ? null : (

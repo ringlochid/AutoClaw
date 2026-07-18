@@ -24,6 +24,7 @@ from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.flow.continuation import continue_paused_flow
+from autoclaw.runtime.flow.service import runtime_flow_read
 from autoclaw.runtime.node_operations import NodeOperationExecutor, NodeOperationScope
 from autoclaw.runtime.post_commit import (
     BoundaryAccepted,
@@ -68,6 +69,7 @@ async def test_exact_yield_source_opens_one_child_dispatch_and_duplicate_loses(
         )
 
         async with session_factory() as session:
+            pre_open = await runtime_flow_read(cast(AsyncSession, session), ids.task_id)
             signal = BoundaryAccepted(ids.current_dispatch_id)
             first = await open_boundary_successor(
                 cast(AsyncSession, session),
@@ -100,6 +102,10 @@ async def test_exact_yield_source_opens_one_child_dispatch_and_duplicate_loses(
             )
 
     assert first.outcome == "opened", flow.pause_details if flow is not None else None
+    assert pre_open.current_dispatch is None
+    assert pre_open.current_node_key == "child"
+    assert pre_open.active_assignment_id == ids.child_assignment_id
+    assert pre_open.active_attempt_id == ids.child_attempt_id
     assert duplicate.outcome == "skipped"
     assert dispatch_count == 4
     assert boundary is not None and boundary.successor_dispatch_id == first.dispatch_id
@@ -225,6 +231,7 @@ async def test_terminal_worker_boundary_opens_its_exact_routed_target(
         )
 
         async with session_factory() as session:
+            pre_open = await runtime_flow_read(cast(AsyncSession, session), ids.task_id)
             result = await open_boundary_successor(
                 cast(AsyncSession, session),
                 signal=BoundaryAccepted(ids.current_dispatch_id),
@@ -243,14 +250,21 @@ async def test_terminal_worker_boundary_opens_its_exact_routed_target(
             assignment = await session.get(AssignmentModel, ids.child_assignment_id)
 
     assert result.outcome == "opened"
+    assert pre_open.current_dispatch is None
     assert successor is not None and successor.opened_reason == opened_reason
     assert successor.predecessor_dispatch_id == ids.current_dispatch_id
     if outcome == "retry":
         assert assignment is not None
+        assert pre_open.current_node_key == "child"
+        assert pre_open.active_assignment_id == ids.child_assignment_id
+        assert pre_open.active_attempt_id == assignment.current_attempt_id
         assert successor.assignment_id == ids.child_assignment_id
         assert successor.attempt_id == assignment.current_attempt_id
         assert successor.attempt_id != ids.child_attempt_id
     else:
+        assert pre_open.current_node_key == "root"
+        assert pre_open.active_assignment_id == ids.root_assignment_id
+        assert pre_open.active_attempt_id == ids.root_attempt_id
         assert successor.assignment_id == ids.root_assignment_id
         assert successor.attempt_id == ids.root_attempt_id
     assert refs is not None

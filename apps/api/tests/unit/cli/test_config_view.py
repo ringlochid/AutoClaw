@@ -45,6 +45,7 @@ def test_config_readback_retains_non_secret_openclaw_gateway_url(tmp_path: Path)
     )
 
     assert payload["openclaw"]["gateway_url"] == "ws://127.0.0.1:18789"
+    assert "security" not in payload
 
 
 def test_config_readback_redacts_database_password(tmp_path: Path) -> None:

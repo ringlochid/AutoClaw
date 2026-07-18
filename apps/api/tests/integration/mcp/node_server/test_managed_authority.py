@@ -219,7 +219,7 @@ async def test_rotated_managed_generation_rejects_inflight_old_binding_before_ad
                     app=applications.managed,
                     client=("127.0.0.1", 43125),
                 ),
-                base_url="http://127.0.0.1",
+                base_url="http://127.0.0.1:18125",
             ) as client:
                 old_call = _start_human_request_call(client, old_binding)
                 await asyncio.wait_for(paused_executor.entered.wait(), timeout=2)

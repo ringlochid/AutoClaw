@@ -1,9 +1,9 @@
 import type { components } from "../../api/generated/openapi";
 
 type HumanRequestItem = components["schemas"]["HumanRequestItem"];
-type HumanRequestItemResponse = components["schemas"]["HumanRequestItemResponse"];
 type HumanRequestRead = components["schemas"]["HumanRequestRead"];
 type HumanRequestResolveRequest = components["schemas"]["HumanRequestResolveRequest"];
+type JsonValue = components["schemas"]["JsonValue"];
 type PendingHumanRequest = components["schemas"]["PendingHumanRequest"];
 
 export type StructuredFieldType = "boolean" | "integer" | "number" | "string";
@@ -14,16 +14,14 @@ export interface HumanRequestQueueItem {
     readonly kind: components["schemas"]["HumanRequestKind"];
     readonly openedAt: string;
     readonly requestId: string;
-    readonly requesterNode: string;
+    readonly sourceDispatchId: string;
     readonly status: components["schemas"]["HumanRequestStatus"];
-    readonly title: string;
+    readonly summary: string;
 }
 
 export interface HumanRequestItemDraft {
-    readonly extraNotes: string;
-    readonly freeformAnswer: string;
-    readonly responsePayloadFields: Readonly<Partial<Record<string, string>>>;
-    readonly responsePayloadJson: string;
+    readonly responseFields: Readonly<Partial<Record<string, string>>>;
+    readonly responseJson: string;
     readonly selectedOption: string | null;
 }
 
@@ -61,17 +59,15 @@ export function mapHumanRequestQueueItem(read: HumanRequestRead): HumanRequestQu
         kind: request.kind,
         openedAt: request.opened_at,
         requestId: request.request_id,
-        requesterNode: request.requester_node,
+        sourceDispatchId: request.source_dispatch_id,
         status: request.status,
-        title: request.title,
+        summary: request.summary,
     };
 }
 
 export function createDraftForRequest(request: PendingHumanRequest): HumanRequestDraft {
     return {
-        items: Object.fromEntries(
-            request.items.map((item) => [item.item_id, createDraftForItem(item)]),
-        ),
+        items: Object.fromEntries(request.items.map((item) => [item.id, createDraftForItem(item)])),
     };
 }
 
@@ -80,47 +76,37 @@ export function buildResolveRequest(
     draft: HumanRequestDraft | undefined,
 ): HumanRequestResolveBuildResult {
     const errors: HumanRequestValidationError[] = [];
-    const itemResponses: HumanRequestItemResponse[] = [];
+    const itemResponses: Record<string, JsonValue> = {};
 
     for (const item of request.items) {
-        const itemDraft = draft?.items[item.item_id] ?? createDraftForItem(item);
-        const selectedOption = itemDraft.selectedOption;
-        const freeformAnswer = itemDraft.freeformAnswer.trim();
-        const extraNotes = emptyToNull(itemDraft.extraNotes.trim());
-        const hasSelectedOption = selectedOption !== null;
-        const hasFreeformAnswer = freeformAnswer.length > 0;
-        const hasOptions = item.options.length > 0;
+        const itemDraft = draft?.items[item.id] ?? createDraftForItem(item);
+        const options = item.options ?? null;
 
-        if (hasSelectedOption && !item.options.some((option) => option.id === selectedOption)) {
-            errors.push({
-                itemId: item.item_id,
-                message: "Selected option is not available for this request item.",
-            });
+        if (options !== null) {
+            const selectedOption = itemDraft.selectedOption;
+            if (selectedOption === null) {
+                errors.push({
+                    itemId: item.id,
+                    message: "Choose one response option for this item.",
+                });
+                continue;
+            }
+            if (!options.some((option) => option.id === selectedOption)) {
+                errors.push({
+                    itemId: item.id,
+                    message: "Selected option is not available for this request item.",
+                });
+                continue;
+            }
+
+            itemResponses[item.id] = selectedOption;
+            continue;
         }
 
-        if (hasOptions && hasSelectedOption === hasFreeformAnswer) {
-            errors.push({
-                itemId: item.item_id,
-                message: "Choose one listed option or provide one freeform answer.",
-            });
+        const response = readSchemaResponse(item, itemDraft, errors);
+        if (response.ok) {
+            itemResponses[item.id] = response.value;
         }
-
-        const responsePayload = readResponsePayload(item, itemDraft, errors);
-
-        if (!hasOptions && responsePayload === null && !hasFreeformAnswer) {
-            errors.push({
-                itemId: item.item_id,
-                message: "Provide structured input or a freeform answer for this item.",
-            });
-        }
-
-        itemResponses.push({
-            extra_notes: extraNotes,
-            freeform_answer: hasFreeformAnswer ? freeformAnswer : null,
-            item_id: item.item_id,
-            response_payload: responsePayload,
-            selected_option: hasSelectedOption ? selectedOption : null,
-        });
     }
 
     if (errors.length > 0) {
@@ -136,7 +122,7 @@ export function buildResolveRequest(
 }
 
 export function getStructuredSchemaModel(item: HumanRequestItem): StructuredSchemaModel | null {
-    const schema = item.input_payload_schema;
+    const schema = item.response_schema;
     if (!isRecord(schema)) {
         return null;
     }
@@ -146,33 +132,35 @@ export function getStructuredSchemaModel(item: HumanRequestItem): StructuredSche
         return { fields: [], mode: "json" };
     }
 
+    const propertyEntries = Object.entries(properties);
+    if (propertyEntries.length === 0) {
+        return { fields: [], mode: "json" };
+    }
+
     const requiredFields = Array.isArray(schema.required)
         ? new Set(schema.required.filter((value): value is string => typeof value === "string"))
         : new Set<string>();
-    const fields = Object.entries(properties).flatMap(([name, value]): StructuredSchemaField[] => {
-        if (!isRecord(value) || !isSupportedFieldType(value.type)) {
-            return [];
+    const fields: StructuredSchemaField[] = [];
+    for (const [name, propertySchema] of propertyEntries) {
+        if (!isRecord(propertySchema) || !isSupportedFieldType(propertySchema.type)) {
+            return { fields: [], mode: "json" };
         }
-
-        return [
-            {
-                name,
-                required: requiredFields.has(name),
-                title: typeof value.title === "string" ? value.title : labelFromName(name),
-                type: value.type,
-            },
-        ];
-    });
-
-    if (fields.length === 0) {
-        return { fields: [], mode: "json" };
+        fields.push({
+            name,
+            required: requiredFields.has(name),
+            title:
+                typeof propertySchema.title === "string"
+                    ? propertySchema.title
+                    : labelFromName(name),
+            type: propertySchema.type,
+        });
     }
 
     return { fields, mode: "fields" };
 }
 
 export function isRequestEditable(read: HumanRequestRead): boolean {
-    return read.request.status === "open" && read.resolution === null;
+    return read.request.status === "open" && read.resolution == null;
 }
 
 export function labelFromKind(kind: components["schemas"]["HumanRequestKind"]): string {
@@ -189,97 +177,94 @@ export function labelFromKind(kind: components["schemas"]["HumanRequestKind"]): 
 }
 
 function createDraftForItem(item: HumanRequestItem): HumanRequestItemDraft {
-    const recommendedOptionId = item.recommended_option ?? null;
-    const recommendedOption =
-        recommendedOptionId !== null &&
-        item.options.some((option) => option.id === recommendedOptionId)
-            ? recommendedOptionId
-            : null;
-
+    const schemaModel = getStructuredSchemaModel(item);
     return {
-        extraNotes: "",
-        freeformAnswer: "",
-        responsePayloadFields: Object.fromEntries(
-            (getStructuredSchemaModel(item)?.fields ?? []).map((field) => [field.name, ""]),
+        responseFields: Object.fromEntries(
+            (schemaModel?.fields ?? []).map((field) => [field.name, ""]),
         ),
-        responsePayloadJson: "{}",
-        selectedOption: recommendedOption,
+        responseJson: initialJsonResponse(item),
+        selectedOption: null,
     };
 }
 
-function readResponsePayload(
+function initialJsonResponse(item: HumanRequestItem): string {
+    if (item.options != null || item.response_schema == null) {
+        return "";
+    }
+    return item.response_schema.type === "object" ? "{}" : "";
+}
+
+function readSchemaResponse(
     item: HumanRequestItem,
     itemDraft: HumanRequestItemDraft,
     errors: HumanRequestValidationError[],
-): Record<string, unknown> | null {
+): { readonly ok: true; readonly value: JsonValue } | { readonly ok: false } {
     const schemaModel = getStructuredSchemaModel(item);
     if (schemaModel === null) {
-        return null;
+        errors.push({
+            itemId: item.id,
+            message: "This request item is missing its response contract.",
+        });
+        return { ok: false };
     }
 
     if (schemaModel.mode === "json") {
-        return readJsonPayload(item.item_id, itemDraft.responsePayloadJson, errors);
+        return readJsonResponse(item.id, itemDraft.responseJson, errors);
     }
 
-    const payload: Record<string, unknown> = {};
+    const response: Record<string, JsonValue> = {};
+    let isValid = true;
     for (const field of schemaModel.fields) {
-        const rawValue = (itemDraft.responsePayloadFields[field.name] ?? "").trim();
+        const rawValue = (itemDraft.responseFields[field.name] ?? "").trim();
         if (rawValue.length === 0) {
             if (field.required) {
                 errors.push({
-                    itemId: item.item_id,
+                    itemId: item.id,
                     message: `${field.title} is required.`,
                 });
+                isValid = false;
             }
             continue;
         }
 
         const parsedValue = parseStructuredFieldValue(field, rawValue);
         if (parsedValue.ok) {
-            payload[field.name] = parsedValue.value;
+            response[field.name] = parsedValue.value;
             continue;
         }
 
         errors.push({
-            itemId: item.item_id,
+            itemId: item.id,
             message: parsedValue.message,
         });
+        isValid = false;
     }
 
-    return payload;
+    return isValid ? { ok: true, value: response } : { ok: false };
 }
 
-function readJsonPayload(
+function readJsonResponse(
     itemId: string,
     rawJson: string,
     errors: HumanRequestValidationError[],
-): Record<string, unknown> | null {
+): { readonly ok: true; readonly value: JsonValue } | { readonly ok: false } {
     const trimmedJson = rawJson.trim();
     if (trimmedJson.length === 0) {
         errors.push({
             itemId,
-            message: "Structured input must be a JSON object.",
+            message: "Provide a JSON response for this item.",
         });
-        return null;
+        return { ok: false };
     }
 
     try {
-        const parsedValue = JSON.parse(trimmedJson) as unknown;
-        if (!isRecord(parsedValue)) {
-            errors.push({
-                itemId,
-                message: "Structured input must parse to a JSON object.",
-            });
-            return null;
-        }
-
-        return parsedValue;
+        return { ok: true, value: JSON.parse(trimmedJson) };
     } catch {
         errors.push({
             itemId,
-            message: "Structured input must be valid JSON.",
+            message: "Response must be valid JSON.",
         });
-        return null;
+        return { ok: false };
     }
 }
 
@@ -315,10 +300,6 @@ function parseStructuredFieldValue(
         case "string":
             return { ok: true, value: rawValue };
     }
-}
-
-function emptyToNull(value: string): string | null {
-    return value.length === 0 ? null : value;
 }
 
 function labelFromName(name: string): string {

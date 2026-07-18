@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import type { components } from "../../../src/api/generated/openapi";
 import { DefinitionEditorPage } from "../../../src/features/definition-editor/DefinitionEditorPage";
-import { TEST_API_BASE_URL, TEST_API_KEY } from "../../fixtures/console-api";
+import { TEST_API_BASE_URL, createOperationFailureBody } from "../../fixtures/console-api";
 import { installTestConsoleConfig } from "../../fixtures/console-config";
 import {
     DEFINITION_EDITOR_NEW_DRAFT_KEY,
@@ -16,7 +16,6 @@ import {
     DEFINITION_EDITOR_WORKFLOW_KEY,
     bodyForKind,
     createCleanDefinitionEditorDraft,
-    createDefinitionEditorAuthFailure,
     createDefinitionEditorDraftDetail,
     createDefinitionEditorDraftList,
     createDefinitionEditorDraftResponse,
@@ -34,14 +33,13 @@ beforeAll(() => {
 
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
-    vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
     installTestConsoleConfig();
 });
 
 afterEach(() => {
     cleanup();
     server.resetHandlers();
-    installTestConsoleConfig(null);
+    installTestConsoleConfig();
     vi.unstubAllEnvs();
 });
 
@@ -104,16 +102,13 @@ describe("DefinitionEditorPage", () => {
                     (await request.json()) as components["schemas"]["DefinitionDraftCreateRequest"];
                 if (body.key === DEFINITION_EDITOR_ROLE_KEY) {
                     return HttpResponse.json(
-                        {
-                            detail: {
-                                code: "name_collision",
-                                field_path: "key",
-                                ok: false,
-                                retryable: false,
-                                suggested_next_step: "Choose a different definition key.",
-                                summary: "A stored role already owns this key.",
-                            },
-                        },
+                        createOperationFailureBody({
+                            code: "name_collision",
+                            field_path: "key",
+                            retryable: false,
+                            suggested_next_step: "Choose a different definition key.",
+                            summary: "A stored role already owns this key.",
+                        }),
                         { status: 409 },
                     );
                 }
@@ -297,17 +292,24 @@ describe("DefinitionEditorPage", () => {
         expect(editor).toHaveValue("root:\nchild: value");
     });
 
-    it("shows API-key failures on the flat draft list", async () => {
+    it("shows local-admission failures on the flat draft list", async () => {
         server.use(
             http.get("*/authoring/definition-drafts", () =>
-                HttpResponse.json(createDefinitionEditorAuthFailure(), { status: 401 }),
+                HttpResponse.json(
+                    createOperationFailureBody({
+                        code: "local_admission_denied",
+                        retryable: false,
+                        summary: "The request was not admitted by the loopback control plane.",
+                    }),
+                    { status: 403 },
+                ),
             ),
         );
 
         renderDefinitionEditorPage();
         expect(await screen.findByText("Access to drafts failed")).toBeVisible();
         expect(
-            screen.getByText("Definition authoring requires an operator API key."),
+            screen.getByText("The request was not admitted by the loopback control plane."),
         ).toBeVisible();
     });
 });

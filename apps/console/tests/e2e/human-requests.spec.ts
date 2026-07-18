@@ -65,7 +65,7 @@ test("renders and resolves the Human Requests page at desktop width", async ({
     await page.getByRole("button", { exact: true, name: "Resolve" }).click();
     await expect(page.getByText("Resolved request")).toBeVisible();
     await expect.poll(() => requestBodies.length).toBe(1);
-    expect(requestBodies[0]?.item_responses.map((response) => response.item_id)).toEqual([
+    expect(Object.keys(requestBodies[0]?.item_responses ?? {})).toEqual([
         "due_handling",
         "next_scope",
         "next_context",
@@ -81,7 +81,7 @@ test("renders and resolves the Human Requests page at desktop width", async ({
     await page.getByLabel("Constraint").fill("Use controller-owned request data only.");
     await page.getByRole("button", { exact: true, name: "Resolve" }).click();
     await expect.poll(() => requestBodies.length).toBe(2);
-    expect(requestBodies[1]?.item_responses[0]?.response_payload).toEqual({
+    expect(requestBodies[1]?.item_responses.next_context).toEqual({
         constraint: "Use controller-owned request data only.",
         expected_output: "validated artifact list",
         target_node: "release_gate",
@@ -171,7 +171,7 @@ async function mockHumanRequests(page: Page): Promise<HumanRequestResolveRequest
 
         if (request.method() === "POST" && path.includes("/human-requests/")) {
             const requestBody = JSON.parse(
-                request.postData() ?? '{"item_responses":[]}',
+                request.postData() ?? '{"item_responses":{}}',
             ) as (typeof requestBodies)[number];
             requestBodies.push(requestBody);
             const requestId = path.split("/").at(-2);

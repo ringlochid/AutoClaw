@@ -28,6 +28,7 @@ from autoclaw.runtime.contracts import (
     TaskEventType,
 )
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
+from autoclaw.runtime.dispatch.opening import TaskResumeEventBasis
 from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.errors import (
     RuntimeOperationError,
@@ -99,6 +100,8 @@ async def pause_flow(
         payload={
             "pause_reason": "paused_by_operator",
             "control_revision": expected_control_revision + 1,
+            "actor_ref": actor_ref,
+            "summary": "Paused by operator.",
         },
     )
     await _commit_or_rollback(session)
@@ -131,20 +134,14 @@ async def continue_flow(
         expected_active_flow_revision_id=expected_active_flow_revision_id,
         expected_control_revision=expected_control_revision,
         dependencies=dependencies,
+        resume_event=TaskResumeEventBasis(
+            control_revision=expected_control_revision + 1,
+            actor_ref=actor_ref,
+            event_source=event_source,
+        ),
     )
     if result.outcome != "opened" or result.dispatch_id is None:
         raise _flow_control_conflict("paused flow did not open one successor")
-    await append_task_event(
-        session,
-        task_id=task_id,
-        event_type=TaskEventType.TASK_RESUMED,
-        event_source=event_source,
-        flow_revision_id=expected_active_flow_revision_id,
-        dispatch_id=result.dispatch_id,
-        actor_ref=actor_ref,
-        payload={"control_revision": expected_control_revision + 1},
-    )
-    await _commit_or_rollback(session)
     return await read_runtime_flow(session, task_id)
 
 
@@ -201,7 +198,11 @@ async def cancel_flow(
         flow_revision_id=expected_active_flow_revision_id,
         dispatch_id=closed_dispatch_id,
         actor_ref=actor_ref,
-        payload={"control_revision": expected_control_revision + 1},
+        payload={
+            "control_revision": expected_control_revision + 1,
+            "actor_ref": actor_ref,
+            "summary": "Cancelled by operator.",
+        },
     )
     transient_cleanup_signals = await _read_expired_transient_cleanup_signals(
         session,
@@ -410,6 +411,18 @@ async def _cancel_human_request(
     request_id = wait.human_request_id
     if request_id is None or request_id != flow.waiting_source_id:
         raise illegal_state_error("flow human-request wait source is inconsistent")
+    source = await session.scalar(
+        select(HumanRequestModel)
+        .options(raiseload("*"))
+        .where(
+            HumanRequestModel.request_id == request_id,
+            HumanRequestModel.task_id == flow.task_id,
+            HumanRequestModel.flow_id == flow.flow_id,
+            HumanRequestModel.status == "open",
+        )
+    )
+    if source is None:
+        raise _flow_control_conflict("the waiting human request changed before task cancellation")
     changed = await session.scalar(
         update(HumanRequestModel)
         .where(
@@ -441,7 +454,19 @@ async def _cancel_human_request(
         flow_revision_id=flow.active_flow_revision_id,
         dispatch_id=wait.source_dispatch_id,
         actor_ref=actor_ref,
-        payload={"request_id": request_id, "resolution_kind": "cancelled"},
+        payload={
+            "request_id": request_id,
+            "kind": source.request_kind,
+            "summary": source.request_summary,
+            "source_dispatch_id": source.source_dispatch_id,
+            "due_at": source.due_at,
+            "status": "cancelled",
+            "resolution_kind": "cancelled",
+            "resolution_summary": "Cancelled because the task was cancelled.",
+            "resolved_at": cancelled_at,
+            "resolved_by_surface": _human_resolution_surface(event_source).value,
+            "resolved_by_actor_ref": actor_ref,
+        },
     )
     return request_id
 

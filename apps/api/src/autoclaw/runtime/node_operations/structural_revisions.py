@@ -18,7 +18,13 @@ from autoclaw.persistence.models import (
     FlowRevisionModel,
     NodePlanRevisionModel,
 )
-from autoclaw.runtime.contracts import AddChildSuccess, RemoveChildSuccess, UpdateChildSuccess
+from autoclaw.runtime.contracts import (
+    AddChildSuccess,
+    RemoveChildSuccess,
+    TaskEventSource,
+    TaskEventType,
+    UpdateChildSuccess,
+)
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.dispatch.authority import NodeOperationAuthority
 from autoclaw.runtime.errors import RuntimeOperationError
@@ -56,6 +62,7 @@ from autoclaw.runtime.projection.signals import (
     SupportProjectionSignal,
     WorkflowManifestProjection,
 )
+from autoclaw.runtime.task_events import append_task_event
 
 
 async def adopt_structural_revision(
@@ -127,6 +134,24 @@ async def adopt_structural_revision(
         source_rows=source_rows,
         next_revision_id=next_revision_id,
         candidate=candidate,
+    )
+    await append_task_event(
+        session,
+        task_id=authority.task_id,
+        event_type=TaskEventType.STRUCTURAL_REVISION_ADOPTED,
+        event_source=TaskEventSource.NODE,
+        flow_revision_id=next_revision_id,
+        dispatch_id=authority.dispatch_id,
+        attempt_id=authority.attempt_id,
+        node_key=authority.node_key,
+        payload={
+            "source_flow_revision_id": authority.flow_revision_id,
+            "adopted_flow_revision_id": next_revision_id,
+            "operation": operation_name.value,
+            "target_node_key": target_node_key,
+            "cause": cause,
+            "adopted_by_dispatch_id": authority.dispatch_id,
+        },
     )
     await session.commit()
     response = await _success_result(

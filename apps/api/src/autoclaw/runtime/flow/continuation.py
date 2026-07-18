@@ -24,7 +24,9 @@ from autoclaw.runtime.command_run.continuation import (
     command_run_continuation_basis,
 )
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
+from autoclaw.runtime.contracts.primitives import TaskEventSource
 from autoclaw.runtime.contracts.prompt import OperatorContinueTrigger
+from autoclaw.runtime.dispatch.opening import TaskResumeEventBasis
 from autoclaw.runtime.dispatch.ordinary_context import (
     OrdinaryContinuationBasis,
     OrdinaryDispatchSnapshot,
@@ -83,9 +85,15 @@ async def continue_paused_flow(
     expected_active_flow_revision_id: str,
     expected_control_revision: int,
     dependencies: DispatchOpeningDependencies,
+    resume_event: TaskResumeEventBasis | None = None,
 ) -> OrdinaryOpeningResult:
     """Directly prepare and commit one exact paused-flow continuation."""
 
+    active_resume_event = resume_event or TaskResumeEventBasis(
+        control_revision=expected_control_revision + 1,
+        actor_ref=None,
+        event_source=TaskEventSource.CONTROL_API,
+    )
     try:
         source = await read_operator_continue_source(
             session,
@@ -100,6 +108,7 @@ async def continue_paused_flow(
                 expected_active_flow_revision_id=expected_active_flow_revision_id,
                 expected_control_revision=expected_control_revision,
                 dependencies=dependencies,
+                resume_event=active_resume_event,
             )
             return OrdinaryOpeningResult(
                 outcome=root_result.outcome,
@@ -112,6 +121,7 @@ async def continue_paused_flow(
                 expected_active_flow_revision_id=expected_active_flow_revision_id,
                 expected_control_revision=expected_control_revision,
                 dependencies=dependencies,
+                resume_event=active_resume_event,
             )
             if boundary_result.outcome != "opened":
                 raise _continue_conflict("paused boundary did not open its successor")
@@ -124,6 +134,7 @@ async def continue_paused_flow(
             source=source,
             expected_control_revision=expected_control_revision,
             dependencies=dependencies,
+            resume_event=active_resume_event,
         )
     except RuntimeOperationError:
         await session.rollback()
@@ -257,6 +268,7 @@ async def _continue_ordinary_source(
     source: OperatorContinueSource,
     expected_control_revision: int,
     dependencies: DispatchOpeningDependencies,
+    resume_event: TaskResumeEventBasis,
 ) -> OrdinaryOpeningResult:
     dispatch_id = f"dispatch.{uuid4().hex}"
     due_at = dependencies.clock()
@@ -287,6 +299,7 @@ async def _continue_ordinary_source(
         prepared=prepared,
         claim_source=source.claim,
         should_resume_flow=True,
+        resume_event=resume_event,
     )
     if not committed:
         raise _continue_conflict("another controller transition won during continue")

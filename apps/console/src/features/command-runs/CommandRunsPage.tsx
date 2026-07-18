@@ -520,6 +520,7 @@ function commandRunStateDotClass(state: CommandRunState): string {
         case "succeeded":
             return "bg-success";
         case "failed":
+        case "abandoned":
             return "bg-danger";
         case "cancellation_requested":
         case "timed_out":

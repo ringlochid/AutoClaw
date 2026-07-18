@@ -53,9 +53,6 @@ def build_settings_payload(settings: Any, config_path: Path) -> dict[str, Any]:
         "logging": {
             "level": settings.log_level,
         },
-        "security": {
-            "api_key": settings.api_key,
-        },
         "codex": settings.codex.model_dump(mode="json"),
         "claude": settings.claude.model_dump(mode="json"),
         "openclaw": settings.openclaw.model_dump(mode="json"),
@@ -66,12 +63,6 @@ def build_settings_payload(settings: Any, config_path: Path) -> dict[str, Any]:
 
 def _redact_config_payload(payload: dict[str, Any]) -> dict[str, Any]:
     redacted = dict(payload)
-    security = redacted.get("security")
-    if isinstance(security, dict):
-        security = dict(security)
-        if security.get("api_key"):
-            security["api_key"] = REDACTED_VALUE
-        redacted["security"] = security
     openclaw = redacted.get("openclaw")
     if isinstance(openclaw, dict):
         openclaw = dict(openclaw)

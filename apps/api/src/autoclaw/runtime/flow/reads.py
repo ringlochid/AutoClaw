@@ -1,35 +1,44 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
-from sqlalchemy import Select, and_, exists, false, func, or_, select
+from sqlalchemy import Select, and_, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased, raiseload
+from sqlalchemy.orm import raiseload
 
+from autoclaw.config import get_settings
 from autoclaw.persistence.models import (
-    CommandRunModel,
+    DispatchCapabilitySetModel,
     DispatchTurnModel,
     FlowModel,
-    HumanRequestModel,
     TaskModel,
 )
 from autoclaw.runtime.contracts import (
+    DispatchRuntimeRead,
+    EffectiveCapabilityReadback,
+    EffectiveNetworkAccess,
+    EffectiveProviderNativeAccess,
     FlowStatus,
+    ProviderStartReadback,
     RuntimeFlowPauseReason,
     RuntimeFlowRead,
     RuntimeFlowSummary,
     RuntimeFlowSummaryListResponse,
     RuntimeFlowWaitingCause,
+    RuntimeLifecycleStatus,
     WorkflowManifestRef,
+    WorkPlanRead,
 )
 from autoclaw.runtime.errors import (
     illegal_state_error,
     invalid_request_shape_error,
     missing_resource_error,
 )
+from autoclaw.runtime.flow.current_sources import read_runtime_flow_current_sources
+from autoclaw.runtime.watchdog.deadline import calculate_watchdog_due_at
+from autoclaw.runtime.work_plan import read_assignment_work_plan
 
 WORKFLOW_MANIFEST_REF_DESCRIPTION = "Whole-workflow visible contract for the current task."
 
@@ -44,13 +53,6 @@ RUNTIME_FLOW_LIST_SORTS = frozenset(
 RUNTIME_FLOW_LIST_STATUSES = frozenset(
     {"any", "pending", "running", "blocked", "paused", "succeeded", "cancelled"}
 )
-
-
-@dataclass(frozen=True, slots=True)
-class RuntimeFlowTarget:
-    node_key: str
-    assignment_id: str
-    attempt_id: str
 
 
 async def read_runtime_flow(session: AsyncSession, task_id: str) -> RuntimeFlowRead:
@@ -71,27 +73,131 @@ async def read_runtime_flow(session: AsyncSession, task_id: str) -> RuntimeFlowR
     if flow.active_flow_revision_id is None:
         raise illegal_state_error(f"task '{task_id}' has no active flow revision")
 
-    target = (
-        None
-        if flow.status in {"completed", "cancelled"}
-        else await read_runtime_flow_target(session, flow)
+    current_sources = await read_runtime_flow_current_sources(session, flow)
+    target = current_sources.target
+    current_dispatch = await read_current_dispatch(session, flow)
+    latest_dispatch_id = await read_latest_dispatch_id(session, flow)
+    stored_plan = (
+        await read_assignment_work_plan(session, assignment_id=target.assignment_id)
+        if target is not None
+        else None
+    )
+    current_plan = WorkPlanRead.model_validate(stored_plan) if stored_plan is not None else None
+    watchdog_recovery_count = (
+        await session.scalar(
+            select(func.count())
+            .select_from(DispatchTurnModel)
+            .where(
+                DispatchTurnModel.task_id == task_id,
+                DispatchTurnModel.attempt_id == target.attempt_id,
+                DispatchTurnModel.opened_reason == "watchdog_recovery",
+            )
+        )
+        if target is not None
+        else None
     )
     return RuntimeFlowRead(
         task_id=task.task_id,
         task_title=task.title,
         task_summary=task.summary,
         workflow_key=task.workflow_key,
-        status=public_flow_status(flow),
+        status=RuntimeLifecycleStatus(flow.status),
         active_flow_revision_id=flow.active_flow_revision_id,
         control_revision=flow.control_revision,
         workflow_manifest_ref=workflow_manifest_ref(),
         current_node_key=target.node_key if target is not None else None,
         active_assignment_id=target.assignment_id if target is not None else None,
         active_attempt_id=target.attempt_id if target is not None else None,
-        current_dispatch_id=flow.current_dispatch_id,
         waiting_cause=normalized_waiting_cause(flow.waiting_cause),
         pause_reason=normalized_pause_reason(flow.pause_reason),
+        current_dispatch=current_dispatch,
+        latest_dispatch_id=latest_dispatch_id,
+        current_plan=current_plan,
+        watchdog_recovery_count=watchdog_recovery_count,
+        current_human_request=current_sources.human_request,
+        current_command_run=current_sources.command_run,
         updated_at=coerce_datetime_to_utc(flow.updated_at),
+    )
+
+
+async def read_current_dispatch(
+    session: AsyncSession,
+    flow: FlowModel,
+) -> DispatchRuntimeRead | None:
+    if flow.current_dispatch_id is None:
+        return None
+    row = (
+        await session.execute(
+            select(DispatchTurnModel, DispatchCapabilitySetModel)
+            .join(
+                DispatchCapabilitySetModel,
+                DispatchCapabilitySetModel.dispatch_id == DispatchTurnModel.dispatch_id,
+            )
+            .options(raiseload("*"))
+            .where(
+                DispatchTurnModel.dispatch_id == flow.current_dispatch_id,
+                DispatchTurnModel.task_id == flow.task_id,
+                DispatchTurnModel.flow_id == flow.flow_id,
+                DispatchTurnModel.status.in_(("starting", "open")),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        raise illegal_state_error("flow current-dispatch pointer is inconsistent")
+    dispatch, capabilities = row
+    provider_start = (
+        ProviderStartReadback(
+            revision=dispatch.provider_start_revision,
+            attempt_count=dispatch.provider_start_attempt_count,
+            next_attempt_at=_optional_utc(dispatch.next_provider_start_at),
+            retry_kind=dispatch.provider_start_retry_kind,
+            last_error_code=dispatch.provider_start_last_error_code,
+        )
+        if dispatch.status == "starting"
+        else None
+    )
+    watchdog_due_at = None
+    if dispatch.status == "open" and dispatch.adapter_started_at is not None:
+        watchdog_due_at = calculate_watchdog_due_at(
+            adapter_started_at=dispatch.adapter_started_at,
+            last_node_activity_at=dispatch.last_node_activity_at,
+            inactivity_timeout_seconds=(get_settings().runtime.watchdog_inactivity_timeout_seconds),
+        )
+    return DispatchRuntimeRead(
+        dispatch_id=dispatch.dispatch_id,
+        predecessor_dispatch_id=dispatch.predecessor_dispatch_id,
+        assignment_id=dispatch.assignment_id,
+        attempt_id=dispatch.attempt_id,
+        status=dispatch.status,
+        opened_reason=dispatch.opened_reason,
+        requested_provider=dispatch.requested_provider,
+        resolved_provider=dispatch.resolved_provider,
+        selection_basis=dispatch.provider_selection_basis,
+        adapter_started_at=_optional_utc(dispatch.adapter_started_at),
+        last_node_activity_at=_optional_utc(dispatch.last_node_activity_at),
+        node_activity_revision=dispatch.node_activity_revision,
+        watchdog_due_at=watchdog_due_at,
+        provider_start=provider_start,
+        effective_capabilities=effective_capability_readback(capabilities),
+    )
+
+
+def effective_capability_readback(
+    capabilities: DispatchCapabilitySetModel,
+) -> EffectiveCapabilityReadback:
+    return EffectiveCapabilityReadback(
+        provider_native_access=EffectiveProviderNativeAccess.model_validate(
+            {
+                "effective": capabilities.provider_native_access,
+                "source": capabilities.provider_native_access_source,
+            }
+        ),
+        network_access=EffectiveNetworkAccess.model_validate(
+            {
+                "effective": capabilities.network_access,
+                "source": capabilities.network_access_source,
+            }
+        ),
     )
 
 
@@ -133,70 +239,6 @@ async def list_runtime_flow_summaries(
         items=tuple(summaries),
         next_cursor=str(offset + limit) if len(rows) > limit else None,
     )
-
-
-async def read_runtime_flow_target(
-    session: AsyncSession,
-    flow: FlowModel,
-) -> RuntimeFlowTarget | None:
-    """Resolve the exact current, waiting, or retained lineage target."""
-
-    if flow.current_dispatch_id is not None:
-        dispatch = await session.scalar(
-            select(DispatchTurnModel)
-            .options(raiseload("*"))
-            .where(
-                DispatchTurnModel.dispatch_id == flow.current_dispatch_id,
-                DispatchTurnModel.task_id == flow.task_id,
-                DispatchTurnModel.flow_id == flow.flow_id,
-                DispatchTurnModel.status.in_(("starting", "open")),
-            )
-        )
-        if dispatch is None:
-            raise illegal_state_error("flow current-dispatch pointer is inconsistent")
-        return runtime_flow_target_from_dispatch(dispatch)
-
-    if flow.waiting_cause == "human_request" and flow.waiting_source_id is not None:
-        request = await session.scalar(
-            select(HumanRequestModel)
-            .options(raiseload("*"))
-            .where(
-                HumanRequestModel.request_id == flow.waiting_source_id,
-                HumanRequestModel.task_id == flow.task_id,
-                HumanRequestModel.flow_id == flow.flow_id,
-            )
-        )
-        if request is None:
-            raise illegal_state_error("flow human-request pointer is inconsistent")
-        return RuntimeFlowTarget(
-            node_key=(
-                await read_dispatch_node_key(session, request.source_dispatch_id, flow.flow_id)
-            ),
-            assignment_id=request.assignment_id,
-            attempt_id=request.attempt_id,
-        )
-
-    if flow.waiting_cause == "command_run" and flow.waiting_source_id is not None:
-        run = await session.scalar(
-            select(CommandRunModel)
-            .options(raiseload("*"))
-            .where(
-                CommandRunModel.run_id == flow.waiting_source_id,
-                CommandRunModel.task_id == flow.task_id,
-                CommandRunModel.flow_id == flow.flow_id,
-            )
-        )
-        if run is None:
-            raise illegal_state_error("flow command-run pointer is inconsistent")
-        return RuntimeFlowTarget(
-            node_key=await read_dispatch_node_key(session, run.source_dispatch_id, flow.flow_id),
-            assignment_id=run.assignment_id,
-            attempt_id=run.attempt_id,
-        )
-
-    if flow.waiting_cause != "none" or flow.waiting_source_id is not None:
-        raise illegal_state_error("flow waiting pointer is inconsistent")
-    return await read_retained_lineage_target(session, flow)
 
 
 def runtime_flow_summary_statement(
@@ -259,50 +301,24 @@ def apply_runtime_flow_status_filter(
     return statement.where(FlowModel.status == status)
 
 
-async def read_retained_lineage_target(
+async def read_latest_dispatch_id(
     session: AsyncSession,
     flow: FlowModel,
-) -> RuntimeFlowTarget | None:
-    successor = aliased(DispatchTurnModel)
-    rows = tuple(
-        await session.scalars(
-            select(DispatchTurnModel)
-            .options(raiseload("*"))
+) -> str | None:
+    return cast(
+        str | None,
+        await session.scalar(
+            select(DispatchTurnModel.dispatch_id)
             .where(
                 DispatchTurnModel.task_id == flow.task_id,
                 DispatchTurnModel.flow_id == flow.flow_id,
-                DispatchTurnModel.status == "closed",
-                ~exists().where(successor.predecessor_dispatch_id == DispatchTurnModel.dispatch_id),
             )
-            .limit(2)
-        )
-    )
-    if len(rows) > 1:
-        raise illegal_state_error("flow has more than one retained lineage tail")
-    return runtime_flow_target_from_dispatch(rows[0]) if rows else None
-
-
-async def read_dispatch_node_key(
-    session: AsyncSession,
-    dispatch_id: str,
-    flow_id: str,
-) -> str:
-    node_key = await session.scalar(
-        select(DispatchTurnModel.node_key).where(
-            DispatchTurnModel.dispatch_id == dispatch_id,
-            DispatchTurnModel.flow_id == flow_id,
-        )
-    )
-    if node_key is None:
-        raise illegal_state_error("external source dispatch lineage is incomplete")
-    return node_key
-
-
-def runtime_flow_target_from_dispatch(dispatch: DispatchTurnModel) -> RuntimeFlowTarget:
-    return RuntimeFlowTarget(
-        node_key=dispatch.node_key,
-        assignment_id=dispatch.assignment_id,
-        attempt_id=dispatch.attempt_id,
+            .order_by(
+                DispatchTurnModel.created_at.desc(),
+                DispatchTurnModel.dispatch_id.desc(),
+            )
+            .limit(1)
+        ),
     )
 
 
@@ -366,14 +382,18 @@ def coerce_datetime_to_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
+def _optional_utc(value: datetime | None) -> datetime | None:
+    return coerce_datetime_to_utc(value) if value is not None else None
+
+
 __all__ = [
     "RUNTIME_FLOW_LIST_SORTS",
     "RUNTIME_FLOW_LIST_STATUSES",
     "WORKFLOW_MANIFEST_REF_DESCRIPTION",
-    "RuntimeFlowTarget",
+    "effective_capability_readback",
     "list_runtime_flow_summaries",
     "normalized_pause_reason",
     "normalized_waiting_cause",
+    "read_current_dispatch",
     "read_runtime_flow",
-    "read_runtime_flow_target",
 ]

@@ -385,12 +385,13 @@ function workflowRootForKey(
             ],
             criteria: null,
             description,
-            id: "root",
             instruction: "Coordinate the bounded change and close from current evidence.",
-            policy: "standard-root-planning",
+            kind: "root",
+            node_key: "root",
+            policy_id: "standard-root-planning",
             produces: null,
-            provider_preference: null,
-            role: ROLE_KEY,
+            provider: null,
+            role_id: ROLE_KEY,
             title: "Root",
         };
     }
@@ -414,12 +415,13 @@ function workflowRootForKey(
             ],
             criteria: null,
             description,
-            id: "root",
             instruction: "Execute one implementation subtree, review it, then release.",
-            policy: "standard-root-planning",
+            kind: "root",
+            node_key: "root",
+            policy_id: "standard-root-planning",
             produces: null,
-            provider_preference: null,
-            role: ROLE_KEY,
+            provider: null,
+            role_id: ROLE_KEY,
             title: "Root",
         };
     }
@@ -492,13 +494,14 @@ function workflowRootForKey(
         ],
         criteria: null,
         description,
-        id: "root",
         instruction:
             "Coordinate the whole authentication overhaul and decide final bounded closure from current evidence.",
-        policy: "standard-root-planning",
+        kind: "root",
+        node_key: "root",
+        policy_id: "standard-root-planning",
         produces: null,
-        provider_preference: null,
-        role: "root_planning_lead",
+        provider: null,
+        role_id: "root_planning_lead",
         title: "Root",
     };
 }
@@ -524,9 +527,10 @@ function workflowChild({
         consumes: null,
         criteria: null,
         description,
-        id,
         instruction: description,
-        policy,
+        kind: children === null ? "worker" : "parent",
+        node_key: id,
+        policy_id: policy,
         produces: {
             artifacts: produces.map((slot) => ({
                 description: slot,
@@ -534,8 +538,8 @@ function workflowChild({
                 slot,
             })),
         },
-        provider_preference: null,
-        role,
+        provider: null,
+        role_id: role,
         title: null,
     };
 }

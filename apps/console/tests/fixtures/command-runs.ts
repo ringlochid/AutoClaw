@@ -63,6 +63,13 @@ const stateRuns: readonly {
         state: "cancelled",
         summary: "The controller cancelled this run.",
     },
+    {
+        command: "make lost-owner-check",
+        description: "Inspect a command whose process ownership was lost.",
+        runId: "run-abandoned",
+        state: "abandoned",
+        summary: "The controller could not prove process ownership after restart.",
+    },
 ];
 
 export function createCommandRunPageList(
@@ -107,7 +114,8 @@ export function createCommandRunDetail(
         base.state === "succeeded" ||
         base.state === "failed" ||
         base.state === "timed_out" ||
-        base.state === "cancelled";
+        base.state === "cancelled" ||
+        base.state === "abandoned";
     const logRef =
         base.state === "pending_start" || base.runId === "run-cancelled"
             ? null
@@ -118,7 +126,7 @@ export function createCommandRunDetail(
         cancellation_requested_at:
             base.state === "cancellation_requested" ? "2026-06-29T14:18:00Z" : null,
         cancellation_requested_by_actor_ref:
-            base.state === "cancellation_requested" ? "operator:console" : null,
+            base.state === "cancellation_requested" ? "local_operator" : null,
         command: base.command,
         description: base.description,
         dispatch_id: `dispatch-${base.runId}`,
@@ -129,11 +137,12 @@ export function createCommandRunDetail(
         started_at: base.state === "pending_start" ? null : TEST_UPDATED_AT,
         state: base.state,
         task_id: COMMAND_RUN_TASK_ID,
-        terminal_actor_ref: isTerminal ? "controller:command-run-runner" : null,
-        terminal_event_source: isTerminal ? "controller" : null,
+        terminal_actor_ref: null,
+        terminal_event_source: isTerminal ? "process_owner" : null,
         terminal_result: isTerminal
             ? {
                   exit_code: base.state === "failed" ? 1 : base.state === "succeeded" ? 0 : null,
+                  failure_code: base.state === "abandoned" ? "command_ownership_lost" : null,
                   log_ref: logRef,
                   signal: base.state === "timed_out" ? "SIGTERM" : null,
                   summary: base.summary,

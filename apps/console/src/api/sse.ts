@@ -40,7 +40,9 @@ export interface TaskEventStreamReadResult {
 }
 
 export interface TaskEventStreamReconnectOptions extends TaskEventStreamOptions {
-    readonly resetAfterCursorReset: (staleCursor: string | null) => Promise<void> | void;
+    readonly resetAfterCursorReset: (
+        staleCursor: string | null,
+    ) => Promise<string | null> | string | null;
 }
 
 export function taskEventStreamUrl(
@@ -69,9 +71,6 @@ export function buildTaskEventStreamRequest(
             : { cursor: options.cursor },
     );
     const headers = new Headers({ Accept: "text/event-stream" });
-    if (config.apiKey !== null) {
-        headers.set("X-AutoClaw-API-Key", config.apiKey);
-    }
 
     return { headers, url };
 }
@@ -158,8 +157,11 @@ export async function reconnectTaskEventStream(
         return firstResult;
     }
 
-    await options.resetAfterCursorReset(firstResult.staleCursor);
-    const secondResult = await readTaskEventStream({ ...options, cursor: null });
+    const refreshedStreamHead = await options.resetAfterCursorReset(firstResult.staleCursor);
+    const secondResult = await readTaskEventStream({
+        ...options,
+        cursor: refreshedStreamHead,
+    });
     return {
         ...secondResult,
         didResetCursor: true,
@@ -288,6 +290,19 @@ function readTaskEventFromFrame(
             code: "conflicting_sse_event_id",
             title: "Conflicting SSE Event Id",
             summary: "The task event stream frame id did not match the payload event id.",
+            status: null,
+            isRetryable: true,
+            suggestedNextStep: "Reconnect to the task event stream.",
+            fieldErrors: [],
+            source: "network",
+        });
+    }
+
+    if (frame.event !== null && frame.event !== parsedData.event_type) {
+        throw new AutoClawApiError({
+            code: "conflicting_sse_event_type",
+            title: "Conflicting SSE Event Type",
+            summary: "The task event stream frame type did not match the payload event type.",
             status: null,
             isRetryable: true,
             suggestedNextStep: "Reconnect to the task event stream.",

@@ -70,9 +70,6 @@ def test_serve_does_not_run_global_provider_preflight(
     config_path = tmp_path / "autoclaw-config.toml"
     config_path.write_text(
         """
-[security]
-api_key = "test-key"
-
 [openclaw]
 enabled = true
 gateway_url = "not-a-websocket-url"

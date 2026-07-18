@@ -4,19 +4,25 @@ import sqlite3
 from pathlib import Path
 from typing import cast
 
+import pytest
 from autoclaw.config import CodexSettings, RuntimeSettings, Settings
 from autoclaw.definitions.contracts.registry import PolicyDefinitionInput
 from autoclaw.definitions.contracts.workflow import NodeKind, ProviderKind
 from autoclaw.persistence.models import (
+    CommandRunModel,
     DispatchPromptRefsModel,
     DispatchTurnModel,
     FlowModel,
     HumanRequestModel,
     PolicyRevisionModel,
 )
+from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import HumanRequestResolveRequest, TaskRootPaths
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.dispatch.request_pair import DispatchRequestPairRefs
+from autoclaw.runtime.errors import RuntimeOperationError
+from autoclaw.runtime.flow.service import runtime_flow_read
 from autoclaw.runtime.human_request.continuation import open_human_request_successor
 from autoclaw.runtime.human_request.service import resolve_human_request
 from autoclaw.runtime.node_operations import NodeOperationExecutor, NodeOperationScope
@@ -57,6 +63,7 @@ async def test_terminal_human_source_opens_one_same_attempt_successor(
         dependencies = _opening_dependencies(publisher=publisher)
 
         async with session_factory() as session:
+            pre_open = await runtime_flow_read(cast(AsyncSession, session), ids.task_id)
             first = await open_human_request_successor(
                 cast(AsyncSession, session),
                 signal=HumanRequestTerminal(request_id),
@@ -76,6 +83,10 @@ async def test_terminal_human_source_opens_one_same_attempt_successor(
             )
 
     assert first.outcome == "opened"
+    assert pre_open.current_human_request is not None
+    assert pre_open.current_human_request.request_id == request_id
+    assert pre_open.current_human_request.status.value == "resolved"
+    assert pre_open.current_dispatch is None
     assert duplicate.outcome == "skipped"
     assert first.dispatch_id is not None
     assert source is not None and source.successor_dispatch_id == first.dispatch_id
@@ -161,6 +172,7 @@ async def test_human_preparation_failure_pauses_without_consuming_source(
             )
             source = await session.get(HumanRequestModel, request_id)
             flow = await session.get(FlowModel, ids.flow_id)
+            readback = await runtime_flow_read(cast(AsyncSession, session), ids.task_id)
             dispatch_count = await session.scalar(
                 select(func.count()).select_from(DispatchTurnModel)
             )
@@ -169,6 +181,9 @@ async def test_human_preparation_failure_pauses_without_consuming_source(
     assert source is not None and source.successor_dispatch_id is None
     assert flow is not None and flow.status == "paused"
     assert flow.pause_reason == "runtime_transition_failed"
+    assert readback.current_human_request is not None
+    assert readback.current_human_request.request_id == request_id
+    assert readback.current_human_request.status.value == "resolved"
     assert dispatch_count == 3
 
 
@@ -231,6 +246,44 @@ async def test_human_source_change_during_materialization_loses_cleanly(
     assert result.outcome == "skipped"
     assert source is not None and source.successor_dispatch_id is None
     assert dispatch_count == 3
+
+
+async def test_flow_read_rejects_multiple_retained_continuation_sources(
+    tmp_path: Path,
+) -> None:
+    async with seeded_executor(tmp_path, suffix="ambiguous-retained-sources") as (
+        executor,
+        session_factory,
+        ids,
+        _,
+    ):
+        await _open_and_resolve_human_request(executor, session_factory, ids)
+        now = utc_now()
+        async with session_factory() as session:
+            session.add(
+                CommandRunModel(
+                    run_id=f"command-run.{ids.task_id}.ambiguous",
+                    task_id=ids.task_id,
+                    flow_id=ids.flow_id,
+                    assignment_id=ids.root_assignment_id,
+                    attempt_id=ids.root_attempt_id,
+                    source_dispatch_id=ids.root_dispatch_id,
+                    command_spec_json={"kind": "argv", "argv": ["true"]},
+                    summary="Synthetic conflicting retained source.",
+                    state="succeeded",
+                    started_at=now,
+                    ended_at=now,
+                    terminal_summary="Synthetic command completed.",
+                    terminal_exit_code=0,
+                    terminal_event_source="process_owner",
+                    created_at=now,
+                )
+            )
+            await session.commit()
+            with pytest.raises(RuntimeOperationError) as ambiguous:
+                await runtime_flow_read(cast(AsyncSession, session), ids.task_id)
+
+    assert ambiguous.value.code == OperationFailureCode.ILLEGAL_STATE
 
 
 async def _open_and_resolve_human_request(

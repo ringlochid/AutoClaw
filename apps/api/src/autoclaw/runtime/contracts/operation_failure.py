@@ -10,6 +10,7 @@ from autoclaw.runtime.contracts.common import RuntimeSchemaText
 
 class OperationFailureCode(StrEnum):
     INVALID_REQUEST_SHAPE = "invalid_request_shape"
+    LOCAL_ADMISSION_DENIED = "local_admission_denied"
     AUTHENTICATION_FAILED = "authentication_failed"
     SCOPE_MISMATCH = "scope_mismatch"
     ILLEGAL_CALLER = "illegal_caller"

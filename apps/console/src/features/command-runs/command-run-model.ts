@@ -27,7 +27,7 @@ export interface CommandRunDetailView {
     readonly stateTone: StatusTone;
     readonly taskId: string;
     readonly terminalActorRef: string | null;
-    readonly terminalEventSource: components["schemas"]["TaskEventSource"] | null;
+    readonly terminalEventSource: components["schemas"]["CommandRunTerminalSource"] | null;
     readonly terminalResult: components["schemas"]["CommandRunTerminalResult"] | null;
     readonly timeoutSeconds: number | null;
     readonly workdir: string | null;
@@ -87,7 +87,8 @@ export function isTerminalCommandRunState(state: CommandRunState): boolean {
         state === "succeeded" ||
         state === "failed" ||
         state === "timed_out" ||
-        state === "cancelled"
+        state === "cancelled" ||
+        state === "abandoned"
     );
 }
 
@@ -107,6 +108,8 @@ export function commandRunStateLabel(state: CommandRunState): string {
             return "Timed out";
         case "cancelled":
             return "Cancelled";
+        case "abandoned":
+            return "Abandoned";
     }
 }
 
@@ -119,6 +122,7 @@ export function commandRunStateTone(state: CommandRunState): StatusTone {
         case "failed":
         case "timed_out":
         case "cancelled":
+        case "abandoned":
             return "danger";
         case "pending_start":
         case "cancellation_requested":

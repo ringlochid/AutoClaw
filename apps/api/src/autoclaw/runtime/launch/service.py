@@ -10,15 +10,18 @@ from autoclaw.runtime import (
     RuntimeBootstrapResult,
     RuntimeLaunchInput,
 )
+from autoclaw.runtime.contracts import TaskEventSource, TaskEventType
 from autoclaw.runtime.ids import (
     assignment_key_for_task,
     attempt_id_for_task,
+    compiled_plan_id_for_task,
     flow_id_for_task,
     flow_revision_id,
 )
 from autoclaw.runtime.launch.bootstrap import build_launch_support_projection_signals
 from autoclaw.runtime.launch.persistence.runtime import persist_bootstrap_runtime_from_precomputed
 from autoclaw.runtime.projection.signals import SupportProjectionSignal
+from autoclaw.runtime.task_events import append_task_event
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +59,23 @@ async def launch_task_runtime(
         session,
         bootstrap_input,
         should_commit=False,
+    )
+    flow_id = flow_id_for_task(launch_input.task_id)
+    active_flow_revision_id = flow_revision_id(flow_id, 1)
+    await append_task_event(
+        session,
+        task_id=launch_input.task_id,
+        event_type=TaskEventType.TASK_STARTED,
+        event_source=TaskEventSource.CONTROLLER,
+        flow_revision_id=active_flow_revision_id,
+        node_key=root_node_key,
+        payload={
+            "flow_id": flow_id,
+            "compiled_plan_id": compiled_plan_id_for_task(launch_input.task_id),
+            "workflow_key": snapshot.compiled_plan.workflow_key,
+            "workflow_revision_no": snapshot.compiled_plan.definition_revision_no,
+            "manifest_ref": "_runtime/workflow-manifest.md",
+        },
     )
     return StagedRuntimeLaunch(
         bootstrap=bootstrap,

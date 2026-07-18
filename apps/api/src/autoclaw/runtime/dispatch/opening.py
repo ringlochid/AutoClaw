@@ -9,12 +9,14 @@ from autoclaw.persistence.models import (
     DispatchPromptRefsModel,
     DispatchTurnModel,
 )
+from autoclaw.runtime.contracts import TaskEventSource, TaskEventType
 from autoclaw.runtime.contracts.provider_resolution import (
     ClaudeProviderRoute,
     CodexProviderRoute,
     OpenClawProviderRoute,
 )
 from autoclaw.runtime.dispatch.preparation import PreparedDispatchRequest
+from autoclaw.runtime.task_events import append_task_event
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,9 +29,17 @@ class StartingDispatchBasis:
     opened_reason: str
     predecessor_dispatch_id: str | None
     flow_start_source_flow_id: str | None
+    resume_event: TaskResumeEventBasis | None = None
 
 
-def stage_starting_dispatch(
+@dataclass(frozen=True, slots=True)
+class TaskResumeEventBasis:
+    control_revision: int
+    actor_ref: str | None
+    event_source: TaskEventSource
+
+
+async def stage_starting_dispatch(
     session: AsyncSession,
     *,
     basis: StartingDispatchBasis,
@@ -78,6 +88,47 @@ def stage_starting_dispatch(
             closed_reason=None,
         )
     )
+    await append_task_event(
+        session,
+        task_id=basis.task_id,
+        event_type=TaskEventType.DISPATCH_OPENED,
+        event_source=TaskEventSource.CONTROLLER,
+        occurred_at=prepared.due_at,
+        dispatch_id=prepared.dispatch_id,
+        attempt_id=basis.attempt_id,
+        node_key=basis.node_key,
+        payload={
+            "dispatch_id": prepared.dispatch_id,
+            "predecessor_dispatch_id": basis.predecessor_dispatch_id,
+            "assignment_id": basis.assignment_id,
+            "attempt_id": basis.attempt_id,
+            "node_key": basis.node_key,
+            "status": "starting",
+            "opened_reason": basis.opened_reason,
+            "requested_provider": prepared.provider.requested_provider.value,
+            "resolved_provider": prepared.provider.resolved_provider.value,
+            "selection_basis": prepared.provider.selection_basis.value,
+            "instructions_ref": prepared.refs.instructions_logical_path,
+            "input_ref": prepared.refs.input_logical_path,
+        },
+    )
+    if basis.resume_event is not None:
+        await append_task_event(
+            session,
+            task_id=basis.task_id,
+            event_type=TaskEventType.TASK_RESUMED,
+            event_source=basis.resume_event.event_source,
+            occurred_at=prepared.due_at,
+            dispatch_id=prepared.dispatch_id,
+            attempt_id=basis.attempt_id,
+            node_key=basis.node_key,
+            actor_ref=basis.resume_event.actor_ref,
+            payload={
+                "control_revision": basis.resume_event.control_revision,
+                "actor_ref": basis.resume_event.actor_ref,
+                "summary": "Resumed by operator from the retained exact source.",
+            },
+        )
     session.add(
         DispatchPromptRefsModel(
             dispatch_id=prepared.dispatch_id,
@@ -105,4 +156,4 @@ def stage_starting_dispatch(
     )
 
 
-__all__ = ["StartingDispatchBasis", "stage_starting_dispatch"]
+__all__ = ["StartingDispatchBasis", "TaskResumeEventBasis", "stage_starting_dispatch"]

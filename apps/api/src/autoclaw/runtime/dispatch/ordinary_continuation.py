@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from autoclaw.persistence.models import FlowModel
-from autoclaw.runtime.dispatch.opening import StartingDispatchBasis, stage_starting_dispatch
+from autoclaw.runtime.dispatch.opening import (
+    StartingDispatchBasis,
+    TaskResumeEventBasis,
+    stage_starting_dispatch,
+)
 from autoclaw.runtime.dispatch.ordinary_context import (
     OrdinaryContinuationBasis,
     OrdinaryDispatchSnapshot,
@@ -109,6 +113,7 @@ async def commit_ordinary_dispatch_if_current(
     prepared: PreparedDispatchRequest,
     claim_source: OrdinarySourceClaim,
     should_resume_flow: bool,
+    resume_event: TaskResumeEventBasis | None = None,
 ) -> bool:
     """Claim one source and commit its flow pointer plus starting D2 atomically."""
 
@@ -147,7 +152,7 @@ async def commit_ordinary_dispatch_if_current(
     if flow_id is None:
         await session.rollback()
         return False
-    stage_starting_dispatch(
+    await stage_starting_dispatch(
         session,
         basis=StartingDispatchBasis(
             task_id=snapshot.prompt.task_id,
@@ -158,6 +163,7 @@ async def commit_ordinary_dispatch_if_current(
             opened_reason=snapshot.basis.opened_reason,
             predecessor_dispatch_id=snapshot.prompt.predecessor_dispatch_id,
             flow_start_source_flow_id=None,
+            resume_event=resume_event,
         ),
         prepared=prepared,
     )

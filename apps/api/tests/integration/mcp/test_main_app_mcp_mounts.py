@@ -6,6 +6,7 @@ import autoclaw.main as main_module
 import autoclaw.runtime.node_operations.executor as executor_module
 import httpx
 import pytest
+from autoclaw.config import Settings
 from autoclaw.main import create_app
 from autoclaw.runtime.node_mcp import DispatchMcpBindingRegistry
 from autoclaw.runtime.node_operations import NodeOperationName
@@ -136,12 +137,11 @@ async def test_main_app_mounts_one_managed_and_one_compatibility_node_mcp_app(
         assert app.state.support_projection_startup_audit == {}
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app, client=("127.0.0.1", 43125)),
-            base_url="http://127.0.0.1",
+            base_url="http://127.0.0.1:18125",
         ) as client:
             operator = await _post_initialize(
                 client,
                 "/operator/mcp",
-                headers={"Authorization": "Bearer autoclaw-operator-test-key"},
             )
             managed = await _post_initialize(
                 client,
@@ -166,13 +166,84 @@ async def test_main_app_mounts_one_managed_and_one_compatibility_node_mcp_app(
     assert not app.state.support_projection_owner.is_accepting
 
 
+async def test_ipv6_loopback_mount_admits_operator_without_managed_node_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings(
+        api_host="::1",
+        api_port=18125,
+        console_origins=["http://[::1]:5173"],
+    )
+    monkeypatch.setattr(main_module, "get_settings", lambda: settings)
+    startup_calls: list[str] = []
+    app = create_app(should_enable_mcp_mounts=True)
+    _install_lifespan_mocks(monkeypatch, app, startup_calls)
+
+    registry = app.state.dispatch_mcp_binding_registry
+    assert isinstance(registry, DispatchMcpBindingRegistry)
+    issued = registry.issue_binding(
+        task_id="task.main-ipv6-mount",
+        dispatch_id="dispatch.main-ipv6-mount",
+        provider_start_revision=0,
+        exposure_ceiling=(NodeOperationName.GET_CURRENT_CONTEXT,),
+    )
+
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app, client=("::1", 43125)),
+            base_url="http://[::1]:18125",
+        ) as client:
+            operator = await _post_initialize(
+                client,
+                "/operator/mcp",
+                headers={"Origin": "http://[::1]:5173"},
+            )
+            wrong_port = await _post_initialize(
+                client,
+                "/operator/mcp",
+                headers={"Host": "[::1]:18126"},
+            )
+            wrong_origin = await _post_initialize(
+                client,
+                "/operator/mcp",
+                headers={"Origin": "http://[::1]:5174"},
+            )
+            managed_without_bearer = await _post_initialize(
+                client,
+                "/_internal/node/mcp",
+            )
+            managed = await _post_initialize(
+                client,
+                "/_internal/node/mcp",
+                headers={"Authorization": f"Bearer {issued.credential}"},
+            )
+
+    assert operator.status_code == 200
+    assert wrong_port.status_code == 400
+    assert wrong_port.json()["code"] == "local_admission_denied"
+    assert wrong_origin.status_code == 403
+    assert wrong_origin.json()["code"] == "local_admission_denied"
+    assert managed_without_bearer.status_code == 401
+    assert managed.status_code == 200
+
+
 async def test_main_app_openapi_and_http_routes_exclude_private_mcp_and_callback_lanes() -> None:
     app = create_app(should_enable_mcp_mounts=True)
 
-    openapi_paths = set(app.openapi()["paths"])
+    openapi = app.openapi()
+    openapi_paths = set(openapi["paths"])
     route_paths = {getattr(route, "path", "") for route in app.routes}
 
+    assert {
+        "/authoring/task-compose/preview",
+        "/control/tasks/{task_id}",
+        "/control/tasks/{task_id}/snapshot",
+        "/control/tasks/{task_id}/trace",
+        "/control/tasks/{task_id}/events",
+        "/control/tasks/{task_id}/events/stream",
+    } <= openapi_paths
     assert "/_internal/node/mcp" not in openapi_paths
     assert "/node/mcp" not in openapi_paths
     assert not any(path.startswith("/callback") for path in openapi_paths)
     assert not any(path.startswith("/callback") for path in route_paths)
+    assert openapi.get("components", {}).get("securitySchemes", {}) == {}

@@ -126,11 +126,11 @@ async def mcp_session_without_lifespan(
 ) -> AsyncIterator[ClientSession]:
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app, client=("127.0.0.1", 43125)),
-        base_url="http://127.0.0.1",
+        base_url="http://127.0.0.1:18125",
         headers=dict(headers or {}),
     ) as client:
         async with streamable_http_client(
-            "http://127.0.0.1/mcp",
+            "http://127.0.0.1:18125/mcp",
             http_client=client,
         ) as streams:
             async with ClientSession(*streams[:2]) as session:

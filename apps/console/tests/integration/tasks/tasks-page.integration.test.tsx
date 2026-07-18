@@ -9,8 +9,6 @@ import { TasksPage } from "../../../src/features/tasks/TasksPage";
 import { createConsoleApiHandlers } from "../../../src/mocks/handlers";
 import {
     TEST_API_BASE_URL,
-    TEST_API_KEY,
-    createBackendOperationFailureBody,
     createConsoleMockScenario,
     createLongRuntimeTaskRow,
     createMixedRuntimeTaskRows,
@@ -27,14 +25,13 @@ beforeAll(() => {
 
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
-    vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
     installTestConsoleConfig();
 });
 
 afterEach(() => {
     cleanup();
     server.resetHandlers();
-    installTestConsoleConfig(null);
+    installTestConsoleConfig();
     vi.unstubAllEnvs();
 });
 
@@ -62,18 +59,6 @@ describe("TasksPage", () => {
         server.use(
             http.get("*/runtime/tasks", ({ request }) => {
                 seenRequests.push(new URL(request.url));
-                if (request.headers.get("X-AutoClaw-API-Key") !== TEST_API_KEY) {
-                    return HttpResponse.json(
-                        createBackendOperationFailureBody({
-                            code: "illegal_caller",
-                            retryable: false,
-                            summary: "The AutoClaw API key is missing or invalid.",
-                            suggested_next_step: "Provide a valid operator API key.",
-                        }),
-                        { status: 401 },
-                    );
-                }
-
                 const cursor = new URL(request.url).searchParams.get("cursor");
                 return HttpResponse.json(cursor === "cursor-page-2" ? secondPage : firstPage);
             }),
@@ -219,27 +204,7 @@ describe("TasksPage", () => {
         expect(hasStaleCursorRequest(seenRequests)).toBe(false);
     });
 
-    it("renders auth and read errors as task-list states", async () => {
-        server.use(
-            ...createConsoleApiHandlers(
-                createConsoleMockScenario({
-                    apiKey: "different-test-key",
-                }),
-            ),
-        );
-
-        const { unmount } = renderTasksPage();
-        const authState = await screen.findByRole("alert", { name: "Access to tasks failed" });
-        expect(
-            within(authState).getByText("The AutoClaw API key is missing or invalid."),
-        ).toBeVisible();
-        const authRetryButton = within(authState).getByRole("button", { name: "Retry" });
-        authRetryButton.focus();
-        expect(authRetryButton).toHaveFocus();
-
-        unmount();
-        cleanup();
-        server.resetHandlers();
+    it("renders read errors as task-list states", async () => {
         server.use(
             http.get("*/runtime/tasks", () =>
                 HttpResponse.text("Runtime task read failed.", { status: 500 }),

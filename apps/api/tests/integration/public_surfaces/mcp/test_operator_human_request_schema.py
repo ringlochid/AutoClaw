@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import cast
 
-from autoclaw.interfaces.mcp.operator.server import create_operator_mcp_server
+from autoclaw.interfaces.mcp.operator.server import (
+    OPERATOR_TOOL_NAMES,
+    create_operator_mcp_server,
+)
 from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
 
 
@@ -40,3 +43,54 @@ async def test_operator_human_resolution_schema_uses_typed_response_map() -> Non
         )
     )
     assert legacy_response_errors
+
+
+async def test_operator_inventory_teaches_current_truth_and_chronology_without_stale_refs() -> None:
+    tools = await create_operator_mcp_server().list_tools()
+    tools_by_name = {tool.name: tool for tool in tools}
+
+    assert tuple(tools_by_name) == OPERATOR_TOOL_NAMES
+    assert "get_task_events" in tools_by_name
+    assert "chronology" in (tools_by_name["get_task_events"].description or "").casefold()
+    assert (
+        not {
+            "get_delivery_state_ref",
+            "get_continuity_state_ref",
+            "get_watchdog_state_ref",
+            "get_provider_events_ref",
+        }
+        & tools_by_name.keys()
+    )
+
+    expected_teaching = {
+        "upload_definition": ("future resolution", "pinned tasks", "starts no task"),
+        "start_task": ("bootstrap", "asynchronously", "does not mean an assignment"),
+        "pause_task": ("closure committed", "does not wait for provider stop"),
+        "continue_task": ("successor dispatch", "provider start is asynchronous"),
+        "cancel_task": ("controller cancellation", "does not wait for process exit"),
+        "resolve_human_request": ("resolution committed", "successor opening"),
+        "cancel_command_run": ("cancellation_requested", "does not mean the process exited"),
+    }
+    for tool_name, required_phrases in expected_teaching.items():
+        tool = tools_by_name[tool_name]
+        description = (tool.description or "").casefold()
+        assert all(phrase in description for phrase in required_phrases)
+        assert tool.annotations is not None
+        assert tool.annotations.readOnlyHint is False
+
+    for tool_name in (
+        "search_definitions",
+        "get_definition",
+        "list_definition_versions",
+        "get_runtime_task",
+        "get_operator_snapshot",
+        "get_operator_trace",
+        "get_task_events",
+        "get_human_requests",
+        "get_command_runs",
+        "get_command_run",
+        "get_command_run_log",
+    ):
+        tool = tools_by_name[tool_name]
+        assert tool.annotations is not None
+        assert tool.annotations.readOnlyHint is True

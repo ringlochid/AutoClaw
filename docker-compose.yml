@@ -32,31 +32,6 @@ services:
             - autoclaw-postgres-test:/var/lib/postgresql/data
             - ./infra/compose/postgres/init:/docker-entrypoint-initdb.d:ro
 
-    api:
-        build:
-            context: .
-            dockerfile: apps/api/Dockerfile
-        depends_on:
-            postgres:
-                condition: service_healthy
-        environment:
-            AUTOCLAW_ENV: development
-            AUTOCLAW_DEBUG: "true"
-            AUTOCLAW_DATABASE_URL: postgresql+asyncpg://autoclaw:autoclaw@postgres:5432/autoclaw
-            AUTOCLAW_OPENCLAW__BASE_URL: http://host.docker.internal:18789
-            AUTOCLAW_OPENCLAW__GATEWAY_TOKEN: ${AUTOCLAW_OPENCLAW__GATEWAY_TOKEN:?set AUTOCLAW_OPENCLAW__GATEWAY_TOKEN}
-            AUTOCLAW_OPENCLAW__AGENT_ID: ${AUTOCLAW_OPENCLAW__AGENT_ID:-autoclaw-worker}
-            AUTOCLAW_OPENCLAW__TIMEOUT_MS: ${AUTOCLAW_OPENCLAW__TIMEOUT_MS:-120000}
-            AUTOCLAW_API_KEY: ${AUTOCLAW_API_KEY:?set AUTOCLAW_API_KEY}
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
-        ports:
-            - "127.0.0.1:8001:8000"
-        command:
-            - sh
-            - -c
-            - python -m autoclaw db upgrade && exec uvicorn autoclaw.main:app --host 0.0.0.0 --port 8000
-
     api-test:
         build:
             context: .
@@ -68,9 +43,6 @@ services:
             AUTOCLAW_ENV: test
             AUTOCLAW_DEBUG: "false"
             AUTOCLAW_DATABASE_URL: postgresql+asyncpg://autoclaw:autoclaw@postgres-test:5432/autoclaw_test
-            AUTOCLAW_OPENCLAW__AGENT_ID: autoclaw-worker
-            AUTOCLAW_OPENCLAW__TIMEOUT_MS: 120000
-            AUTOCLAW_API_KEY: autoclaw-operator-test-key
         command:
             - sh
             - -c

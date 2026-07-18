@@ -212,7 +212,7 @@ function HumanRequestQueueButton({
                     isSelected && "text-primary-foreground",
                 )}
             >
-                {item.title}
+                {item.summary}
             </h2>
         </button>
     );
@@ -262,11 +262,8 @@ function SelectedHumanRequest({ controller }: { readonly controller: HumanReques
                                 ref={headingRef}
                                 tabIndex={-1}
                             >
-                                {read.request.title}
-                            </h2>
-                            <p className="mt-1.5 max-w-3xl text-body text-muted">
                                 {read.request.summary}
-                            </p>
+                            </h2>
                         </div>
                         <SelectedRequestActions
                             className="hidden shrink-0 flex-nowrap items-center justify-end gap-2 lg:flex"
@@ -321,11 +318,8 @@ function MobileSelectedRequestSummary({
                             </span>
                         </div>
                         <h2 className="mt-1.5 font-display text-compact font-semibold text-foreground">
-                            {read.request.title}
-                        </h2>
-                        <p className="mt-1 hidden text-utility text-muted sm:block">
                             {read.request.summary}
-                        </p>
+                        </h2>
                     </div>
                     <div className="shrink-0 text-left sm:text-right">
                         <p className="font-mono text-utility text-muted">
@@ -416,8 +410,8 @@ function MobileRequestQueueSummary({
 function RequestMetadata({ read }: { readonly read: HumanRequestRead }) {
     return (
         <dl className="grid min-w-0 overflow-hidden rounded-card border border-outline-soft bg-surface-low md:grid-cols-3">
-            <RequestMetadataItem label="Requester node">
-                <IdRefText value={read.request.requester_node} />
+            <RequestMetadataItem label="Source dispatch">
+                <IdRefText value={read.request.source_dispatch_id} />
             </RequestMetadataItem>
             <RequestMetadataItem label="Opened">
                 <time dateTime={new Date(read.request.opened_at).toISOString()}>

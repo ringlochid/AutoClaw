@@ -12,7 +12,11 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from autoclaw.persistence.models import FlowModel, FlowStartSourceModel
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
-from autoclaw.runtime.dispatch.opening import StartingDispatchBasis, stage_starting_dispatch
+from autoclaw.runtime.dispatch.opening import (
+    StartingDispatchBasis,
+    TaskResumeEventBasis,
+    stage_starting_dispatch,
+)
 from autoclaw.runtime.dispatch.ordinary_continuation import publish_dispatch_start_due
 from autoclaw.runtime.dispatch.preparation import (
     DispatchOpeningDependencies,
@@ -96,6 +100,7 @@ async def continue_paused_root_dispatch(
     expected_active_flow_revision_id: str,
     expected_control_revision: int,
     dependencies: DispatchOpeningDependencies,
+    resume_event: TaskResumeEventBasis,
 ) -> FlowStartOpeningResult:
     """Directly resume one paused, unconsumed flow-start source."""
 
@@ -129,6 +134,7 @@ async def continue_paused_root_dispatch(
         session,
         snapshot=snapshot,
         prepared=prepared,
+        resume_event=resume_event,
     ):
         raise _root_continue_conflict("another controller transition won during continue")
     publish_dispatch_start_due(dependencies, prepared)
@@ -176,6 +182,7 @@ async def _commit_root_dispatch_if_current(
     *,
     snapshot: RootOpeningSnapshot,
     prepared: PreparedDispatchRequest,
+    resume_event: TaskResumeEventBasis | None = None,
 ) -> bool:
     prompt = snapshot.prompt
     claimed = await session.scalar(
@@ -224,7 +231,7 @@ async def _commit_root_dispatch_if_current(
     if updated_flow is None:
         await session.rollback()
         return False
-    stage_starting_dispatch(
+    await stage_starting_dispatch(
         session,
         basis=StartingDispatchBasis(
             task_id=prompt.task_id,
@@ -235,6 +242,7 @@ async def _commit_root_dispatch_if_current(
             opened_reason=snapshot.opened_reason,
             predecessor_dispatch_id=None,
             flow_start_source_flow_id=prompt.flow_id,
+            resume_event=resume_event,
         ),
         prepared=prepared,
     )

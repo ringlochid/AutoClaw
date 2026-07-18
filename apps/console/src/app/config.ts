@@ -1,12 +1,10 @@
 export interface ConsoleEnvironment {
     readonly DEV?: boolean;
     readonly VITE_AUTOCLAW_API_BASE_URL?: string;
-    readonly VITE_AUTOCLAW_API_KEY?: string;
 }
 
 export interface ConsoleConfig {
     readonly apiBaseUrl: string;
-    readonly apiKey: string | null;
 }
 
 export interface ConsoleConfigLoadOptions {
@@ -48,11 +46,8 @@ export function buildConsoleConfig(
     env: ConsoleEnvironment = defaultConsoleEnvironment,
     fallbackBaseUrl = defaultApiBaseUrl(env),
 ): ConsoleConfig {
-    const apiKey = env.VITE_AUTOCLAW_API_KEY?.trim();
-
     return {
         apiBaseUrl: normalizeApiBaseUrl(env.VITE_AUTOCLAW_API_BASE_URL, fallbackBaseUrl),
-        apiKey: apiKey === undefined || apiKey === "" ? null : apiKey,
     };
 }
 
@@ -78,7 +73,7 @@ export async function loadConsoleConfig({
     origin = globalThis.location.origin,
 }: ConsoleConfigLoadOptions = {}): Promise<ConsoleConfig> {
     const environmentConfig = buildConsoleConfig(env, defaultApiBaseUrl(env, origin));
-    if (env.DEV === true || environmentConfig.apiKey !== null) {
+    if (env.DEV === true) {
         return environmentConfig;
     }
 
@@ -113,12 +108,7 @@ function configFromRuntimeResponse(
         typeof responseBody.apiBaseUrl === "string"
             ? normalizeApiBaseUrl(responseBody.apiBaseUrl, fallbackConfig.apiBaseUrl)
             : fallbackConfig.apiBaseUrl;
-    const apiKey = typeof responseBody.apiKey === "string" ? responseBody.apiKey.trim() : "";
-
-    return {
-        apiBaseUrl,
-        apiKey: apiKey === "" ? fallbackConfig.apiKey : apiKey,
-    };
+    return { apiBaseUrl };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

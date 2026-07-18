@@ -18,6 +18,7 @@ from autoclaw.persistence.models import (
     PolicyRevisionModel,
     TaskEventModel,
 )
+from autoclaw.runtime.command_run.service import cancel_command_run
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.errors import RuntimeOperationError
@@ -58,7 +59,8 @@ async def test_flow_reads_expose_current_controller_identity(tmp_path: Path) -> 
 
     assert flow.status.value == "running"
     assert flow.active_flow_revision_id == ids.flow_revision_id
-    assert flow.current_dispatch_id == ids.current_dispatch_id
+    assert flow.current_dispatch is not None
+    assert flow.current_dispatch.dispatch_id == ids.current_dispatch_id
     assert flow.active_assignment_id == ids.root_assignment_id
     assert flow.active_attempt_id == ids.root_attempt_id
     assert flow.control_revision >= 0
@@ -101,7 +103,7 @@ async def test_pause_closes_exact_current_dispatch_and_rejects_stale_control(
 
     assert response.flow.status.value == "paused"
     assert response.flow.control_revision == control_revision + 1
-    assert response.flow.current_dispatch_id is None
+    assert response.flow.current_dispatch is None
     assert response.flow.pause_reason == "paused_by_operator"
     assert dispatch is not None and dispatch.status == "closed"
     assert dispatch.closed_reason == "paused"
@@ -168,8 +170,11 @@ async def test_continue_opens_one_successor_at_the_exact_control_revision(
                 expected_control_revision=paused.flow.control_revision,
                 dependencies=_opening_dependencies(publisher),
             )
-            assert resumed.current_dispatch_id is not None
-            successor = await session.get(DispatchTurnModel, resumed.current_dispatch_id)
+            assert resumed.current_dispatch is not None
+            successor = await session.get(
+                DispatchTurnModel,
+                resumed.current_dispatch.dispatch_id,
+            )
             resumed_event = await session.scalar(
                 select(TaskEventModel).where(TaskEventModel.event_type == "task_resumed")
             )
@@ -221,7 +226,7 @@ async def test_cancel_closes_execution_authority_without_successor(tmp_path: Pat
             )
 
     assert response.status.value == "cancelled"
-    assert response.current_dispatch_id is None
+    assert response.current_dispatch is None
     assert dispatch is not None and dispatch.closed_reason == "cancelled"
     assert active_attempts == 0
     assert active_nodes == 0
@@ -333,9 +338,16 @@ async def test_cancel_terminalizes_human_wait_and_requests_command_cancellation(
             )
             source = await session.get(CommandRunModel, run_id)
             wait = await session.get(FlowWaitModel, ids.flow_id)
+            with pytest.raises(RuntimeOperationError) as stale_command_cancel:
+                await cancel_command_run(
+                    cast(AsyncSession, session),
+                    task_id=ids.task_id,
+                    run_id=run_id,
+                )
 
     assert source is not None and source.state == "cancellation_requested"
     assert wait is None
+    assert stale_command_cancel.value.code == OperationFailureCode.CONFLICT
     assert command_publisher.signals == (
         CommandRunCancellationRequested(
             run_id=run_id,

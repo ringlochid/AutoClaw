@@ -22,6 +22,7 @@ from autoclaw.runtime.contracts import (
     HumanRequestResolveResponse,
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,
+    RuntimeLifecycleStatus,
     TaskStartRequest,
     TaskStartResponse,
     WorkflowManifestRef,
@@ -78,8 +79,10 @@ async def _capture_human_resolution(
     resolved_by_surface: object = None,
     runtime_effect_publisher: object = None,
 ) -> HumanRequestResolveResponse:
-    del session, request, actor_ref, resolved_by_surface
+    del session, request
     captured["resolve_runtime"] = runtime_effect_publisher
+    captured["resolve_actor_ref"] = actor_ref
+    captured["resolve_surface"] = resolved_by_surface
     return HumanRequestResolveResponse(
         task_id=task_id,
         resolution=HumanRequestResolution(
@@ -198,9 +201,12 @@ async def test_operator_tools_receive_the_server_owned_effect_publishers(
         "start_runtime": runtime_publisher,
         "start_projection": projection_publisher,
         "resolve_runtime": runtime_publisher,
+        "resolve_actor_ref": "local_operator",
+        "resolve_surface": HumanRequestResolutionSurface.OPERATOR_MCP,
         "pause": {
             "expected_active_flow_revision_id": "flow-revision.operator-injection.1",
             "expected_control_revision": 7,
+            "actor_ref": "local_operator",
             "event_source": runtime_tools_module.TaskEventSource.OPERATOR_MCP,
             "runtime_effect_publisher": runtime_publisher,
         },
@@ -208,11 +214,13 @@ async def test_operator_tools_receive_the_server_owned_effect_publishers(
             "expected_active_flow_revision_id": "flow-revision.operator-injection.1",
             "expected_control_revision": 7,
             "dependencies": opening_dependencies,
+            "actor_ref": "local_operator",
             "event_source": runtime_tools_module.TaskEventSource.OPERATOR_MCP,
         },
         "cancel": {
             "expected_active_flow_revision_id": "flow-revision.operator-injection.1",
             "expected_control_revision": 7,
+            "actor_ref": "local_operator",
             "event_source": runtime_tools_module.TaskEventSource.OPERATOR_MCP,
             "runtime_effect_publisher": runtime_publisher,
         },
@@ -224,7 +232,7 @@ def _runtime_flow_read(task_id: str, *, control_revision: int) -> RuntimeFlowRea
         task_id=task_id,
         task_title="Operator publisher injection",
         task_summary="Keep operator flow-control ownership explicit.",
-        status=FlowStatus.RUNNING,
+        status=RuntimeLifecycleStatus.RUNNING,
         active_flow_revision_id="flow-revision.operator-injection.1",
         control_revision=control_revision,
         workflow_manifest_ref=WorkflowManifestRef(

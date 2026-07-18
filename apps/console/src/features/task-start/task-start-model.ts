@@ -13,8 +13,6 @@ export type DefinitionRevisionHistoryEntry =
 export type WorkflowDefinitionContent = components["schemas"]["WorkflowDefinitionInput-Output"];
 
 export interface TaskStartFormState {
-    readonly contextHostPath: string;
-    readonly contextMode: TaskRootMode;
     readonly instruction: string;
     readonly summary: string;
     readonly taskKey: string;
@@ -24,7 +22,6 @@ export interface TaskStartFormState {
 }
 
 export interface TaskStartFormErrors {
-    readonly contextHostPath?: string;
     readonly summary?: string;
     readonly taskKey?: string;
     readonly title?: string;
@@ -57,8 +54,6 @@ export interface TaskStartVersionRow {
 }
 
 export interface TaskStartPreview {
-    readonly contextModeLabel: string;
-    readonly contextSummary: string;
     readonly instructionSummary: string;
     readonly summary: string;
     readonly taskKey: string;
@@ -80,8 +75,6 @@ export interface TaskStartResultView {
 }
 
 export const TASK_START_INITIAL_FORM: TaskStartFormState = {
-    contextHostPath: "",
-    contextMode: "ensure_task_default",
     instruction: "",
     summary: "",
     taskKey: "",
@@ -152,10 +145,6 @@ export function validateTaskStartForm(
             form.workspaceMode === "ensure_task_default" || form.workspaceHostPath.trim().length > 0
                 ? undefined
                 : "Workspace host path is required.",
-        contextHostPath:
-            form.contextMode === "ensure_task_default" || form.contextHostPath.trim().length > 0
-                ? undefined
-                : "Context host path is required.",
     };
 }
 
@@ -177,14 +166,7 @@ export function buildTaskStartRequest(
     workflowKey: string,
 ): TaskStartRequest {
     const workspace = buildRootBinding(form.workspaceMode, form.workspaceHostPath);
-    const context = buildRootBinding(form.contextMode, form.contextHostPath);
-    const roots =
-        workspace === null && context === null
-            ? undefined
-            : {
-                  ...(workspace === null ? {} : { workspace }),
-                  ...(context === null ? {} : { context }),
-              };
+    const roots = workspace === null ? undefined : { workspace };
     const instruction = form.instruction.trim();
 
     return {
@@ -211,8 +193,6 @@ export function buildTaskStartPreview({
     readonly workflow: TaskStartWorkflowChoice;
 }): TaskStartPreview {
     return {
-        contextModeLabel: rootModeLabel(form.contextMode),
-        contextSummary: rootModeSummary(form.contextMode),
         instructionSummary:
             form.instruction.trim().length === 0
                 ? "No additional instruction provided."

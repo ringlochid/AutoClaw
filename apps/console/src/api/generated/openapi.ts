@@ -92,7 +92,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/callback/tasks/{task_id}/boundary": {
+    "/authoring/task-compose/preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -101,42 +101,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Post Boundary */
-        post: operations["post_boundary_callback_tasks__task_id__boundary_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/callback/tasks/{task_id}/checkpoint": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Post Checkpoint */
-        post: operations["post_checkpoint_callback_tasks__task_id__checkpoint_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/callback/tasks/{task_id}/tools/{tool_name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Post Tool */
-        post: operations["post_tool_callback_tasks__task_id__tools__tool_name__post"];
+        /** Post Task Compose Preview */
+        post: operations["post_task_compose_preview_authoring_task_compose_preview_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -500,108 +466,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/observability/tasks/{task_id}/continuity-state": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Continuity State */
-        get: operations["get_continuity_state_observability_tasks__task_id__continuity_state_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/observability/tasks/{task_id}/delivery-state": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Delivery State */
-        get: operations["get_delivery_state_observability_tasks__task_id__delivery_state_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/observability/tasks/{task_id}/provider-events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Provider Events */
-        get: operations["get_provider_events_observability_tasks__task_id__provider_events_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/observability/tasks/{task_id}/watchdog-state": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Watchdog State */
-        get: operations["get_watchdog_state_observability_tasks__task_id__watchdog_state_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/operator/tasks/{task_id}/snapshot": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Operator Snapshot */
-        get: operations["get_operator_snapshot_operator_tasks__task_id__snapshot_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/operator/tasks/{task_id}/trace": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Operator Trace */
-        get: operations["get_operator_trace_operator_tasks__task_id__trace_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/readyz": {
         parameters: {
             query?: never;
@@ -636,74 +500,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/runtime/tasks/{task_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Runtime Task */
-        get: operations["get_runtime_task_runtime_tasks__task_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/runtime/tasks/{task_id}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Cancel Task */
-        post: operations["cancel_task_runtime_tasks__task_id__cancel_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/runtime/tasks/{task_id}/continue": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Continue Task */
-        post: operations["continue_task_runtime_tasks__task_id__continue_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/runtime/tasks/{task_id}/pause": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Pause Task */
-        post: operations["pause_task_runtime_tasks__task_id__pause_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/tasks/start": {
         parameters: {
             query?: never;
@@ -725,88 +521,26 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AddChildPayload */
-        AddChildPayload: {
-            child: components["schemas"]["ChildNodeDraft"];
-            /** Target Parent Node Key */
-            target_parent_node_key?: string | null;
-        };
-        /** AddChildSuccess */
-        AddChildSuccess: {
-            flow: components["schemas"]["RuntimeFlowRead"];
-            latest_checkpoint_ref?: components["schemas"]["CheckpointFileRef"] | null;
-            /** Summary */
-            summary?: string | null;
-            /** Target Node Key */
-            target_node_key?: string | null;
+        /** BoundaryAcceptedEventPayload */
+        BoundaryAcceptedEventPayload: {
+            assignment_decision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            assignment_id: components["schemas"]["TaskEventIdentifier"];
+            attempt_id: components["schemas"]["TaskEventIdentifier"];
+            checkpoint_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            checkpoint_ref?: components["schemas"]["TaskEventRef"] | null;
+            outcome: components["schemas"]["EgressBoundary"];
             /**
-             * @description discriminator enum property added by openapi-typescript
+             * Resulting Flow Status
              * @enum {string}
              */
-            tool_name: "add_child";
-            workflow_manifest_ref?: components["schemas"]["WorkflowManifestRef"] | null;
-        };
-        /** AssignChildPayload */
-        AssignChildPayload: {
-            assignment_intent: components["schemas"]["AssignmentIntent"];
-            /** Child Node Key */
-            child_node_key: string;
-            supplemental_durable_context?: components["schemas"]["SupplementalDurableContext"] | null;
-            /**
-             * Task Memory Search Hints
-             * @default []
-             */
-            task_memory_search_hints: string[];
-            /**
-             * Transient Surfaces
-             * @default []
-             */
-            transient_surfaces: components["schemas"]["TransientSurfaceWrite"][];
-        };
-        /** AssignChildSuccess */
-        AssignChildSuccess: {
-            child_assignment_ref?: components["schemas"]["AssignmentFileRef"] | null;
-            flow: components["schemas"]["RuntimeFlowRead"];
-            latest_checkpoint_ref?: components["schemas"]["CheckpointFileRef"] | null;
-            /** Summary */
-            summary?: string | null;
-            /** Target Assignment Key */
-            target_assignment_key: string;
-            /** Target Attempt Id */
-            target_attempt_id: string;
-            /** Target Node Key */
-            target_node_key: string;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            tool_name: "assign_child";
-            workflow_manifest_ref?: components["schemas"]["WorkflowManifestRef"] | null;
-        };
-        /** AssignmentFileRef */
-        AssignmentFileRef: {
-            /** Description */
-            description: string;
-            /**
-             * Path
-             * Format: path
-             */
-            path: string;
-        };
-        /** AssignmentIntent */
-        AssignmentIntent: {
-            /** Instruction */
-            instruction?: string | null;
-            /** Summary */
-            summary: string;
+            resulting_flow_status: "running" | "completed";
+            source_dispatch_id: components["schemas"]["TaskEventIdentifier"];
         };
         /** BoundaryHistoryEntry */
         BoundaryHistoryEntry: {
             boundary: components["schemas"]["EgressBoundary"];
-            /** Next Attempt Id */
-            next_attempt_id?: string | null;
-            /** Next Node Key */
-            next_node_key?: string | null;
+            /** Checkpoint Id */
+            checkpoint_id?: string | null;
             /** Node Key */
             node_key: string;
             /**
@@ -814,21 +548,10 @@ export interface components {
              * Format: date-time
              */
             occurred_at: string;
-            /** Previous Node Key */
-            previous_node_key: string;
-            /** Requires Reopen After Inactivity */
-            requires_reopen_after_inactivity?: boolean | null;
-            resulting_flow_status?: components["schemas"]["FlowStatus"] | null;
-        };
-        /** BoundaryRead */
-        BoundaryRead: {
-            accepted_boundary: components["schemas"]["EgressBoundary"];
-            flow: components["schemas"]["RuntimeFlowRead"];
-            latest_checkpoint_ref?: components["schemas"]["CheckpointFileRef"] | null;
-        };
-        /** BoundaryWrite */
-        BoundaryWrite: {
-            boundary: components["schemas"]["EgressBoundary"];
+            /** Source Dispatch Id */
+            source_dispatch_id: string;
+            /** Successor Dispatch Id */
+            successor_dispatch_id?: string | null;
         };
         /** BudgetSpec */
         BudgetSpec: {
@@ -842,33 +565,11 @@ export interface components {
          * @enum {string}
          */
         CapabilityDecision: "deny" | "allow";
-        /** CheckpointFileRef */
-        CheckpointFileRef: {
-            /** Description */
-            description: string;
-            /**
-             * Path
-             * Format: path
-             */
-            path: string;
-        };
-        /** CheckpointHandoffRead */
-        CheckpointHandoffRead: {
-            /**
-             * Blockers
-             * @default []
-             */
-            blockers: string[];
-            /** Next Step */
-            next_step: string;
-            /**
-             * Risks
-             * @default []
-             */
-            risks: string[];
-            /** Summary */
-            summary: string;
-        };
+        /**
+         * CapabilitySource
+         * @enum {string}
+         */
+        CapabilitySource: "default" | "policy_definition" | "task_policy" | "controller";
         /** CheckpointHistoryEntry */
         CheckpointHistoryEntry: {
             /** Attempt Id */
@@ -895,39 +596,44 @@ export interface components {
          * @enum {string}
          */
         CheckpointOutcome: "green" | "retry" | "blocked";
-        /** CheckpointRead */
-        CheckpointRead: {
-            /** Attempt Id */
-            attempt_id: string;
-            /** Checkpoint Id */
-            checkpoint_id: string;
-            checkpoint_ref: components["schemas"]["CheckpointFileRef"];
-            latest_checkpoint_ref: components["schemas"]["CheckpointFileRef"];
-        };
-        /** CheckpointWrite */
-        CheckpointWrite: {
-            checkpoint: components["schemas"]["CheckpointWriteBody"];
-        };
-        /** CheckpointWriteBody */
-        CheckpointWriteBody: {
+        /** CheckpointRecordedEventPayload */
+        CheckpointRecordedEventPayload: {
+            assignment_id: components["schemas"]["TaskEventIdentifier"];
+            attempt_id: components["schemas"]["TaskEventIdentifier"];
+            authored_by_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            checkpoint_id: components["schemas"]["TaskEventIdentifier"];
             checkpoint_kind: components["schemas"]["CheckpointKind"];
-            handoff: components["schemas"]["CheckpointHandoffRead"];
+            checkpoint_ref: components["schemas"]["TaskEventRef"];
             outcome?: components["schemas"]["CheckpointOutcome"] | null;
             /**
              * Produced Artifacts
              * @default []
              */
-            produced_artifacts: components["schemas"]["ProducedArtifactClaim"][];
-            /**
-             * Task Memory Search Hints
-             * @default []
-             */
-            task_memory_search_hints: string[];
+            produced_artifacts: components["schemas"]["TaskEventArtifactRef"][];
+            summary: components["schemas"]["TaskEventSummary"];
             /**
              * Transient Surfaces
              * @default []
              */
-            transient_surfaces: components["schemas"]["TransientSurfaceWrite"][];
+            transient_surfaces: components["schemas"]["TaskEventTransientRef"][];
+        };
+        /** ChildAssignmentCommittedEventPayload */
+        ChildAssignmentCommittedEventPayload: {
+            child_assignment_id: components["schemas"]["TaskEventIdentifier"];
+            child_attempt_id: components["schemas"]["TaskEventIdentifier"];
+            child_node_key: components["schemas"]["TaskEventIdentifier"];
+            flow_revision_id: components["schemas"]["TaskEventIdentifier"];
+            parent_assignment_id: components["schemas"]["TaskEventIdentifier"];
+            source_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+        };
+        /** ChildAssignmentStagedEventPayload */
+        ChildAssignmentStagedEventPayload: {
+            child_assignment_id: components["schemas"]["TaskEventIdentifier"];
+            child_attempt_id: components["schemas"]["TaskEventIdentifier"];
+            child_node_key: components["schemas"]["TaskEventIdentifier"];
+            flow_revision_id: components["schemas"]["TaskEventIdentifier"];
+            parent_assignment_id: components["schemas"]["TaskEventIdentifier"];
+            source_dispatch_id: components["schemas"]["TaskEventIdentifier"];
         };
         /** ChildDefaults */
         ChildDefaults: {
@@ -935,45 +641,38 @@ export interface components {
             /** Criteria */
             criteria?: string[] | null;
         };
-        /** ChildNodeDraft */
-        ChildNodeDraft: {
-            child_defaults?: components["schemas"]["ChildDefaults"] | null;
-            /** Children */
-            children?: components["schemas"]["ChildNodeDraft"][] | null;
-            consumes?: components["schemas"]["ConsumeBuckets"] | null;
-            /** Criteria */
-            criteria?: components["schemas"]["CriteriaDeclaration"][] | null;
-            /** Description */
-            description: string;
-            /** Instruction */
-            instruction?: string | null;
-            /** Node Key */
-            node_key: string;
-            /** Parent Node Key */
-            parent_node_key?: string | null;
-            /** Policy */
-            policy?: string | null;
-            produces?: components["schemas"]["ProduceBuckets"] | null;
-            /** Role */
-            role: string;
+        /** ClaudeProviderSelection */
+        ClaudeProviderSelection: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "claude";
         };
-        /** ChildNodePatch */
-        ChildNodePatch: {
-            child_defaults?: components["schemas"]["ChildDefaults"] | null;
-            /** Children */
-            children?: components["schemas"]["ChildNodeDraft"][] | null;
-            consumes?: components["schemas"]["ConsumeBuckets"] | null;
-            /** Criteria */
-            criteria?: components["schemas"]["CriteriaDeclaration"][] | null;
-            /** Description */
-            description?: string | null;
-            /** Instruction */
-            instruction?: string | null;
-            /** Policy */
-            policy?: string | null;
-            produces?: components["schemas"]["ProduceBuckets"] | null;
-            /** Role */
-            role?: string | null;
+        /** CodexProviderSelection */
+        CodexProviderSelection: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "codex";
+        };
+        /** CommandRunCancelRequestedEventPayload */
+        CommandRunCancelRequestedEventPayload: {
+            /** Ownership Revision */
+            ownership_revision: number;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            run_id: components["schemas"]["TaskEventIdentifier"];
+            source_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            /**
+             * State
+             * @constant
+             */
+            state: "cancellation_requested";
         };
         /** CommandRunCancelResponse */
         CommandRunCancelResponse: {
@@ -996,6 +695,8 @@ export interface components {
             ended_at?: string | null;
             /** Exit Code */
             exit_code?: number | null;
+            /** Failure Code */
+            failure_code?: string | null;
             /** Log Ref */
             log_ref?: string | null;
             /** Run Id */
@@ -1032,6 +733,51 @@ export interface components {
             /** Task Id */
             task_id: string;
         };
+        /** CommandRunOpenedEventPayload */
+        CommandRunOpenedEventPayload: {
+            command: components["schemas"]["TaskEventSummary"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            description: components["schemas"]["TaskEventSummary"];
+            /**
+             * Ownership Revision
+             * @default 0
+             * @constant
+             */
+            ownership_revision: 0;
+            run_id: components["schemas"]["TaskEventIdentifier"];
+            source_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            /**
+             * State
+             * @constant
+             */
+            state: "pending_start";
+            /** Timeout Seconds */
+            timeout_seconds?: number | null;
+            workdir?: components["schemas"]["TaskEventRef"] | null;
+        };
+        /** CommandRunProgressedEventPayload */
+        CommandRunProgressedEventPayload: {
+            log_ref?: components["schemas"]["TaskEventRef"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Ownership Revision */
+            ownership_revision: number;
+            run_id: components["schemas"]["TaskEventIdentifier"];
+            source_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "running" | "cancellation_requested";
+            summary: components["schemas"]["TaskEventSummary"];
+        };
         /** CommandRunRecord */
         CommandRunRecord: {
             /** Attempt Id */
@@ -1066,22 +812,101 @@ export interface components {
             task_id: string;
             /** Terminal Actor Ref */
             terminal_actor_ref?: string | null;
-            terminal_event_source?: components["schemas"]["TaskEventSource"] | null;
+            terminal_event_source?: components["schemas"]["CommandRunTerminalSource"] | null;
             terminal_result?: components["schemas"]["CommandRunTerminalResult"] | null;
             /** Timeout Seconds */
             timeout_seconds?: number | null;
             /** Workdir */
             workdir?: string | null;
         };
+        /** CommandRunStartedEventPayload */
+        CommandRunStartedEventPayload: {
+            command: components["schemas"]["TaskEventSummary"];
+            description: components["schemas"]["TaskEventSummary"];
+            /** Due At */
+            due_at?: string | null;
+            /**
+             * Log Refs
+             * @default []
+             */
+            log_refs: components["schemas"]["TaskEventRef"][];
+            /** Ownership Revision */
+            ownership_revision: number;
+            run_id: components["schemas"]["TaskEventIdentifier"];
+            source_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * State
+             * @constant
+             */
+            state: "running";
+            workdir?: components["schemas"]["TaskEventRef"] | null;
+        };
         /**
          * CommandRunState
          * @enum {string}
          */
-        CommandRunState: "pending_start" | "running" | "cancellation_requested" | "succeeded" | "failed" | "timed_out" | "cancelled";
+        CommandRunState: "pending_start" | "running" | "cancellation_requested" | "succeeded" | "failed" | "timed_out" | "cancelled" | "abandoned";
+        /**
+         * CommandRunSummary
+         * @description Bounded current-source readback without command environment or log content.
+         */
+        CommandRunSummary: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Due At */
+            due_at?: string | null;
+            /** Run Id */
+            run_id: string;
+            /** Source Dispatch Id */
+            source_dispatch_id: string;
+            /** Started At */
+            started_at?: string | null;
+            state: components["schemas"]["CommandRunState"];
+            /** Summary */
+            summary: string;
+        };
+        /** CommandRunTerminalEventPayload */
+        CommandRunTerminalEventPayload: {
+            /**
+             * Ended At
+             * Format: date-time
+             */
+            ended_at: string;
+            /** Exit Code */
+            exit_code?: number | null;
+            failure_code?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Log Refs
+             * @default []
+             */
+            log_refs: components["schemas"]["TaskEventRef"][];
+            /** Ownership Revision */
+            ownership_revision: number;
+            run_id: components["schemas"]["TaskEventIdentifier"];
+            source_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            /** Started At */
+            started_at?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "succeeded" | "failed" | "timed_out" | "cancelled" | "abandoned";
+            summary: components["schemas"]["TaskEventSummary"];
+        };
         /** CommandRunTerminalResult */
         CommandRunTerminalResult: {
             /** Exit Code */
             exit_code?: number | null;
+            /** Failure Code */
+            failure_code?: string | null;
             /** Log Ref */
             log_ref?: string | null;
             /** Signal */
@@ -1089,6 +914,11 @@ export interface components {
             /** Summary */
             summary: string;
         };
+        /**
+         * CommandRunTerminalSource
+         * @enum {string}
+         */
+        CommandRunTerminalSource: "controller" | "control_api" | "operator_mcp" | "process_owner";
         /** ConsumeBuckets */
         ConsumeBuckets: {
             /** Artifacts */
@@ -1115,8 +945,8 @@ export interface components {
             /** Slot */
             slot: string;
         };
-        "DefinitionContent-Input": components["schemas"]["RoleDefinitionInput"] | components["schemas"]["PolicyDefinitionInput"] | components["schemas"]["WorkflowDefinitionInput-Input"];
-        "DefinitionContent-Output": components["schemas"]["RoleDefinitionInput"] | components["schemas"]["PolicyDefinitionInput"] | components["schemas"]["WorkflowDefinitionInput-Output"];
+        "DefinitionContent-Input": components["schemas"]["RoleDefinitionInput"] | components["schemas"]["PolicyDefinitionInput-Input"] | components["schemas"]["WorkflowDefinitionInput-Input"];
+        "DefinitionContent-Output": components["schemas"]["RoleDefinitionInput"] | components["schemas"]["PolicyDefinitionInput-Output"] | components["schemas"]["WorkflowDefinitionInput-Output"];
         /** DefinitionDraftBaselineRead */
         DefinitionDraftBaselineRead: {
             /** Content Hash */
@@ -1387,27 +1217,138 @@ export interface components {
             content: components["schemas"]["DefinitionContent-Input"];
             kind: components["schemas"]["DefinitionKind"];
         };
-        /**
-         * DispatchDeliveryStatus
-         * @enum {string}
-         */
-        DispatchDeliveryStatus: "prepared" | "accepted" | "provider_signal_seen" | "provider_completed" | "provider_failed" | "transport_failed" | "transport_ambiguous" | "superseded";
         /** DispatchHistoryEntry */
         DispatchHistoryEntry: {
-            /** Assignment Key */
-            assignment_key?: string | null;
-            /** Assignment Summary */
-            assignment_summary?: string | null;
+            /** Adapter Started At */
+            adapter_started_at?: string | null;
+            /** Assignment Id */
+            assignment_id: string;
             /** Attempt Id */
             attempt_id: string;
-            delivery_status: components["schemas"]["DispatchDeliveryStatus"];
-            /** Node Key */
-            node_key: string;
+            /** Closed At */
+            closed_at?: string | null;
+            /** Closed Reason */
+            closed_reason?: string | null;
             /**
-             * Rendered At
+             * Created At
              * Format: date-time
              */
-            rendered_at: string;
+            created_at: string;
+            /** Dispatch Id */
+            dispatch_id: string;
+            effective_capabilities: components["schemas"]["EffectiveCapabilityReadback"];
+            /** Last Node Activity At */
+            last_node_activity_at?: string | null;
+            /** Node Activity Revision */
+            node_activity_revision: number;
+            /** Node Key */
+            node_key: string;
+            /** Opened Reason */
+            opened_reason: string;
+            /** Predecessor Dispatch Id */
+            predecessor_dispatch_id?: string | null;
+            /**
+             * Requested Provider
+             * @enum {string}
+             */
+            requested_provider: "codex" | "claude" | "openclaw";
+            /**
+             * Resolved Provider
+             * @enum {string}
+             */
+            resolved_provider: "codex" | "claude" | "openclaw";
+            /**
+             * Selection Basis
+             * @enum {string}
+             */
+            selection_basis: "explicit" | "default";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "starting" | "open" | "closed";
+        };
+        /** DispatchOpenedEventPayload */
+        DispatchOpenedEventPayload: {
+            assignment_id: components["schemas"]["TaskEventIdentifier"];
+            attempt_id: components["schemas"]["TaskEventIdentifier"];
+            dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            input_ref: components["schemas"]["TaskEventRef"];
+            instructions_ref: components["schemas"]["TaskEventRef"];
+            node_key: components["schemas"]["TaskEventIdentifier"];
+            opened_reason: components["schemas"]["DispatchOpenedReason"];
+            predecessor_dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            requested_provider: components["schemas"]["ProviderKind"];
+            resolved_provider: components["schemas"]["ProviderKind"];
+            selection_basis: components["schemas"]["ProviderSelectionBasis"];
+            /**
+             * Status
+             * @default starting
+             * @constant
+             */
+            status: "starting";
+        };
+        /** @enum {string} */
+        DispatchOpenedReason: "root" | "boundary" | "child_return" | "human_result" | "command_result" | "watchdog_recovery" | "semantic_retry" | "operator_continue";
+        /** DispatchRuntimeRead */
+        DispatchRuntimeRead: {
+            /** Adapter Started At */
+            adapter_started_at?: string | null;
+            /** Assignment Id */
+            assignment_id: string;
+            /** Attempt Id */
+            attempt_id: string;
+            /** Dispatch Id */
+            dispatch_id: string;
+            effective_capabilities: components["schemas"]["EffectiveCapabilityReadback"];
+            /** Last Node Activity At */
+            last_node_activity_at?: string | null;
+            /** Node Activity Revision */
+            node_activity_revision: number;
+            opened_reason: components["schemas"]["DispatchOpenedReason"];
+            /** Predecessor Dispatch Id */
+            predecessor_dispatch_id?: string | null;
+            provider_start?: components["schemas"]["ProviderStartReadback"] | null;
+            requested_provider: components["schemas"]["ProviderKind"];
+            resolved_provider: components["schemas"]["ProviderKind"];
+            selection_basis: components["schemas"]["ProviderSelectionBasis"];
+            status: components["schemas"]["DispatchRuntimeStatus"];
+            /** Watchdog Due At */
+            watchdog_due_at?: string | null;
+        };
+        /** @enum {string} */
+        DispatchRuntimeStatus: "starting" | "open";
+        /** DispatchStartUpdatedEventPayload */
+        DispatchStartUpdatedEventPayload: {
+            /** Attempt Count */
+            attempt_count: number;
+            dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            last_error_code?: components["schemas"]["TaskEventIdentifier"] | null;
+            /** Next Attempt At */
+            next_attempt_at?: string | null;
+            /** Provider Start Revision */
+            provider_start_revision: number;
+            retry_kind?: components["schemas"]["ProviderStartRetryKind"] | null;
+            state: components["schemas"]["ProviderStartState"];
+        };
+        /** EffectiveCapabilityReadback */
+        EffectiveCapabilityReadback: {
+            network_access: components["schemas"]["EffectiveNetworkAccess"];
+            provider_native_access: components["schemas"]["EffectiveProviderNativeAccess"];
+        };
+        /** EffectiveNetworkAccess */
+        EffectiveNetworkAccess: {
+            /** @default allow */
+            effective: components["schemas"]["NetworkAccess"];
+            /** @default default */
+            source: components["schemas"]["CapabilitySource"];
+        };
+        /** EffectiveProviderNativeAccess */
+        EffectiveProviderNativeAccess: {
+            /** @default full */
+            effective: components["schemas"]["ProviderNativeAccess"];
+            /** @default default */
+            source: components["schemas"]["CapabilitySource"];
         };
         /**
          * EgressBoundary
@@ -1421,11 +1362,6 @@ export interface components {
          * @enum {string}
          */
         FlowStatus: "pending" | "running" | "blocked" | "paused" | "succeeded" | "cancelled";
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
         /** HealthResponse */
         HealthResponse: {
             /** Service */
@@ -1440,38 +1376,25 @@ export interface components {
             /** @default deny */
             mode: components["schemas"]["CapabilityDecision"];
         };
+        /** HumanRequestContextRef */
+        HumanRequestContextRef: {
+            /** Description */
+            description: string;
+            /** Path */
+            path: string;
+        };
         /** HumanRequestItem */
         HumanRequestItem: {
-            /** Input Payload Schema */
-            input_payload_schema?: {
-                [key: string]: unknown;
-            } | null;
-            /** Item Id */
-            item_id: string;
-            /**
-             * Options
-             * @default []
-             */
-            options: components["schemas"]["HumanRequestOption"][];
+            /** Id */
+            id: string;
+            /** Options */
+            options?: components["schemas"]["HumanRequestOption"][] | null;
             /** Prompt */
             prompt: string;
-            /** Recommended Option */
-            recommended_option?: string | null;
-        };
-        /** HumanRequestItemResponse */
-        HumanRequestItemResponse: {
-            /** Extra Notes */
-            extra_notes?: string | null;
-            /** Freeform Answer */
-            freeform_answer?: string | null;
-            /** Item Id */
-            item_id: string;
-            /** Response Payload */
-            response_payload?: {
+            /** Response Schema */
+            response_schema?: {
                 [key: string]: unknown;
             } | null;
-            /** Selected Option */
-            selected_option?: string | null;
         };
         /**
          * HumanRequestKind
@@ -1484,6 +1407,20 @@ export interface components {
             items: components["schemas"]["HumanRequestRead"][];
             /** Task Id */
             task_id: string;
+        };
+        /** HumanRequestOpenedEventPayload */
+        HumanRequestOpenedEventPayload: {
+            /** Due At */
+            due_at?: string | null;
+            kind: components["schemas"]["HumanRequestKind"];
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            request_id: components["schemas"]["TaskEventIdentifier"];
+            source_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            summary: components["schemas"]["TaskEventSummary"];
         };
         /** HumanRequestOption */
         HumanRequestOption: {
@@ -1501,11 +1438,14 @@ export interface components {
         };
         /** HumanRequestResolution */
         HumanRequestResolution: {
-            /**
-             * Item Responses
-             * @default []
-             */
-            item_responses: components["schemas"]["HumanRequestItemResponse"][];
+            /** Item Responses */
+            item_responses?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Policy Basis */
+            policy_basis?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
             /** Request Id */
             request_id: string;
             resolution_kind: components["schemas"]["HumanRequestResolutionKind"];
@@ -1516,6 +1456,9 @@ export interface components {
             resolved_at: string;
             /** Resolved By Actor Ref */
             resolved_by_actor_ref?: string | null;
+            resolved_by_surface: components["schemas"]["HumanRequestResolutionSurface"];
+            /** Summary */
+            summary: string;
             /** Task Id */
             task_id: string;
         };
@@ -1524,10 +1467,17 @@ export interface components {
          * @enum {string}
          */
         HumanRequestResolutionKind: "answered" | "timed_out" | "cancelled";
+        /**
+         * HumanRequestResolutionSurface
+         * @enum {string}
+         */
+        HumanRequestResolutionSurface: "control_api" | "control_ui" | "operator_mcp" | "controller";
         /** HumanRequestResolveRequest */
         HumanRequestResolveRequest: {
             /** Item Responses */
-            item_responses: components["schemas"]["HumanRequestItemResponse"][];
+            item_responses: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
         };
         /** HumanRequestResolveResponse */
         HumanRequestResolveResponse: {
@@ -1540,6 +1490,50 @@ export interface components {
          * @enum {string}
          */
         HumanRequestStatus: "open" | "resolved" | "timed_out" | "cancelled";
+        /**
+         * HumanRequestSummary
+         * @description Bounded current-source readback without answers or policy payloads.
+         */
+        HumanRequestSummary: {
+            /** Due At */
+            due_at?: string | null;
+            kind: components["schemas"]["HumanRequestKind"];
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Request Id */
+            request_id: string;
+            /** Source Dispatch Id */
+            source_dispatch_id: string;
+            status: components["schemas"]["HumanRequestStatus"];
+            /** Summary */
+            summary: string;
+        };
+        /** HumanRequestTerminalEventPayload */
+        HumanRequestTerminalEventPayload: {
+            /** Due At */
+            due_at?: string | null;
+            kind: components["schemas"]["HumanRequestKind"];
+            request_id: components["schemas"]["TaskEventIdentifier"];
+            resolution_kind: components["schemas"]["HumanRequestResolutionKind"];
+            resolution_summary: components["schemas"]["TaskEventSummary"];
+            /**
+             * Resolved At
+             * Format: date-time
+             */
+            resolved_at: string;
+            resolved_by_actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            resolved_by_surface: components["schemas"]["HumanRequestResolutionSurface"];
+            source_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "resolved" | "timed_out" | "cancelled";
+            summary: components["schemas"]["TaskEventSummary"];
+        };
         /** HumanRequestTimeout */
         HumanRequestTimeout: {
             /** Default Behavior */
@@ -1547,6 +1541,12 @@ export interface components {
             /** Due At */
             due_at?: string | null;
         };
+        JsonValue: unknown;
+        /**
+         * NetworkAccess
+         * @enum {string}
+         */
+        NetworkAccess: "allow" | "deny";
         /** NodeDefinitionInput */
         "NodeDefinitionInput-Input": {
             child_defaults?: components["schemas"]["ChildDefaults"] | null;
@@ -1557,16 +1557,21 @@ export interface components {
             criteria?: components["schemas"]["CriteriaDeclaration"][] | null;
             /** Description */
             description: string;
-            /** Id */
-            id: string;
             /** Instruction */
             instruction?: string | null;
-            /** Policy */
-            policy?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "parent" | "worker";
+            /** Node Key */
+            node_key: string;
+            /** Policy Id */
+            policy_id: string;
             produces?: components["schemas"]["ProduceBuckets"] | null;
-            provider_preference?: components["schemas"]["ProviderPreference"] | null;
-            /** Role */
-            role: string;
+            provider?: components["schemas"]["ProviderSelection"] | null;
+            /** Role Id */
+            role_id: string;
             /** Title */
             title?: string | null;
         };
@@ -1580,16 +1585,21 @@ export interface components {
             criteria?: components["schemas"]["CriteriaDeclaration"][] | null;
             /** Description */
             description: string;
-            /** Id */
-            id: string;
             /** Instruction */
             instruction?: string | null;
-            /** Policy */
-            policy?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "parent" | "worker";
+            /** Node Key */
+            node_key: string;
+            /** Policy Id */
+            policy_id: string;
             produces?: components["schemas"]["ProduceBuckets"] | null;
-            provider_preference?: components["schemas"]["ProviderPreference"] | null;
-            /** Role */
-            role: string;
+            provider?: components["schemas"]["ProviderSelection"] | null;
+            /** Role Id */
+            role_id: string;
             /** Title */
             title?: string | null;
         };
@@ -1598,18 +1608,37 @@ export interface components {
          * @enum {string}
          */
         NodeKind: "root" | "parent" | "worker";
-        /** ObservabilityFileRef */
-        ObservabilityFileRef: {
-            /** Description */
-            description: string;
-            /** @default delivery_state */
-            kind: components["schemas"]["SupportRuntimeFileKind"];
+        /** OpenClawProviderSelection */
+        OpenClawProviderSelection: {
             /**
-             * Path
-             * Format: path
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
-            path: string;
+            kind: "openclaw";
         };
+        /** OperationFailure */
+        OperationFailure: {
+            code: components["schemas"]["OperationFailureCode"];
+            /** Field Path */
+            field_path?: string | null;
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /** Retryable */
+            retryable: boolean;
+            /** Suggested Next Step */
+            suggested_next_step?: string | null;
+            /** Summary */
+            summary: string;
+        };
+        /**
+         * OperationFailureCode
+         * @enum {string}
+         */
+        OperationFailureCode: "invalid_request_shape" | "local_admission_denied" | "authentication_failed" | "scope_mismatch" | "illegal_caller" | "illegal_target_relation" | "illegal_state" | "stale_dispatch" | "stale_flow_revision" | "stale_assignment" | "stale_checkpoint" | "name_collision" | "missing_resource" | "missing_required_publication" | "conflicting_continuation" | "cursor_reset_required" | "boundary_precondition_failed" | "capability_rejected" | "conflict" | "invalid_task_path" | "invalid_task_root" | "path_escape" | "not_a_directory" | "not_a_file" | "binary_file" | "file_read_limit_exceeded" | "directory_limit_exceeded" | "removed_surface" | "budget_exhausted" | "internal_error";
         OperatorCurrentPaths: components["schemas"]["OperatorSupportSurfaceRef"][];
         /** OperatorFlowSnapshotResponse */
         OperatorFlowSnapshotResponse: {
@@ -1652,7 +1681,7 @@ export interface components {
             /** Task Id */
             task_id: string;
         };
-        OperatorSupportSurfaceKind: components["schemas"]["FixedRuntimeFileKind"] | components["schemas"]["SupportRuntimeFileKind"] | ("artifact" | "criteria" | "doc" | "wiki" | "transient");
+        OperatorSupportSurfaceKind: components["schemas"]["FixedRuntimeFileKind"] | ("artifact" | "criteria" | "doc" | "wiki" | "transient");
         /** OperatorSupportSurfaceRef */
         OperatorSupportSurfaceRef: {
             /** Description */
@@ -1668,22 +1697,13 @@ export interface components {
             /** Version */
             version?: number | null;
         };
-        /**
-         * ParentRootToolName
-         * @enum {string}
-         */
-        ParentRootToolName: "assign_child" | "add_child" | "update_child" | "remove_child" | "release_green" | "release_blocked";
-        /** ParentToolCall */
-        ParentToolCall: {
-            /** Expected Structural Revision Id */
-            expected_structural_revision_id?: string | null;
-            payload: components["schemas"]["ParentToolPayload"];
-            tool_name: components["schemas"]["ParentRootToolName"];
-        };
-        ParentToolPayload: components["schemas"]["AssignChildPayload"] | components["schemas"]["AddChildPayload"] | components["schemas"]["UpdateChildPayload"] | components["schemas"]["RemoveChildPayload"] | components["schemas"]["ReleaseGreenPayload"] | components["schemas"]["ReleaseBlockedPayload"];
-        ParentToolSuccess: components["schemas"]["AssignChildSuccess"] | components["schemas"]["AddChildSuccess"] | components["schemas"]["UpdateChildSuccess"] | components["schemas"]["RemoveChildSuccess"] | components["schemas"]["ReleaseGreenSuccess"] | components["schemas"]["ReleaseBlockedSuccess"];
         /** PendingHumanRequest */
         PendingHumanRequest: {
+            /**
+             * Context Refs
+             * @default []
+             */
+            context_refs: components["schemas"]["HumanRequestContextRef"][];
             /** Items */
             items: components["schemas"]["HumanRequestItem"][];
             kind: components["schemas"]["HumanRequestKind"];
@@ -1694,31 +1714,53 @@ export interface components {
             opened_at: string;
             /** Request Id */
             request_id: string;
-            /** Requester Node */
-            requester_node: string;
+            /** Source Dispatch Id */
+            source_dispatch_id: string;
             status: components["schemas"]["HumanRequestStatus"];
             /** Suggested Human Instruction */
-            suggested_human_instruction: string;
+            suggested_human_instruction?: string | null;
             /** Summary */
             summary: string;
             /** Task Id */
             task_id: string;
             timeout?: components["schemas"]["HumanRequestTimeout"];
-            /** Title */
-            title: string;
         };
         /** PolicyCapabilitiesInput */
-        PolicyCapabilitiesInput: {
+        "PolicyCapabilitiesInput-Input": {
             /** @default deny */
             command_run: components["schemas"]["CapabilityDecision"];
             human_request?: components["schemas"]["HumanRequestCapabilityInput"];
+            /** @default allow */
+            network_access: components["schemas"]["NetworkAccess"];
+            /** @default full */
+            provider_native_access: components["schemas"]["ProviderNativeAccess"];
+        };
+        "PolicyCapabilitiesInput-Output": {
+            [key: string]: unknown;
         };
         /** PolicyDefinitionInput */
-        PolicyDefinitionInput: {
+        "PolicyDefinitionInput-Input": {
             /** Applies To */
             applies_to: components["schemas"]["NodeKind"][];
             budget_spec?: components["schemas"]["BudgetSpec"] | null;
-            capabilities?: components["schemas"]["PolicyCapabilitiesInput"];
+            capabilities?: components["schemas"]["PolicyCapabilitiesInput-Input"];
+            /** Description */
+            description: string;
+            /** Id */
+            id: string;
+            /** Instruction */
+            instruction?: string | null;
+            /** Labels */
+            labels?: string[];
+            /** Title */
+            title?: string | null;
+        };
+        /** PolicyDefinitionInput */
+        "PolicyDefinitionInput-Output": {
+            /** Applies To */
+            applies_to: components["schemas"]["NodeKind"][];
+            budget_spec?: components["schemas"]["BudgetSpec"] | null;
+            capabilities?: components["schemas"]["PolicyCapabilitiesInput-Output"];
             /** Description */
             description: string;
             /** Id */
@@ -1744,81 +1786,38 @@ export interface components {
             /** Slot */
             slot: string;
         };
-        /** ProducedArtifactClaim */
-        ProducedArtifactClaim: {
-            /**
-             * Kind
-             * @default artifact
-             * @constant
-             */
-            kind: "artifact";
-            /**
-             * Path
-             * Format: path
-             */
-            path: string;
-            /** Slot */
-            slot: string;
-        };
         /**
-         * ProviderPreference
+         * ProviderKind
          * @enum {string}
          */
-        ProviderPreference: "openclaw" | "codex" | "claude";
-        /** ReleaseBlockedPayload */
-        ReleaseBlockedPayload: Record<string, never>;
-        /** ReleaseBlockedSuccess */
-        ReleaseBlockedSuccess: {
-            flow: components["schemas"]["RuntimeFlowRead"];
-            latest_checkpoint_ref?: components["schemas"]["CheckpointFileRef"] | null;
-            /** Summary */
-            summary?: string | null;
-            /** Target Node Key */
-            target_node_key?: string | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            tool_name: "release_blocked";
-            workflow_manifest_ref?: components["schemas"]["WorkflowManifestRef"] | null;
+        ProviderKind: "openclaw" | "codex" | "claude";
+        /**
+         * ProviderNativeAccess
+         * @enum {string}
+         */
+        ProviderNativeAccess: "full" | "restricted" | "denied";
+        ProviderSelection: components["schemas"]["CodexProviderSelection"] | components["schemas"]["ClaudeProviderSelection"] | components["schemas"]["OpenClawProviderSelection"];
+        /**
+         * ProviderSelectionBasis
+         * @enum {string}
+         */
+        ProviderSelectionBasis: "explicit" | "default";
+        /** ProviderStartReadback */
+        ProviderStartReadback: {
+            /** Attempt Count */
+            attempt_count: number;
+            /** Last Error Code */
+            last_error_code?: string | null;
+            /** Next Attempt At */
+            next_attempt_at?: string | null;
+            retry_kind?: components["schemas"]["ProviderStartRetryKind"] | null;
+            /** Revision */
+            revision: number;
         };
-        /** ReleaseGreenPayload */
-        ReleaseGreenPayload: Record<string, never>;
-        /** ReleaseGreenSuccess */
-        ReleaseGreenSuccess: {
-            flow: components["schemas"]["RuntimeFlowRead"];
-            latest_checkpoint_ref?: components["schemas"]["CheckpointFileRef"] | null;
-            /** Summary */
-            summary?: string | null;
-            /** Target Node Key */
-            target_node_key?: string | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            tool_name: "release_green";
-            workflow_manifest_ref?: components["schemas"]["WorkflowManifestRef"] | null;
-        };
-        /** RemoveChildPayload */
-        RemoveChildPayload: {
-            /** Child Node Key */
-            child_node_key: string;
-        };
-        /** RemoveChildSuccess */
-        RemoveChildSuccess: {
-            flow: components["schemas"]["RuntimeFlowRead"];
-            latest_checkpoint_ref?: components["schemas"]["CheckpointFileRef"] | null;
-            /** Summary */
-            summary?: string | null;
-            /** Target Node Key */
-            target_node_key?: string | null;
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            tool_name: "remove_child";
-            workflow_manifest_ref?: components["schemas"]["WorkflowManifestRef"] | null;
-        };
+        /** @enum {string} */
+        ProviderStartRetryKind: "initial" | "definite_failure" | "uncertain_acceptance";
+        /** @enum {string} */
+        ProviderStartState: "retry_scheduled" | "accepted";
         /** RoleDefinitionInput */
         RoleDefinitionInput: {
             /** Allowed Node Kinds */
@@ -1843,19 +1842,21 @@ export interface components {
             criteria?: components["schemas"]["CriteriaDeclaration"][] | null;
             /** Description */
             description: string;
-            /**
-             * Id
-             * @constant
-             */
-            id: "root";
             /** Instruction */
             instruction?: string | null;
-            /** Policy */
-            policy?: string | null;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "root";
+            /** Node Key */
+            node_key: string;
+            /** Policy Id */
+            policy_id: string;
             produces?: components["schemas"]["ProduceBuckets"] | null;
-            provider_preference?: components["schemas"]["ProviderPreference"] | null;
-            /** Role */
-            role: string;
+            provider?: components["schemas"]["ProviderSelection"] | null;
+            /** Role Id */
+            role_id: string;
             /** Title */
             title?: string | null;
         };
@@ -1868,35 +1869,50 @@ export interface components {
             criteria?: components["schemas"]["CriteriaDeclaration"][] | null;
             /** Description */
             description: string;
-            /**
-             * Id
-             * @constant
-             */
-            id: "root";
             /** Instruction */
             instruction?: string | null;
-            /** Policy */
-            policy?: string | null;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "root";
+            /** Node Key */
+            node_key: string;
+            /** Policy Id */
+            policy_id: string;
             produces?: components["schemas"]["ProduceBuckets"] | null;
-            provider_preference?: components["schemas"]["ProviderPreference"] | null;
-            /** Role */
-            role: string;
+            provider?: components["schemas"]["ProviderSelection"] | null;
+            /** Role Id */
+            role_id: string;
             /** Title */
             title?: string | null;
         };
+        /** @enum {string} */
+        RuntimeFlowPauseReason: "paused_by_operator" | "runtime_recovery_exhausted" | "runtime_transition_failed";
         /** RuntimeFlowPauseResponse */
         RuntimeFlowPauseResponse: {
             flow: components["schemas"]["RuntimeFlowRead"];
         };
         /** RuntimeFlowRead */
         RuntimeFlowRead: {
+            /** Active Assignment Id */
+            active_assignment_id?: string | null;
             /** Active Attempt Id */
             active_attempt_id?: string | null;
             /** Active Flow Revision Id */
             active_flow_revision_id: string;
+            /** Control Revision */
+            control_revision: number;
+            current_command_run?: components["schemas"]["CommandRunSummary"] | null;
+            current_dispatch?: components["schemas"]["DispatchRuntimeRead"] | null;
+            current_human_request?: components["schemas"]["HumanRequestSummary"] | null;
             /** Current Node Key */
             current_node_key?: string | null;
-            status: components["schemas"]["FlowStatus"];
+            current_plan?: components["schemas"]["WorkPlanRead"] | null;
+            /** Latest Dispatch Id */
+            latest_dispatch_id?: string | null;
+            pause_reason?: components["schemas"]["RuntimeFlowPauseReason"] | null;
+            status: components["schemas"]["RuntimeLifecycleStatus"];
             /** Task Id */
             task_id: string;
             /** Task Summary */
@@ -1908,6 +1924,9 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            waiting_cause?: components["schemas"]["RuntimeFlowWaitingCause"] | null;
+            /** Watchdog Recovery Count */
+            watchdog_recovery_count?: number | null;
             /** Workflow Key */
             workflow_key?: string | null;
             workflow_manifest_ref: components["schemas"]["WorkflowManifestRef"];
@@ -1943,29 +1962,86 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
-        /** SupplementalDurableContext */
-        SupplementalDurableContext: {
-            /**
-             * Artifact Slots
-             * @default []
-             */
-            artifact_slots: components["schemas"]["SupplementalSlot"][];
-            /**
-             * Criteria Slots
-             * @default []
-             */
-            criteria_slots: components["schemas"]["SupplementalSlot"][];
-        };
-        /** SupplementalSlot */
-        SupplementalSlot: {
-            /** Slot */
-            slot: string;
-        };
         /** @enum {string} */
-        SupportRuntimeFileKind: "delivery_state" | "continuity_state" | "watchdog_state" | "provider_events";
+        RuntimeFlowWaitingCause: "human_request" | "command_run";
+        /**
+         * RuntimeLifecycleStatus
+         * @enum {string}
+         */
+        RuntimeLifecycleStatus: "pending" | "running" | "paused" | "completed" | "cancelled";
+        /** StructuralRevisionAdoptedEventPayload */
+        StructuralRevisionAdoptedEventPayload: {
+            adopted_by_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            adopted_flow_revision_id: components["schemas"]["TaskEventIdentifier"];
+            cause: components["schemas"]["TaskEventSummary"];
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "add_child" | "update_child" | "remove_child";
+            source_flow_revision_id: components["schemas"]["TaskEventIdentifier"];
+            target_node_key: components["schemas"]["TaskEventIdentifier"];
+        };
+        /** TaskCancelledEventPayload */
+        TaskCancelledEventPayload: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            /** Control Revision */
+            control_revision: number;
+            summary: components["schemas"]["TaskEventSummary"];
+        };
+        /** TaskComposeNodePreview */
+        TaskComposeNodePreview: {
+            network_access: components["schemas"]["EffectiveNetworkAccess"];
+            /** Node Key */
+            node_key: string;
+            provider_native_access: components["schemas"]["EffectiveProviderNativeAccess"];
+            provider_resolution: components["schemas"]["TaskComposePreviewProviderResolution"];
+        };
+        /** TaskComposePreviewIssue */
+        TaskComposePreviewIssue: {
+            /** Code */
+            code: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "schema" | "cross_reference" | "provider" | "path";
+            /** Message */
+            message: string;
+            /** Path */
+            path?: string | null;
+        };
+        /** TaskComposePreviewProviderResolution */
+        TaskComposePreviewProviderResolution: {
+            requested_provider: components["schemas"]["ProviderKind"];
+            resolved_provider: components["schemas"]["ProviderKind"];
+            selection_basis: components["schemas"]["ProviderSelectionBasis"];
+        };
+        /** TaskComposePreviewResponse */
+        TaskComposePreviewResponse: {
+            /**
+             * Errors
+             * @default []
+             */
+            errors: components["schemas"]["TaskComposePreviewIssue"][];
+            /**
+             * Nodes
+             * @default []
+             */
+            nodes: components["schemas"]["TaskComposeNodePreview"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "invalid";
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: components["schemas"]["TaskComposePreviewIssue"][];
+        };
         /** TaskComposeRootsInput */
         TaskComposeRootsInput: {
-            context?: components["schemas"]["TaskRootBindingInput"] | null;
             workspace?: components["schemas"]["TaskRootBindingInput"] | null;
         };
         /** TaskComposeTaskInput */
@@ -1984,61 +2060,48 @@ export interface components {
             /** Key */
             key: string;
         };
+        /** TaskEventArtifactRef */
+        TaskEventArtifactRef: {
+            path: components["schemas"]["TaskEventRef"];
+            publication_id: components["schemas"]["TaskEventIdentifier"];
+            slot: components["schemas"]["TaskEventIdentifier"];
+            /** Version */
+            version: number;
+        };
+        TaskEventIdentifier: string;
         /** TaskEventListResponse */
         TaskEventListResponse: {
             /** Items */
             items: components["schemas"]["TaskEventRecord"][];
-            /** Next Cursor */
-            next_cursor?: string | null;
+            next_cursor?: components["schemas"]["TaskEventIdentifier"] | null;
             /** Task Id */
             task_id: string;
-            /** Through Event Id */
-            through_event_id?: string | null;
+            through_event_id?: components["schemas"]["TaskEventIdentifier"] | null;
         };
-        /** TaskEventRecord */
-        TaskEventRecord: {
-            /** Actor Ref */
-            actor_ref?: string | null;
-            /** Attempt Id */
-            attempt_id?: string | null;
-            /** Dispatch Id */
-            dispatch_id?: string | null;
-            /** Event Hash */
-            event_hash: string;
-            /** Event Id */
-            event_id: string;
-            /** Event Seq */
-            event_seq: number;
-            event_source: components["schemas"]["TaskEventSource"];
-            event_type: components["schemas"]["TaskEventType"];
-            /** Flow Revision Id */
-            flow_revision_id?: string | null;
-            /** Node Key */
-            node_key?: string | null;
-            /**
-             * Occurred At
-             * Format: date-time
-             */
-            occurred_at: string;
-            /** Payload */
-            payload?: {
-                [key: string]: unknown;
-            };
-            /** Prev Event Hash */
-            prev_event_hash?: string | null;
-            /** Task Id */
-            task_id: string;
-        };
+        /**
+         * TaskEventRecord
+         * @description One bounded chronology event with an event-type-specific payload.
+         */
+        TaskEventRecord: components["schemas"]["_TaskEventVariant"];
+        TaskEventRef: string;
         /**
          * TaskEventSource
          * @enum {string}
          */
-        TaskEventSource: "controller" | "control_api" | "node" | "provider" | "adapter";
-        /**
-         * TaskEventType
-         * @enum {string}
-         */
-        TaskEventType: "task_started" | "dispatch_opened" | "checkpoint_recorded" | "boundary_accepted" | "child_assignment_staged" | "child_assignment_committed" | "structural_revision_adopted" | "human_request_opened" | "human_request_resolved" | "human_request_timed_out" | "human_request_cancelled" | "command_run_started" | "command_run_progressed" | "command_run_cancel_requested" | "command_run_succeeded" | "command_run_failed" | "command_run_timed_out" | "command_run_cancelled" | "task_paused" | "task_resumed" | "task_cancelled";
+        TaskEventSource: "controller" | "control_api" | "operator_mcp" | "node";
+        TaskEventStepText: string;
+        TaskEventSummary: string;
+        /** TaskEventTransientRef */
+        TaskEventTransientRef: {
+            description: components["schemas"]["TaskEventSummary"];
+            localization_id: components["schemas"]["TaskEventIdentifier"];
+            path: components["schemas"]["TaskEventRef"];
+        };
+        /** TaskEventWorkPlanStep */
+        TaskEventWorkPlanStep: {
+            status: components["schemas"]["WorkPlanStepStatusValue"];
+            step: components["schemas"]["TaskEventStepText"];
+        };
         /** TaskGraphDependencyEntry */
         TaskGraphDependencyEntry: {
             /** Consumer Node Key */
@@ -2088,6 +2151,25 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** TaskPausedEventPayload */
+        TaskPausedEventPayload: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            /** Control Revision */
+            control_revision: number;
+            /**
+             * Pause Reason
+             * @enum {string}
+             */
+            pause_reason: "paused_by_operator" | "runtime_recovery_exhausted" | "runtime_transition_failed";
+            summary: components["schemas"]["TaskEventSummary"];
+        };
+        /** TaskResumedEventPayload */
+        TaskResumedEventPayload: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            /** Control Revision */
+            control_revision: number;
+            summary: components["schemas"]["TaskEventSummary"];
+        };
         /** TaskRootBindingInput */
         TaskRootBindingInput: {
             /** Host Path */
@@ -2120,6 +2202,15 @@ export interface components {
             task_id: string;
             workflow_manifest_ref: components["schemas"]["WorkflowManifestRef"];
         };
+        /** TaskStartedEventPayload */
+        TaskStartedEventPayload: {
+            compiled_plan_id: components["schemas"]["TaskEventIdentifier"];
+            flow_id: components["schemas"]["TaskEventIdentifier"];
+            manifest_ref: components["schemas"]["TaskEventRef"];
+            workflow_key: components["schemas"]["TaskEventIdentifier"];
+            /** Workflow Revision No */
+            workflow_revision_no: number;
+        };
         /** TopActionableItem */
         TopActionableItem: {
             /** @default [] */
@@ -2131,50 +2222,64 @@ export interface components {
             /** Summary */
             summary: string;
         };
-        /** TransientSurfaceWrite */
-        TransientSurfaceWrite: {
-            /** Description */
-            description: string;
+        /** WorkPlanClearedEventPayload */
+        WorkPlanClearedEventPayload: {
+            assignment_id: components["schemas"]["TaskEventIdentifier"];
+            authored_by_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            explanation?: components["schemas"]["TaskEventSummary"] | null;
+            /** Revision */
+            revision: number;
             /**
-             * Path
-             * Format: path
+             * Updated At
+             * Format: date-time
              */
-            path: string;
+            updated_at: string;
         };
-        /** UpdateChildPayload */
-        UpdateChildPayload: {
-            /** Child Node Key */
-            child_node_key: string;
-            patch: components["schemas"]["ChildNodePatch"];
-        };
-        /** UpdateChildSuccess */
-        UpdateChildSuccess: {
-            flow: components["schemas"]["RuntimeFlowRead"];
-            latest_checkpoint_ref?: components["schemas"]["CheckpointFileRef"] | null;
-            /** Summary */
-            summary?: string | null;
-            /** Target Node Key */
-            target_node_key?: string | null;
+        /** WorkPlanRead */
+        WorkPlanRead: {
+            /** Assignment Id */
+            assignment_id: string;
+            /** Authored By Dispatch Id */
+            authored_by_dispatch_id: string;
+            /** Explanation */
+            explanation?: string | null;
+            /** Revision */
+            revision: number;
+            /** Steps */
+            steps: components["schemas"]["WorkPlanStepRead"][];
             /**
-             * @description discriminator enum property added by openapi-typescript
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** WorkPlanSetEventPayload */
+        WorkPlanSetEventPayload: {
+            assignment_id: components["schemas"]["TaskEventIdentifier"];
+            authored_by_dispatch_id: components["schemas"]["TaskEventIdentifier"];
+            explanation?: components["schemas"]["TaskEventSummary"] | null;
+            /** Revision */
+            revision: number;
+            /** Steps */
+            steps: components["schemas"]["TaskEventWorkPlanStep"][];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** WorkPlanStepRead */
+        WorkPlanStepRead: {
+            /**
+             * Status
              * @enum {string}
              */
-            tool_name: "update_child";
-            workflow_manifest_ref?: components["schemas"]["WorkflowManifestRef"] | null;
+            status: "pending" | "in_progress" | "completed";
+            /** Step */
+            step: string;
         };
-        /** ValidationError */
-        ValidationError: {
-            /** Context */
-            ctx?: Record<string, never>;
-            /** Input */
-            input?: unknown;
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-        };
+        /** @enum {string} */
+        WorkPlanStepStatusValue: "pending" | "in_progress" | "completed";
         /** WorkflowDefinitionInput */
         "WorkflowDefinitionInput-Input": {
             /** Description */
@@ -2201,6 +2306,547 @@ export interface components {
              */
             path: string;
         };
+        /** _BoundaryAcceptedEvent */
+        _BoundaryAcceptedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "boundary_accepted";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["BoundaryAcceptedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _CheckpointRecordedEvent */
+        _CheckpointRecordedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "checkpoint_recorded";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["CheckpointRecordedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _ChildAssignmentCommittedEvent */
+        _ChildAssignmentCommittedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "child_assignment_committed";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["ChildAssignmentCommittedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _ChildAssignmentStagedEvent */
+        _ChildAssignmentStagedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "child_assignment_staged";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["ChildAssignmentStagedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _CommandRunCancelRequestedEvent */
+        _CommandRunCancelRequestedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "command_run_cancel_requested";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["CommandRunCancelRequestedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _CommandRunOpenedEvent */
+        _CommandRunOpenedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "command_run_opened";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["CommandRunOpenedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _CommandRunProgressedEvent */
+        _CommandRunProgressedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "command_run_progressed";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["CommandRunProgressedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _CommandRunStartedEvent */
+        _CommandRunStartedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "command_run_started";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["CommandRunStartedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _CommandRunTerminalEvent */
+        _CommandRunTerminalEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "command_run_abandoned" | "command_run_cancelled" | "command_run_failed" | "command_run_succeeded" | "command_run_timed_out";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["CommandRunTerminalEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _DispatchOpenedEvent */
+        _DispatchOpenedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "dispatch_opened";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["DispatchOpenedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _DispatchStartUpdatedEvent */
+        _DispatchStartUpdatedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "dispatch_start_updated";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["DispatchStartUpdatedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _HumanRequestOpenedEvent */
+        _HumanRequestOpenedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "human_request_opened";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["HumanRequestOpenedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _HumanRequestTerminalEvent */
+        _HumanRequestTerminalEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "human_request_cancelled" | "human_request_resolved" | "human_request_timed_out";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["HumanRequestTerminalEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _StructuralRevisionAdoptedEvent */
+        _StructuralRevisionAdoptedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "structural_revision_adopted";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["StructuralRevisionAdoptedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _TaskCancelledEvent */
+        _TaskCancelledEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "task_cancelled";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["TaskCancelledEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        _TaskEventVariant: components["schemas"]["_TaskStartedEvent"] | components["schemas"]["_DispatchOpenedEvent"] | components["schemas"]["_DispatchStartUpdatedEvent"] | components["schemas"]["_WorkPlanSetEvent"] | components["schemas"]["_WorkPlanClearedEvent"] | components["schemas"]["_CheckpointRecordedEvent"] | components["schemas"]["_BoundaryAcceptedEvent"] | components["schemas"]["_ChildAssignmentStagedEvent"] | components["schemas"]["_ChildAssignmentCommittedEvent"] | components["schemas"]["_StructuralRevisionAdoptedEvent"] | components["schemas"]["_HumanRequestOpenedEvent"] | components["schemas"]["_HumanRequestTerminalEvent"] | components["schemas"]["_CommandRunOpenedEvent"] | components["schemas"]["_CommandRunStartedEvent"] | components["schemas"]["_CommandRunProgressedEvent"] | components["schemas"]["_CommandRunCancelRequestedEvent"] | components["schemas"]["_CommandRunTerminalEvent"] | components["schemas"]["_TaskPausedEvent"] | components["schemas"]["_TaskResumedEvent"] | components["schemas"]["_TaskCancelledEvent"];
+        /** _TaskPausedEvent */
+        _TaskPausedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "task_paused";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["TaskPausedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _TaskResumedEvent */
+        _TaskResumedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "task_resumed";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["TaskResumedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _TaskStartedEvent */
+        _TaskStartedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "task_started";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["TaskStartedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _WorkPlanClearedEvent */
+        _WorkPlanClearedEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "work_plan_cleared";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["WorkPlanClearedEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
+        /** _WorkPlanSetEvent */
+        _WorkPlanSetEvent: {
+            actor_ref?: components["schemas"]["TaskEventIdentifier"] | null;
+            attempt_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            dispatch_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            event_hash: components["schemas"]["TaskEventRef"];
+            event_id: components["schemas"]["TaskEventIdentifier"];
+            /** Event Seq */
+            event_seq: number;
+            event_source: components["schemas"]["TaskEventSource"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "work_plan_set";
+            flow_revision_id?: components["schemas"]["TaskEventIdentifier"] | null;
+            node_key?: components["schemas"]["TaskEventIdentifier"] | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            payload: components["schemas"]["WorkPlanSetEventPayload"];
+            prev_event_hash?: components["schemas"]["TaskEventRef"] | null;
+            /** Task Id */
+            task_id: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -2216,9 +2862,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2233,13 +2877,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionDraftListResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2247,9 +2936,7 @@ export interface operations {
     post_definition_draft_authoring_definition_drafts_post: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2268,13 +2955,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionDraftDetailResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2282,9 +3014,7 @@ export interface operations {
     get_definition_draft_authoring_definitions__kind___key__draft_get: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 kind: components["schemas"]["DefinitionKind"];
                 key: string;
@@ -2302,13 +3032,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionDraftDetailResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2316,9 +3091,7 @@ export interface operations {
     put_definition_draft_authoring_definitions__kind___key__draft_put: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 kind: components["schemas"]["DefinitionKind"];
                 key: string;
@@ -2340,13 +3113,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionDraftDetailResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2354,9 +3172,7 @@ export interface operations {
     delete_definition_draft_route_authoring_definitions__kind___key__draft_delete: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 kind: components["schemas"]["DefinitionKind"];
                 key: string;
@@ -2372,13 +3188,58 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2386,9 +3247,7 @@ export interface operations {
     post_definition_draft_publish_authoring_definitions__kind___key__draft_publish_post: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 kind: components["schemas"]["DefinitionKind"];
                 key: string;
@@ -2406,13 +3265,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionDraftPublishResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2420,9 +3324,7 @@ export interface operations {
     post_definition_draft_replace_current_authoring_definitions__kind___key__draft_replace_current_post: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 kind: components["schemas"]["DefinitionKind"];
                 key: string;
@@ -2440,13 +3342,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionDraftDetailResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2454,9 +3401,7 @@ export interface operations {
     post_definition_draft_validate_authoring_definitions__kind___key__draft_validate_post: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 kind: components["schemas"]["DefinitionKind"];
                 key: string;
@@ -2474,31 +3419,72 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionDraftValidationResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
     };
-    post_boundary_callback_tasks__task_id__boundary_post: {
+    post_task_compose_preview_authoring_task_compose_preview_post: {
         parameters: {
-            query?: {
-                session_key?: string | null;
-            };
+            query?: never;
             header?: never;
-            path: {
-                task_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["BoundaryWrite"];
+                "application/json": components["schemas"]["TaskStartRequest"];
             };
         };
         responses: {
@@ -2508,91 +3494,61 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BoundaryRead"];
+                    "application/json": components["schemas"]["TaskComposePreviewResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
-        };
-    };
-    post_checkpoint_callback_tasks__task_id__checkpoint_post: {
-        parameters: {
-            query?: {
-                session_key?: string | null;
-            };
-            header?: never;
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CheckpointWrite"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
+            /** @description Internal Server Error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CheckpointRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    post_tool_callback_tasks__task_id__tools__tool_name__post: {
-        parameters: {
-            query?: {
-                session_key?: string | null;
-            };
-            header?: never;
-            path: {
-                task_id: string;
-                tool_name: components["schemas"]["ParentRootToolName"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ParentToolCall"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ParentToolSuccess"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2600,9 +3556,7 @@ export interface operations {
     get_control_task_control_tasks__task_id__get: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
             };
@@ -2619,13 +3573,58 @@ export interface operations {
                     "application/json": components["schemas"]["RuntimeFlowRead"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2634,11 +3633,9 @@ export interface operations {
         parameters: {
             query: {
                 expected_active_flow_revision_id: string;
+                expected_control_revision: number;
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-                "X-AutoClaw-Actor-Ref"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
             };
@@ -2655,13 +3652,58 @@ export interface operations {
                     "application/json": components["schemas"]["RuntimeFlowRead"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2672,9 +3714,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
             };
@@ -2691,13 +3731,58 @@ export interface operations {
                     "application/json": components["schemas"]["CommandRunListResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2705,9 +3790,7 @@ export interface operations {
     get_control_command_run_control_tasks__task_id__command_runs__run_id__get: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
                 run_id: string;
@@ -2725,13 +3808,58 @@ export interface operations {
                     "application/json": components["schemas"]["CommandRunRecord"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2739,10 +3867,7 @@ export interface operations {
     cancel_control_command_run_control_tasks__task_id__command_runs__run_id__cancel_post: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-                "X-AutoClaw-Actor-Ref"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
                 run_id: string;
@@ -2760,13 +3885,58 @@ export interface operations {
                     "application/json": components["schemas"]["CommandRunCancelResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2774,9 +3944,7 @@ export interface operations {
     get_control_command_run_log_control_tasks__task_id__command_runs__run_id__log_get: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
                 run_id: string;
@@ -2794,13 +3962,58 @@ export interface operations {
                     "application/json": components["schemas"]["CommandRunLogReadResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2809,11 +4022,9 @@ export interface operations {
         parameters: {
             query: {
                 expected_active_flow_revision_id: string;
+                expected_control_revision: number;
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-                "X-AutoClaw-Actor-Ref"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
             };
@@ -2830,13 +4041,58 @@ export interface operations {
                     "application/json": components["schemas"]["RuntimeFlowRead"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2844,13 +4100,11 @@ export interface operations {
     get_control_task_events_control_tasks__task_id__events_get: {
         parameters: {
             query?: {
-                cursor?: string | null;
+                cursor?: components["schemas"]["TaskEventIdentifier"] | null;
                 limit?: number;
-                through_event_id?: string | null;
+                through_event_id?: components["schemas"]["TaskEventIdentifier"] | null;
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
             };
@@ -2867,13 +4121,67 @@ export interface operations {
                     "application/json": components["schemas"]["TaskEventListResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2885,7 +4193,6 @@ export interface operations {
             };
             header?: {
                 "Last-Event-ID"?: string | null;
-                "X-AutoClaw-API-Key"?: string | null;
             };
             path: {
                 task_id: string;
@@ -2903,13 +4210,67 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2917,9 +4278,7 @@ export interface operations {
     get_control_human_requests_control_tasks__task_id__human_requests_get: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
             };
@@ -2936,13 +4295,58 @@ export interface operations {
                     "application/json": components["schemas"]["HumanRequestListResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2950,10 +4354,7 @@ export interface operations {
     resolve_control_human_request_control_tasks__task_id__human_requests__request_id__resolve_post: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-                "X-AutoClaw-Actor-Ref"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
                 request_id: string;
@@ -2975,13 +4376,58 @@ export interface operations {
                     "application/json": components["schemas"]["HumanRequestResolveResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -2990,11 +4436,9 @@ export interface operations {
         parameters: {
             query: {
                 expected_active_flow_revision_id: string;
+                expected_control_revision: number;
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-                "X-AutoClaw-Actor-Ref"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
             };
@@ -3011,13 +4455,58 @@ export interface operations {
                     "application/json": components["schemas"]["RuntimeFlowPauseResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -3025,9 +4514,7 @@ export interface operations {
     get_control_snapshot_control_tasks__task_id__snapshot_get: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
             };
@@ -3044,13 +4531,58 @@ export interface operations {
                     "application/json": components["schemas"]["OperatorFlowSnapshotResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -3064,9 +4596,7 @@ export interface operations {
                 cursor?: string | null;
                 sort?: "occurred_at_desc" | "occurred_at_asc";
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 task_id: string;
             };
@@ -3083,13 +4613,58 @@ export interface operations {
                     "application/json": components["schemas"]["OperatorFlowTraceResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -3097,9 +4672,7 @@ export interface operations {
     post_definition_definitions_post: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -3118,13 +4691,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionRevisionDetailResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -3139,9 +4757,7 @@ export interface operations {
                 allowed_node_kind?: components["schemas"]["NodeKind"] | null;
                 applies_to?: components["schemas"]["NodeKind"] | null;
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -3156,13 +4772,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionSummaryListResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -3177,9 +4838,7 @@ export interface operations {
                 allowed_node_kind?: components["schemas"]["NodeKind"] | null;
                 applies_to?: components["schemas"]["NodeKind"] | null;
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -3194,13 +4853,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionSummaryListResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -3215,9 +4919,7 @@ export interface operations {
                 allowed_node_kind?: components["schemas"]["NodeKind"] | null;
                 applies_to?: components["schemas"]["NodeKind"] | null;
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -3232,13 +4934,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionSummaryListResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -3246,9 +4993,7 @@ export interface operations {
     get_definition_definitions__kind___key__get: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 kind: components["schemas"]["DefinitionKind"];
                 key: string;
@@ -3266,13 +5011,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionRevisionDetailResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -3284,9 +5074,7 @@ export interface operations {
                 cursor?: string | null;
                 sort?: components["schemas"]["DefinitionHistorySort"];
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path: {
                 kind: components["schemas"]["DefinitionKind"];
                 key: string;
@@ -3304,13 +5092,58 @@ export interface operations {
                     "application/json": components["schemas"]["DefinitionRevisionHistoryResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -3331,210 +5164,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
-                };
-            };
-        };
-    };
-    get_continuity_state_observability_tasks__task_id__continuity_state_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObservabilityFileRef"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_delivery_state_observability_tasks__task_id__delivery_state_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObservabilityFileRef"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_provider_events_observability_tasks__task_id__provider_events_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObservabilityFileRef"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_watchdog_state_observability_tasks__task_id__watchdog_state_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ObservabilityFileRef"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_operator_snapshot_operator_tasks__task_id__snapshot_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OperatorFlowSnapshotResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_operator_trace_operator_tasks__task_id__trace_get: {
-        parameters: {
-            query?: {
-                scope?: "current" | "whole";
-                q?: string | null;
-                limit?: number;
-                cursor?: string | null;
-                sort?: "occurred_at_desc" | "occurred_at_asc";
-            };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OperatorFlowTraceResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3568,9 +5197,7 @@ export interface operations {
                 sort?: "updated_at_desc" | "updated_at_asc" | "task_title_asc" | "task_title_desc";
                 status?: "any" | "pending" | "running" | "blocked" | "paused" | "succeeded" | "cancelled";
             };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -3585,154 +5212,58 @@ export interface operations {
                     "application/json": components["schemas"]["RuntimeFlowSummaryListResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
-        };
-    };
-    get_runtime_task_runtime_tasks__task_id__get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
+            /** @description Internal Server Error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RuntimeFlowRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    cancel_task_runtime_tasks__task_id__cancel_post: {
-        parameters: {
-            query: {
-                expected_active_flow_revision_id: string;
-            };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-                "X-AutoClaw-Actor-Ref"?: string | null;
-            };
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RuntimeFlowRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    continue_task_runtime_tasks__task_id__continue_post: {
-        parameters: {
-            query: {
-                expected_active_flow_revision_id: string;
-            };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-                "X-AutoClaw-Actor-Ref"?: string | null;
-            };
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RuntimeFlowRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    pause_task_runtime_tasks__task_id__pause_post: {
-        parameters: {
-            query: {
-                expected_active_flow_revision_id: string;
-            };
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-                "X-AutoClaw-Actor-Ref"?: string | null;
-            };
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RuntimeFlowPauseResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };
@@ -3740,9 +5271,7 @@ export interface operations {
     start_task_tasks_start_post: {
         parameters: {
             query?: never;
-            header?: {
-                "X-AutoClaw-API-Key"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -3761,13 +5290,58 @@ export interface operations {
                     "application/json": components["schemas"]["TaskStartResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Unprocessable Entity */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["OperationFailure"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationFailure"];
                 };
             };
         };

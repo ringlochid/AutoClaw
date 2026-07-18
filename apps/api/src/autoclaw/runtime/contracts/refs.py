@@ -13,16 +13,8 @@ type FixedRuntimeFileKind = Literal[
     "transient_index",
 ]
 
-type SupportRuntimeFileKind = Literal[
-    "delivery_state",
-    "continuity_state",
-    "watchdog_state",
-]
-
 type OperatorSupportSurfaceKind = (
-    FixedRuntimeFileKind
-    | SupportRuntimeFileKind
-    | Literal["artifact", "criteria", "doc", "wiki", "transient"]
+    FixedRuntimeFileKind | Literal["artifact", "criteria", "doc", "wiki", "transient"]
 )
 
 _FIXED_RUNTIME_FILE_KIND_BY_FILENAME: dict[str, FixedRuntimeFileKind] = {
@@ -34,11 +26,6 @@ _FIXED_RUNTIME_FILE_KIND_BY_FILENAME: dict[str, FixedRuntimeFileKind] = {
     "latest-checkpoint.md": "checkpoint",
     "artifact-index.json": "artifact_index",
     "transient-index.json": "transient_index",
-}
-_SUPPORT_RUNTIME_FILE_KIND_BY_FILENAME: dict[str, SupportRuntimeFileKind] = {
-    "delivery-state.json": "delivery_state",
-    "continuity-state.json": "continuity_state",
-    "watchdog-state.json": "watchdog_state",
 }
 
 
@@ -131,42 +118,6 @@ class CheckpointConsumeRef(BaseModel):
 type AssignmentConsumeRef = CheckpointConsumeRef | ArtifactRef | DocRef | WikiRef
 
 
-class SupportRuntimeFileRef(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    kind: SupportRuntimeFileKind = "delivery_state"
-    path: Path
-    description: RuntimeSchemaText
-
-    @model_validator(mode="before")
-    @classmethod
-    def infer_kind(cls, value: Any) -> Any:
-        if isinstance(value, BaseModel):
-            payload: Any = value.model_dump(mode="python")
-        elif isinstance(value, dict):
-            payload = dict(value)
-        else:
-            return value
-        if payload.get("kind") is None:
-            inferred_kind = _SUPPORT_RUNTIME_FILE_KIND_BY_FILENAME.get(
-                Path(str(payload.get("path"))).name
-            )
-            if inferred_kind is not None:
-                payload["kind"] = inferred_kind
-        return payload
-
-    @model_validator(mode="after")
-    def validate_kind(self) -> "SupportRuntimeFileRef":
-        inferred_kind = _SUPPORT_RUNTIME_FILE_KIND_BY_FILENAME.get(self.path.name)
-        if inferred_kind is None:
-            raise ValueError(f"unsupported observability path '{self.path.name}'")
-        if self.kind != inferred_kind:
-            raise ValueError(
-                f"path '{self.path.name}' must use observability kind '{inferred_kind}'"
-            )
-        return self
-
-
 class OperatorSupportSurfaceRef(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -207,13 +158,11 @@ class OperatorSupportSurfaceRef(BaseModel):
 
 def _operator_support_file_kind(
     raw_path: object,
-) -> FixedRuntimeFileKind | SupportRuntimeFileKind | None:
+) -> FixedRuntimeFileKind | None:
     if raw_path is None:
         return None
     filename = Path(str(raw_path)).name
-    return _FIXED_RUNTIME_FILE_KIND_BY_FILENAME.get(
-        filename
-    ) or _SUPPORT_RUNTIME_FILE_KIND_BY_FILENAME.get(filename)
+    return _FIXED_RUNTIME_FILE_KIND_BY_FILENAME.get(filename)
 
 
 def _operator_support_payload(value: Any) -> Any:
@@ -240,8 +189,6 @@ __all__ = [
     "DocRef",
     "OperatorSupportSurfaceKind",
     "OperatorSupportSurfaceRef",
-    "SupportRuntimeFileKind",
-    "SupportRuntimeFileRef",
     "TransientIndexRef",
     "TransientRef",
     "WikiRef",

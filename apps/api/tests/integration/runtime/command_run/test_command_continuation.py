@@ -18,6 +18,7 @@ from autoclaw.persistence.models import (
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.command_run.continuation import open_command_run_successor
 from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
+from autoclaw.runtime.flow.service import pause_runtime_flow, runtime_flow_read
 from autoclaw.runtime.node_operations import NodeOperationExecutor, NodeOperationScope
 from autoclaw.runtime.post_commit import (
     CapturedRuntimeEffectPublisher,
@@ -48,6 +49,7 @@ async def test_terminal_command_source_opens_one_same_attempt_successor(
         publisher = CapturedRuntimeEffectPublisher()
 
         async with session_factory() as session:
+            pre_open = await runtime_flow_read(cast(AsyncSession, session), ids.task_id)
             first = await open_command_run_successor(
                 cast(AsyncSession, session),
                 signal=CommandRunTerminal(run_id),
@@ -67,6 +69,10 @@ async def test_terminal_command_source_opens_one_same_attempt_successor(
             )
 
     assert first.outcome == "opened"
+    assert pre_open.current_command_run is not None
+    assert pre_open.current_command_run.run_id == run_id
+    assert pre_open.current_command_run.state.value == "succeeded"
+    assert pre_open.current_dispatch is None
     assert duplicate.outcome == "skipped"
     assert first.dispatch_id is not None
     assert source is not None and source.successor_dispatch_id == first.dispatch_id
@@ -164,6 +170,37 @@ async def test_nonterminal_command_signal_is_a_harmless_noop(tmp_path: Path) -> 
     assert flow is not None and flow.waiting_source_id == run_id
     assert dispatch_count == 3
     assert publisher.signals == ()
+
+
+async def test_terminal_command_source_remains_current_while_flow_is_paused(
+    tmp_path: Path,
+) -> None:
+    async with seeded_executor(tmp_path, suffix="command-paused-readback") as (
+        executor,
+        session_factory,
+        ids,
+        _,
+    ):
+        run_id = await _open_command_run(executor, ids)
+        async with session_factory() as session:
+            flow = await session.get(FlowModel, ids.flow_id)
+            assert flow is not None
+            await pause_runtime_flow(
+                cast(AsyncSession, session),
+                ids.task_id,
+                expected_active_flow_revision_id=ids.flow_revision_id,
+                expected_control_revision=flow.control_revision,
+            )
+        await _terminalize_command_run(session_factory, ids, run_id)
+
+        async with session_factory() as session:
+            readback = await runtime_flow_read(cast(AsyncSession, session), ids.task_id)
+
+    assert readback.status.value == "paused"
+    assert readback.current_dispatch is None
+    assert readback.current_command_run is not None
+    assert readback.current_command_run.run_id == run_id
+    assert readback.current_command_run.state.value == "succeeded"
 
 
 async def _open_command_run(executor: NodeOperationExecutor, ids: RuntimeIds) -> str:

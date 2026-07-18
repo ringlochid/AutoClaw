@@ -6,10 +6,7 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import JsonValue
 
 from autoclaw.persistence.session import get_session_factory
-from autoclaw.persistence.session_operations import (
-    read_session_operation,
-    write_session_operation,
-)
+from autoclaw.persistence.session_operations import read_session_operation
 from autoclaw.runtime.command_run.service import (
     cancel_command_run,
     list_command_runs,
@@ -33,6 +30,7 @@ from autoclaw.runtime.contracts import (
     RuntimeFlowRead,
     RuntimeFlowSummaryListResponse,
     RuntimeTaskListQuery,
+    TaskEventListResponse,
     TaskEventSource,
 )
 from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
@@ -46,6 +44,7 @@ from autoclaw.runtime.flow import (
 from autoclaw.runtime.human_request.service import list_human_requests, resolve_human_request
 from autoclaw.runtime.observability import operator_snapshot, operator_trace
 from autoclaw.runtime.post_commit import RuntimeEffectPublisher
+from autoclaw.runtime.task_events import list_task_events
 
 from ..tool_teaching import (
     FRESH_REVISION_NOTE,
@@ -56,7 +55,7 @@ from ..tool_teaching import (
     read_only_tool_teaching,
 )
 
-_OPERATOR_MCP_ACTOR_REF = HumanRequestResolutionSurface.OPERATOR_MCP.value
+_OPERATOR_MCP_ACTOR_REF = "local_operator"
 
 LIST_RUNTIME_TASKS_TEACHING = read_only_tool_teaching(
     name="list_runtime_tasks",
@@ -92,10 +91,25 @@ GET_OPERATOR_TRACE_TEACHING = read_only_tool_teaching(
         "Observe before mutating runtime state.",
     ),
 )
+GET_TASK_EVENTS_TEACHING = read_only_tool_teaching(
+    name="get_task_events",
+    summary="Backfill bounded controller chronology for one task.",
+    details=(
+        "Read get_runtime_task or get_operator_snapshot first because source rows "
+        "own current truth.",
+        "The cursor is exclusive and task-bound; through_event_id freezes a bounded page horizon.",
+        "Events are chronology only. On cursor_reset_required, reread current state and restart.",
+    ),
+)
 PAUSE_TASK_TEACHING = mutating_tool_teaching(
     name="pause_task",
     summary="Pause a task when you intentionally want to stop forward progress.",
-    details=(RUNTIME_STATE_WARNING, FRESH_REVISION_NOTE),
+    details=(
+        RUNTIME_STATE_WARNING,
+        FRESH_REVISION_NOTE,
+        "The response means the pause and any current-dispatch closure committed.",
+        "Provider cleanup is asynchronous; this tool does not wait for provider stop or exit.",
+    ),
 )
 CONTINUE_TASK_TEACHING = mutating_tool_teaching(
     name="continue_task",
@@ -107,12 +121,20 @@ CONTINUE_TASK_TEACHING = mutating_tool_teaching(
         "Pause-resume only.",
         "Not the ordinary path for yielded child handoff, parent wake, or retry advancement.",
         FRESH_REVISION_NOTE,
+        "The response means the legal successor dispatch and its request refs committed.",
+        "Provider start is asynchronous; this tool does not wait for provider output, stop, or "
+        "completion.",
     ),
 )
 CANCEL_TASK_TEACHING = mutating_tool_teaching(
     name="cancel_task",
     summary="Cancel a task when you intentionally want to stop it.",
-    details=(RUNTIME_STATE_WARNING, FRESH_REVISION_NOTE),
+    details=(
+        RUNTIME_STATE_WARNING,
+        FRESH_REVISION_NOTE,
+        "The response means controller cancellation and any current-dispatch closure committed.",
+        "Provider and command cleanup are asynchronous; this tool does not wait for process exit.",
+    ),
 )
 GET_HUMAN_REQUESTS_TEACHING = read_only_tool_teaching(
     name="get_human_requests",
@@ -131,6 +153,9 @@ RESOLVE_HUMAN_REQUEST_TEACHING = mutating_tool_teaching(
         INSPECT_FIRST_NOTE,
         "Dedicated human-request control surface; do not substitute continue_task.",
         "Only the current open request for the task is legal.",
+        "The response means the request resolution committed.",
+        "Successor opening and provider start are independent asynchronous effects; this tool "
+        "waits for neither.",
     ),
 )
 GET_COMMAND_RUNS_TEACHING = read_only_tool_teaching(
@@ -165,6 +190,8 @@ CANCEL_COMMAND_RUN_TEACHING = mutating_tool_teaching(
         INSPECT_FIRST_NOTE,
         "Dedicated command-run control surface; do not substitute cancel_task "
         "unless you intend to stop the whole task.",
+        "The response means cancellation_requested committed for the exact current run.",
+        "It does not mean the process exited, the run became terminal, or a successor opened.",
     ),
 )
 
@@ -267,6 +294,28 @@ def register_operator_read_tools(server: FastMCP) -> None:
             )
         )
 
+    @server.tool(
+        name="get_task_events",
+        title=GET_TASK_EVENTS_TEACHING.title,
+        description=GET_TASK_EVENTS_TEACHING.description,
+        annotations=GET_TASK_EVENTS_TEACHING.annotations,
+    )
+    async def get_task_events(
+        task_id: str,
+        cursor: str | None = None,
+        limit: int = 100,
+        through_event_id: str | None = None,
+    ) -> TaskEventListResponse:
+        return await read_session_operation(
+            lambda session: list_task_events(
+                session,
+                task_id=task_id,
+                cursor=cursor,
+                limit=limit,
+                through_event_id=through_event_id,
+            )
+        )
+
 
 def register_runtime_control_tools(
     server: FastMCP,
@@ -289,16 +338,16 @@ def register_runtime_control_tools(
             expected_active_flow_revision_id=expected_active_flow_revision_id,
             expected_control_revision=expected_control_revision,
         )
-        return await write_session_operation(
-            lambda session: pause_runtime_flow(
+        async with get_session_factory()() as session:
+            return await pause_runtime_flow(
                 session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
                 expected_control_revision=query.expected_control_revision,
+                actor_ref=_OPERATOR_MCP_ACTOR_REF,
                 event_source=TaskEventSource.OPERATOR_MCP,
                 runtime_effect_publisher=runtime_effect_publisher,
             )
-        )
 
     @server.tool(
         name="continue_task",
@@ -316,16 +365,16 @@ def register_runtime_control_tools(
             expected_control_revision=expected_control_revision,
         )
         active_dependencies = require_dispatch_opening_dependencies(dependencies)
-        return await write_session_operation(
-            lambda session: continue_runtime_flow(
+        async with get_session_factory()() as session:
+            return await continue_runtime_flow(
                 session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
                 expected_control_revision=query.expected_control_revision,
                 dependencies=active_dependencies,
+                actor_ref=_OPERATOR_MCP_ACTOR_REF,
                 event_source=TaskEventSource.OPERATOR_MCP,
             )
-        )
 
     @server.tool(
         name="cancel_task",
@@ -342,16 +391,16 @@ def register_runtime_control_tools(
             expected_active_flow_revision_id=expected_active_flow_revision_id,
             expected_control_revision=expected_control_revision,
         )
-        return await write_session_operation(
-            lambda session: cancel_runtime_flow(
+        async with get_session_factory()() as session:
+            return await cancel_runtime_flow(
                 session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
                 expected_control_revision=query.expected_control_revision,
+                actor_ref=_OPERATOR_MCP_ACTOR_REF,
                 event_source=TaskEventSource.OPERATOR_MCP,
                 runtime_effect_publisher=runtime_effect_publisher,
             )
-        )
 
 
 def register_runtime_wait_tools(
@@ -474,12 +523,11 @@ def register_command_run_tools(
         task_id: str,
         run_id: str,
     ) -> CommandRunCancelResponse:
-        return await write_session_operation(
-            lambda session: cancel_command_run(
+        async with get_session_factory()() as session:
+            return await cancel_command_run(
                 session,
                 task_id=task_id,
                 run_id=run_id,
                 actor_ref=_OPERATOR_MCP_ACTOR_REF,
                 runtime_effect_publisher=runtime_effect_publisher,
             )
-        )

@@ -79,7 +79,7 @@ export interface TaskStartController {
     readonly setField: (field: keyof TaskStartFormState, value: string) => void;
     readonly setPreviewOpen: (value: boolean) => void;
     readonly setResultOpen: (value: boolean) => void;
-    readonly setRootMode: (root: "context" | "workspace", mode: TaskRootMode) => void;
+    readonly setWorkspaceMode: (mode: TaskRootMode) => void;
     readonly showPreview: () => void;
     readonly sort: DefinitionListSort;
     readonly start: () => void;
@@ -230,27 +230,17 @@ export function useTaskStartController(): TaskStartController {
         setFormErrors((currentErrors) => ({ ...currentErrors, [field]: undefined }));
     }, []);
 
-    const setRootMode = useCallback((root: "context" | "workspace", mode: TaskRootMode) => {
+    const setWorkspaceMode = useCallback((mode: TaskRootMode) => {
         setForm((currentForm) => {
-            if (root === "workspace") {
-                return {
-                    ...currentForm,
-                    workspaceHostPath: shouldShowHostPath(mode)
-                        ? currentForm.workspaceHostPath
-                        : "",
-                    workspaceMode: mode,
-                };
-            }
             return {
                 ...currentForm,
-                contextHostPath: shouldShowHostPath(mode) ? currentForm.contextHostPath : "",
-                contextMode: mode,
+                workspaceHostPath: shouldShowHostPath(mode) ? currentForm.workspaceHostPath : "",
+                workspaceMode: mode,
             };
         });
         setFormErrors((currentErrors) => ({
             ...currentErrors,
-            contextHostPath: root === "context" ? undefined : currentErrors.contextHostPath,
-            workspaceHostPath: root === "workspace" ? undefined : currentErrors.workspaceHostPath,
+            workspaceHostPath: undefined,
         }));
     }, []);
 
@@ -361,7 +351,7 @@ export function useTaskStartController(): TaskStartController {
         setField,
         setPreviewOpen,
         setResultOpen,
-        setRootMode,
+        setWorkspaceMode,
         showPreview,
         sort,
         start,

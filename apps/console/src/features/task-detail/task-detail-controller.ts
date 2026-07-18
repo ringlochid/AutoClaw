@@ -168,6 +168,7 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
                             type: "bootstrap-success",
                         });
                         dispatch({ status: "reconnecting", type: "stream-status" });
+                        return resetBootstrap.snapshot.stream_head_event_id ?? null;
                     },
                     signal: abortController.signal,
                     taskId: currentTaskId,
@@ -236,6 +237,7 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
             void writeTaskControlAction({
                 action,
                 activeFlowRevisionId: state.bootstrap.task.active_flow_revision_id,
+                controlRevision: state.bootstrap.task.control_revision,
                 taskId,
             })
                 .then((task) => {

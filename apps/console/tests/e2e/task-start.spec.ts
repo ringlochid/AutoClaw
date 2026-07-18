@@ -5,10 +5,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
 
-import {
-    createBackendOperationFailureBody,
-    createTaskStartResponse,
-} from "../fixtures/console-api";
+import { createOperationFailureBody, createTaskStartResponse } from "../fixtures/console-api";
 import { createDefinitionSummaryList } from "../fixtures/definitions";
 import {
     TASK_START_SCREENSHOT_DIR,
@@ -240,7 +237,7 @@ async function mockTaskStart(
         if (options.startFailure !== undefined) {
             await route.fulfill({
                 body: JSON.stringify(
-                    createBackendOperationFailureBody({
+                    createOperationFailureBody({
                         code: "conflicting_continuation",
                         retryable: false,
                         summary: options.startFailure,

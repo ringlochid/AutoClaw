@@ -80,7 +80,6 @@ def cli(ctx: click.Context, is_debug: bool) -> int | None:
 @click.option("--host", default="127.0.0.1", show_default=True)
 @click.option("--port", default=DEFAULT_API_PORT, type=int, show_default=True)
 @click.option("--log-level", default=DEFAULT_LOG_LEVEL, show_default=True)
-@click.option("--api-key")
 @click.option("--force", is_flag=True)
 @click.option("--skip-db-upgrade", is_flag=True)
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")

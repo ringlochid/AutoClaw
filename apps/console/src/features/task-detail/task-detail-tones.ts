@@ -1,13 +1,15 @@
 import type { StatusTone } from "../../components/ui";
 import type { components } from "../../api/generated/openapi";
+import type { TaskEventType } from "../../api/view-models";
 
-export function flowStatusTone(status: components["schemas"]["FlowStatus"]): StatusTone {
+export function flowStatusTone(
+    status: components["schemas"]["RuntimeLifecycleStatus"],
+): StatusTone {
     switch (status) {
         case "running":
             return "active";
-        case "succeeded":
+        case "completed":
             return "success";
-        case "blocked":
         case "cancelled":
             return "danger";
         case "paused":
@@ -26,6 +28,7 @@ export function commandRunTone(status: components["schemas"]["CommandRunState"])
         case "failed":
         case "timed_out":
         case "cancelled":
+        case "abandoned":
             return "danger";
         case "pending_start":
             return "warning";
@@ -44,8 +47,13 @@ export function humanRequestTone(status: components["schemas"]["HumanRequestStat
     }
 }
 
-export function taskEventTone(eventType: components["schemas"]["TaskEventType"]): StatusTone {
-    if (eventType.startsWith("command_run_failed") || eventType.endsWith("cancelled")) {
+export function taskEventTone(eventType: TaskEventType): StatusTone {
+    if (
+        eventType === "command_run_abandoned" ||
+        eventType === "command_run_failed" ||
+        eventType === "command_run_timed_out" ||
+        eventType.endsWith("cancelled")
+    ) {
         return "danger";
     }
     if (eventType.includes("succeeded") || eventType === "boundary_accepted") {

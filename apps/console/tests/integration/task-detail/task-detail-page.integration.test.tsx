@@ -8,15 +8,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { components } from "../../../src/api/generated/openapi";
 import { TaskDetailPage } from "../../../src/features/task-detail/TaskDetailPage";
 import { createConsoleApiHandlers } from "../../../src/mocks/handlers";
-import {
-    TEST_API_BASE_URL,
-    TEST_API_KEY,
-    createBackendOperationFailureBody,
-} from "../../fixtures/console-api";
+import { TEST_API_BASE_URL, createOperationFailureBody } from "../../fixtures/console-api";
 import {
     TASK_DETAIL_STREAM_HEAD,
     TASK_DETAIL_TASK_ID,
-    createTaskDetailEventRecords,
     createTaskDetailMockScenario,
 } from "../../fixtures/task-detail";
 import { installTestConsoleConfig } from "../../fixtures/console-config";
@@ -29,14 +24,13 @@ beforeAll(() => {
 
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
-    vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
     installTestConsoleConfig();
 });
 
 afterEach(() => {
     cleanup();
     server.resetHandlers();
-    installTestConsoleConfig(null);
+    installTestConsoleConfig();
     vi.unstubAllEnvs();
 });
 
@@ -127,7 +121,9 @@ describe("TaskDetailPage", () => {
         expect(
             within(dialog).getByRole("heading", { level: 2, name: "Runtime page contract" }),
         ).toBeVisible();
-        expect(within(dialog).getByText("Approve the last copy trim")).toBeVisible();
+        expect(
+            within(dialog).getByText("Approval is needed for the last copy trim."),
+        ).toBeVisible();
         expect(within(dialog).getByText("Verify command-run runner behavior.")).toBeVisible();
         expect(within(dialog).getByRole("tab", { name: "Overview" })).toHaveAttribute(
             "aria-selected",
@@ -149,20 +145,25 @@ describe("TaskDetailPage", () => {
 
     it("resets REST state and reconnects when the stream cursor is stale", async () => {
         const scenario = createTaskDetailMockScenario();
+        const refreshedStreamHead = "evt-refreshed-stream-head";
         const streamCursors: (string | null)[] = [];
         let snapshotReads = 0;
         server.use(...createConsoleApiHandlers(scenario));
         server.use(
             http.get("*/control/tasks/:taskId/snapshot", () => {
                 snapshotReads += 1;
-                return HttpResponse.json(scenario.snapshot);
+                return HttpResponse.json({
+                    ...scenario.snapshot,
+                    stream_head_event_id:
+                        snapshotReads === 1 ? TASK_DETAIL_STREAM_HEAD : refreshedStreamHead,
+                });
             }),
             http.get("*/control/tasks/:taskId/events/stream", ({ request }) => {
                 const cursor = new URL(request.url).searchParams.get("cursor");
                 streamCursors.push(cursor);
                 if (cursor === TASK_DETAIL_STREAM_HEAD) {
                     return HttpResponse.json(
-                        createBackendOperationFailureBody({
+                        createOperationFailureBody({
                             code: "cursor_reset_required",
                             retryable: false,
                             summary: "The task-event cursor is stale.",
@@ -184,37 +185,19 @@ describe("TaskDetailPage", () => {
         expect(await screen.findByText(/current task truth was reread/i)).toBeVisible();
         expect(await screen.findByText("Task cancelled")).toBeVisible();
         expect(snapshotReads).toBeGreaterThanOrEqual(2);
-        expect(streamCursors).toEqual([TASK_DETAIL_STREAM_HEAD, null]);
+        expect(streamCursors).toEqual([TASK_DETAIL_STREAM_HEAD, refreshedStreamHead]);
     });
 
     it("omits unavailable detail fields instead of rendering placeholders", async () => {
         const user = userEvent.setup();
-        const events = createTaskDetailEventRecords().map((event) => {
-            if (event.event_type === "checkpoint_recorded") {
-                const { next_step: _nextStep, ...payload } = event.payload ?? {};
-                void _nextStep;
-                return { ...event, payload };
-            }
-            if (event.event_type === "boundary_accepted") {
-                return {
-                    ...event,
-                    payload: {
-                        ...(event.payload ?? {}),
-                        next_node_key: null,
-                    },
-                };
-            }
-            return event;
-        });
-        const scenario = createTaskDetailMockScenario({ events });
+        const scenario = createTaskDetailMockScenario();
         const trace: components["schemas"]["OperatorFlowTraceResponse"] = {
             ...scenario.trace,
             boundary_history: scenario.trace.boundary_history.map((boundary, index) =>
                 index === 0
                     ? {
                           ...boundary,
-                          next_attempt_id: null,
-                          next_node_key: null,
+                          successor_dispatch_id: null,
                       }
                     : boundary,
             ),
@@ -242,7 +225,7 @@ describe("TaskDetailPage", () => {
         dialog = await screen.findByRole("dialog");
         await user.click(within(dialog).getByRole("tab", { name: "Checkpoint" }));
         expect(within(dialog).getByText("Checkpoint recorded.")).toBeVisible();
-        expect(within(dialog).queryByText("Next step")).not.toBeInTheDocument();
+        expect(within(dialog).queryByText("not exposed")).not.toBeInTheDocument();
         expect(within(dialog).queryByText("not exposed")).not.toBeInTheDocument();
 
         await user.click(within(dialog).getByRole("button", { name: "Close node detail" }));
@@ -254,8 +237,8 @@ describe("TaskDetailPage", () => {
         await user.click(screen.getByRole("button", { name: /Open detail/i }));
         dialog = await screen.findByRole("dialog");
         await user.click(within(dialog).getByRole("tab", { name: "Boundary" }));
-        expect(within(dialog).getByText("Previous node")).toBeVisible();
-        expect(within(dialog).queryByText("Next node")).not.toBeInTheDocument();
+        expect(within(dialog).getByText("Source dispatch")).toBeVisible();
+        expect(within(dialog).queryByText("Successor dispatch")).not.toBeInTheDocument();
         expect(within(dialog).queryByText("not exposed")).not.toBeInTheDocument();
     });
 
@@ -271,6 +254,7 @@ describe("TaskDetailPage", () => {
                     flow: {
                         ...scenario.taskRead,
                         active_flow_revision_id: "flow-revision-task-detail-2",
+                        control_revision: 2,
                         status: "paused",
                     },
                 } satisfies components["schemas"]["RuntimeFlowPauseResponse"]);
@@ -278,7 +262,7 @@ describe("TaskDetailPage", () => {
             http.post("*/control/tasks/:taskId/continue", ({ request }) => {
                 actionQueries.push(new URL(request.url).searchParams.toString());
                 return HttpResponse.json(
-                    createBackendOperationFailureBody({
+                    createOperationFailureBody({
                         field_path: "expected_active_flow_revision_id",
                         summary: "The active flow revision is stale.",
                     }),
@@ -296,14 +280,14 @@ describe("TaskDetailPage", () => {
         expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled();
         expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
         expect(actionQueries[0]).toBe(
-            "expected_active_flow_revision_id=flow-revision-task-detail-1",
+            "expected_active_flow_revision_id=flow-revision-task-detail-1&expected_control_revision=1",
         );
 
         await user.click(screen.getByRole("button", { name: "Continue" }));
         expect(await screen.findByText("Stale action")).toBeVisible();
         expect(screen.getByText("The active flow revision is stale.")).toBeVisible();
         expect(actionQueries[1]).toBe(
-            "expected_active_flow_revision_id=flow-revision-task-detail-2",
+            "expected_active_flow_revision_id=flow-revision-task-detail-2&expected_control_revision=2",
         );
     });
 
@@ -326,7 +310,7 @@ describe("TaskDetailPage", () => {
         );
     });
 
-    it("renders no-history, read-error, and auth-error states", async () => {
+    it("renders no-history and read-error states", async () => {
         const noHistoryScenario = createTaskDetailMockScenario({
             events: [],
             streamEvents: [],
@@ -363,21 +347,6 @@ describe("TaskDetailPage", () => {
         expect(screen.getByText("Task read failed.")).toBeVisible();
 
         readErrorView.unmount();
-        cleanup();
-        server.resetHandlers();
-        server.use(
-            ...createConsoleApiHandlers(
-                createTaskDetailMockScenario({
-                    status: "running",
-                }),
-            ),
-        );
-        vi.stubEnv("VITE_AUTOCLAW_API_KEY", "wrong-key");
-        installTestConsoleConfig("wrong-key");
-
-        renderTaskDetailPage();
-        expect(await screen.findByText("Access to Task Detail failed")).toBeVisible();
-        expect(screen.getByText("The AutoClaw API key is missing or invalid.")).toBeVisible();
     });
 });
 

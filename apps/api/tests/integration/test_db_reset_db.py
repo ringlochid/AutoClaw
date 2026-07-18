@@ -68,8 +68,6 @@ def test_db_reset_recreates_seeded_sqlite_database_on_packaged_cli_path(
         "8123",
         "--log-level",
         "INFO",
-        "--api-key",
-        "api-test-key",
         "--force",
     )
     database_path.write_bytes(b"stale")
@@ -128,8 +126,6 @@ def test_db_reset_deletes_controller_task_root_but_preserves_external_workspace(
         "8123",
         "--log-level",
         "INFO",
-        "--api-key",
-        "api-test-key",
         "--force",
     )
     task_root.mkdir(parents=True)
@@ -174,8 +170,6 @@ def test_db_reset_rejects_controller_task_root_outside_data_boundary_before_dest
         "8123",
         "--log-level",
         "INFO",
-        "--api-key",
-        "api-test-key",
         "--force",
     )
     external_task_root.mkdir()
@@ -216,8 +210,6 @@ def test_db_reset_rejects_symlinked_controller_task_root_before_destruction(
         "8123",
         "--log-level",
         "INFO",
-        "--api-key",
-        "api-test-key",
         "--force",
     )
     external_task_root.mkdir()
@@ -262,8 +254,6 @@ def test_db_reset_rejects_symlinked_task_root_ancestor_before_destruction(
         "8123",
         "--log-level",
         "INFO",
-        "--api-key",
-        "api-test-key",
         "--force",
     )
     real_task_root.mkdir(parents=True)
@@ -306,8 +296,6 @@ def test_db_reset_rejects_unsafe_sidecar_before_deleting_task_roots(
         "8123",
         "--log-level",
         "INFO",
-        "--api-key",
-        "api-test-key",
         "--force",
     )
     task_root.mkdir(parents=True)
@@ -346,7 +334,6 @@ async def test_postgres_reset_recreates_only_dedicated_schema_and_seeds(
                 config_path=config_path,
                 data_dir=data_dir,
                 database_url=database_url,
-                api_key="api-test-key",
                 env="test",
             ),
         ):

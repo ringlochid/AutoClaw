@@ -11,11 +11,13 @@ from autoclaw.persistence.models import (
     AssignmentWorkPlanStepModel,
 )
 from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.contracts.primitives import TaskEventSource, TaskEventType
 from autoclaw.runtime.dispatch.authority import (
     NodeOperationAuthority,
     exact_node_operation_authority_exists,
 )
 from autoclaw.runtime.errors import stale_assignment_error
+from autoclaw.runtime.task_events import append_task_event
 from autoclaw.runtime.work_plan.contracts import (
     SetWorkPlanRequest,
     SetWorkPlanResponse,
@@ -56,13 +58,31 @@ async def set_assignment_work_plan(
         )
     )
     existing_plan = await session.get(AssignmentWorkPlanModel, assignment_id)
+    committed_at = utc_now()
     if not request.steps:
         if existing_plan is not None:
             await session.delete(existing_plan)
+        await append_task_event(
+            session,
+            task_id=authority.task_id,
+            event_type=TaskEventType.WORK_PLAN_CLEARED,
+            event_source=TaskEventSource.NODE,
+            occurred_at=committed_at,
+            flow_revision_id=authority.flow_revision_id,
+            dispatch_id=authority.dispatch_id,
+            attempt_id=authority.attempt_id,
+            node_key=authority.node_key,
+            payload={
+                "assignment_id": assignment_id,
+                "revision": next_revision,
+                "explanation": request.explanation,
+                "authored_by_dispatch_id": authority.dispatch_id,
+                "updated_at": committed_at,
+            },
+        )
         await session.commit()
         return SetWorkPlanResponse(changed=True, plan=None)
 
-    committed_at = utc_now()
     if existing_plan is None:
         existing_plan = AssignmentWorkPlanModel(
             assignment_id=assignment_id,
@@ -90,6 +110,25 @@ async def set_assignment_work_plan(
                 status=step.status.value,
             )
         )
+    await append_task_event(
+        session,
+        task_id=authority.task_id,
+        event_type=TaskEventType.WORK_PLAN_SET,
+        event_source=TaskEventSource.NODE,
+        occurred_at=committed_at,
+        flow_revision_id=authority.flow_revision_id,
+        dispatch_id=authority.dispatch_id,
+        attempt_id=authority.attempt_id,
+        node_key=authority.node_key,
+        payload={
+            "assignment_id": assignment_id,
+            "revision": next_revision,
+            "explanation": request.explanation,
+            "steps": [step.model_dump(mode="json") for step in request.steps],
+            "authored_by_dispatch_id": authority.dispatch_id,
+            "updated_at": committed_at,
+        },
+    )
     await session.commit()
     plan = await read_assignment_work_plan(session, assignment_id=assignment_id)
     assert plan is not None

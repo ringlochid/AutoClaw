@@ -46,18 +46,12 @@ describe("task start request mapper", () => {
             buildTaskStartRequest(
                 {
                     ...TASK_START_INITIAL_FORM,
-                    contextHostPath: " /tmp/context-root ",
-                    contextMode: "use_existing_host",
                     workspaceHostPath: " /tmp/workspace-root ",
                     workspaceMode: "ensure_host_path",
                 },
                 "feature-implementation",
             ).roots,
         ).toEqual({
-            context: {
-                host_path: "/tmp/context-root",
-                mode: "use_existing_host",
-            },
             workspace: {
                 host_path: "/tmp/workspace-root",
                 mode: "ensure_host_path",
@@ -68,13 +62,11 @@ describe("task start request mapper", () => {
     it("requires host paths only for explicit host modes", () => {
         const form: TaskStartFormState = {
             ...TASK_START_INITIAL_FORM,
-            contextMode: "ensure_task_default",
             workspaceMode: "ensure_host_path",
             workspaceHostPath: "",
         };
 
         expect(validateTaskStartForm(form, "feature-implementation")).toMatchObject({
-            contextHostPath: undefined,
             workspaceHostPath: "Workspace host path is required.",
         });
     });
@@ -107,7 +99,6 @@ describe("task start request mapper", () => {
         });
 
         expect(preview).toMatchObject({
-            contextModeLabel: "Task default",
             instructionSummary:
                 "Keep the work scoped to the current task-start UI and publish focused verification.",
             summary: "Launch one bounded implementation task from stored workflow truth.",

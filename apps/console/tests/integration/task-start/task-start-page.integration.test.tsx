@@ -8,11 +8,9 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { components } from "../../../src/api/generated/openapi";
 import { TaskStartPage } from "../../../src/features/task-start/TaskStartPage";
 import {
-    createBackendOperationFailureBody,
+    createOperationFailureBody,
     createTaskStartResponse,
-    createValidationErrorBody,
     TEST_API_BASE_URL,
-    TEST_API_KEY,
     TEST_TASK_ID,
 } from "../../fixtures/console-api";
 import {
@@ -33,14 +31,13 @@ beforeAll(() => {
 
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
-    vi.stubEnv("VITE_AUTOCLAW_API_KEY", TEST_API_KEY);
     installTestConsoleConfig();
 });
 
 afterEach(() => {
     cleanup();
     server.resetHandlers();
-    installTestConsoleConfig(null);
+    installTestConsoleConfig();
     vi.unstubAllEnvs();
 });
 
@@ -112,8 +109,7 @@ describe("TaskStartPage", () => {
             ),
         ).toBeVisible();
         expect(preview.getByText("Workspace")).toBeVisible();
-        expect(preview.getByText("Context")).toBeVisible();
-        expect(preview.getAllByText("Task default")).toHaveLength(2);
+        expect(preview.getByText("Task default")).toBeVisible();
         expect(preview.queryByText(/Revision/)).not.toBeInTheDocument();
         expect(startBody).toBeNull();
 
@@ -142,7 +138,7 @@ describe("TaskStartPage", () => {
         });
     });
 
-    it("validates required fields and explicit workspace/context host modes before start", async () => {
+    it("validates required fields and the explicit workspace host mode before start", async () => {
         const user = userEvent.setup();
         let startBody: components["schemas"]["TaskStartRequest"] | null = null;
         installTaskStartHandlers({
@@ -164,31 +160,19 @@ describe("TaskStartPage", () => {
                 name: "Create host path",
             }),
         );
-        await user.click(
-            within(screen.getByRole("region", { name: "Context root" })).getByRole("button", {
-                name: "Use existing host",
-            }),
-        );
         await user.click(screen.getByRole("button", { name: "Preview" }));
 
         expect(await screen.findByText("Task key is required.")).toBeVisible();
         expect(screen.getByText("Workspace host path is required.")).toBeVisible();
-        expect(screen.getByText("Context host path is required.")).toBeVisible();
         expect(startBody).toBeNull();
 
         await user.type(screen.getByLabelText("Task key"), "task-start-with-host-roots");
         const workspaceRoot = within(screen.getByRole("region", { name: "Workspace root" }));
-        const contextRoot = within(screen.getByRole("region", { name: "Context root" }));
         await user.type(workspaceRoot.getByLabelText("Host path"), "/tmp/autoclaw-workspace");
-        await user.type(contextRoot.getByLabelText("Host path"), "/tmp/autoclaw-context");
         await user.click(screen.getByRole("button", { name: "Start Task" }));
 
         await waitFor(() => {
             expect(startBody?.roots).toEqual({
-                context: {
-                    host_path: "/tmp/autoclaw-context",
-                    mode: "use_existing_host",
-                },
                 workspace: {
                     host_path: "/tmp/autoclaw-workspace",
                     mode: "ensure_host_path",
@@ -212,7 +196,7 @@ describe("TaskStartPage", () => {
             http.get("*/definitions/workflow/:key", ({ params }) => {
                 if (params.key === SECOND_TASK_START_WORKFLOW_KEY) {
                     return HttpResponse.json(
-                        createBackendOperationFailureBody({
+                        createOperationFailureBody({
                             code: "missing_resource",
                             retryable: false,
                             summary: "The selected workflow no longer exists.",
@@ -226,7 +210,15 @@ describe("TaskStartPage", () => {
                 HttpResponse.json(createTaskStartWorkflowVersions(String(params.key))),
             ),
             http.post("*/tasks/start", () =>
-                HttpResponse.json(createValidationErrorBody(), { status: 422 }),
+                HttpResponse.json(
+                    createOperationFailureBody({
+                        code: "invalid_request_shape",
+                        field_path: "task.key",
+                        retryable: false,
+                        summary: "Task key must contain at least one character.",
+                    }),
+                    { status: 400 },
+                ),
             ),
         );
 
@@ -254,12 +246,12 @@ describe("TaskStartPage", () => {
         server.use(
             http.get("*/definitions/workflows", () =>
                 HttpResponse.json(
-                    createBackendOperationFailureBody({
-                        code: "illegal_caller",
+                    createOperationFailureBody({
+                        code: "local_admission_denied",
                         retryable: false,
-                        summary: "The AutoClaw API key is missing or invalid.",
+                        summary: "The request was not admitted by the loopback control plane.",
                     }),
-                    { status: 401 },
+                    { status: 403 },
                 ),
             ),
         );
@@ -270,7 +262,15 @@ describe("TaskStartPage", () => {
         cleanup();
         server.resetHandlers();
         installTaskStartHandlers({
-            startResponse: HttpResponse.json(createValidationErrorBody(), { status: 422 }),
+            startResponse: HttpResponse.json(
+                createOperationFailureBody({
+                    code: "invalid_request_shape",
+                    field_path: "task.key",
+                    retryable: false,
+                    summary: "Task key must contain at least one character.",
+                }),
+                { status: 400 },
+            ),
         });
         renderTaskStartPage();
         expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
@@ -287,13 +287,13 @@ describe("TaskStartPage", () => {
         const user = userEvent.setup();
         installTaskStartHandlers({
             startResponse: HttpResponse.json(
-                createBackendOperationFailureBody({
+                createOperationFailureBody({
                     code: "invalid_request_shape",
                     field_path: "roots.workspace.host_path",
                     retryable: false,
                     summary: "Workspace host path does not exist.",
                 }),
-                { status: 400 },
+                { status: 422 },
             ),
         });
 
@@ -320,7 +320,7 @@ describe("TaskStartPage", () => {
         server.resetHandlers();
         installTaskStartHandlers({
             startResponse: HttpResponse.json(
-                createBackendOperationFailureBody({
+                createOperationFailureBody({
                     code: "conflicting_continuation",
                     retryable: false,
                     summary: "The selected workspace is already held by a live task.",
@@ -340,10 +340,10 @@ describe("TaskStartPage", () => {
         server.resetHandlers();
         installTaskStartHandlers({
             startResponse: HttpResponse.json(
-                createBackendOperationFailureBody({
-                    code: "illegal_caller",
+                createOperationFailureBody({
+                    code: "local_admission_denied",
                     retryable: false,
-                    summary: "Starting tasks requires an operator API key.",
+                    summary: "The request was not admitted by the loopback control plane.",
                 }),
                 { status: 403 },
             ),
@@ -357,7 +357,9 @@ describe("TaskStartPage", () => {
         });
         expect(accessDialog).toBeVisible();
         expect(
-            within(accessDialog).getByText("Starting tasks requires an operator API key."),
+            within(accessDialog).getByText(
+                "The request was not admitted by the loopback control plane.",
+            ),
         ).toBeVisible();
     });
 

@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoclaw.persistence.models import (
     AcceptedBoundaryModel,
     AssignmentDecisionModel,
+    AssignmentModel,
     AttemptCheckpointModel,
+    FlowModel,
 )
 from autoclaw.runtime.boundary.source_transition import advance_accepted_boundary_state
 from autoclaw.runtime.checkpoint import (
@@ -23,6 +25,8 @@ from autoclaw.runtime.contracts import (
     BoundaryRead,
     CheckpointFileRef,
     CheckpointRead,
+    TaskEventSource,
+    TaskEventType,
 )
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.dispatch.authority import NodeOperationAuthority
@@ -40,6 +44,7 @@ from autoclaw.runtime.node_operations.external_wait_handlers import (
 )
 from autoclaw.runtime.node_operations.result_reads import runtime_flow_read
 from autoclaw.runtime.node_operations.source_transitions import close_source_dispatch
+from autoclaw.runtime.task_events import append_task_event
 
 
 async def execute_controller_node_operation(
@@ -158,6 +163,67 @@ async def _return_boundary(
             ),
         )
     )
+    resulting_flow_status = await session.scalar(
+        select(FlowModel.status).where(FlowModel.flow_id == authority.flow_id)
+    )
+    assert resulting_flow_status is not None
+    checkpoint_ref_path = (
+        f"_runtime/attempts/{authority.attempt_id}/latest-checkpoint.md"
+        if checkpoint is not None
+        else None
+    )
+    await append_task_event(
+        session,
+        task_id=authority.task_id,
+        event_type=TaskEventType.BOUNDARY_ACCEPTED,
+        event_source=TaskEventSource.NODE,
+        occurred_at=now,
+        flow_revision_id=authority.flow_revision_id,
+        dispatch_id=authority.dispatch_id,
+        attempt_id=authority.attempt_id,
+        node_key=authority.node_key,
+        payload={
+            "source_dispatch_id": authority.dispatch_id,
+            "assignment_id": authority.assignment_id,
+            "attempt_id": authority.attempt_id,
+            "outcome": outcome,
+            "checkpoint_id": checkpoint.checkpoint_id if checkpoint is not None else None,
+            "checkpoint_ref": checkpoint_ref_path,
+            "assignment_decision_id": (
+                decision.assignment_decision_id if decision is not None else None
+            ),
+            "resulting_flow_status": resulting_flow_status,
+        },
+    )
+    if outcome == "yield" and decision is not None:
+        child_assignment_id = decision.staged_child_assignment_id
+        child_attempt_id = decision.staged_child_attempt_id
+        assert child_assignment_id is not None and child_attempt_id is not None
+        child_node_key = await session.scalar(
+            select(AssignmentModel.node_key).where(
+                AssignmentModel.assignment_id == child_assignment_id
+            )
+        )
+        assert child_node_key is not None
+        await append_task_event(
+            session,
+            task_id=authority.task_id,
+            event_type=TaskEventType.CHILD_ASSIGNMENT_COMMITTED,
+            event_source=TaskEventSource.NODE,
+            occurred_at=now,
+            flow_revision_id=authority.flow_revision_id,
+            dispatch_id=authority.dispatch_id,
+            attempt_id=child_attempt_id,
+            node_key=child_node_key,
+            payload={
+                "source_dispatch_id": authority.dispatch_id,
+                "parent_assignment_id": authority.assignment_id,
+                "child_assignment_id": child_assignment_id,
+                "child_attempt_id": child_attempt_id,
+                "child_node_key": child_node_key,
+                "flow_revision_id": authority.flow_revision_id,
+            },
+        )
     await session.commit()
     flow = await runtime_flow_read(session, authority)
     checkpoint_ref = (

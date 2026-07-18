@@ -244,8 +244,16 @@ async def _append_human_request_terminal_event(
         actor_ref=resolution.resolved_by_actor_ref,
         payload={
             "request_id": source.request_id,
+            "kind": source.request_kind,
+            "summary": source.request_summary,
+            "source_dispatch_id": source.source_dispatch_id,
+            "due_at": source.due_at,
             "status": terminal_status.value,
             "resolution_kind": resolution.resolution_kind.value,
+            "resolution_summary": resolution.summary,
+            "resolved_at": resolution.resolved_at,
+            "resolved_by_surface": resolution.resolved_by_surface.value,
+            "resolved_by_actor_ref": resolution.resolved_by_actor_ref,
         },
     )
 

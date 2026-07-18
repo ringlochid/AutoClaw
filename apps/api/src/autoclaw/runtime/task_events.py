@@ -7,17 +7,17 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any, NamedTuple, cast
 
+from pydantic import BaseModel
 from sqlalchemy import Select, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import TaskEventModel, TaskEventStreamHeadModel
 from autoclaw.runtime.clock import utc_now
-from autoclaw.runtime.contracts import (
+from autoclaw.runtime.contracts.primitives import TaskEventSource, TaskEventType
+from autoclaw.runtime.contracts.task_events import (
     TaskEventListQuery,
     TaskEventListResponse,
     TaskEventRecord,
-    TaskEventSource,
-    TaskEventType,
 )
 from autoclaw.runtime.ids import task_event_id
 
@@ -60,24 +60,46 @@ async def append_task_event(
     attempt_id: str | None = None,
     node_key: str | None = None,
     actor_ref: str | None = None,
-    payload: Mapping[str, Any] | None = None,
+    payload: Mapping[str, Any] | BaseModel,
 ) -> TaskEventRecord:
     """Append one chronology event without committing the caller's transaction."""
 
-    allocation = await _allocate_task_event_sequence(session, task_id=task_id)
-    record = TaskEventRecord(
-        event_id=event_id or task_event_id(task_id, allocation.event_seq),
-        event_seq=allocation.event_seq,
+    resolved_event_type = _task_event_type_value(event_type)
+    resolved_event_source = _task_event_source_value(event_source)
+    resolved_occurred_at = occurred_at or utc_now()
+    payload_data = (
+        payload.model_dump(mode="json") if isinstance(payload, BaseModel) else dict(payload)
+    )
+    _build_task_event_record(
+        event_id=event_id or "task-event.validation",
+        event_seq=1,
         task_id=task_id,
-        event_type=_task_event_type_value(event_type),
-        event_source=_task_event_source_value(event_source),
-        occurred_at=occurred_at or utc_now(),
+        event_type=resolved_event_type,
+        event_source=resolved_event_source,
+        occurred_at=resolved_occurred_at,
         flow_revision_id=flow_revision_id,
         dispatch_id=dispatch_id,
         attempt_id=attempt_id,
         node_key=node_key,
         actor_ref=actor_ref,
-        payload=dict(payload or {}),
+        payload=payload_data,
+        prev_event_hash=None,
+        event_hash="pending",
+    )
+    allocation = await _allocate_task_event_sequence(session, task_id=task_id)
+    record = _build_task_event_record(
+        event_id=event_id or task_event_id(task_id, allocation.event_seq),
+        event_seq=allocation.event_seq,
+        task_id=task_id,
+        event_type=resolved_event_type,
+        event_source=resolved_event_source,
+        occurred_at=resolved_occurred_at,
+        flow_revision_id=flow_revision_id,
+        dispatch_id=dispatch_id,
+        attempt_id=attempt_id,
+        node_key=node_key,
+        actor_ref=actor_ref,
+        payload=payload_data,
         prev_event_hash=allocation.previous_event_hash,
         event_hash="pending",
     )
@@ -93,7 +115,7 @@ async def append_task_event(
         attempt_id=record.attempt_id,
         node_key=record.node_key,
         actor_ref=record.actor_ref,
-        payload=record.payload,
+        payload=record.payload.model_dump(mode="json"),
         prev_event_hash=record.prev_event_hash,
         event_hash=compute_task_event_hash(record),
     )
@@ -175,7 +197,59 @@ async def latest_task_event(
 
 
 def task_event_record_from_model(row: TaskEventModel) -> TaskEventRecord:
-    return TaskEventRecord.model_validate(row)
+    return _build_task_event_record(
+        event_id=row.event_id,
+        event_seq=row.event_seq,
+        task_id=row.task_id,
+        event_type=row.event_type,
+        event_source=row.event_source,
+        occurred_at=row.occurred_at,
+        flow_revision_id=row.flow_revision_id,
+        dispatch_id=row.dispatch_id,
+        attempt_id=row.attempt_id,
+        node_key=row.node_key,
+        actor_ref=row.actor_ref,
+        payload=row.payload,
+        prev_event_hash=row.prev_event_hash,
+        event_hash=row.event_hash,
+    )
+
+
+def _build_task_event_record(
+    *,
+    event_id: str,
+    event_seq: int,
+    task_id: str,
+    event_type: TaskEventType | str,
+    event_source: TaskEventSource | str,
+    occurred_at: datetime,
+    flow_revision_id: str | None,
+    dispatch_id: str | None,
+    attempt_id: str | None,
+    node_key: str | None,
+    actor_ref: str | None,
+    payload: Mapping[str, Any],
+    prev_event_hash: str | None,
+    event_hash: str,
+) -> TaskEventRecord:
+    return TaskEventRecord.model_validate(
+        {
+            "event_id": event_id,
+            "event_seq": event_seq,
+            "task_id": task_id,
+            "event_type": event_type,
+            "event_source": event_source,
+            "occurred_at": occurred_at,
+            "flow_revision_id": flow_revision_id,
+            "dispatch_id": dispatch_id,
+            "attempt_id": attempt_id,
+            "node_key": node_key,
+            "actor_ref": actor_ref,
+            "payload": dict(payload),
+            "prev_event_hash": prev_event_hash,
+            "event_hash": event_hash,
+        }
+    )
 
 
 def compute_task_event_hash(event: TaskEventRecord) -> str:

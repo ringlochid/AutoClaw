@@ -53,9 +53,7 @@ import {
 import { createConsoleApiHandlers } from "../../src/mocks/handlers";
 import {
     TEST_API_BASE_URL,
-    TEST_API_KEY,
     TEST_TASK_ID,
-    createBackendOperationFailureBody,
     createConsoleMockScenario,
     createOperationFailureBody,
     createRuntimeFlowSummary,
@@ -63,13 +61,9 @@ import {
     createTaskEventStreamChunks,
     createTaskEventStreamFixture,
     createTaskStartRequest,
-    createValidationErrorBody,
 } from "../fixtures/console-api";
 
-const config = {
-    apiBaseUrl: TEST_API_BASE_URL,
-    apiKey: TEST_API_KEY,
-};
+const config = { apiBaseUrl: TEST_API_BASE_URL };
 const scenario = createConsoleMockScenario();
 const server = setupServer(...createConsoleApiHandlers(scenario));
 
@@ -86,7 +80,7 @@ afterAll(() => {
 });
 
 describe("console API client foundation", () => {
-    it("forwards the API key and constructs typed query params", async () => {
+    it("constructs typed query params without a credential bootstrap", async () => {
         const seenRequests: Request[] = [];
         server.use(
             http.get("*/runtime/tasks", ({ request }) => {
@@ -114,7 +108,6 @@ describe("console API client foundation", () => {
         );
         const requestUrl = new URL(seenRequests[0]?.url ?? "");
 
-        expect(seenRequests[0]?.headers.get("X-AutoClaw-API-Key")).toBe(TEST_API_KEY);
         expect(requestUrl.searchParams.get("q")).toBe("console");
         expect(requestUrl.searchParams.get("limit")).toBe("25");
         expect(requestUrl.searchParams.get("status")).toBe("running");
@@ -132,20 +125,9 @@ describe("console API client foundation", () => {
             http.get("*/operation-failure", () =>
                 HttpResponse.json(createOperationFailureBody(), { status: 409 }),
             ),
-            http.get("*/backend-auth", () =>
-                HttpResponse.json(
-                    createBackendOperationFailureBody({
-                        code: "illegal_caller",
-                        retryable: false,
-                        summary: "The AutoClaw API key is missing or invalid.",
-                        suggested_next_step: "Provide a valid operator API key.",
-                    }),
-                    { status: 401 },
-                ),
-            ),
             http.get("*/backend-permission", () =>
                 HttpResponse.json(
-                    createBackendOperationFailureBody({
+                    createOperationFailureBody({
                         code: "capability_rejected",
                         retryable: false,
                         summary: "The current task capability does not allow this request.",
@@ -156,7 +138,7 @@ describe("console API client foundation", () => {
             ),
             http.get("*/backend-stale", () =>
                 HttpResponse.json(
-                    createBackendOperationFailureBody({
+                    createOperationFailureBody({
                         field_path: "expected_active_flow_revision_id",
                     }),
                     { status: 409 },
@@ -164,7 +146,7 @@ describe("console API client foundation", () => {
             ),
             http.get("*/backend-missing", () =>
                 HttpResponse.json(
-                    createBackendOperationFailureBody({
+                    createOperationFailureBody({
                         code: "missing_resource",
                         retryable: false,
                         summary: "The requested task does not exist.",
@@ -174,7 +156,15 @@ describe("console API client foundation", () => {
                 ),
             ),
             http.get("*/validation", () =>
-                HttpResponse.json(createValidationErrorBody(), { status: 422 }),
+                HttpResponse.json(
+                    createOperationFailureBody({
+                        code: "invalid_request_shape",
+                        field_path: "task.key",
+                        retryable: false,
+                        summary: "Task key must contain at least one character.",
+                    }),
+                    { status: 400 },
+                ),
             ),
             http.get("*/auth", () => new HttpResponse(null, { status: 401 })),
             http.get("*/permission", () => HttpResponse.text("Forbidden", { status: 403 })),
@@ -198,14 +188,6 @@ describe("console API client foundation", () => {
         expect(operationFailure.errorView.code).toBe("stale_flow_revision");
         expect(operationFailure.errorView.isRetryable).toBe(true);
 
-        const backendAuthFailure = await expectApiError("/backend-auth");
-        expect(backendAuthFailure.errorView.source).toBe("operation_failure");
-        expect(backendAuthFailure.errorView.code).toBe("illegal_caller");
-        expect(backendAuthFailure.errorView.status).toBe(401);
-        expect(backendAuthFailure.errorView.suggestedNextStep).toBe(
-            "Provide a valid operator API key.",
-        );
-
         const backendPermissionFailure = await expectApiError("/backend-permission");
         expect(backendPermissionFailure.errorView.code).toBe("capability_rejected");
         expect(backendPermissionFailure.errorView.status).toBe(403);
@@ -223,7 +205,7 @@ describe("console API client foundation", () => {
 
         const validationFailure = await expectApiError("/validation");
         expect(validationFailure.errorView.source).toBe("validation");
-        expect(validationFailure.errorView.fieldErrors[0]?.path).toBe("body.task.key");
+        expect(validationFailure.errorView.fieldErrors[0]?.path).toBe("task.key");
 
         expect((await expectApiError("/auth")).errorView.code).toBe("auth_required");
         expect((await expectApiError("/permission")).errorView.code).toBe("permission_denied");
@@ -251,10 +233,6 @@ describe("console API client foundation", () => {
                 query: taskListRoute.query,
             },
         );
-        const sharedHandlerAuthFailure = await expectApiError(taskListRoute.path, undefined, {
-            ...config,
-            apiKey: "wrong-key",
-        });
         const taskReadRoute = controlTaskRoute(TEST_TASK_ID);
         const taskRead = await requestJson<components["schemas"]["RuntimeFlowRead"]>({
             config,
@@ -275,6 +253,7 @@ describe("console API client foundation", () => {
             TEST_TASK_ID,
             "pause",
             taskRead.active_flow_revision_id,
+            taskRead.control_revision,
         );
         const pauseResponse = await requestJson<components["schemas"]["RuntimeFlowPauseResponse"]>({
             config,
@@ -396,8 +375,6 @@ describe("console API client foundation", () => {
         expect(mapTaskRow(taskList.items[0] ?? createRuntimeFlowSummary()).taskId).toBe(
             TEST_TASK_ID,
         );
-        expect(sharedHandlerAuthFailure.errorView.code).toBe("illegal_caller");
-        expect(sharedHandlerAuthFailure.errorView.source).toBe("operation_failure");
         expect(taskRead.active_flow_revision_id).toBe("flow-revision-001");
         expect(snapshot.stream_head_event_id).toBe("evt-001");
         expect(trace.task_id).toBe(TEST_TASK_ID);
@@ -445,7 +422,6 @@ describe("fetch-based task event stream", () => {
         const duplicateFirstEvent = createTaskEventRecord({
             event_id: "evt-001",
             event_seq: 1,
-            payload: { duplicate: true },
         });
         const secondEvent = createTaskEventRecord({ event_id: "evt-002", event_seq: 2 });
         const streamChunks = createTaskEventStreamChunks(
@@ -463,18 +439,10 @@ describe("fetch-based task event stream", () => {
             ),
         );
 
-        const authFailure = await expectTaskEventStreamError({
-            config: { ...config, apiKey: "wrong-key" },
-            taskId: TEST_TASK_ID,
-        });
-        expect(authFailure.errorView.code).toBe("illegal_caller");
-        expect(authFailure.errorView.source).toBe("operation_failure");
-
         const streamRequest = buildTaskEventStreamRequest(TEST_TASK_ID, {
             config,
             cursor: "evt-000",
         });
-        expect(streamRequest.headers.get("X-AutoClaw-API-Key")).toBe(TEST_API_KEY);
         expect(streamRequest.headers.get("Accept")).toBe("text/event-stream");
         expect(streamRequest.url.searchParams.get("cursor")).toBe("evt-000");
 
@@ -529,6 +497,7 @@ describe("fetch-based task event stream", () => {
 
     it("signals cursor_reset_required and reconnects after the caller resets REST state", async () => {
         const resetEvent = createTaskEventRecord({ event_id: "evt-reset", event_seq: 10 });
+        const refreshedStreamHead = "evt-reset-anchor";
         let resetWasCalled = false;
 
         server.use(
@@ -536,7 +505,10 @@ describe("fetch-based task event stream", () => {
                 createConsoleMockScenario({
                     taskEventStream: createTaskEventStreamFixture({
                         cursorResetCursors: ["stale-cursor"],
-                        events: [resetEvent],
+                        chunks: [],
+                        chunksByCursor: {
+                            [refreshedStreamHead]: createTaskEventStreamChunks([resetEvent]),
+                        },
                     }),
                 }),
             ),
@@ -557,6 +529,7 @@ describe("fetch-based task event stream", () => {
             cursor: "stale-cursor",
             resetAfterCursorReset: () => {
                 resetWasCalled = true;
+                return refreshedStreamHead;
             },
             taskId: TEST_TASK_ID,
         });
@@ -586,19 +559,4 @@ async function expectApiError(
     }
 
     throw new Error(`Expected ${path} to fail`);
-}
-
-async function expectTaskEventStreamError(
-    options: Parameters<typeof readTaskEventStream>[0],
-): Promise<AutoClawApiError> {
-    try {
-        await readTaskEventStream(options);
-    } catch (error) {
-        if (error instanceof AutoClawApiError) {
-            return error;
-        }
-        throw error;
-    }
-
-    throw new Error("Expected task event stream request to fail");
 }

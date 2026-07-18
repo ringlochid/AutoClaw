@@ -26,10 +26,11 @@ from autoclaw.persistence import (
     FlowNodeModel,
     PolicyDefinitionModel,
     RoleDefinitionModel,
+    TaskEventModel,
     TaskEventStreamHeadModel,
     WorkflowDefinitionModel,
 )
-from autoclaw.runtime.contracts import TaskStartRequest
+from autoclaw.runtime.contracts import TaskEventType, TaskStartRequest
 from autoclaw.runtime.ids import flow_id_for_task
 from autoclaw.runtime.post_commit import FlowStartCommitted, RuntimeEffectSignal
 from autoclaw.runtime.projection import (
@@ -353,13 +354,18 @@ async def test_task_start_returns_a_logical_unmaterialized_manifest_ref(
                 .where(DispatchTurnModel.task_id == response.task_id)
             )
             event_stream_head = await session.get(TaskEventStreamHeadModel, response.task_id)
+            task_started = await session.scalar(
+                select(TaskEventModel).where(TaskEventModel.task_id == response.task_id)
+            )
 
     assert response.workflow_manifest_ref.path == Path("_runtime/workflow-manifest.md")
     assert dispatch_count == 0
     assert event_stream_head is not None
-    assert event_stream_head.allocator_revision == 0
-    assert event_stream_head.last_event_seq == 0
-    assert event_stream_head.last_event_hash is None
+    assert event_stream_head.allocator_revision == 1
+    assert event_stream_head.last_event_seq == 1
+    assert event_stream_head.last_event_hash is not None
+    assert task_started is not None
+    assert task_started.event_type == TaskEventType.TASK_STARTED
     assert not (data_dir / "tasks" / response.task_id).exists()
 
 

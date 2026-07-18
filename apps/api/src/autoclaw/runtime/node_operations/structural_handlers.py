@@ -21,6 +21,8 @@ from autoclaw.runtime.contracts import (
     AssignChildSuccess,
     ReleaseBlockedSuccess,
     ReleaseGreenSuccess,
+    TaskEventSource,
+    TaskEventType,
 )
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.dispatch.authority import (
@@ -48,6 +50,7 @@ from autoclaw.runtime.node_operations.structural_candidate.definitions import (
     resolve_pinned_policy_definition,
 )
 from autoclaw.runtime.projection.signals import AttemptAssignmentProjection
+from autoclaw.runtime.task_events import append_task_event
 
 
 async def execute_structural_node_operation(
@@ -114,6 +117,24 @@ async def _assign_child(
     session.add_all((assignment, attempt))
     stage_assignment_criteria_refs(session, assignment)
     _stage_child_assignment_decision(session, authority, assignment, attempt)
+    await append_task_event(
+        session,
+        task_id=authority.task_id,
+        event_type=TaskEventType.CHILD_ASSIGNMENT_STAGED,
+        event_source=TaskEventSource.NODE,
+        flow_revision_id=authority.flow_revision_id,
+        dispatch_id=authority.dispatch_id,
+        attempt_id=authority.attempt_id,
+        node_key=authority.node_key,
+        payload={
+            "source_dispatch_id": authority.dispatch_id,
+            "parent_assignment_id": authority.assignment_id,
+            "child_assignment_id": assignment.assignment_id,
+            "child_attempt_id": attempt.attempt_id,
+            "child_node_key": target.node_key,
+            "flow_revision_id": authority.flow_revision_id,
+        },
+    )
     await session.commit()
 
     flow = await runtime_flow_read(session, authority)

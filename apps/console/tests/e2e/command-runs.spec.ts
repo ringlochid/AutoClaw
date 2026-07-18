@@ -11,7 +11,7 @@ import {
     createCommandRunLogRead,
     createCommandRunPageList,
 } from "../fixtures/command-runs";
-import { createBackendOperationFailureBody, createRuntimeFlowRead } from "../fixtures/console-api";
+import { createOperationFailureBody, createRuntimeFlowRead } from "../fixtures/console-api";
 
 const SCREENSHOT_DIR =
     "/home/ubuntu/leo/projects/autoclaw/tmp/autoclaw-frontend/full-delivery-design-parity/04-command-runs/screenshots";
@@ -151,7 +151,7 @@ async function mockCommandRuns(
 
             await route.fulfill({
                 body: JSON.stringify(
-                    createBackendOperationFailureBody({
+                    createOperationFailureBody({
                         code: "illegal_state",
                         retryable: true,
                         summary: "The command run was already updated by the controller.",

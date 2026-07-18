@@ -14,11 +14,6 @@ FRESH_REVISION_NOTE = (
     "values from get_runtime_task or get_operator_snapshot."
 )
 INSPECT_FIRST_NOTE = "Use only after inspecting current runtime state."
-SUPPORT_FILE_REF_NOTE = "Returns a task-scoped support file ref/path, not a parsed status answer."
-SUPPORT_ONLY_REREAD_NOTE = "Support-only reread surface."
-CONTROLLER_TRUTH_WINS_NOTE = (
-    "If this reread disagrees with controller/runtime truth, controller/runtime truth wins."
-)
 DISCOVER_CANDIDATES_NOTE = "Use this to discover candidates before choosing or mutating."
 INSPECT_CURRENT_REVISION_NOTE = "Use this to inspect one current revision."
 AUDIT_ONLY_NOTE = "Use this for audit or provenance, not normal planning."
@@ -71,7 +66,6 @@ def _join_sentences(*parts: str) -> str:
 
 __all__ = [
     "AUDIT_ONLY_NOTE",
-    "CONTROLLER_TRUTH_WINS_NOTE",
     "DISCOVER_CANDIDATES_NOTE",
     "FRESH_REVISION_NOTE",
     "INSPECT_CURRENT_REVISION_NOTE",
@@ -83,8 +77,6 @@ __all__ = [
     "REAL_RUNTIME_EFFECTS_NOTE",
     "RUNTIME_STATE_WARNING",
     "STATUS_CHECK_WARNING",
-    "SUPPORT_FILE_REF_NOTE",
-    "SUPPORT_ONLY_REREAD_NOTE",
     "ToolTeaching",
     "mutating_tool_teaching",
     "read_only_tool_teaching",

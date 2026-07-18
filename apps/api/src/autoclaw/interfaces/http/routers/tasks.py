@@ -9,7 +9,6 @@ from autoclaw.definitions.registry.task_start import start_task_from_definition
 from autoclaw.interfaces.http.dependencies import (
     read_runtime_effect_publisher,
     read_support_projection_publisher,
-    require_api_key,
 )
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session
@@ -17,7 +16,7 @@ from autoclaw.runtime.contracts import TaskStartRequest, TaskStartResponse
 from autoclaw.runtime.node_operations.follow_on import SupportProjectionPublisher
 from autoclaw.runtime.post_commit import RuntimeEffectPublisher
 
-router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(require_api_key)])
+router = APIRouter(prefix="/tasks", tags=["tasks"])
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 type RuntimeEffectPublisherDep = Annotated[
     RuntimeEffectPublisher | None,

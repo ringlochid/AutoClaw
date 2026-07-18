@@ -8,9 +8,7 @@ MYPY := $(VENV)/bin/mypy
 NPM := npm
 CONSOLE_DIR := $(CURDIR)/apps/console
 COMPOSE := docker compose
-COMPOSE_ENV := AUTOCLAW_API_KEY=$${AUTOCLAW_API_KEY:-autoclaw-operator-dev-key}
-TEST_COMPOSE_ENV := AUTOCLAW_API_KEY=autoclaw-operator-test-key AUTOCLAW_OPENCLAW__GATEWAY_TOKEN=gateway-config-token
-TEST_COMPOSE := COMPOSE_PROJECT_NAME=autoclaw-test-db $(TEST_COMPOSE_ENV) $(COMPOSE)
+TEST_COMPOSE := COMPOSE_PROJECT_NAME=autoclaw-test-db $(COMPOSE)
 TREE_IGNORE := .git|.venv|node_modules|dist|build|tmp|.pytest_cache|.mypy_cache|.ruff_cache|.coverage|coverage|htmlcov|__pycache__|*.egg-info|*.pyc
 
 .PHONY: tree clean-local api-install api-dev test-api test-api-unit test-api-integration test-api-integration-local test-api-db test-api-e2e test-api-e2e-bounded test-api-e2e-reviewed test-api-e2e-staged docker-up docker-down docker-logs lint-api format-api typecheck-api pyright-api check-api console-install console-dev console-format console-format-check console-lint console-typecheck console-openapi-generate console-openapi-check console-test console-test-integration console-e2e console-build console-package-assets check-console docs-format docs-format-check docs-contract-check docs-inventory docs-prompt-generate docs-prompt-check test-docs check-docs package-build install-user-service
@@ -34,14 +32,13 @@ api-dev: $(PYTHON)
 	PYTHONPATH=$(CURDIR)/apps/api/src $(UVICORN) autoclaw.main:app --reload --reload-dir $(CURDIR)/apps/api
 
 docker-up:
-	$(COMPOSE_ENV) $(COMPOSE) up -d --wait postgres
-	$(COMPOSE_ENV) $(COMPOSE) up -d --build api
+	$(COMPOSE) up -d --wait postgres
 
 docker-down:
-	$(COMPOSE_ENV) $(COMPOSE) down
+	$(COMPOSE) down
 
 docker-logs:
-	$(COMPOSE_ENV) $(COMPOSE) logs -f --tail=200
+	$(COMPOSE) logs -f --tail=200
 
 test-api: test-api-unit
 

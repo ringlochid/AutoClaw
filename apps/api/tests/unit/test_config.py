@@ -35,9 +35,6 @@ postgres_schema = "autoclaw_test"
 [server]
 console_origins = ["http://127.0.0.1:4173"]
 
-[security]
-api_key = "config-api-key"
-
 [codex]
 enabled = true
 model = "gpt-5"
@@ -68,7 +65,6 @@ watchdog_same_attempt_replacement_limit = 3
     monkeypatch.setenv("XDG_CACHE_HOME", str(cache_home))
     monkeypatch.delenv("AUTOCLAW_CONFIG", raising=False)
     monkeypatch.delenv("AUTOCLAW_DATABASE_URL", raising=False)
-    monkeypatch.delenv("AUTOCLAW_API_KEY", raising=False)
 
     config_module = _reload_config_module()
     config_module.get_settings.cache_clear()
@@ -78,7 +74,7 @@ watchdog_same_attempt_replacement_limit = 3
     assert settings.postgres_schema == "autoclaw_test"
     assert settings.database_echo is True
     assert settings.console_origins == ["http://127.0.0.1:4173"]
-    assert settings.api_key == "config-api-key"
+    assert not hasattr(settings, "api_key")
     assert settings.config_path == config_path
     assert settings.data_dir == data_home / "autoclaw"
     assert settings.codex.enabled is True
@@ -109,9 +105,6 @@ postgres_schema = "config_schema"
 [server]
 port = 18125
 
-[security]
-api_key = "config-api-key"
-
 [openclaw]
 enabled = true
 gateway_url = "ws://127.0.0.1:18789"
@@ -128,7 +121,7 @@ watchdog_inactivity_timeout_seconds = 1200
     monkeypatch.setenv("AUTOCLAW_DATABASE_URL", "sqlite+aiosqlite:////tmp/from-env.db")
     monkeypatch.setenv("AUTOCLAW_POSTGRES_SCHEMA", "environment_schema")
     monkeypatch.setenv("AUTOCLAW_DATABASE_ECHO", "true")
-    monkeypatch.setenv("AUTOCLAW_API_KEY", "env-api-key")
+    monkeypatch.setenv("AUTOCLAW_API_HOST", "::1")
     monkeypatch.setenv("AUTOCLAW_API_PORT", "9001")
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_URL", "wss://gateway.example.test")
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_PROFILE", "environment-profile")
@@ -149,7 +142,7 @@ watchdog_inactivity_timeout_seconds = 1200
     assert settings.database_url == "sqlite+aiosqlite:////tmp/from-env.db"
     assert settings.postgres_schema == "environment_schema"
     assert settings.database_echo is True
-    assert settings.api_key == "env-api-key"
+    assert settings.api_host == "::1"
     assert settings.api_port == 9001
     assert settings.config_path == config_path
     assert settings.openclaw.gateway_url == "wss://gateway.example.test"
@@ -158,6 +151,107 @@ watchdog_inactivity_timeout_seconds = 1200
     assert settings.runtime.dispatch_launch_retry_max_backoff_seconds == 4.5
     assert settings.runtime.watchdog_inactivity_timeout_seconds == 99
     assert settings.runtime.watchdog_same_attempt_replacement_limit == 4
+
+
+def test_get_settings_does_not_require_a_global_operator_key(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    config_path.write_text('[server]\nhost = "127.0.0.1"\n', encoding="utf-8")
+    monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
+    monkeypatch.setenv("AUTOCLAW_ENV", "development")
+    config_module = _reload_config_module()
+    config_module.get_settings.cache_clear()
+    settings = config_module.get_settings()
+
+    assert settings.api_host == "127.0.0.1"
+    assert not hasattr(settings, "api_key")
+
+
+@pytest.mark.parametrize(
+    ("raw_host", "normalized_host"),
+    [
+        ("127.0.0.1", "127.0.0.1"),
+        ("127.0.0.2", "127.0.0.2"),
+        ("localhost", "localhost"),
+        ("[::1]", "::1"),
+    ],
+)
+def test_api_host_accepts_only_canonical_loopback_values(
+    raw_host: str,
+    normalized_host: str,
+) -> None:
+    config_module = _reload_config_module()
+
+    settings = config_module.Settings(api_host=raw_host)
+
+    assert settings.api_host == normalized_host
+
+
+@pytest.mark.parametrize(
+    "api_host",
+    [
+        "",
+        "0.0.0.0",
+        "::",
+        "192.0.2.10",
+        "api.example.test",
+        "[::1",
+        "::1]",
+        "[::1]]",
+        "[fe80::1%lo0]",
+    ],
+)
+def test_api_host_rejects_wildcard_and_non_loopback_values(api_host: str) -> None:
+    config_module = _reload_config_module()
+
+    with pytest.raises(ValidationError, match="api_host"):
+        config_module.Settings(api_host=api_host)
+
+
+@pytest.mark.parametrize("api_port", [0, 65536])
+def test_api_port_rejects_values_outside_the_listener_range(api_port: int) -> None:
+    config_module = _reload_config_module()
+
+    with pytest.raises(ValidationError, match="api_port"):
+        config_module.Settings(api_port=api_port)
+
+
+def test_console_origins_are_loopback_only_normalized_and_deduplicated() -> None:
+    config_module = _reload_config_module()
+
+    settings = config_module.Settings(
+        console_origins=[
+            "HTTP://LOCALHOST:5173/",
+            "http://localhost:5173",
+            "https://[::1]:4173",
+        ]
+    )
+
+    assert settings.console_origins == [
+        "http://localhost:5173",
+        "https://[::1]:4173",
+    ]
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "*",
+        "ftp://127.0.0.1:5173",
+        "http://192.0.2.10:5173",
+        "http://user@127.0.0.1:5173",
+        "http://127.0.0.1:5173/path",
+        "http://127.0.0.1:5173?query=yes",
+        "http://localhost:*",
+    ],
+)
+def test_console_origins_reject_nonexact_or_nonloopback_values(origin: str) -> None:
+    config_module = _reload_config_module()
+
+    with pytest.raises(ValidationError, match="console_origins"):
+        config_module.Settings(console_origins=[origin])
 
 
 @pytest.mark.parametrize(
@@ -182,9 +276,6 @@ def test_postgres_schema_rejects_public_system_or_unsafe_names(
         f"""
 [database]
 postgres_schema = "{postgres_schema}"
-
-[security]
-api_key = "config-api-key"
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -222,9 +313,6 @@ def test_removed_watchdog_keys_fail_fast(
     config_path = tmp_path / "autoclaw-config.toml"
     config_path.write_text(
         f"""
-[security]
-api_key = "config-api-key"
-
 [runtime]
 {field_name} = 123
 """.strip()
@@ -261,9 +349,6 @@ def test_removed_provider_runtime_keys_fail_fast(
     config_path = tmp_path / "autoclaw-config.toml"
     config_path.write_text(
         f"""
-[security]
-api_key = "config-api-key"
-
 [runtime]
 {field_name} = 1
 """.strip()
@@ -289,9 +374,6 @@ def test_structured_config_sections_reject_non_table_values(
     config_path.write_text(
         f"""
 {section_name} = "not-a-table"
-
-[security]
-api_key = "config-api-key"
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -332,9 +414,6 @@ def test_watchdog_settings_reject_invalid_values(
     config_path = tmp_path / "autoclaw-config.toml"
     config_path.write_text(
         f"""
-[security]
-api_key = "config-api-key"
-
 [runtime]
 {field_name} = {value}
 """.strip()

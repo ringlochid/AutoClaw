@@ -28,7 +28,6 @@ def settings_to_config_text(
     host: str,
     port: int,
     log_level: str,
-    api_key: str,
 ) -> str:
     payload: ConfigSections = {
         "paths": {
@@ -50,9 +49,6 @@ def settings_to_config_text(
         },
         "logging": {
             "level": log_level,
-        },
-        "security": {
-            "api_key": api_key,
         },
     }
     return config_sections_to_text(payload)
@@ -116,7 +112,6 @@ def config_sections_to_text(payload: ConfigSections) -> str:
         "database",
         "server",
         "logging",
-        "security",
         "codex",
         "claude",
         "openclaw",

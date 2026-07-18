@@ -13,7 +13,9 @@ from autoclaw.persistence.models import (
     DispatchTurnModel,
     FlowModel,
 )
+from autoclaw.runtime.contracts import TaskEventSource, TaskEventType
 from autoclaw.runtime.post_commit import DispatchStartDue
+from autoclaw.runtime.task_events import append_task_event
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,13 +105,15 @@ async def accept_provider_start_if_current(
             )
             .returning(
                 DispatchTurnModel.dispatch_id,
+                DispatchTurnModel.attempt_id,
+                DispatchTurnModel.node_key,
                 DispatchTurnModel.provider_start_attempt_count,
                 DispatchTurnModel.node_activity_revision,
                 DispatchTurnModel.last_node_activity_at,
             )
         )
     ).one_or_none()
-    return ProviderStartAcceptanceResult(
+    result = ProviderStartAcceptanceResult(
         task_id=task_id,
         dispatch_id=dispatch_id,
         provider_start_revision=expected_provider_start_revision,
@@ -125,6 +129,27 @@ async def accept_provider_start_if_current(
             accepted_row.last_node_activity_at if accepted_row is not None else None
         ),
     )
+    if accepted_row is not None:
+        await append_task_event(
+            session,
+            task_id=task_id,
+            event_type=TaskEventType.DISPATCH_START_UPDATED,
+            event_source=TaskEventSource.CONTROLLER,
+            occurred_at=accepted_at,
+            dispatch_id=dispatch_id,
+            attempt_id=accepted_row.attempt_id,
+            node_key=accepted_row.node_key,
+            payload={
+                "dispatch_id": dispatch_id,
+                "state": "accepted",
+                "attempt_count": accepted_row.provider_start_attempt_count,
+                "provider_start_revision": expected_provider_start_revision,
+                "next_attempt_at": None,
+                "retry_kind": None,
+                "last_error_code": None,
+            },
+        )
+    return result
 
 
 async def read_provider_start_acceptance_after_commit(
@@ -367,6 +392,26 @@ async def rotate_provider_start_after_failure(
     if rotated_dispatch_id is None:
         await session.rollback()
         return False
+    await append_task_event(
+        session,
+        task_id=candidate.task_id,
+        event_type=TaskEventType.DISPATCH_START_UPDATED,
+        event_source=TaskEventSource.CONTROLLER,
+        occurred_at=datetime.now(UTC),
+        flow_revision_id=candidate.flow_revision_id,
+        dispatch_id=signal.dispatch_id,
+        attempt_id=candidate.attempt_id,
+        node_key=candidate.node_key,
+        payload={
+            "dispatch_id": signal.dispatch_id,
+            "state": "retry_scheduled",
+            "attempt_count": candidate.provider_start_attempt_count + 1,
+            "provider_start_revision": retry.provider_start_revision,
+            "next_attempt_at": retry.due_at,
+            "retry_kind": failure_kind,
+            "last_error_code": error_code,
+        },
+    )
     await session.commit()
     return True
 

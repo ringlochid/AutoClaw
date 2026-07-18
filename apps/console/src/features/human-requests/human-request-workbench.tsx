@@ -30,19 +30,18 @@ export function FocusedRequestWorkbench({
     const isCompactLayout = useCompactHumanRequestLayout();
 
     useEffect(() => {
-        const itemId = item?.item_id ?? null;
+        const itemId = item?.id ?? null;
         if (previousItemIdRef.current !== null && previousItemIdRef.current !== itemId) {
             headingRef.current?.focus();
         }
         previousItemIdRef.current = itemId;
-    }, [item?.item_id]);
+    }, [item?.id]);
 
     if (item === null || draft === null || read === null) {
         return null;
     }
 
-    const itemErrors = controller.validationErrors.filter((error) => error.itemId === item.item_id);
-    const shouldShowFreeform = item.options.length > 0 || getStructuredSchemaModel(item) === null;
+    const itemErrors = controller.validationErrors.filter((error) => error.itemId === item.id);
 
     if (isCompactLayout) {
         return (
@@ -52,7 +51,6 @@ export function FocusedRequestWorkbench({
                 item={item}
                 itemErrors={itemErrors}
                 read={read}
-                shouldShowFreeform={shouldShowFreeform}
             />
         );
     }
@@ -67,7 +65,7 @@ export function FocusedRequestWorkbench({
                         ref={headingRef}
                         tabIndex={-1}
                     >
-                        {item.item_id}
+                        {item.id}
                     </h2>
                 </div>
                 <ItemNavigator controller={controller} read={read} />
@@ -75,7 +73,8 @@ export function FocusedRequestWorkbench({
             <div className="divide-y divide-outline-soft">
                 <WorkbenchRow label="Instruction">
                     <p className="text-compact text-foreground">
-                        {read.request.suggested_human_instruction}
+                        {read.request.suggested_human_instruction ??
+                            "Answer every item using its controller-defined response contract."}
                     </p>
                 </WorkbenchRow>
                 <WorkbenchRow label="Question">
@@ -95,42 +94,6 @@ export function FocusedRequestWorkbench({
                         />
                     </div>
                 </WorkbenchRow>
-                {shouldShowFreeform ? (
-                    <WorkbenchRow label="Freeform answer">
-                        <textarea
-                            aria-label="Freeform answer"
-                            className={classNames(fieldClassName, "min-h-[76px]")}
-                            id={`freeform-${item.item_id}`}
-                            onChange={(event) => {
-                                controller.updateSelectedItemDraft({
-                                    freeformAnswer: event.target.value,
-                                    selectedOption:
-                                        event.target.value.trim().length > 0
-                                            ? null
-                                            : draft.selectedOption,
-                                });
-                            }}
-                            placeholder="Answer outside the listed options if none fit."
-                            rows={3}
-                            value={draft.freeformAnswer}
-                        />
-                    </WorkbenchRow>
-                ) : null}
-                <WorkbenchRow label="Notes">
-                    <textarea
-                        aria-label="Notes"
-                        className={classNames(fieldClassName, "min-h-[76px]")}
-                        id={`notes-${item.item_id}`}
-                        onChange={(event) => {
-                            controller.updateSelectedItemDraft({
-                                extraNotes: event.target.value,
-                            });
-                        }}
-                        placeholder="Add item-scoped caveats or follow-up notes."
-                        rows={3}
-                        value={draft.extraNotes}
-                    />
-                </WorkbenchRow>
             </div>
             <ValidationAndActionState controller={controller} itemErrors={itemErrors} />
         </section>
@@ -143,21 +106,20 @@ function MobileFocusedRequestWorkbench({
     item,
     itemErrors,
     read,
-    shouldShowFreeform,
 }: {
     readonly controller: HumanRequestsController;
     readonly draft: HumanRequestItemDraft;
     readonly item: HumanRequestItem;
     readonly itemErrors: readonly HumanRequestValidationError[];
     readonly read: components["schemas"]["HumanRequestRead"];
-    readonly shouldShowFreeform: boolean;
 }) {
     return (
         <section className="space-y-4">
             <section className="rounded-card border border-outline-soft bg-surface-low p-4">
                 <SectionLabel>Instruction</SectionLabel>
                 <p className="mt-2 text-compact text-foreground">
-                    {read.request.suggested_human_instruction}
+                    {read.request.suggested_human_instruction ??
+                        "Answer every item using its controller-defined response contract."}
                 </p>
             </section>
 
@@ -180,48 +142,6 @@ function MobileFocusedRequestWorkbench({
                     draft={draft}
                     item={item}
                     onUpdate={controller.updateSelectedItemDraft}
-                />
-            </section>
-
-            {shouldShowFreeform ? (
-                <label className="block rounded-card border border-outline-soft bg-surface-low p-4">
-                    <SectionLabel>Freeform answer</SectionLabel>
-                    <textarea
-                        aria-label="Freeform answer"
-                        className={classNames(fieldClassName, "mt-3 min-h-[120px]")}
-                        id={`freeform-${item.item_id}`}
-                        onChange={(event) => {
-                            controller.updateSelectedItemDraft({
-                                freeformAnswer: event.target.value,
-                                selectedOption:
-                                    event.target.value.trim().length > 0
-                                        ? null
-                                        : draft.selectedOption,
-                            });
-                        }}
-                        placeholder="Answer outside the listed options if none fit."
-                        rows={4}
-                        value={draft.freeformAnswer}
-                    />
-                </label>
-            ) : null}
-
-            <section className="space-y-3">
-                <label htmlFor={`notes-${item.item_id}`}>
-                    <SectionLabel>Notes</SectionLabel>
-                </label>
-                <textarea
-                    aria-label="Notes"
-                    className={classNames(fieldClassName, "min-h-[108px]")}
-                    id={`notes-${item.item_id}`}
-                    onChange={(event) => {
-                        controller.updateSelectedItemDraft({
-                            extraNotes: event.target.value,
-                        });
-                    }}
-                    placeholder="Add item-scoped caveats or follow-up guidance."
-                    rows={4}
-                    value={draft.extraNotes}
                 />
             </section>
 
@@ -319,7 +239,7 @@ function ItemNavigator({
                     {Array.from({ length: itemCount }, (_item, index) => {
                         const isSelected = index === controller.selectedItemIndex;
                         const item = read.request.items[index];
-                        const itemDraft = requestDraft?.items[item.item_id];
+                        const itemDraft = requestDraft?.items[item.id];
                         const isComplete = !isSelected && isItemDraftComplete(itemDraft);
 
                         return (
@@ -378,9 +298,8 @@ function isItemDraftComplete(draft: HumanRequestItemDraft | undefined): boolean 
 
     return (
         draft.selectedOption !== null ||
-        draft.freeformAnswer.trim().length > 0 ||
-        Object.values(draft.responsePayloadFields).some((value) => value?.trim().length) ||
-        (draft.responsePayloadJson.trim() !== "" && draft.responsePayloadJson.trim() !== "{}")
+        Object.values(draft.responseFields).some((value) => value?.trim().length) ||
+        (draft.responseJson.trim() !== "" && draft.responseJson.trim() !== "{}")
     );
 }
 
@@ -393,12 +312,13 @@ function ResponseControls({
     readonly item: HumanRequestItem;
     readonly onUpdate: (patch: Partial<HumanRequestItemDraft>) => void;
 }) {
+    const options = item.options ?? [];
     return (
         <div className="space-y-2">
-            {item.options.length === 0 ? null : (
+            {options.length === 0 ? null : (
                 <fieldset className="space-y-2">
                     <legend className="sr-only">Response options</legend>
-                    {item.options.map((option) => (
+                    {options.map((option) => (
                         <label
                             className={classNames(
                                 "flex cursor-pointer gap-3 rounded-card border px-3 py-2.5 transition-colors",
@@ -411,23 +331,17 @@ function ResponseControls({
                             <input
                                 checked={draft.selectedOption === option.id}
                                 className="mt-1.5 size-2.5 shrink-0 appearance-none rounded-full border border-outline bg-surface checked:border-primary checked:bg-primary checked:shadow-[0_0_0_4px_rgba(59,130,246,0.16)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                                name={`option-${item.item_id}`}
+                                name={`option-${item.id}`}
                                 onChange={() => {
                                     onUpdate({
-                                        freeformAnswer: "",
                                         selectedOption: option.id,
                                     });
                                 }}
                                 type="radio"
                             />
                             <span className="min-w-0">
-                                <span className="flex min-w-0 flex-wrap items-center gap-2 font-display text-compact font-semibold text-foreground">
+                                <span className="font-display text-compact font-semibold text-foreground">
                                     {option.title}
-                                    {item.recommended_option === option.id ? (
-                                        <span className="rounded-full bg-primary-soft px-2 py-0.5 font-mono text-utility text-primary-foreground">
-                                            recommended
-                                        </span>
-                                    ) : null}
                                 </span>
                                 {option.description === null ||
                                 option.description === undefined ? null : (
@@ -460,14 +374,14 @@ function StructuredInputControls({
 
     if (schemaModel.mode === "json") {
         return (
-            <FormField id={`payload-${item.item_id}`} label="Structured input">
+            <FormField id={`response-${item.id}`} label="JSON response">
                 <textarea
                     className={classNames(fieldClassName, "font-mono")}
                     onChange={(event) => {
-                        onUpdate({ responsePayloadJson: event.target.value });
+                        onUpdate({ responseJson: event.target.value });
                     }}
                     rows={5}
-                    value={draft.responsePayloadJson}
+                    value={draft.responseJson}
                 />
             </FormField>
         );
@@ -480,7 +394,7 @@ function StructuredInputControls({
                     <StructuredFieldControl
                         draft={draft}
                         field={field}
-                        itemId={item.item_id}
+                        itemId={item.id}
                         key={field.name}
                         onUpdate={onUpdate}
                     />
@@ -517,11 +431,11 @@ function StructuredFieldControl({
     readonly onUpdate: (patch: Partial<HumanRequestItemDraft>) => void;
 }) {
     const id = `payload-${itemId}-${field.name}`;
-    const value = draft.responsePayloadFields[field.name] ?? "";
+    const value = draft.responseFields[field.name] ?? "";
     const updateValue = (nextValue: string) => {
         onUpdate({
-            responsePayloadFields: {
-                ...draft.responsePayloadFields,
+            responseFields: {
+                ...draft.responseFields,
                 [field.name]: nextValue,
             },
         });

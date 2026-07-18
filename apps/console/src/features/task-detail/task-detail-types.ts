@@ -1,5 +1,6 @@
 import type { StatusTone } from "../../components/ui";
 import type { components } from "../../api/generated/openapi";
+import type { TaskEventType } from "../../api/view-models";
 
 export type TaskDetailTab =
     "artifacts" | "assignment" | "boundary" | "checkpoint" | "overview" | "trace";
@@ -26,7 +27,7 @@ export interface TaskHeaderView {
     readonly activeAttemptId: string | null;
     readonly activeFlowRevisionId: string;
     readonly currentNodeKey: string | null;
-    readonly status: components["schemas"]["FlowStatus"];
+    readonly status: components["schemas"]["RuntimeLifecycleStatus"];
     readonly summary: string;
     readonly taskId: string;
     readonly title: string;
@@ -72,7 +73,7 @@ export interface TaskEventRow {
     readonly eventId: string;
     readonly eventSeq: number;
     readonly eventSource: components["schemas"]["TaskEventSource"];
-    readonly eventType: components["schemas"]["TaskEventType"];
+    readonly eventType: TaskEventType;
     readonly flowRevisionId: string | null;
     readonly nodeKey: string | null;
     readonly occurredAt: string;
@@ -137,9 +138,12 @@ export const TASK_DETAIL_TABS: readonly TaskDetailTabOption[] = [
     { label: "Trace", value: "trace" },
 ];
 
-export const TASK_EVENT_TYPES: readonly components["schemas"]["TaskEventType"][] = [
+export const TASK_EVENT_TYPES: readonly TaskEventType[] = [
     "task_started",
     "dispatch_opened",
+    "dispatch_start_updated",
+    "work_plan_set",
+    "work_plan_cleared",
     "checkpoint_recorded",
     "boundary_accepted",
     "child_assignment_staged",
@@ -149,6 +153,7 @@ export const TASK_EVENT_TYPES: readonly components["schemas"]["TaskEventType"][]
     "human_request_resolved",
     "human_request_timed_out",
     "human_request_cancelled",
+    "command_run_opened",
     "command_run_started",
     "command_run_progressed",
     "command_run_cancel_requested",
@@ -156,6 +161,7 @@ export const TASK_EVENT_TYPES: readonly components["schemas"]["TaskEventType"][]
     "command_run_failed",
     "command_run_timed_out",
     "command_run_cancelled",
+    "command_run_abandoned",
     "task_paused",
     "task_resumed",
     "task_cancelled",

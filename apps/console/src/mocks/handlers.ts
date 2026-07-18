@@ -9,7 +9,6 @@ export interface TaskEventStreamFixture {
 }
 
 export interface ConsoleMockScenario {
-    readonly apiKey: string;
     readonly commandRun: components["schemas"]["CommandRunRecord"];
     readonly commandRunCancel: components["schemas"]["CommandRunCancelResponse"];
     readonly commandRunCancelByRun?: Readonly<
@@ -361,9 +360,6 @@ function createDraftAuthoringHandlers(scenario: ConsoleMockScenario): readonly H
             guardedJson(request, scenario, scenario.draftList),
         ),
         http.post("*/authoring/definition-drafts", async ({ request }) => {
-            if (!isAuthorized(request, scenario)) {
-                return authFailureResponse();
-            }
             const body =
                 (await request.json()) as components["schemas"]["DefinitionDraftCreateRequest"];
             return HttpResponse.json({
@@ -386,9 +382,6 @@ function createDraftAuthoringHandlers(scenario: ConsoleMockScenario): readonly H
             ),
         ),
         http.put("*/authoring/definitions/:kind/:key/draft", async ({ params, request }) => {
-            if (!isAuthorized(request, scenario)) {
-                return authFailureResponse();
-            }
             const body =
                 (await request.json()) as components["schemas"]["DefinitionDraftWriteRequest"];
             return HttpResponse.json(
@@ -444,31 +437,21 @@ function isDefinitionKind(value: string): value is components["schemas"]["Defini
     return value === "policy" || value === "role" || value === "workflow";
 }
 
-function guardedEmpty(request: Request, scenario: ConsoleMockScenario): Response {
-    if (!isAuthorized(request, scenario)) {
-        return authFailureResponse();
-    }
-
+function guardedEmpty(_request: Request, _scenario: ConsoleMockScenario): Response {
+    void _request;
+    void _scenario;
     return new HttpResponse(null, { status: 204 });
 }
 
 function guardedJson(
-    request: Request,
-    scenario: ConsoleMockScenario,
+    _request: Request,
+    _scenario: ConsoleMockScenario,
     body: JsonBodyType,
 ): Response {
-    if (!isAuthorized(request, scenario)) {
-        return authFailureResponse();
-    }
-
     return HttpResponse.json(body);
 }
 
 function guardedTaskEventStream(request: Request, scenario: ConsoleMockScenario): Response {
-    if (!isAuthorized(request, scenario)) {
-        return authFailureResponse();
-    }
-
     const cursor = new URL(request.url).searchParams.get("cursor");
     if (cursor !== null && scenario.taskEventStream.cursorResetCursors.includes(cursor)) {
         return operationFailureResponse({
@@ -490,40 +473,25 @@ function guardedTaskEventStream(request: Request, scenario: ConsoleMockScenario)
     });
 }
 
-function isAuthorized(request: Request, scenario: ConsoleMockScenario): boolean {
-    return request.headers.get("X-AutoClaw-API-Key") === scenario.apiKey;
-}
-
-function authFailureResponse(): Response {
-    return operationFailureResponse({
-        code: "illegal_caller",
-        status: 401,
-        summary: "The AutoClaw API key is missing or invalid.",
-        suggestedNextStep: "Provide a valid operator API key.",
-    });
-}
-
 function operationFailureResponse({
     code,
     status,
     summary,
     suggestedNextStep,
 }: {
-    readonly code: string;
+    readonly code: components["schemas"]["OperationFailureCode"];
     readonly status: number;
     readonly summary: string;
     readonly suggestedNextStep: string;
 }): Response {
     return HttpResponse.json(
         {
-            detail: {
-                code,
-                field_path: null,
-                ok: false,
-                retryable: false,
-                suggested_next_step: suggestedNextStep,
-                summary,
-            },
+            code,
+            field_path: null,
+            ok: false,
+            retryable: false,
+            suggested_next_step: suggestedNextStep,
+            summary,
         },
         { status },
     );

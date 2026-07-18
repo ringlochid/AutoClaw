@@ -22,15 +22,10 @@ from autoclaw.definitions.registry.definition_catalog import (
     upload_definition,
 )
 from autoclaw.definitions.registry.definition_history import get_definition_history
-from autoclaw.interfaces.http.dependencies import require_api_key
 from autoclaw.interfaces.http.errors import raise_runtime_exception
 from autoclaw.persistence.session import get_db_session
 
-router = APIRouter(
-    prefix="/definitions",
-    tags=["definitions"],
-    dependencies=[Depends(require_api_key)],
-)
+router = APIRouter(prefix="/definitions", tags=["definitions"])
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 type DefinitionListParams = Annotated[DefinitionListQuery, Query()]
 type DefinitionHistoryParams = Annotated[DefinitionRevisionHistoryQuery, Query()]

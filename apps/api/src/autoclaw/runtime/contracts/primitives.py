@@ -60,33 +60,6 @@ class CheckpointOutcome(StrEnum):
     BLOCKED = "blocked"
 
 
-class DispatchDeliveryStatus(StrEnum):
-    PREPARED = "prepared"
-    ACCEPTED = "accepted"
-    PROVIDER_SIGNAL_SEEN = "provider_signal_seen"
-    PROVIDER_COMPLETED = "provider_completed"
-    PROVIDER_FAILED = "provider_failed"
-    TRANSPORT_FAILED = "transport_failed"
-    TRANSPORT_AMBIGUOUS = "transport_ambiguous"
-    SUPERSEDED = "superseded"
-
-
-class WaitingCause(StrEnum):
-    PAUSED_BY_OPERATOR = "paused_by_operator"
-    WAITING_FOR_HUMAN_REQUEST = "waiting_for_human_request"
-    WAITING_FOR_COMMAND_RUN = "waiting_for_command_run"
-    WAITING_FOR_INTERNAL_FENCING = "waiting_for_internal_fencing"
-    WAITING_FOR_ADAPTER_RECONNECT = "waiting_for_adapter_reconnect"
-
-
-class BoundaryStateTransition(StrEnum):
-    OPERATOR_RESUME = "operator_resume"
-    HUMAN_REQUEST_TERMINAL = "human_request_terminal"
-    COMMAND_RUN_TERMINAL = "command_run_terminal"
-    ADAPTER_RECONNECTED = "adapter_reconnected"
-    INTERNAL_FENCING_CLEARED = "internal_fencing_cleared"
-
-
 class CapabilityDecision(StrEnum):
     DENY = "deny"
     ALLOW = "allow"
@@ -275,13 +248,11 @@ type AssignmentConsumeRef = NodeRuntimeFileRef | EvidenceRef
 
 __all__ = [
     "AssignmentConsumeRef",
-    "BoundaryStateTransition",
     "CapabilityDecision",
     "CheckpointKind",
     "CheckpointOutcome",
     "CommandRunState",
     "CommandRunTerminalSource",
-    "DispatchDeliveryStatus",
     "EgressBoundary",
     "EvidenceKind",
     "EvidenceRef",
@@ -304,5 +275,4 @@ __all__ = [
     "TaskRootBindingInput",
     "TaskRootMode",
     "TaskRootPaths",
-    "WaitingCause",
 ]

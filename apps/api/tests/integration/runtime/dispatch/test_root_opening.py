@@ -17,6 +17,7 @@ from autoclaw.persistence.models import (
 from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.launch.continuation import open_root_dispatch
 from autoclaw.runtime.launch.persistence.runtime import persist_bootstrap_runtime_from_precomputed
+from autoclaw.runtime.observability import operator_trace
 from autoclaw.runtime.post_commit import (
     CapturedRuntimeEffectPublisher,
     DispatchStartDue,
@@ -111,6 +112,7 @@ async def test_root_start_materializes_then_commits_one_starting_dispatch(
             source = await session.scalar(select(FlowStartSourceModel))
             flow = await session.scalar(select(FlowModel))
             starting_page = await read_dispatch_start_page(session_context, None, 2)
+            trace = await operator_trace(async_session, bootstrap_input.task_id)
     finally:
         engine.dispose()
 
@@ -137,6 +139,12 @@ async def test_root_start_materializes_then_commits_one_starting_dispatch(
             dispatch.next_provider_start_at,
         ),
     )
+    assert tuple(item.dispatch_id for item in trace.dispatch_history) == (dispatch.dispatch_id,)
+    assert trace.dispatch_history[0].status == "starting"
+    assert trace.dispatch_history[0].effective_capabilities.provider_native_access.effective == (
+        expected_native_access
+    )
+    assert trace.graph_nodes
     request_root = tmp_path / "task-root" / refs.input_logical_path
     request_text = request_root.read_text(encoding="utf-8")
     assert '"kind": "root_start"' in request_text

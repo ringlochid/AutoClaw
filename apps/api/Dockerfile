@@ -12,6 +12,4 @@ COPY scripts/testing /app/scripts/testing
 
 RUN python -m pip install --upgrade pip             && pip install "/app[postgres,dev]"
 
-EXPOSE 8000
-
-CMD ["uvicorn", "autoclaw.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["autoclaw", "--help"]

@@ -10,7 +10,10 @@ from httpx import ASGITransport, AsyncClient
 async def test_packaged_web_console_serves_index_for_spa_routes() -> None:
     app = create_app(should_enable_mcp_mounts=False)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://127.0.0.1:18125",
+    ) as client:
         root_response = await client.get("/")
         task_detail_response = await client.get("/tasks/task-runtime-route-copy")
         editor_response = await client.get("/definitions/editor")
@@ -30,7 +33,10 @@ async def test_packaged_web_console_serves_static_assets() -> None:
     stylesheet_path = _first_asset_with_suffix(assets_root / "assets", ".css")
     app = create_app(should_enable_mcp_mounts=False)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://127.0.0.1:18125",
+    ) as client:
         icon_response = await client.get("/app-icon.png")
         manifest_response = await client.get("/site.webmanifest")
         stylesheet_response = await client.get(f"/assets/{stylesheet_path.name}")
@@ -47,15 +53,15 @@ async def test_packaged_web_console_serves_static_assets() -> None:
 async def test_packaged_web_console_serves_runtime_config() -> None:
     app = create_app(should_enable_mcp_mounts=False)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://127.0.0.1:18125",
+    ) as client:
         response = await client.get("/console/config")
 
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
-    assert response.json() == {
-        "apiBaseUrl": "http://test",
-        "apiKey": "autoclaw-operator-test-key",
-    }
+    assert response.json() == {"apiBaseUrl": "http://127.0.0.1:18125"}
     assert "internal" not in response.text
 
 

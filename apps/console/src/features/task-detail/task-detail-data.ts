@@ -29,7 +29,7 @@ export interface TaskDetailBootstrap {
 export interface TaskDetailStreamOptions {
     readonly cursor: string | null;
     readonly onEvent: (event: components["schemas"]["TaskEventRecord"]) => void;
-    readonly resetAfterCursorReset: (staleCursor: string | null) => Promise<void>;
+    readonly resetAfterCursorReset: (staleCursor: string | null) => Promise<string | null>;
     readonly signal: AbortSignal;
     readonly taskId: string;
 }
@@ -143,15 +143,17 @@ export async function streamTaskDetailEvents({
 export async function writeTaskControlAction({
     activeFlowRevisionId,
     action,
+    controlRevision,
     signal,
     taskId,
 }: {
     readonly activeFlowRevisionId: string;
     readonly action: TaskControlAction;
+    readonly controlRevision: number;
     readonly signal?: AbortSignal;
     readonly taskId: string;
 }): Promise<components["schemas"]["RuntimeFlowRead"]> {
-    const route = controlTaskActionRoute(taskId, action, activeFlowRevisionId);
+    const route = controlTaskActionRoute(taskId, action, activeFlowRevisionId, controlRevision);
     const response = await requestJson<
         components["schemas"]["RuntimeFlowPauseResponse"] | components["schemas"]["RuntimeFlowRead"]
     >({

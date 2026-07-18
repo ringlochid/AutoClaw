@@ -1,4 +1,4 @@
-import { buildQueryParams, expectedFlowRevisionQuery, type QueryParams } from "./client";
+import { buildQueryParams, type QueryParams } from "./client";
 import type { operations } from "./generated/openapi";
 
 export interface ApiRoute {
@@ -62,10 +62,14 @@ export function controlTaskActionRoute(
     taskId: string,
     action: "cancel" | "continue" | "pause",
     activeFlowRevisionId: string,
+    controlRevision: number,
 ): ApiRoute {
     return {
         path: `/control/tasks/${encodeURIComponent(taskId)}/${action}`,
-        query: expectedFlowRevisionQuery(activeFlowRevisionId),
+        query: buildQueryParams({
+            expected_active_flow_revision_id: activeFlowRevisionId,
+            expected_control_revision: controlRevision,
+        }),
     };
 }
 
