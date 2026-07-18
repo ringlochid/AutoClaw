@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -15,11 +16,13 @@ from autoclaw.definitions.registry import (
     upsert_workflow_definition,
 )
 from autoclaw.definitions.registry.task_start import start_task_from_definition
+from autoclaw.paths import default_database_path
 from autoclaw.persistence import (
     AssignmentModel,
     AttemptModel,
     CompiledPlanNodeModel,
     DispatchTurnModel,
+    FlowModel,
     FlowNodeModel,
     PolicyDefinitionModel,
     RoleDefinitionModel,
@@ -27,9 +30,70 @@ from autoclaw.persistence import (
     WorkflowDefinitionModel,
 )
 from autoclaw.runtime.contracts import TaskStartRequest
+from autoclaw.runtime.ids import flow_id_for_task
+from autoclaw.runtime.post_commit import FlowStartCommitted, RuntimeEffectSignal
+from autoclaw.runtime.projection import (
+    AttemptAssignmentProjection,
+    CriteriaProjection,
+    SupportProjectionSignal,
+    WorkflowManifestProjection,
+)
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 from tests.helpers.definition_registry_runtime import initialized_registry
+
+
+class _CommittedRuntimePublisher:
+    def __init__(
+        self,
+        *,
+        session: Any,
+        database_path: Path,
+        should_accept: bool = True,
+        should_raise: bool = False,
+    ) -> None:
+        self._session = session
+        self._database_path = database_path
+        self._should_accept = should_accept
+        self._should_raise = should_raise
+        self.signals: list[RuntimeEffectSignal] = []
+
+    def publish(self, signal: RuntimeEffectSignal) -> bool:
+        _assert_launch_source_is_committed(self._session, self._database_path)
+        self.signals.append(signal)
+        if self._should_raise:
+            raise RuntimeError("runtime publication unavailable")
+        return self._should_accept
+
+
+class _CommittedProjectionPublisher:
+    def __init__(
+        self,
+        *,
+        session: Any,
+        database_path: Path,
+        should_accept: bool = True,
+        should_raise: bool = False,
+    ) -> None:
+        self._session = session
+        self._database_path = database_path
+        self._should_accept = should_accept
+        self._should_raise = should_raise
+        self.signals: list[SupportProjectionSignal] = []
+
+    def publish(self, signal: SupportProjectionSignal) -> bool:
+        _assert_launch_source_is_committed(self._session, self._database_path)
+        self.signals.append(signal)
+        if self._should_raise:
+            raise RuntimeError("projection publication unavailable")
+        return self._should_accept
+
+
+def _assert_launch_source_is_committed(session: Any, database_path: Path) -> None:
+    assert not session.in_transaction()
+    with sqlite3.connect(database_path) as connection:
+        flow_count = connection.execute("SELECT COUNT(*) FROM flows").fetchone()
+    assert flow_count == (1,)
 
 
 def _assert_snapshot_revision_alignment(
@@ -297,6 +361,93 @@ async def test_task_start_returns_a_logical_unmaterialized_manifest_ref(
     assert event_stream_head.last_event_seq == 0
     assert event_stream_head.last_event_hash is None
     assert not (data_dir / "tasks" / response.task_id).exists()
+
+
+async def test_task_start_publishes_exact_follow_on_only_after_sqlite_commit(
+    tmp_path: Path,
+) -> None:
+    data_dir = tmp_path / "task-data"
+    request = TaskStartRequest.model_validate(
+        {
+            "task": {
+                "key": "committed-launch-follow-on",
+                "title": "Publish committed launch follow-on",
+                "summary": "Prove source commit precedes exact runtime and support hints.",
+            },
+            "workflow": {"key": "bounded-change"},
+        }
+    )
+
+    async with initialized_registry(tmp_path) as session_factory:
+        async with session_factory() as session:
+            runtime_publisher = _CommittedRuntimePublisher(
+                session=session,
+                database_path=default_database_path(tmp_path / "autoclaw-data"),
+            )
+            projection_publisher = _CommittedProjectionPublisher(
+                session=session,
+                database_path=default_database_path(tmp_path / "autoclaw-data"),
+            )
+            response = await start_task_from_definition(
+                request,
+                data_dir=data_dir,
+                session=session,
+                runtime_effect_publisher=runtime_publisher,
+                support_projection_publisher=projection_publisher,
+            )
+
+    assert runtime_publisher.signals == [FlowStartCommitted(flow_id_for_task(response.task_id))]
+    assert isinstance(projection_publisher.signals[0], WorkflowManifestProjection)
+    assert isinstance(projection_publisher.signals[-1], AttemptAssignmentProjection)
+    assert any(isinstance(signal, CriteriaProjection) for signal in projection_publisher.signals)
+    assert {type(signal) for signal in projection_publisher.signals} == {
+        WorkflowManifestProjection,
+        CriteriaProjection,
+        AttemptAssignmentProjection,
+    }
+
+
+async def test_task_start_response_survives_rejected_and_failed_publication(
+    tmp_path: Path,
+) -> None:
+    data_dir = tmp_path / "task-data"
+    request = TaskStartRequest.model_validate(
+        {
+            "task": {
+                "key": "isolated-launch-publication",
+                "title": "Isolate committed launch response",
+                "summary": "Keep committed task start independent from disposable hints.",
+            },
+            "workflow": {"key": "bounded-change"},
+        }
+    )
+
+    async with initialized_registry(tmp_path) as session_factory:
+        async with session_factory() as session:
+            runtime_publisher = _CommittedRuntimePublisher(
+                session=session,
+                database_path=default_database_path(tmp_path / "autoclaw-data"),
+                should_accept=False,
+            )
+            projection_publisher = _CommittedProjectionPublisher(
+                session=session,
+                database_path=default_database_path(tmp_path / "autoclaw-data"),
+                should_raise=True,
+            )
+            response = await start_task_from_definition(
+                request,
+                data_dir=data_dir,
+                session=session,
+                runtime_effect_publisher=runtime_publisher,
+                support_projection_publisher=projection_publisher,
+            )
+            persisted_flow_id = await session.scalar(
+                select(FlowModel.flow_id).where(FlowModel.task_id == response.task_id)
+            )
+
+    assert persisted_flow_id == flow_id_for_task(response.task_id)
+    assert runtime_publisher.signals == [FlowStartCommitted(flow_id_for_task(response.task_id))]
+    assert projection_publisher.signals
 
 
 async def test_task_start_derives_runtime_identity_from_a_nonliteral_root_key(

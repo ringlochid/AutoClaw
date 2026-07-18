@@ -13,6 +13,7 @@ from autoclaw.definitions.contracts.workflow import (
     ConsumeBuckets,
     CriteriaDeclaration,
     ProduceBuckets,
+    ProviderSelection,
 )
 from autoclaw.runtime.contracts.checkpoint import TransientSurfaceWrite
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
@@ -60,6 +61,7 @@ class ChildNodeDraft(BaseModel):
     parent_node_key: RuntimeSchemaText | None = Field(default=None, exclude=True)
     role: RuntimeSchemaText
     policy: RuntimeSchemaText
+    provider: ProviderSelection | None = None
     description: RuntimeSchemaText
     instruction: RuntimeSchemaText | None = None
     consumes: ConsumeBuckets | None = None
@@ -74,6 +76,7 @@ class ChildNodePatch(BaseModel):
 
     role: RuntimeSchemaText | None = None
     policy: RuntimeSchemaText | None = None
+    provider: ProviderSelection | None = None
     description: RuntimeSchemaText | None = None
     instruction: RuntimeSchemaText | None = None
     consumes: ConsumeBuckets | None = None

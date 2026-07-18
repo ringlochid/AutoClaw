@@ -20,10 +20,11 @@ This folder owns the V2 provider-neutral two-file dispatch request and role-spec
 ## Start here
 
 1. [Prompt system](prompt-system.md)
-2. [Work plan and checkpoint contract](../architecture/work-plan-and-checkpoint-contract.md)
-3. [Managed Node MCP binding](../architecture/managed-node-mcp-binding.md)
-4. [Node and Operator MCP surface](../interfaces/node-and-operator-mcp-surface-contract.md)
-5. [V1 prompt-layer front door](../../v1/prompt-layer/README.md) for baseline and migration contrast
+2. [Generated contract readback](generated/contract-readback.md)
+3. [Work plan and checkpoint contract](../architecture/work-plan-and-checkpoint-contract.md)
+4. [Managed Node MCP binding](../architecture/managed-node-mcp-binding.md)
+5. [Node and Operator MCP surface](../interfaces/node-and-operator-mcp-surface-contract.md)
+6. [V1 prompt-layer front door](../../v1/prompt-layer/README.md) for baseline and migration contrast
 
 ## Ownership boundary
 

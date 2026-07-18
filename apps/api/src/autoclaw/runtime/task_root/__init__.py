@@ -1,7 +1,9 @@
 from autoclaw.runtime.task_root.file_access import (
     DEFAULT_DIRECTORY_ENTRY_LIMIT,
     DEFAULT_FILE_READ_BYTE_LIMIT,
+    PublishedLogicalFile,
     list_logical_directory,
+    publish_logical_regular_file,
     read_logical_text_file,
 )
 from autoclaw.runtime.task_root.logical_paths import (
@@ -35,6 +37,7 @@ __all__ = [
     "DEFAULT_DIRECTORY_ENTRY_LIMIT",
     "DEFAULT_FILE_READ_BYTE_LIMIT",
     "LOGICAL_TASK_ROOTS",
+    "PublishedLogicalFile",
     "ResolvedLogicalTaskPath",
     "artifact_current_json_path",
     "artifact_index_json_path",
@@ -54,6 +57,7 @@ __all__ = [
     "manifest_json_path",
     "manifest_markdown_path",
     "normalize_logical_task_path",
+    "publish_logical_regular_file",
     "read_logical_text_file",
     "read_task_root_paths",
     "resolve_logical_task_path",

@@ -7,10 +7,12 @@ from autoclaw.persistence.models.runtime.assignment.artifacts import (
 from autoclaw.persistence.models.runtime.assignment.execution import (
     AssignmentCriteriaRefModel,
     AssignmentModel,
-    AssignmentWorkPlanModel,
-    AssignmentWorkPlanStepModel,
     AttemptCheckpointModel,
     AttemptModel,
+)
+from autoclaw.persistence.models.runtime.assignment.work_plan import (
+    AssignmentWorkPlanModel,
+    AssignmentWorkPlanStepModel,
 )
 
 __all__ = [

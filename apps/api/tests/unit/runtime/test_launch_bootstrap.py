@@ -156,7 +156,7 @@ async def test_launch_service_derives_initial_ids_from_nonliteral_root_key(
 
     result = await launch_task_runtime(cast(AsyncSession, object()), launch_input)
 
-    assert result.assignment.node_key == "primary"
+    assert result.bootstrap.assignment.node_key == "primary"
     assert len(captured_inputs) == 1
     assert captured_inputs[0].attempt_id == "attempt.task.nonliteral-root.primary.01"
     assert captured_inputs[0].assignment_key == "task.nonliteral-root.primary.assign-01"

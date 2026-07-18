@@ -12,8 +12,9 @@ from autoclaw.definitions.compiler.contracts import (
     NormalizedDependencyEdge,
     NormalizedProduceBuckets,
 )
-from autoclaw.definitions.contracts.workflow import NodeKind
+from autoclaw.definitions.contracts.workflow import NodeKind, ProviderSelection
 from autoclaw.persistence.models import FlowNodeModel
+from autoclaw.runtime.providers import provider_selection_from_kind
 from autoclaw.runtime.task_root import criteria_logical_path
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
@@ -67,6 +68,7 @@ class StructuralNodeCandidate:
     policy_revision_no: int
     policy_description: str | None
     policy_instruction: str | None
+    provider: ProviderSelection | None
     description: str
     node_instruction: str | None
     local_consumes: NormalizedConsumeBuckets | None
@@ -126,6 +128,9 @@ class StructuralRevisionCandidate:
                     "role_revision_no": node.role_revision_no,
                     "policy": node.policy_key,
                     "policy_revision_no": node.policy_revision_no,
+                    "provider": (
+                        node.provider.model_dump(mode="json") if node.provider is not None else None
+                    ),
                     "description": node.description,
                     "instruction": node.node_instruction,
                     "children": list(node.child_node_keys),
@@ -204,6 +209,7 @@ def _load_raw_nodes(
             policy_revision_no=row.policy_revision_no,
             policy_description=row.policy_description,
             policy_instruction=row.policy_instruction,
+            provider=provider_selection_from_kind(row.provider_kind),
             description=row.description,
             node_instruction=row.node_instruction,
             local_consumes=consumes,

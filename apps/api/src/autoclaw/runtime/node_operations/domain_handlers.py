@@ -1,20 +1,22 @@
 from __future__ import annotations
 
-import sqlite3
 from pathlib import Path
-from typing import cast
-from uuid import uuid4
 
 from pydantic import BaseModel
-from sqlalchemy import insert, literal, select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import (
     AcceptedBoundaryModel,
     AssignmentDecisionModel,
     AttemptCheckpointModel,
-    AttemptModel,
+)
+from autoclaw.runtime.boundary.source_transition import advance_accepted_boundary_state
+from autoclaw.runtime.checkpoint import (
+    CheckpointPreparation,
+    commit_checkpoint_preparation,
+    empty_checkpoint_preparation,
+    read_exact_latest_checkpoint,
 )
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
@@ -23,10 +25,7 @@ from autoclaw.runtime.contracts import (
     CheckpointRead,
 )
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
-from autoclaw.runtime.dispatch.authority import (
-    NodeOperationAuthority,
-    exact_node_operation_authority_exists,
-)
+from autoclaw.runtime.dispatch.authority import NodeOperationAuthority
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.node_operations.contracts import (
     NodeOperationName,
@@ -48,10 +47,17 @@ async def execute_controller_node_operation(
     authority: NodeOperationAuthority,
     operation_name: NodeOperationName,
     request: BaseModel,
+    *,
+    checkpoint_preparation: CheckpointPreparation | None = None,
 ) -> BaseModel:
     if operation_name == NodeOperationName.RECORD_CHECKPOINT:
         assert isinstance(request, RecordCheckpointRequest)
-        return await _record_checkpoint(session, authority, request)
+        return await _record_checkpoint(
+            session,
+            authority,
+            request,
+            preparation=checkpoint_preparation,
+        )
     if operation_name == NodeOperationName.RETURN_BOUNDARY:
         assert isinstance(request, ReturnBoundaryRequest)
         return await _return_boundary(session, authority, request)
@@ -78,106 +84,28 @@ async def _record_checkpoint(
     session: AsyncSession,
     authority: NodeOperationAuthority,
     request: RecordCheckpointRequest,
+    *,
+    preparation: CheckpointPreparation | None,
 ) -> CheckpointRead:
     body = request.checkpoint
-    if body.produced_artifacts or body.transient_surfaces:
-        raise RuntimeOperationError(
-            code=OperationFailureCode.ILLEGAL_STATE,
-            summary=(
-                "artifact and transient checkpoint claims are unavailable until the "
-                "publication protocol is active"
-            ),
-            is_retryable=False,
-        )
-    checkpoint_id = f"checkpoint.{authority.attempt_id}.{uuid4().hex}"
-    evidence: dict[str, object] = {
-        "next_step": body.handoff.next_step,
-        "blockers": list(body.handoff.blockers),
-        "risks": list(body.handoff.risks),
-    }
-    try:
-        await _insert_checkpoint_if_current(
-            session,
-            authority,
-            checkpoint_id=checkpoint_id,
-            checkpoint_kind=body.checkpoint_kind.value,
-            outcome=body.outcome.value if body.outcome is not None else None,
-            summary=body.handoff.summary,
-            evidence=evidence,
-        )
-        await session.commit()
-    except IntegrityError as exc:
-        if not _is_terminal_checkpoint_conflict(exc):
-            raise
-        await session.rollback()
+    prepared = preparation or empty_checkpoint_preparation(authority, body)
+    if prepared.body != body:
         raise RuntimeOperationError(
             code=OperationFailureCode.CONFLICT,
-            summary="another terminal checkpoint won the source dispatch",
+            summary="prepared checkpoint does not match the accepted request",
             is_retryable=False,
-        ) from exc
+        )
+    await commit_checkpoint_preparation(session, authority, prepared)
     checkpoint_ref = CheckpointFileRef(
         path=Path(f"_runtime/attempts/{authority.attempt_id}/latest-checkpoint.md"),
         description="Latest checkpoint projection for the current attempt.",
     )
     return CheckpointRead(
         attempt_id=authority.attempt_id,
-        checkpoint_id=checkpoint_id,
+        checkpoint_id=prepared.checkpoint_id,
         checkpoint_ref=checkpoint_ref,
         latest_checkpoint_ref=checkpoint_ref,
     )
-
-
-async def _insert_checkpoint_if_current(
-    session: AsyncSession,
-    authority: NodeOperationAuthority,
-    *,
-    checkpoint_id: str,
-    checkpoint_kind: str,
-    outcome: str | None,
-    summary: str,
-    evidence: dict[str, object],
-) -> None:
-    table = AttemptCheckpointModel.__table__
-    inserted_id = await session.scalar(
-        insert(AttemptCheckpointModel)
-        .from_select(
-            (
-                "checkpoint_id",
-                "task_id",
-                "flow_id",
-                "assignment_id",
-                "attempt_id",
-                "authoring_dispatch_id",
-                "checkpoint_kind",
-                "outcome",
-                "summary",
-                "evidence_json",
-                "criteria_results_json",
-                "recorded_at",
-            ),
-            select(
-                literal(checkpoint_id),
-                literal(authority.task_id),
-                literal(authority.flow_id),
-                literal(authority.assignment_id),
-                literal(authority.attempt_id),
-                literal(authority.dispatch_id),
-                literal(checkpoint_kind),
-                literal(outcome, type_=table.c.outcome.type),
-                literal(summary),
-                literal(evidence, type_=table.c.evidence_json.type),
-                literal([], type_=table.c.criteria_results_json.type),
-                literal(utc_now(), type_=table.c.recorded_at.type),
-            ).where(exact_node_operation_authority_exists(authority)),
-        )
-        .returning(table.c.checkpoint_id)
-    )
-    if inserted_id is None:
-        raise RuntimeOperationError(
-            code=OperationFailureCode.CONFLICT,
-            summary="another transition changed current checkpoint authority",
-            is_retryable=False,
-        )
 
 
 async def _return_boundary(
@@ -208,6 +136,13 @@ async def _return_boundary(
         waiting_cause="none",
         waiting_source_id=None,
     )
+    await advance_accepted_boundary_state(
+        session,
+        authority,
+        outcome=outcome,
+        decision=decision,
+        transitioned_at=now,
+    )
     session.add(
         AcceptedBoundaryModel(
             accepted_boundary_id=f"accepted-boundary.{authority.dispatch_id}",
@@ -223,16 +158,6 @@ async def _return_boundary(
             ),
         )
     )
-    if outcome != "yield":
-        await session.execute(
-            update(AttemptModel)
-            .where(
-                AttemptModel.attempt_id == authority.attempt_id,
-                AttemptModel.assignment_id == authority.assignment_id,
-                AttemptModel.status.in_(("pending", "running")),
-            )
-            .values(status="completed", terminal_outcome=outcome, closed_at=now)
-        )
     await session.commit()
     flow = await runtime_flow_read(session, authority)
     checkpoint_ref = (
@@ -254,20 +179,7 @@ async def _latest_checkpoint(
     session: AsyncSession,
     authority: NodeOperationAuthority,
 ) -> AttemptCheckpointModel | None:
-    return cast(
-        AttemptCheckpointModel | None,
-        await session.scalar(
-            select(AttemptCheckpointModel)
-            .where(
-                AttemptCheckpointModel.task_id == authority.task_id,
-                AttemptCheckpointModel.assignment_id == authority.assignment_id,
-                AttemptCheckpointModel.attempt_id == authority.attempt_id,
-                AttemptCheckpointModel.authoring_dispatch_id == authority.dispatch_id,
-            )
-            .order_by(AttemptCheckpointModel.recorded_at.desc())
-            .limit(1)
-        ),
-    )
+    return await read_exact_latest_checkpoint(session, authority)
 
 
 def _validate_boundary_decision(
@@ -296,23 +208,6 @@ def _validate_boundary_decision(
             summary=f"{outcome} requires a current {expected} decision",
             is_retryable=False,
         )
-
-
-def _is_terminal_checkpoint_conflict(exc: IntegrityError) -> bool:
-    original = exc.orig
-    diagnostics = getattr(original, "diag", None)
-    driver_cause = getattr(original, "__cause__", None)
-    constraint_name = (
-        getattr(diagnostics, "constraint_name", None)
-        or getattr(original, "constraint_name", None)
-        or getattr(driver_cause, "constraint_name", None)
-    )
-    if constraint_name == "uq_attempt_checkpoints_one_terminal_per_dispatch":
-        return True
-    return isinstance(original, sqlite3.IntegrityError) and (
-        getattr(original, "sqlite_errorcode", None) == sqlite3.SQLITE_CONSTRAINT_UNIQUE
-        and str(original) == "UNIQUE constraint failed: attempt_checkpoints.authoring_dispatch_id"
-    )
 
 
 __all__ = ["execute_controller_node_operation"]

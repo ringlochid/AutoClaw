@@ -9,6 +9,7 @@ import pytest
 from autoclaw.persistence.models import (
     AssignmentModel,
     AttemptCheckpointModel,
+    AttemptModel,
     DispatchTurnModel,
     FlowNodeModel,
     HumanRequestModel,
@@ -222,10 +223,13 @@ async def test_transaction_b_rechecks_state_changed_after_activity_commit(
 
         async def publish_and_record_terminal_checkpoint(signal: NodeActivitySignal) -> None:
             signals.append(signal)
+            checkpoint_id = "checkpoint.state-race.terminal"
             async with session_factory() as session:
+                attempt = await session.get(AttemptModel, ids.root_attempt_id)
+                assert attempt is not None
                 session.add(
                     AttemptCheckpointModel(
-                        checkpoint_id="checkpoint.state-race.terminal",
+                        checkpoint_id=checkpoint_id,
                         task_id=ids.task_id,
                         flow_id=ids.flow_id,
                         assignment_id=ids.root_assignment_id,
@@ -239,6 +243,7 @@ async def test_transaction_b_rechecks_state_changed_after_activity_commit(
                         recorded_at=utc_now(),
                     )
                 )
+                attempt.latest_checkpoint_id = checkpoint_id
                 await session.commit()
 
         monkeypatch.setattr(
@@ -274,12 +279,15 @@ async def test_transaction_b_rechecks_state_changed_after_activity_commit(
                 select(HumanRequestModel).where(HumanRequestModel.task_id == ids.task_id)
             )
             dispatch = await session.get(DispatchTurnModel, ids.current_dispatch_id)
+            attempt = await session.get(AttemptModel, ids.root_attempt_id)
 
         assert error.value.code == OperationFailureCode.ILLEGAL_STATE
         assert error.value.is_retryable is False
         assert request is None
         assert dispatch is not None and dispatch.status == "open"
         assert dispatch.node_activity_revision == 1
+        assert attempt is not None
+        assert attempt.latest_checkpoint_id == "checkpoint.state-race.terminal"
         assert [signal.activity_revision for signal in signals] == [1]
 
 
@@ -460,9 +468,19 @@ async def test_assign_child_stages_one_direct_child_without_closing_source(
     ):
         async with session_factory() as session:
             child = await session.get(FlowNodeModel, ids.child_node_id)
-            assert child is not None
+            policy_revision = await session.get(
+                PolicyRevisionModel,
+                "policy-revision.target.1",
+            )
+            assert child is not None and policy_revision is not None
             child.current_assignment_id = None
             child.state = "ready"
+            policy_revision.content_json = {
+                "id": "policy.target",
+                "description": "Target policy with a child retry budget.",
+                "applies_to": ["root", "parent", "worker"],
+                "budget_spec": {"retry_limit": 4},
+            }
             await session.commit()
 
         result = await executor.execute(
@@ -487,7 +505,16 @@ async def test_assign_child_stages_one_direct_child_without_closing_source(
                     AssignmentModel.assignment_key == result.model_dump()["target_assignment_key"]
                 )
             )
+            staged_attempt = await session.get(
+                AttemptModel,
+                result.model_dump()["target_attempt_id"],
+            )
         assert dispatch is not None and dispatch.status == "open"
         assert child is not None and staged_assignment is not None
         assert child.current_assignment_id == staged_assignment.assignment_id
         assert staged_assignment.parent_assignment_id == ids.root_assignment_id
+        assert staged_assignment.child_assignment_limit is None
+        assert staged_assignment.child_assignments_remaining is None
+        assert staged_assignment.retry_limit == 4
+        assert staged_assignment.retries_remaining == 4
+        assert staged_attempt is not None and staged_attempt.latest_checkpoint_id is None

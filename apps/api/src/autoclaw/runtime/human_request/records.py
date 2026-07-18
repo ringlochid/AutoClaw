@@ -30,8 +30,8 @@ _JSON_OBJECT_ADAPTER = TypeAdapter(dict[str, JsonValue])
 
 def human_request_read_from_model(row: HumanRequestModel) -> HumanRequestRead:
     return HumanRequestRead(
-        request=_pending_human_request_from_model(row),
-        resolution=_human_request_resolution_from_model(row),
+        request=pending_human_request_from_model(row),
+        resolution=human_request_resolution_from_model(row),
     )
 
 
@@ -53,7 +53,7 @@ def validate_answered_item_responses(
         _validate_answered_item_response(request_items_by_id[item_id], response)
 
 
-def _pending_human_request_from_model(row: HumanRequestModel) -> PendingHumanRequest:
+def pending_human_request_from_model(row: HumanRequestModel) -> PendingHumanRequest:
     default_behavior = None
     if row.default_behavior_json is not None:
         value = row.default_behavior_json.get("value")
@@ -79,7 +79,7 @@ def _pending_human_request_from_model(row: HumanRequestModel) -> PendingHumanReq
     )
 
 
-def _human_request_resolution_from_model(
+def human_request_resolution_from_model(
     row: HumanRequestModel,
 ) -> HumanRequestResolution | None:
     if row.status == HumanRequestStatus.OPEN.value:
@@ -156,5 +156,7 @@ def _coerce_datetime_to_utc(value: datetime) -> datetime:
 
 __all__ = [
     "human_request_read_from_model",
+    "human_request_resolution_from_model",
+    "pending_human_request_from_model",
     "validate_answered_item_responses",
 ]

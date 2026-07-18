@@ -30,6 +30,8 @@ from autoclaw.platform.file_entrypoints import (
 )
 from autoclaw.runtime import NodeKind
 from autoclaw.runtime.contracts import TaskStartResponse
+from autoclaw.runtime.node_operations.follow_on import SupportProjectionPublisher
+from autoclaw.runtime.post_commit import RuntimeEffectPublisher
 
 from ..tool_teaching import (
     AUDIT_ONLY_NOTE,
@@ -151,7 +153,12 @@ def register_definition_tools(server: FastMCP) -> None:
         return result.detail
 
 
-def register_task_start_tool(server: FastMCP) -> None:
+def register_task_start_tool(
+    server: FastMCP,
+    *,
+    runtime_effect_publisher: RuntimeEffectPublisher | None = None,
+    support_projection_publisher: SupportProjectionPublisher | None = None,
+) -> None:
     @server.tool(
         name="start_task",
         title=START_TASK_TEACHING.title,
@@ -160,7 +167,11 @@ def register_task_start_tool(server: FastMCP) -> None:
     )
     async def start_task(task_compose_path: str) -> TaskStartResponse:
         request = task_start_request_from_path(task_compose_path)
-        return await start_task_from_definition(request)
+        return await start_task_from_definition(
+            request,
+            runtime_effect_publisher=runtime_effect_publisher,
+            support_projection_publisher=support_projection_publisher,
+        )
 
 
 async def _search_definitions(

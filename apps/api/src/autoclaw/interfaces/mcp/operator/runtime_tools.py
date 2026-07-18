@@ -5,6 +5,7 @@ from typing import Literal
 from mcp.server.fastmcp import FastMCP
 from pydantic import JsonValue
 
+from autoclaw.persistence.session import get_session_factory
 from autoclaw.persistence.session_operations import (
     read_session_operation,
     write_session_operation,
@@ -42,6 +43,7 @@ from autoclaw.runtime.flow import (
 )
 from autoclaw.runtime.human_request.service import list_human_requests, resolve_human_request
 from autoclaw.runtime.observability import operator_snapshot, operator_trace
+from autoclaw.runtime.post_commit import RuntimeEffectPublisher
 
 from ..tool_teaching import (
     FRESH_REVISION_NOTE,
@@ -329,12 +331,23 @@ def register_runtime_control_tools(server: FastMCP) -> None:
         )
 
 
-def register_runtime_wait_tools(server: FastMCP) -> None:
-    register_human_request_tools(server)
+def register_runtime_wait_tools(
+    server: FastMCP,
+    *,
+    runtime_effect_publisher: RuntimeEffectPublisher | None = None,
+) -> None:
+    register_human_request_tools(
+        server,
+        runtime_effect_publisher=runtime_effect_publisher,
+    )
     register_command_run_tools(server)
 
 
-def register_human_request_tools(server: FastMCP) -> None:
+def register_human_request_tools(
+    server: FastMCP,
+    *,
+    runtime_effect_publisher: RuntimeEffectPublisher | None = None,
+) -> None:
     @server.tool(
         name="get_human_requests",
         title=GET_HUMAN_REQUESTS_TEACHING.title,
@@ -358,16 +371,16 @@ def register_human_request_tools(server: FastMCP) -> None:
         item_responses: dict[str, JsonValue],
     ) -> HumanRequestResolveResponse:
         request = HumanRequestResolveRequest(item_responses=item_responses)
-        return await write_session_operation(
-            lambda session: resolve_human_request(
+        async with get_session_factory()() as session:
+            return await resolve_human_request(
                 session,
                 task_id=task_id,
                 request_id=request_id,
                 request=request,
                 actor_ref=_OPERATOR_MCP_ACTOR_REF,
                 resolved_by_surface=HumanRequestResolutionSurface.OPERATOR_MCP,
+                runtime_effect_publisher=runtime_effect_publisher,
             )
-        )
 
 
 def register_command_run_tools(server: FastMCP) -> None:

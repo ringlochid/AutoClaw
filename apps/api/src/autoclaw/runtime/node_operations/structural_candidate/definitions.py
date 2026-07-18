@@ -87,19 +87,32 @@ async def validate_candidate_definition_references(
             )
         role = _parse_role(node.role_key, role_revision.content_json)
         _require_role_kind(node.role_key, role, node.structural_kind)
-        policy_revision = await session.scalar(
-            select(PolicyRevisionModel).where(
-                PolicyRevisionModel.policy_key == node.policy_key,
-                PolicyRevisionModel.revision_no == node.policy_revision_no,
-            )
+        policy = await resolve_pinned_policy_definition(
+            session,
+            policy_key=node.policy_key,
+            policy_revision_no=node.policy_revision_no,
         )
-        if policy_revision is None:
-            raise _failure(
-                OperationFailureCode.MISSING_RESOURCE,
-                f"missing pinned policy '{node.policy_key}' revision {node.policy_revision_no}",
-            )
-        policy = _parse_policy(node.policy_key, policy_revision.content_json)
         _require_policy_kind(node.policy_key, policy, node.structural_kind)
+
+
+async def resolve_pinned_policy_definition(
+    session: AsyncSession,
+    *,
+    policy_key: str,
+    policy_revision_no: int,
+) -> PolicyDefinitionInput:
+    policy_revision = await session.scalar(
+        select(PolicyRevisionModel).where(
+            PolicyRevisionModel.policy_key == policy_key,
+            PolicyRevisionModel.revision_no == policy_revision_no,
+        )
+    )
+    if policy_revision is None:
+        raise _failure(
+            OperationFailureCode.MISSING_RESOURCE,
+            f"missing pinned policy '{policy_key}' revision {policy_revision_no}",
+        )
+    return _parse_policy(policy_key, policy_revision.content_json)
 
 
 def _parse_role(role_key: str, value: dict[str, object]) -> RoleDefinitionInput:
@@ -159,5 +172,6 @@ def _failure(code: OperationFailureCode, summary: str) -> RuntimeOperationError:
 __all__ = [
     "ResolvedDefinition",
     "resolve_current_node_definitions",
+    "resolve_pinned_policy_definition",
     "validate_candidate_definition_references",
 ]

@@ -159,6 +159,7 @@ async def _add_draft_subtree(
         policy_revision_no=policy.revision_no,
         policy_description=policy.definition.description,
         policy_instruction=policy.definition.instruction,
+        provider=draft.provider,
         description=draft.description,
         node_instruction=draft.instruction,
         local_consumes=normalize_consume_buckets(draft.consumes),
@@ -227,6 +228,7 @@ async def _apply_update(
         )
     nodes[target_key] = replace(
         target,
+        provider=(patch.provider if "provider" in patch.model_fields_set else target.provider),
         description=(
             patch.description
             if "description" in patch.model_fields_set and patch.description is not None
@@ -304,6 +306,7 @@ def _execution_contract(node: StructuralNodeCandidate) -> tuple[object, ...]:
         node.role_revision_no,
         node.policy_key,
         node.policy_revision_no,
+        node.provider,
         node.description,
         node.node_instruction,
         node.consumes,

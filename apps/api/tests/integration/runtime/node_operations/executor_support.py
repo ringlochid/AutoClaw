@@ -10,6 +10,8 @@ import autoclaw.runtime.node_operations.executor as executor_module
 from autoclaw.persistence import RuntimeBase
 from autoclaw.runtime.dispatch.authority import NodeOperationAuthority
 from autoclaw.runtime.node_operations import NodeActivitySignal, NodeOperationExecutor
+from autoclaw.runtime.node_operations.follow_on import SupportProjectionPublisher
+from autoclaw.runtime.post_commit.publisher import RuntimeEffectPublisher
 from sqlalchemy import Engine
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -56,6 +58,8 @@ async def seeded_executor(
     tmp_path: Path,
     *,
     suffix: str,
+    runtime_effect_publisher: RuntimeEffectPublisher | None = None,
+    support_projection_publisher: SupportProjectionPublisher | None = None,
 ) -> AsyncIterator[
     tuple[
         NodeOperationExecutor,
@@ -105,7 +109,11 @@ async def seeded_executor(
             return_value=session_factory,
         ):
             yield (
-                NodeOperationExecutor(publish_activity_signal=publish),
+                NodeOperationExecutor(
+                    publish_activity_signal=publish,
+                    runtime_effect_publisher=runtime_effect_publisher,
+                    support_projection_publisher=support_projection_publisher,
+                ),
                 session_factory,
                 ids,
                 signals,

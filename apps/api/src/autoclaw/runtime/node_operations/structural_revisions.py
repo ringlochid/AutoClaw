@@ -29,6 +29,10 @@ from autoclaw.runtime.ids import (
     node_plan_revision_id,
 )
 from autoclaw.runtime.node_operations.contracts import NodeOperationName
+from autoclaw.runtime.node_operations.follow_on import (
+    CommittedNodeOperationFollowOn,
+    CommittedNodeOperationResult,
+)
 from autoclaw.runtime.node_operations.result_reads import runtime_flow_read
 from autoclaw.runtime.node_operations.structural_candidate.definitions import (
     validate_candidate_definition_references,
@@ -47,6 +51,11 @@ from autoclaw.runtime.node_operations.structural_candidate.mutations import (
 from autoclaw.runtime.node_operations.structural_candidate.validation import (
     build_structural_revision_candidate,
 )
+from autoclaw.runtime.projection.signals import (
+    CriteriaProjection,
+    SupportProjectionSignal,
+    WorkflowManifestProjection,
+)
 
 
 async def adopt_structural_revision(
@@ -54,7 +63,7 @@ async def adopt_structural_revision(
     authority: NodeOperationAuthority,
     operation_name: NodeOperationName,
     request: BaseModel,
-) -> BaseModel:
+) -> CommittedNodeOperationResult:
     _require_expected_revision(authority, request)
     await _require_no_decision(session, authority)
     source_revision, source_rows = await _load_source_revision(session, authority)
@@ -92,6 +101,13 @@ async def adopt_structural_revision(
         authority.flow_id,
         source_revision.revision_index + 1,
     )
+    follow_on = CommittedNodeOperationFollowOn(
+        projection_signals=_build_structural_projection_signals(
+            authority=authority,
+            next_revision_id=next_revision_id,
+            candidate=candidate,
+        ),
+    )
     await _adopt_candidate_head(
         session,
         authority,
@@ -113,13 +129,44 @@ async def adopt_structural_revision(
         candidate=candidate,
     )
     await session.commit()
-    return await _success_result(
+    response = await _success_result(
         session,
         authority,
         operation_name=operation_name,
         cause=cause,
         target_node_key=target_node_key,
         next_revision_id=next_revision_id,
+    )
+    return CommittedNodeOperationResult(response=response, follow_on=follow_on)
+
+
+def _build_structural_projection_signals(
+    *,
+    authority: NodeOperationAuthority,
+    next_revision_id: str,
+    candidate: StructuralRevisionCandidate,
+) -> tuple[SupportProjectionSignal, ...]:
+    criteria_signals: dict[tuple[str, str, int], CriteriaProjection] = {}
+    for node in candidate.nodes:
+        for criterion in node.criteria:
+            if criterion.version is None:
+                raise _failure(
+                    OperationFailureCode.ILLEGAL_STATE,
+                    "adopted structural criteria generation has no version",
+                )
+            key = (criterion.owner_node_key, criterion.slot, criterion.version)
+            criteria_signals[key] = CriteriaProjection(
+                flow_revision_id=next_revision_id,
+                owner_node_key=criterion.owner_node_key,
+                slot=criterion.slot,
+                version=criterion.version,
+            )
+    return (
+        WorkflowManifestProjection(
+            flow_id=authority.flow_id,
+            active_flow_revision_id=next_revision_id,
+        ),
+        *criteria_signals.values(),
     )
 
 
@@ -296,6 +343,7 @@ def _stage_node(
             policy_revision_no=node.policy_revision_no,
             policy_description=node.policy_description,
             policy_instruction=node.policy_instruction,
+            provider_kind=node.provider.kind.value if node.provider is not None else None,
             description=node.description,
             node_instruction=node.node_instruction,
             child_node_keys_json=list(node.child_node_keys),
@@ -322,6 +370,7 @@ def _stage_node(
             policy_revision_no=node.policy_revision_no,
             policy_description=node.policy_description,
             policy_instruction=node.policy_instruction,
+            provider_kind=node.provider.kind.value if node.provider is not None else None,
         )
     )
 

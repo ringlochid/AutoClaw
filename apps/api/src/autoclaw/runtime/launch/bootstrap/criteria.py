@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoclaw.definitions.compiler import NormalizedCompiledNode
 from autoclaw.persistence.models import AssignmentCriteriaRefModel, AssignmentModel
 from autoclaw.runtime.ids import assignment_criteria_ref_id
+from autoclaw.runtime.projection.signals import CriteriaProjection
 from autoclaw.runtime.task_root import criteria_logical_path
 
 
@@ -44,3 +45,30 @@ def stage_assignment_criteria_refs(
                 order_index=index,
             )
         )
+
+
+def build_launch_criteria_projection_signals(
+    *,
+    flow_revision_id: str,
+    nodes: tuple[NormalizedCompiledNode, ...],
+) -> tuple[CriteriaProjection, ...]:
+    """Expose the exact initial criteria generations without writing support files."""
+
+    signals: dict[tuple[str, str], CriteriaProjection] = {}
+    for node in nodes:
+        for criterion in node.criteria:
+            key = (criterion.owner_node_key, criterion.slot)
+            signals[key] = CriteriaProjection(
+                flow_revision_id=flow_revision_id,
+                owner_node_key=criterion.owner_node_key,
+                slot=criterion.slot,
+                version=1,
+            )
+    return tuple(signals.values())
+
+
+__all__ = [
+    "build_launch_criteria_projection_signals",
+    "build_node_criteria_json",
+    "stage_assignment_criteria_refs",
+]

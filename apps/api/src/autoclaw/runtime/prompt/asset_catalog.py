@@ -1,55 +1,60 @@
 from __future__ import annotations
 
-import json
+from enum import StrEnum
 from functools import cache
-from pathlib import Path, PurePosixPath
-from typing import Any
+from importlib.resources import files
+from pathlib import PurePosixPath
 
-from pydantic import BaseModel, ConfigDict
+from autoclaw.runtime.contracts.prompt import PromptFamily
 
-PROMPT_ASSET_CATALOG = "catalog.json"
-PROMPT_ASSET_ROOT = Path(__file__).resolve().parent / "assets"
-
-
-class ExactPromptBlockAsset(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    id: str
-    asset_path: str
-    mirror_doc: str
+ASSET_PACKAGE = "autoclaw.runtime.prompt.assets"
 
 
-@cache
-def load_exact_prompt_block(block_id: str) -> str:
-    asset = get_exact_prompt_block_asset(block_id)
-    asset_path = PROMPT_ASSET_ROOT / Path(*PurePosixPath(asset.asset_path).parts)
-    return asset_path.read_bytes().decode("utf-8")
+class InstructionAsset(StrEnum):
+    AUTHORITY = "shared/authority"
+    CONTEXT_ACCESS = "shared/context-access"
+    CONTROL_TRANSFER = "shared/control-transfer"
+    WORKER = "families/worker"
+    PARENT_ROOT = "families/parent-root"
 
 
-def get_exact_prompt_block_asset(block_id: str) -> ExactPromptBlockAsset:
-    try:
-        return _exact_prompt_block_asset_index()[block_id]
-    except KeyError as exc:
-        raise ValueError(f"unknown exact prompt block `{block_id}`") from exc
-
-
-@cache
-def list_exact_prompt_block_assets() -> tuple[ExactPromptBlockAsset, ...]:
-    payload = _read_prompt_asset_catalog_payload()
-    blocks = payload.get("blocks")
-    if not isinstance(blocks, list):
-        raise ValueError("prompt asset catalog blocks must be a list")
-    return tuple(ExactPromptBlockAsset.model_validate(block) for block in blocks)
-
-
-def _read_prompt_asset_catalog_payload() -> dict[str, Any]:
-    catalog_path = PROMPT_ASSET_ROOT / PROMPT_ASSET_CATALOG
-    payload = json.loads(catalog_path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError("prompt asset catalog must be a mapping")
-    return payload
+INSTRUCTION_ASSETS = (
+    InstructionAsset.AUTHORITY,
+    InstructionAsset.CONTEXT_ACCESS,
+    InstructionAsset.CONTROL_TRANSFER,
+    InstructionAsset.WORKER,
+    InstructionAsset.PARENT_ROOT,
+)
+SHARED_INSTRUCTION_ASSETS = (
+    InstructionAsset.AUTHORITY,
+    InstructionAsset.CONTEXT_ACCESS,
+    InstructionAsset.CONTROL_TRANSFER,
+)
+FAMILY_INSTRUCTION_ASSET = {
+    PromptFamily.WORKER: InstructionAsset.WORKER,
+    PromptFamily.PARENT_ROOT: InstructionAsset.PARENT_ROOT,
+}
 
 
 @cache
-def _exact_prompt_block_asset_index() -> dict[str, ExactPromptBlockAsset]:
-    return {block.id: block for block in list_exact_prompt_block_assets()}
+def load_instruction_asset(asset: InstructionAsset) -> str:
+    path = instruction_asset_path(asset)
+    resource = files(ASSET_PACKAGE).joinpath(*path.parts)
+    return resource.read_bytes().decode("utf-8")
+
+
+def instruction_asset_path(asset: InstructionAsset) -> PurePosixPath:
+    return PurePosixPath("instructions", *asset.value.split("/")).with_suffix(".md")
+
+
+def instruction_assets_for_family(family: PromptFamily) -> tuple[InstructionAsset, ...]:
+    return (*SHARED_INSTRUCTION_ASSETS, FAMILY_INSTRUCTION_ASSET[family])
+
+
+__all__ = [
+    "INSTRUCTION_ASSETS",
+    "InstructionAsset",
+    "instruction_asset_path",
+    "instruction_assets_for_family",
+    "load_instruction_asset",
+]

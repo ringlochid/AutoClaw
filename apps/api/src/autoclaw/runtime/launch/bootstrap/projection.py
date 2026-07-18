@@ -15,6 +15,15 @@ from autoclaw.runtime.contracts import (
     TaskRootPaths,
 )
 from autoclaw.runtime.errors import illegal_state_error, missing_resource_error
+from autoclaw.runtime.ids import assignment_id, flow_id_for_task
+from autoclaw.runtime.launch.bootstrap.criteria import (
+    build_launch_criteria_projection_signals,
+)
+from autoclaw.runtime.projection.signals import (
+    AttemptAssignmentProjection,
+    SupportProjectionSignal,
+    WorkflowManifestProjection,
+)
 from autoclaw.runtime.task_root import criteria_logical_path, resolve_task_root_paths
 
 
@@ -39,6 +48,28 @@ def build_launch_bootstrap_result(
         criteria_descriptions=_criteria_descriptions_by_slot(bootstrap_input.compiled_plan),
     )
     return RuntimeBootstrapResult(paths=task_root_paths, assignment=assignment)
+
+
+def build_launch_support_projection_signals(
+    bootstrap_input: RuntimeBootstrapInput,
+) -> tuple[SupportProjectionSignal, ...]:
+    """Expose post-commit launch projections without coupling launch to the owner."""
+
+    return (
+        WorkflowManifestProjection(
+            flow_id=flow_id_for_task(bootstrap_input.task_id),
+            active_flow_revision_id=bootstrap_input.active_flow_revision_id,
+        ),
+        *build_launch_criteria_projection_signals(
+            flow_revision_id=bootstrap_input.active_flow_revision_id,
+            nodes=bootstrap_input.compiled_plan.nodes,
+        ),
+        AttemptAssignmentProjection(
+            assignment_id=assignment_id(bootstrap_input.assignment_key),
+            attempt_id=bootstrap_input.attempt_id,
+            flow_revision_id=bootstrap_input.active_flow_revision_id,
+        ),
+    )
 
 
 def _compiled_nodes_by_key(
@@ -187,4 +218,4 @@ def _criteria_paths(
     }
 
 
-__all__ = ["build_launch_bootstrap_result"]
+__all__ = ["build_launch_bootstrap_result", "build_launch_support_projection_signals"]

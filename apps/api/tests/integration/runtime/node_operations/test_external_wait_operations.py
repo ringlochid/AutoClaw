@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 from typing import cast
 
@@ -21,11 +22,44 @@ from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.human_request.service import resolve_human_request
 from autoclaw.runtime.node_operations import NodeOperationExecutor, NodeOperationScope
+from autoclaw.runtime.post_commit import (
+    CapturedRuntimeEffectPublisher,
+    HumanRequestTerminal,
+    RuntimeEffectSignal,
+)
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tests.integration.runtime.node_operations.executor_support import seeded_executor
 from tests.integration.runtime_schema_contract.runtime_lineage_fixture import RuntimeIds
+
+
+class _CommittedHumanTerminalPublisher:
+    def __init__(
+        self,
+        *,
+        database_path: Path,
+        request_id: str,
+        should_accept: bool,
+        should_raise: bool,
+    ) -> None:
+        self._database_path = database_path
+        self._request_id = request_id
+        self._should_accept = should_accept
+        self._should_raise = should_raise
+        self.signals: list[RuntimeEffectSignal] = []
+
+    def publish(self, signal: RuntimeEffectSignal) -> bool:
+        with sqlite3.connect(self._database_path) as connection:
+            status = connection.execute(
+                "SELECT status FROM human_requests WHERE request_id = ?",
+                (self._request_id,),
+            ).fetchone()
+        assert status == ("resolved",)
+        self.signals.append(signal)
+        if self._should_raise:
+            raise RuntimeError("human terminal publication unavailable")
+        return self._should_accept
 
 
 async def _open_direction_human_request(
@@ -195,6 +229,49 @@ async def test_human_request_answer_persists_typed_map_and_clears_exact_wait(
         assert event is not None and event.dispatch_id == ids.current_dispatch_id
 
 
+@pytest.mark.parametrize(
+    ("should_accept", "should_raise"),
+    ((False, False), (True, True)),
+)
+async def test_human_request_answer_is_independent_from_terminal_publication(
+    tmp_path: Path,
+    *,
+    should_accept: bool,
+    should_raise: bool,
+) -> None:
+    suffix = f"human-terminal-publish-{should_accept}-{should_raise}"
+    async with seeded_executor(tmp_path, suffix=suffix) as (
+        executor,
+        session_factory,
+        ids,
+        _signals,
+    ):
+        request_id = await _open_direction_human_request(executor, ids)
+        publisher = _CommittedHumanTerminalPublisher(
+            database_path=tmp_path / f"{suffix}.sqlite",
+            request_id=request_id,
+            should_accept=should_accept,
+            should_raise=should_raise,
+        )
+        async with session_factory() as session:
+            response = await resolve_human_request(
+                cast(AsyncSession, session),
+                task_id=ids.task_id,
+                request_id=request_id,
+                request=HumanRequestResolveRequest.model_validate(
+                    {"item_responses": {"direction": "a"}}
+                ),
+                runtime_effect_publisher=publisher,
+            )
+
+        async with session_factory() as session:
+            source = await session.get(HumanRequestModel, request_id)
+
+    assert response.resolution.item_responses == {"direction": "a"}
+    assert source is not None and source.status == "resolved"
+    assert publisher.signals == [HumanRequestTerminal(request_id)]
+
+
 async def test_human_request_answer_uses_exact_wait_when_pointer_is_stale_none(
     tmp_path: Path,
 ) -> None:
@@ -291,6 +368,7 @@ async def test_human_request_answer_rolls_back_when_exact_wait_is_missing(
             await session.commit()
 
         async with session_factory() as session:
+            publisher = CapturedRuntimeEffectPublisher()
             with pytest.raises(RuntimeOperationError) as error:
                 await resolve_human_request(
                     cast(AsyncSession, session),
@@ -299,6 +377,7 @@ async def test_human_request_answer_rolls_back_when_exact_wait_is_missing(
                     request=HumanRequestResolveRequest.model_validate(
                         {"item_responses": {"direction": "a"}}
                     ),
+                    runtime_effect_publisher=publisher,
                 )
 
         async with session_factory() as session:
@@ -314,6 +393,7 @@ async def test_human_request_answer_rolls_back_when_exact_wait_is_missing(
         assert source is not None and source.status == "open"
         assert flow is not None and flow.waiting_source_id == request_id
         assert event is None
+        assert publisher.signals == ()
 
 
 async def test_command_run_start_persists_discriminated_request_without_launching(

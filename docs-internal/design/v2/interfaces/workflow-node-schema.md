@@ -71,6 +71,9 @@ Rules:
 - machine-local config decides how this host reaches `openclaw`, `codex`, or `claude`
 - provider-specific machine settings are resolved into the committed dispatch route rather than authored node fields
 - controller truth records requested and resolved provider provenance without turning local config into authored definition truth
+- active flow nodes and immutable node-plan revisions preserve this optional authored kind so structural adoption and later dispatch opening resolve the same intent
+
+Structural `add_child` accepts the same optional strict provider object on every drafted node. Structural `update_child` distinguishes omission from explicit `null`: omission preserves the current provider selection, a provider object replaces it, and `null` returns the node to configured-default resolution. Adopted revisions preserve that exact authored choice.
 
 ## Non-goals
 

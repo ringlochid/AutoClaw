@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, cast
 
-from fastapi import Header, status
+from fastapi import Header, Request, status
 from fastapi.exceptions import RequestValidationError
 
 from autoclaw.config import get_settings
 from autoclaw.interfaces.http.errors import raise_operation_failure
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
+from autoclaw.runtime.node_operations.follow_on import SupportProjectionPublisher
+from autoclaw.runtime.post_commit import RuntimeEffectPublisher
 
 _CONTROL_ACTOR_REF_HEADER_NAME = "X-AutoClaw-Actor-Ref"
 _CONTROL_ACTOR_REF_MAX_LENGTH = 255
@@ -25,6 +27,20 @@ def read_control_actor_ref(
     normalized_actor_ref = _normalize_optional_header(actor_ref)
     _validate_control_actor_ref_length(normalized_actor_ref)
     return normalized_actor_ref
+
+
+def read_runtime_effect_publisher(request: Request) -> RuntimeEffectPublisher | None:
+    return cast(
+        RuntimeEffectPublisher | None,
+        getattr(request.app.state, "runtime_effect_publisher", None),
+    )
+
+
+def read_support_projection_publisher(request: Request) -> SupportProjectionPublisher | None:
+    return cast(
+        SupportProjectionPublisher | None,
+        getattr(request.app.state, "support_projection_publisher", None),
+    )
 
 
 def _require_exact_api_key(

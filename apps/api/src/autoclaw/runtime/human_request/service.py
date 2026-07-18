@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from datetime import datetime
 from typing import cast
@@ -24,7 +25,10 @@ from autoclaw.runtime.human_request.records import (
     human_request_read_from_model,
     validate_answered_item_responses,
 )
+from autoclaw.runtime.post_commit import HumanRequestTerminal, RuntimeEffectPublisher
 from autoclaw.runtime.task_events import append_task_event
+
+logger = logging.getLogger(__name__)
 
 _RESOLUTION_SUMMARY = "Human answered the controller-owned request."
 _RESOLUTION_POLICY_BASIS = "task_authorized_human_request_resolution"
@@ -63,6 +67,7 @@ async def resolve_human_request(
     resolved_by_surface: HumanRequestResolutionSurface = (
         HumanRequestResolutionSurface.CONTROL_API
     ),
+    runtime_effect_publisher: RuntimeEffectPublisher | None = None,
 ) -> HumanRequestResolveResponse:
     source = await _human_request_for_task(
         session,
@@ -110,7 +115,28 @@ async def resolve_human_request(
             summary="resolved human request is missing committed resolution truth",
             is_retryable=False,
         )
-    return HumanRequestResolveResponse(task_id=task_id, resolution=resolution)
+    response = HumanRequestResolveResponse(task_id=task_id, resolution=resolution)
+    _publish_human_request_terminal(
+        request_id=request_id,
+        runtime_effect_publisher=runtime_effect_publisher,
+    )
+    return response
+
+
+def _publish_human_request_terminal(
+    *,
+    request_id: str,
+    runtime_effect_publisher: RuntimeEffectPublisher | None,
+) -> None:
+    if runtime_effect_publisher is None:
+        return
+    try:
+        runtime_effect_publisher.publish(HumanRequestTerminal(request_id))
+    except Exception:
+        logger.exception(
+            "failed to publish committed human-request terminal hint",
+            extra={"request_id": request_id},
+        )
 
 
 async def _mark_human_request_answered(

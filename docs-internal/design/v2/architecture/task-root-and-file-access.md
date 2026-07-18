@@ -71,7 +71,9 @@ The provider starter reads only the committed refs. It never invokes the rendere
 
 ## Atomic file publication
 
-The implementation must use a same-filesystem staging and replacement strategy for the pair. The exact primitive may be a staging directory followed by atomic renames, but these invariants are fixed:
+The implementation stages both files in one sibling directory, flushes each file, and flushes the staging directory where the platform supports it. It then atomically claims a previously absent prospective dispatch directory, moves both staged files into that owned directory, flushes it, and only then allows the database transaction to reference the pair. The final dispatch directory must not already exist; publication never replaces or removes another candidate's request directory. A partially populated but unreferenced directory may be visible during this preparation window, but it has no controller authority and is removed by the publisher on a known local failure.
+
+These invariants are fixed:
 
 - neither final path is referenced before both staged files are complete;
 - file contents are flushed/closed before the final DB transaction;
@@ -83,15 +85,32 @@ The database transaction remains the authority handoff. Filesystem atomicity alo
 
 ## Support and observability projections
 
-Workflow manifests, assignment/checkpoint readbacks, artifact indexes, and other operator support files may be refreshed after their owning controller transaction by a separate `SupportProjectionOwner`.
+Workflow manifests, criteria files, assignment/checkpoint readbacks, artifact indexes, transient indexes, and other operator support files may be refreshed after their owning controller transaction by a separate `SupportProjectionOwner`.
+
+The workflow manifest is a structural description of one active flow revision. It does not contain live current-dispatch, current-assignment, wait, provider-start, activity, pause, or other controller authority. Those facts are read directly from controller rows.
+
+The exact support signal family is source-specific:
+
+```text
+WorkflowManifestProjection(flow_id, active_flow_revision_id)
+CriteriaProjection(flow_revision_id, owner_node_key, slot, version)
+AttemptAssignmentProjection(assignment_id, attempt_id, flow_revision_id)
+LatestCheckpointProjection(attempt_id, checkpoint_id)
+ArtifactProjection(artifact_publication_id, version)
+TransientProjection(transient_localization_id)
+```
+
+The tuple carried by each signal is its generation. No generic task projection revision, projection-status table, desired/applied generation table, or task-wide reconcile key is added for this phase. Health and the last sanitized failure are process-local operational state. Durable source rows remain sufficient to reconstruct every desired projection after restart.
 
 Support projection rules:
 
 - projection signals carry exact source/revision identity;
 - projection handlers reread committed controller truth;
-- failures are visible and retriable within the projection domain;
+- failures are visible in process-local health and retriable within the projection domain;
 - a missing support file does not reopen, close, or block a dispatch; and
 - provider start never waits for a support projection unless the file is one of the two canonical request files, in which case it is request materialization rather than support projection.
+
+Startup audit pages every durable source family and republishes the exact variants above. Rewriting an already-current projection is an accepted idempotent operation. The audit does not infer desired state from filesystem scans, and there is no periodic projection polling after readiness.
 
 ## Task-relative Node MCP reads
 
@@ -140,6 +159,20 @@ Provider-native access, network, managed Node MCP, command runs, and human reque
 
 Workers publish declared artifacts through the checkpoint/boundary contract. The controller validates declared slots and copies/versions accepted bodies into `outputs/artifacts/`.
 
+Artifact claims name a logical task-relative source path. The source must resolve through the shared task-root resolver to a contained regular file; special files and escaped symlinks are rejected. The provider must finish writing before publication. The copy records the initial descriptor metadata and rejects a source whose size or modification time changes before the copy completes.
+
+The checkpoint operation mints the checkpoint, publication, and localization IDs before file work. Every final artifact body has an immutable, collision-resistant logical path:
+
+```text
+outputs/artifacts/<node_key>/<slot>/<artifact_publication_id><source-suffix>
+```
+
+The numeric artifact version is controller metadata scoped to one assignment and declared slot. It is not used as the filename and does not identify a body by itself.
+
+Publication uses a sibling same-filesystem staging file. After the body is copied, the implementation flushes and file-syncs it, then performs an atomic no-overwrite publish to the unique final path and syncs the containing directory where supported. A platform primitive that can replace an existing destination is not sufficient by itself.
+
+All bodies claimed by one checkpoint are prepared before the final transaction. That short transaction repeats exact task, assignment, attempt, dispatch, declared-slot, and current-pointer predicates; allocates each observed current version plus one; inserts the checkpoint, publications, transients, and association rows; updates every current pointer; and commits the checkpoint as one all-or-none controller change. A conflict in any claimed slot loses the whole checkpoint. Losing or commit-ambiguous candidates create no controller publication history and leave only unique unreferenced bodies for later cleanup.
+
 Artifact indexes are controller projections over accepted publication records. Writing a file directly into `outputs/artifacts/` cannot create an artifact record or satisfy a criterion.
 
 Large bodies remain behind logical refs. Prompt snapshots, checkpoints, task events, and generic readbacks do not duplicate them.
@@ -147,6 +180,8 @@ Large bodies remain behind logical refs. Prompt snapshots, checkpoints, task eve
 ## Transient localization
 
 `tmp/transfers/localized/` holds controller-localized transient inputs needed for the task. Its index records provenance and logical refs. Transient bodies are not automatically durable artifacts and do not become workflow truth.
+
+Active transient bodies use the same prepare-before-commit guarantee and an immutable path keyed by `transient_localization_id`. A committed active localization never points to a missing or partial body. Expiry first commits the inactive retention state; body removal is asynchronous and reference-safe. Cleanup failure may leave excess data, but it cannot erase an active authoritative body.
 
 Cleanup follows the owning task retention policy and never traverses an externally bound workspace path.
 
@@ -159,7 +194,7 @@ Cleanup may remove:
 - expired transient localized bodies; and
 - obsolete support projections that can be regenerated.
 
-Cleanup must first prove that no committed request-ref, artifact, transient, checkpoint, or active task relationship references the path. It is maintenance work, not the dispatch correctness path.
+Cleanup must first prove from a fresh database read that no committed request-ref, artifact, transient, checkpoint, or active task relationship references the path. Staging material may be removed after its bounded operation lifetime. A final candidate created before a losing or commit-ambiguous transaction is retained for at least 24 hours before reference-safe deletion. The implementation never deletes such a final candidate merely because its own commit call raised: the database outcome may be uncertain. Cleanup is maintenance work, not the dispatch correctness path.
 
 ## Secrets and sensitive data
 
@@ -184,6 +219,7 @@ Reset must never recursively delete an external workspace or formerly configured
 ## Required proof
 
 - one committed dispatch has one pair and one refs row;
+- an existing request directory or artifact body is never overwritten;
 - a failed/losing transaction causes no provider call;
 - retry rereads identical bytes without rendering;
 - missing, unreadable, symlink-escaped, or wrong-dispatch refs cause zero provider I/O;
@@ -191,6 +227,7 @@ Reset must never recursively delete an external workspace or formerly configured
 - logical reads reject traversal and symlink escape;
 - provider-native workspace edits remain separate from Node MCP reads;
 - artifact records cannot be forged by filesystem writes; and
+- a multi-body checkpoint is all-or-none in controller truth, and every committed active body ref is complete and readable; and
 - cleanup preserves every committed reference and external workspace.
 
 ## Related

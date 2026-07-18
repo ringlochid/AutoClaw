@@ -81,7 +81,7 @@ format-api: $(PYTHON)
 	cd apps/api && $(RUFF) format .
 
 typecheck-api: $(PYTHON)
-	cd apps/api && MYPYPATH=src $(MYPY) src tests
+	cd apps/api && MYPYPATH=src:../.. $(MYPY) src tests
 
 pyright-api:
 	cd apps/api && npx --yes pyright

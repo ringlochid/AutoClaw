@@ -9,6 +9,9 @@ import pytest
 from autoclaw.main import create_app
 from autoclaw.runtime.node_mcp import DispatchMcpBindingRegistry
 from autoclaw.runtime.node_operations import NodeOperationName
+from autoclaw.runtime.post_commit import RuntimeEffectRouter
+from autoclaw.runtime.projection import SupportProjectionOwner
+from fastapi import FastAPI
 from starlette.routing import Mount
 
 _INITIALIZE_REQUEST = {
@@ -58,21 +61,55 @@ async def _post_initialize(
     )
 
 
-async def test_main_app_mounts_one_managed_and_one_compatibility_node_mcp_app(
+def _install_lifespan_mocks(
     monkeypatch: pytest.MonkeyPatch,
+    app: FastAPI,
+    startup_calls: list[str],
 ) -> None:
-    startup_calls: list[str] = []
-
     async def ensure_schema() -> None:
         startup_calls.append("schema")
+
+    async def cleanup_dispatch_requests(**kwargs: object) -> dict[str, int]:
+        del kwargs
+        startup_calls.append("cleanup")
+        return {}
+
+    async def audit_runtime(**kwargs: object) -> dict[str, object]:
+        del kwargs
+        assert isinstance(app.state.runtime_effect_router, RuntimeEffectRouter)
+        assert app.state.runtime_effect_publisher is app.state.runtime_effect_router
+        startup_calls.append("runtime_audit")
+        return {}
+
+    async def audit_projections(**kwargs: object) -> dict[str, int]:
+        del kwargs
+        assert isinstance(app.state.support_projection_owner, SupportProjectionOwner)
+        assert app.state.support_projection_owner.is_accepting
+        assert app.state.support_projection_publisher is app.state.support_projection_owner
+        startup_calls.append("projection_audit")
+        return {}
 
     async def dispose_engine() -> None:
         startup_calls.append("dispose")
 
     monkeypatch.setattr(main_module, "ensure_database_schema", ensure_schema)
+    monkeypatch.setattr(
+        main_module,
+        "cleanup_aged_dispatch_request_directories",
+        cleanup_dispatch_requests,
+    )
+    monkeypatch.setattr(main_module, "audit_startup_runtime_effects", audit_runtime)
+    monkeypatch.setattr(main_module, "audit_startup_support_projections", audit_projections)
     monkeypatch.setattr(main_module, "dispose_db_engine", dispose_engine)
 
+
+async def test_main_app_mounts_one_managed_and_one_compatibility_node_mcp_app(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    startup_calls: list[str] = []
     app = create_app(should_enable_mcp_mounts=True)
+    _install_lifespan_mocks(monkeypatch, app, startup_calls)
+
     registry = app.state.dispatch_mcp_binding_registry
     assert isinstance(registry, DispatchMcpBindingRegistry)
     issued = registry.issue_binding(
@@ -92,6 +129,9 @@ async def test_main_app_mounts_one_managed_and_one_compatibility_node_mcp_app(
     )
 
     async with app.router.lifespan_context(app):
+        assert startup_calls == ["schema", "cleanup", "runtime_audit", "projection_audit"]
+        assert app.state.runtime_startup_audit == {}
+        assert app.state.support_projection_startup_audit == {}
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app, client=("127.0.0.1", 43125)),
             base_url="http://127.0.0.1",
@@ -113,8 +153,15 @@ async def test_main_app_mounts_one_managed_and_one_compatibility_node_mcp_app(
             assert compatibility.status_code == 200
             assert registry.authenticate(issued.credential) == issued.binding
 
-    assert startup_calls == ["schema", "dispose"]
+    assert startup_calls == [
+        "schema",
+        "cleanup",
+        "runtime_audit",
+        "projection_audit",
+        "dispose",
+    ]
     assert registry.authenticate(issued.credential) is None
+    assert not app.state.support_projection_owner.is_accepting
 
 
 async def test_main_app_openapi_and_http_routes_exclude_private_mcp_and_callback_lanes() -> None:

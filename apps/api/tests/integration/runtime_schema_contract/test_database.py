@@ -40,6 +40,9 @@ def test_exact_source_and_owner_backstops_are_present() -> None:
         "fk_assignments_flow_node_owner",
         "fk_assignments_parent_owner",
     } <= _constraint_names("assignments", ForeignKeyConstraint)
+    assert {"fk_attempts_latest_checkpoint_owner"} <= _constraint_names(
+        "attempts", ForeignKeyConstraint
+    )
     assert {
         "fk_dispatch_turns_assignment_owner",
         "fk_dispatch_turns_assignment_node_owner",
@@ -104,6 +107,17 @@ def test_target_currentness_and_pair_constraints_are_present() -> None:
         assert table.c.policy_key.nullable is False
         assert table.c.policy_revision_no.nullable is False
         assert table.c.policy_description.nullable is False
+        assert table.c.provider_kind.nullable is True
+    assert {
+        "ck_assignments_child_budget",
+        "ck_assignments_retry_budget",
+    } <= _constraint_names("assignments", CheckConstraint)
+    assert {
+        "ck_flow_nodes_provider_kind",
+    } <= _constraint_names("flow_nodes", CheckConstraint)
+    assert {
+        "ck_node_plan_revisions_provider_kind",
+    } <= _constraint_names("node_plan_revisions", CheckConstraint)
     assert ("predecessor_dispatch_id",) in _unique_columns("dispatch_turns")
     assert (
         "dispatch_id",
@@ -120,7 +134,7 @@ def test_target_currentness_and_pair_constraints_are_present() -> None:
     assert ("source_dispatch_id",) in _unique_columns("human_requests")
     assert ("source_dispatch_id",) in _unique_columns("command_runs")
     assert {index.name for index in RuntimeBase.metadata.tables["dispatch_turns"].indexes} >= {
-        "uq_dispatch_turns_one_root_per_flow",
+        "uq_dispatch_turns_one_first_per_flow",
         "uq_dispatch_turns_one_current_per_flow",
     }
 

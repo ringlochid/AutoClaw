@@ -1,0 +1,167 @@
+from __future__ import annotations
+
+from contextlib import AbstractAsyncContextManager
+from pathlib import Path
+from typing import cast
+
+from autoclaw.config import CodexSettings, Settings
+from autoclaw.persistence.models import (
+    DispatchCapabilitySetModel,
+    DispatchPromptRefsModel,
+    DispatchTurnModel,
+    FlowModel,
+    FlowStartSourceModel,
+)
+from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
+from autoclaw.runtime.launch.continuation import open_root_dispatch
+from autoclaw.runtime.launch.persistence.runtime import persist_bootstrap_runtime_from_precomputed
+from autoclaw.runtime.post_commit import (
+    CapturedRuntimeEffectPublisher,
+    DispatchStartDue,
+    FlowStartCommitted,
+)
+from autoclaw.runtime.post_commit.bootstrap import read_dispatch_start_page, read_flow_start_page
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
+from tests.helpers.launch_foundation import (
+    build_launch_foundation_definitions,
+    build_launch_foundation_input,
+    seed_launch_foundation_catalog,
+)
+from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+    SyncSessionAdapter,
+    create_runtime_schema_engine,
+)
+
+
+async def test_root_start_materializes_then_commits_one_starting_dispatch(
+    tmp_path: Path,
+) -> None:
+    engine = create_runtime_schema_engine(tmp_path, name="root-opening.sqlite")
+    role, policy, workflow = build_launch_foundation_definitions()
+    assert workflow.root.provider is not None
+    bootstrap_input = build_launch_foundation_input(
+        tmp_path,
+        role=role,
+        policy=policy,
+        workflow=workflow,
+    )
+    with engine.begin() as connection:
+        seed_launch_foundation_catalog(
+            connection,
+            role=role,
+            policy=policy,
+            workflow=workflow,
+        )
+    publisher = CapturedRuntimeEffectPublisher(should_accept=False)
+    dependencies = DispatchOpeningDependencies.create(
+        settings=Settings(codex=CodexSettings(enabled=True)),
+        available_adapter_kinds={workflow.root.provider.kind},
+        post_commit_publisher=publisher,
+    )
+    sync_factory = sessionmaker(engine, expire_on_commit=False, autoflush=False)
+
+    def session_context() -> AbstractAsyncContextManager[AsyncSession]:
+        return cast(AbstractAsyncContextManager[AsyncSession], SyncSessionAdapter(sync_factory))
+
+    try:
+        async with SyncSessionAdapter(sync_factory) as session:
+            async_session = cast(AsyncSession, session)
+            await persist_bootstrap_runtime_from_precomputed(async_session, bootstrap_input)
+            root_page = await read_flow_start_page(session_context, None, 2)
+
+            first = await open_root_dispatch(
+                async_session,
+                signal=FlowStartCommitted("flow.task.launch-foundation"),
+                dependencies=dependencies,
+            )
+            duplicate = await open_root_dispatch(
+                async_session,
+                signal=FlowStartCommitted("flow.task.launch-foundation"),
+                dependencies=dependencies,
+            )
+
+            assert first.outcome == "opened"
+            assert duplicate.outcome == "skipped"
+            assert await session.scalar(select(func.count()).select_from(DispatchTurnModel)) == 1
+            dispatch = await session.scalar(select(DispatchTurnModel))
+            refs = await session.scalar(select(DispatchPromptRefsModel))
+            capabilities = await session.scalar(select(DispatchCapabilitySetModel))
+            source = await session.scalar(select(FlowStartSourceModel))
+            flow = await session.scalar(select(FlowModel))
+            starting_page = await read_dispatch_start_page(session_context, None, 2)
+    finally:
+        engine.dispose()
+
+    assert dispatch is not None and dispatch.status == "starting"
+    assert dispatch.opened_reason == "root"
+    assert dispatch.provider_selection_basis == "explicit"
+    assert dispatch.provider_start_retry_kind == "initial"
+    assert refs is not None and refs.dynamic_input_version == 1
+    assert capabilities is not None
+    assert capabilities.provider_native_access == "full"
+    assert capabilities.provider_native_access_source == "default"
+    assert source is not None and source.successor_dispatch_id == dispatch.dispatch_id
+    assert flow is not None and flow.current_dispatch_id == dispatch.dispatch_id
+    assert root_page.sources == (FlowStartCommitted("flow.task.launch-foundation"),)
+    assert dispatch.next_provider_start_at is not None
+    assert starting_page.sources == (
+        DispatchStartDue(
+            dispatch.dispatch_id,
+            dispatch.provider_start_revision,
+            dispatch.next_provider_start_at,
+        ),
+    )
+    request_root = tmp_path / "task-root" / refs.input_logical_path
+    request_text = request_root.read_text(encoding="utf-8")
+    assert '"kind": "root_start"' in request_text
+    assert f'"dispatch_id": "{dispatch.dispatch_id}"' in request_text
+    assert publisher.signals == ()
+
+
+async def test_root_start_route_failure_pauses_without_consuming_source(
+    tmp_path: Path,
+) -> None:
+    engine = create_runtime_schema_engine(tmp_path, name="root-route-failure.sqlite")
+    role, policy, workflow = build_launch_foundation_definitions()
+    assert workflow.root.provider is not None
+    bootstrap_input = build_launch_foundation_input(
+        tmp_path,
+        role=role,
+        policy=policy,
+        workflow=workflow,
+    )
+    with engine.begin() as connection:
+        seed_launch_foundation_catalog(
+            connection,
+            role=role,
+            policy=policy,
+            workflow=workflow,
+        )
+    dependencies = DispatchOpeningDependencies.create(
+        settings=Settings(),
+        available_adapter_kinds={workflow.root.provider.kind},
+        post_commit_publisher=CapturedRuntimeEffectPublisher(),
+    )
+    sync_factory = sessionmaker(engine, expire_on_commit=False, autoflush=False)
+    try:
+        async with SyncSessionAdapter(sync_factory) as session:
+            async_session = cast(AsyncSession, session)
+            await persist_bootstrap_runtime_from_precomputed(async_session, bootstrap_input)
+            result = await open_root_dispatch(
+                async_session,
+                signal=FlowStartCommitted("flow.task.launch-foundation"),
+                dependencies=dependencies,
+            )
+            count = await session.scalar(select(func.count()).select_from(DispatchTurnModel))
+            source = await session.scalar(select(FlowStartSourceModel))
+            flow = await session.scalar(select(FlowModel))
+    finally:
+        engine.dispose()
+
+    assert result.outcome == "paused"
+    assert count == 0
+    assert source is not None and source.successor_dispatch_id is None
+    assert flow is not None and flow.status == "paused"
+    assert flow.pause_reason == "runtime_transition_failed"

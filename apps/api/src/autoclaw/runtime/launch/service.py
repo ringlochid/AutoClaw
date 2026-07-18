@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.definitions.registry import compile_current_workflow_launch_snapshot
@@ -14,13 +16,23 @@ from autoclaw.runtime.ids import (
     flow_id_for_task,
     flow_revision_id,
 )
+from autoclaw.runtime.launch.bootstrap import build_launch_support_projection_signals
 from autoclaw.runtime.launch.persistence.runtime import persist_bootstrap_runtime_from_precomputed
+from autoclaw.runtime.projection.signals import SupportProjectionSignal
+
+
+@dataclass(frozen=True, slots=True)
+class StagedRuntimeLaunch:
+    """Controller rows and exact support hints staged by one task launch."""
+
+    bootstrap: RuntimeBootstrapResult
+    support_projection_signals: tuple[SupportProjectionSignal, ...]
 
 
 async def launch_task_runtime(
     session: AsyncSession,
     launch_input: RuntimeLaunchInput,
-) -> RuntimeBootstrapResult:
+) -> StagedRuntimeLaunch:
     """Stage task, flow, assignment, attempt, and durable root-source truth."""
 
     snapshot = await compile_current_workflow_launch_snapshot(
@@ -40,11 +52,15 @@ async def launch_task_runtime(
         compiled_plan=snapshot.compiled_plan,
         role_policy_lookup=snapshot.role_policy_lookup,
     )
-    return await persist_bootstrap_runtime_from_precomputed(
+    bootstrap = await persist_bootstrap_runtime_from_precomputed(
         session,
         bootstrap_input,
         should_commit=False,
     )
+    return StagedRuntimeLaunch(
+        bootstrap=bootstrap,
+        support_projection_signals=build_launch_support_projection_signals(bootstrap_input),
+    )
 
 
-__all__ = ["launch_task_runtime"]
+__all__ = ["StagedRuntimeLaunch", "launch_task_runtime"]

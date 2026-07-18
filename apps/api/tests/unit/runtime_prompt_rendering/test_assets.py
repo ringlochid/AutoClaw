@@ -1,96 +1,69 @@
 from __future__ import annotations
 
-import importlib
-import re
-from collections.abc import Callable
-from pathlib import Path
-from typing import Any, Protocol, cast
-
-import pytest
-
-REPO_ROOT = Path(__file__).resolve().parents[5]
-PROMPT_LAYER_ROOT = REPO_ROOT / "docs-internal" / "design" / "v1" / "prompt-layer"
-PROMPT_ASSET_ROOT = cast(
-    Path,
-    cast(Any, importlib.import_module("autoclaw.runtime.prompt.asset_catalog")).PROMPT_ASSET_ROOT,
+from autoclaw.runtime.contracts.prompt import PromptFamily, PromptInstructionGuidance
+from autoclaw.runtime.prompt import (
+    INSTRUCTION_ASSETS,
+    InstructionAsset,
+    instruction_asset_path,
+    instruction_assets_for_family,
+    load_instruction_asset,
+    render_request_instructions,
 )
 
 
-class ExactPromptBlockAssetLike(Protocol):
-    id: str
-    asset_path: str
-    mirror_doc: str
+def test_exactly_five_instruction_assets_are_packaged() -> None:
+    assert tuple(instruction_asset_path(asset).as_posix() for asset in INSTRUCTION_ASSETS) == (
+        "instructions/shared/authority.md",
+        "instructions/shared/context-access.md",
+        "instructions/shared/control-transfer.md",
+        "instructions/families/worker.md",
+        "instructions/families/parent-root.md",
+    )
+    assert all(load_instruction_asset(asset).strip() for asset in INSTRUCTION_ASSETS)
 
 
-GetExactPromptBlockAsset = Callable[[str], ExactPromptBlockAssetLike]
-ListExactPromptBlockAssets = Callable[[], tuple[ExactPromptBlockAssetLike, ...]]
-LoadExactPromptBlock = Callable[[str], str]
-
-
-def _load_asset_catalog_functions() -> tuple[
-    ListExactPromptBlockAssets,
-    GetExactPromptBlockAsset,
-    LoadExactPromptBlock,
-]:
-    module = cast(Any, importlib.import_module("autoclaw.runtime.prompt"))
-    return (
-        cast(ListExactPromptBlockAssets, module.list_exact_prompt_block_assets),
-        cast(GetExactPromptBlockAsset, module.get_exact_prompt_block_asset),
-        cast(LoadExactPromptBlock, module.load_exact_prompt_block),
+def test_family_assets_follow_shared_then_family_order() -> None:
+    assert instruction_assets_for_family(PromptFamily.WORKER) == (
+        InstructionAsset.AUTHORITY,
+        InstructionAsset.CONTEXT_ACCESS,
+        InstructionAsset.CONTROL_TRANSFER,
+        InstructionAsset.WORKER,
+    )
+    assert (
+        instruction_assets_for_family(PromptFamily.PARENT_ROOT)[-1] == InstructionAsset.PARENT_ROOT
     )
 
 
-list_exact_prompt_block_assets, get_exact_prompt_block_asset, load_exact_prompt_block = (
-    _load_asset_catalog_functions()
-)
+def test_worker_asset_does_not_teach_parent_root_operations() -> None:
+    worker = load_instruction_asset(InstructionAsset.WORKER)
+
+    assert "assign_child" not in worker
+    assert "add_child" not in worker
+    assert "update_child" not in worker
+    assert "remove_child" not in worker
 
 
-def extract_exact_block_text_from_mirror_doc(path: Path, block_id: str) -> str:
-    heading = f"## `{block_id}`"
-    mirror_text = path.read_text(encoding="utf-8")
-    if heading not in mirror_text:
-        raise ValueError(f"missing exact block heading {block_id} in {path}")
-    code_block_match = re.search(
-        r"```text\r?\n(.*?)^```",
-        mirror_text.split(heading, maxsplit=1)[1],
-        re.MULTILINE | re.DOTALL,
+def test_parent_root_asset_teaches_structural_operations() -> None:
+    parent_root = load_instruction_asset(InstructionAsset.PARENT_ROOT)
+
+    assert "assign_child" in parent_root
+    assert "add_child" in parent_root
+    assert "update_child" in parent_root
+    assert "remove_child" in parent_root
+
+
+def test_resolved_guidance_follows_the_family_asset() -> None:
+    rendered = render_request_instructions(
+        family=PromptFamily.WORKER,
+        guidance=PromptInstructionGuidance(
+            workflow=("WORKFLOW MARKER",),
+            role=("ROLE MARKER",),
+            node=("NODE MARKER",),
+            policy=("POLICY MARKER",),
+        ),
     )
-    if code_block_match is None:
-        raise ValueError(f"missing exact block code fence {block_id} in {path}")
-    return code_block_match.group(1)
 
-
-@pytest.mark.parametrize(
-    "asset",
-    list_exact_prompt_block_assets(),
-    ids=lambda asset: asset.id,
-)
-def test_load_exact_prompt_block_matches_packaged_asset_bytes(
-    asset: ExactPromptBlockAssetLike,
-) -> None:
-    expected_text = (PROMPT_ASSET_ROOT / asset.asset_path).read_bytes().decode("utf-8")
-
-    assert load_exact_prompt_block(asset.id) == expected_text
-
-
-def test_load_exact_prompt_block_preserves_trailing_newline() -> None:
-    asset = get_exact_prompt_block_asset("autoclaw_system_block_v1")
-
-    assert load_exact_prompt_block(asset.id).endswith("\n")
-
-
-@pytest.mark.parametrize(
-    "asset",
-    list_exact_prompt_block_assets(),
-    ids=lambda asset: asset.id,
-)
-def test_exact_prompt_block_mirror_matches_asset_bytes(
-    asset: ExactPromptBlockAssetLike,
-) -> None:
-    mirror_text = extract_exact_block_text_from_mirror_doc(
-        PROMPT_LAYER_ROOT / asset.mirror_doc,
-        asset.id,
-    )
-    expected_text = (PROMPT_ASSET_ROOT / asset.asset_path).read_bytes().decode("utf-8")
-
-    assert mirror_text == expected_text
+    assert rendered.index("# Worker operating policy") < rendered.index("# Workflow guidance")
+    assert rendered.index("WORKFLOW MARKER") < rendered.index("ROLE MARKER")
+    assert rendered.index("ROLE MARKER") < rendered.index("NODE MARKER")
+    assert rendered.index("NODE MARKER") < rendered.index("POLICY MARKER")

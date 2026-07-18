@@ -9,6 +9,7 @@ from autoclaw.persistence.models import (
     AttemptModel,
     DispatchTurnModel,
     FlowModel,
+    FlowNodeModel,
 )
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
@@ -22,6 +23,8 @@ from autoclaw.runtime.node_operations import (
     NodeOperationScope,
     get_node_operation_descriptor,
 )
+from autoclaw.runtime.post_commit.publisher import CapturedRuntimeEffectPublisher
+from autoclaw.runtime.post_commit.signals import BoundaryAccepted
 from pydantic import ValidationError
 from sqlalchemy import select
 from tests.integration.runtime.node_operations.executor_support import seeded_executor
@@ -121,7 +124,12 @@ def test_checkpoint_and_assignment_schemas_reject_removed_task_memory_hints() ->
 async def test_return_blocked_boundary_closes_exact_source_after_prerequisites(
     tmp_path: Path,
 ) -> None:
-    async with seeded_executor(tmp_path, suffix="boundary") as (
+    publisher = CapturedRuntimeEffectPublisher()
+    async with seeded_executor(
+        tmp_path,
+        suffix="boundary",
+        runtime_effect_publisher=publisher,
+    ) as (
         executor,
         session_factory,
         ids,
@@ -178,6 +186,7 @@ async def test_return_blocked_boundary_closes_exact_source_after_prerequisites(
             dispatch = await session.get(DispatchTurnModel, ids.current_dispatch_id)
             root_attempt = await session.get(AttemptModel, ids.root_attempt_id)
             flow = await session.get(FlowModel, ids.flow_id)
+            root_node = await session.get(FlowNodeModel, ids.root_node_id)
 
         assert result.model_dump()["accepted_boundary"] == "blocked"
         assert accepted is not None
@@ -189,7 +198,11 @@ async def test_return_blocked_boundary_closes_exact_source_after_prerequisites(
         assert root_attempt is not None and root_attempt.status == "completed"
         assert root_attempt.terminal_outcome == "blocked"
         assert flow is not None and flow.current_dispatch_id is None
+        assert flow.status == "completed"
+        assert flow.terminal_outcome == "blocked"
+        assert root_node is not None and root_node.state == "failed"
         assert [signal.activity_revision for signal in signals] == [1, 2, 3]
+        assert publisher.signals == (BoundaryAccepted(ids.current_dispatch_id),)
 
 
 async def test_return_boundary_rejects_missing_current_checkpoint_without_closure(

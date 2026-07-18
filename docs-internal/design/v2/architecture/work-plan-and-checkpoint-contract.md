@@ -147,7 +147,9 @@ Human-request and command-run continuation preserve the plan and render the exac
 
 ## Persistence and events
 
-The database owns current plan and checkpoint truth. Generated `latest-checkpoint` files are readable projections only.
+The database owns current plan and checkpoint truth. Every successful checkpoint transaction updates the attempt's exact `latest_checkpoint_id` pointer with the checkpoint, publication, localization, association, and current-artifact-pointer rows in one all-or-none change. Selection never depends on a maximum timestamp or filename. Generated `latest-checkpoint` files are readable projections only.
+
+Correctness-critical artifact and active transient bodies are published completely before that final transaction under the task-root publication protocol. A body-copy failure commits no checkpoint. A version/currentness conflict loses the entire checkpoint transaction rather than committing a partial set of claimed bodies. Unreferenced unique candidates are cleanup inputs, never evidence.
 
 Plan replacement may emit a bounded committed `work_plan_set` or `work_plan_cleared` event. Checkpoint commit emits its owned checkpoint event. Events provide chronology; they do not become current-plan or checkpoint authority.
 
@@ -181,6 +183,8 @@ The target does not include:
 - plan state survives same-assignment continuation and watchdog replacement;
 - plan completion cannot satisfy a boundary;
 - checkpoint and boundary identity cannot be mixed across dispatches or attempts;
+- one checkpoint cannot commit only a subset of its artifact or transient claims;
+- every committed active body ref resolves to a completely published immutable body; and
 - admitted plan reads/writes refresh Node activity once; and
 - plan/checkpoint rows and events expose no provider or binding credentials.
 

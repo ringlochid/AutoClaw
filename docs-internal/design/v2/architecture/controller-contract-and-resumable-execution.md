@@ -132,10 +132,12 @@ The service requires:
 - paused nonterminal flow;
 - caller's exact observed `control_revision`;
 - no unresolved active human or command source;
-- one exact terminal continuation source or lawful lineage tail without successor; and
+- one exact unconsumed flow-start or terminal continuation source, or one lawful lineage tail without successor; and
 - a supported pause reason and provider route.
 
 It materializes the prospective D2 request pair, then one final transaction rechecks those predicates, moves the flow to `running`, and creates D2 plus refs. The call returns after commit without waiting for provider start.
+
+Continuing a retained pre-root `FlowStartSource` creates the first dispatch with no predecessor, keeps the exact flow-start link, and records `opened_reason = operator_continue`. It never invents a placeholder D1.
 
 Concurrent continue/cancel or continue/watchdog attempts converge through flow status, control revision, current dispatch, source consumption, and one-successor constraints.
 

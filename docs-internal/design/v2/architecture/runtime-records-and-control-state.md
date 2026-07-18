@@ -38,7 +38,20 @@ flow:
 
 ## Assignment and attempt
 
-Assignments own declared work, role, criteria, consume/produce slots, parent/child relationships, and the optional current work plan. Attempts own semantic execution tries for an assignment.
+Each active flow node and immutable node-plan revision preserves the optional authored provider kind from its compiled workflow node. Structural add/update adoption preserves the same field. A missing provider kind means configured-default resolution at successor preparation time; it is not filled with a fallback or copied from a predecessor dispatch.
+
+Assignments own declared work, role, criteria, consume/produce slots, parent/child relationships, assignment-scoped child/retry budget, and the optional current work plan. Attempts own semantic execution tries for an assignment.
+
+The assignment snapshots the applicable pinned policy limit when it is created:
+
+```yaml
+child_assignment_limit: integer | null
+child_assignments_remaining: integer | null
+retry_limit: integer | null
+retries_remaining: integer | null
+```
+
+Null means the budget axis does not apply or is unlimited. A parent/root child assignment decrements `child_assignments_remaining` in the same conditional transaction that creates the staged child assignment. A semantic retry decrements `retries_remaining` in the same conditional transaction that creates the new attempt. A rejected, stale, duplicate, or losing operation consumes nothing. Human/command continuation, watchdog replacement, provider-start retry, restart, and operator continue consume neither budget.
 
 Infrastructure continuation—provider-start retry, human/command continuation, watchdog replacement, process restart, and operator continue—remains on the same assignment and attempt. Only the semantic boundary outcome `retry` creates a new attempt.
 
@@ -62,6 +75,7 @@ dispatch:
   assignment_id: string
   attempt_id: string
   node_key: string
+  flow_start_source_flow_id: string | null
   predecessor_dispatch_id: string | null
   status: starting | open | closed
   opened_reason: root | boundary | child_return | human_result | command_result | watchdog_recovery | semantic_retry | operator_continue
@@ -77,7 +91,9 @@ dispatch:
   closed_reason: boundary | human_request_wait | command_run_wait | watchdog_superseded | paused | cancelled | control_failed | task_terminal | null
 ```
 
-`opened_reason` explains the source family. Exact source identity remains in the owned boundary, human, command, retry, or control row rather than a generic JSON envelope.
+`opened_reason` explains why the turn opened. Exact source identity remains in the owned flow-start, boundary, human, command, retry, or predecessor relationship rather than a generic JSON envelope.
+
+The first dispatch of a flow has no synthetic predecessor and links the exact `FlowStartSource` through `flow_start_source_flow_id`. Its ordinary automatic opening uses `opened_reason = root`; a directly awaited repair of that same retained pre-root source uses `opened_reason = operator_continue`. Every later dispatch has one predecessor and no flow-start-source link.
 
 The target has no fallback chain, so `requested_provider` and `resolved_provider` match. Both remain for provenance together with `provider_selection_basis`. `provider_route` stores only the normalized non-secret variant needed by the chosen adapter; it contains no native config body, credential, binding, or continuity identifier.
 
@@ -252,11 +268,11 @@ Operator continue requires the caller's observed `control_revision`, a paused no
 
 The current work plan is assignment-owned and optional. The assignment stores a monotonic `work_plan_revision`. The setter accepts zero to nine ordered steps; a present snapshot stores one to nine steps plus that revision, optional explanation, authoring dispatch, and commit time. `steps: []` increments the revision only when a current plan exists, then clears the current snapshot.
 
-Checkpoints are immutable assignment/attempt evidence rows with exact authoring dispatch identity, bounded summary/evidence, declared refs, and terminal outcome when required. A plan never substitutes for a checkpoint or boundary.
+Checkpoints are immutable assignment/attempt evidence rows with exact authoring dispatch identity, bounded summary/evidence, declared refs, and terminal outcome when required. Each attempt stores an optional exact `latest_checkpoint_id` pointer updated in the same checkpoint transaction. A plan never substitutes for a checkpoint or boundary.
 
 The exact contract belongs to [Work plan and checkpoint](work-plan-and-checkpoint-contract.md).
 
-Artifact publications are immutable version rows owned by one task, assignment, attempt, checkpoint, declared slot, and logical path. The current pointer references that exact publication. A boundary that relies on a publication reaches it through its checkpoint or immutable decision-basis association; filesystem presence cannot supply the link.
+Artifact publications are immutable version rows owned by one task, assignment, attempt, checkpoint, declared slot, and logical path. Versions are monotonic within one assignment and slot. The current pointer references that exact publication. A boundary that relies on a publication reaches it through its checkpoint or immutable decision-basis association; filesystem presence cannot supply the link.
 
 Transient localizations are separate first-class rows containing task, assignment, attempt, optional checkpoint, logical source provenance, localized logical path, description, retention status, and timestamps. A transient row never receives an artifact version/current pointer and never becomes durable merely because a checkpoint references it. Checkpoint-to-transient association rows preserve the exact surfaced set.
 
@@ -272,7 +288,7 @@ Exhaustion stores the pause/control transition and closes D1 without a successor
 
 Database-enforced backstops must work in both supported SQLite and PostgreSQL lanes:
 
-- unique root per flow where `predecessor_dispatch_id IS NULL`;
+- unique first dispatch per flow where `predecessor_dispatch_id IS NULL`;
 - unique non-null predecessor dispatch ID;
 - partial unique current dispatch per flow where status is `starting` or `open`;
 - one prompt-ref row per dispatch;
@@ -284,6 +300,8 @@ Database-enforced backstops must work in both supported SQLite and PostgreSQL la
 - exactly one of human-request ID or command-run ID on a present flow wait;
 - immutable source-dispatch lineage on human requests and command runs;
 - one current work-plan snapshot per assignment, ordered step indexes `0..8`, and at most one `in_progress` step;
+- non-negative assignment budget limits and remaining values, with each remaining value bounded by its present limit;
+- an attempt's latest-checkpoint pointer bound to the same task, flow, assignment, and attempt;
 - artifact publication ownership through an exact checkpoint and versioned current pointer;
 - typed transient provenance and checkpoint association without an artifact pointer;
 - non-negative activity, provider-start, plan, ownership, and control revisions; and

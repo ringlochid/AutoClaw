@@ -10,6 +10,8 @@ import pytest
 from autoclaw.config import get_settings
 from autoclaw.main import create_app
 from autoclaw.persistence.session import dispose_test_db_engine, get_async_engine
+from autoclaw.runtime.post_commit import RuntimeEffectRouter
+from autoclaw.runtime.projection import SupportProjectionOwner
 from sqlalchemy import inspect
 from sqlalchemy.engine import make_url
 
@@ -95,6 +97,17 @@ async def test_lifespan_creates_schema_only_for_genuinely_empty_database(
             get_settings.cache_clear()
             app = create_app()
             async with app.router.lifespan_context(app):
+                assert isinstance(app.state.runtime_effect_router, RuntimeEffectRouter)
+                assert isinstance(app.state.support_projection_owner, SupportProjectionOwner)
+                assert app.state.support_projection_owner.is_accepting
+                assert app.state.runtime_effect_router.health.snapshot().is_healthy
+                assert all(
+                    result.discovered_count == 0
+                    for result in app.state.runtime_startup_audit.values()
+                )
+                assert all(
+                    count == 0 for count in app.state.support_projection_startup_audit.values()
+                )
                 engine = get_async_engine()
                 async with engine.connect() as connection:
                     table_names = set(
@@ -102,6 +115,7 @@ async def test_lifespan_creates_schema_only_for_genuinely_empty_database(
                             lambda sync_connection: inspect(sync_connection).get_table_names()
                         )
                     )
+            assert not app.state.support_projection_owner.is_accepting
     finally:
         await dispose_test_db_engine()
 

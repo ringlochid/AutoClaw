@@ -38,9 +38,11 @@ from autoclaw.persistence.models.runtime.common import (
 if TYPE_CHECKING:
     from autoclaw.persistence.models.runtime.assignment.execution import (
         AssignmentModel,
-        AssignmentWorkPlanModel,
         AttemptCheckpointModel,
         AttemptModel,
+    )
+    from autoclaw.persistence.models.runtime.assignment.work_plan import (
+        AssignmentWorkPlanModel,
     )
     from autoclaw.persistence.models.runtime.command_runs import CommandRunModel
     from autoclaw.persistence.models.runtime.dispatch.states import FlowStartSourceModel
@@ -83,10 +85,10 @@ class DispatchTurnModel(RuntimeBase):
             name="ck_dispatch_turns_opened_reason",
         ),
         CheckConstraint(
-            "(opened_reason = 'root' AND predecessor_dispatch_id IS NULL AND "
-            "flow_start_source_flow_id = flow_id) OR "
-            "(opened_reason != 'root' AND predecessor_dispatch_id IS NOT NULL AND "
-            "flow_start_source_flow_id IS NULL)",
+            "(predecessor_dispatch_id IS NULL AND flow_start_source_flow_id = flow_id AND "
+            "opened_reason IN ('root', 'operator_continue')) OR "
+            "(predecessor_dispatch_id IS NOT NULL AND flow_start_source_flow_id IS NULL AND "
+            "opened_reason != 'root')",
             name="ck_dispatch_turns_exact_source_shape",
         ),
         CheckConstraint(
@@ -183,15 +185,8 @@ class DispatchTurnModel(RuntimeBase):
             deferrable=True,
             initially="DEFERRED",
         ),
-        ForeignKeyConstraint(
-            ["flow_start_source_flow_id"],
-            ["flow_start_sources.flow_id"],
-            name="fk_dispatch_turns_flow_start_source",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
         Index(
-            "uq_dispatch_turns_one_root_per_flow",
+            "uq_dispatch_turns_one_first_per_flow",
             "flow_id",
             unique=True,
             sqlite_where=text("predecessor_dispatch_id IS NULL"),
@@ -215,7 +210,16 @@ class DispatchTurnModel(RuntimeBase):
     assignment_id: Mapped[str] = mapped_column(String(255), index=True)
     attempt_id: Mapped[str] = mapped_column(String(255), index=True)
     node_key: Mapped[str] = mapped_column(String(255), index=True)
-    flow_start_source_flow_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    flow_start_source_flow_id: Mapped[str | None] = mapped_column(
+        String(255),
+        ForeignKey(
+            "flow_start_sources.flow_id",
+            name="fk_dispatch_turns_flow_start_source",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
+        nullable=True,
+    )
     predecessor_dispatch_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(64))
     active_status_marker: Mapped[int | None] = mapped_column(

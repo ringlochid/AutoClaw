@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.interfaces.http.dependencies import (
     read_control_actor_ref,
+    read_runtime_effect_publisher,
     require_api_key,
 )
 from autoclaw.interfaces.http.errors import raise_runtime_exception
@@ -49,6 +50,7 @@ from autoclaw.runtime.flow.service import (
 )
 from autoclaw.runtime.human_request.service import list_human_requests, resolve_human_request
 from autoclaw.runtime.observability import operator_snapshot, operator_trace
+from autoclaw.runtime.post_commit import RuntimeEffectPublisher
 from autoclaw.runtime.task_events import (
     decode_task_event_cursor,
     latest_task_event,
@@ -58,6 +60,10 @@ from autoclaw.runtime.task_events import (
 router = APIRouter(prefix="/control", tags=["control"], dependencies=[Depends(require_api_key)])
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 type ControlActorRefDep = Annotated[str | None, Depends(read_control_actor_ref)]
+type RuntimeEffectPublisherDep = Annotated[
+    RuntimeEffectPublisher | None,
+    Depends(read_runtime_effect_publisher),
+]
 type OperatorTraceParams = Annotated[OperatorFlowTraceQuery, Query()]
 type TaskEventListParams = Annotated[TaskEventListQuery, Query()]
 type RuntimeFlowControlParams = Annotated[RuntimeFlowControlQuery, Query()]
@@ -196,17 +202,16 @@ async def resolve_control_human_request(
     resolve_request: HumanRequestResolveRequest,
     session: DBSession,
     actor_ref: ControlActorRefDep,
+    runtime_effect_publisher: RuntimeEffectPublisherDep,
 ) -> HumanRequestResolveResponse:
     try:
-        return await write_session_operation(
-            lambda active_session: resolve_human_request(
-                active_session,
-                task_id=task_id,
-                request_id=request_id,
-                request=resolve_request,
-                actor_ref=actor_ref,
-            ),
-            session=session,
+        return await resolve_human_request(
+            session,
+            task_id=task_id,
+            request_id=request_id,
+            request=resolve_request,
+            actor_ref=actor_ref,
+            runtime_effect_publisher=runtime_effect_publisher,
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)

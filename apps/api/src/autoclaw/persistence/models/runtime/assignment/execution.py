@@ -24,7 +24,6 @@ from autoclaw.persistence.models.runtime.common import (
     ATTEMPT_STATUS_VALUES,
     CHECKPOINT_KIND_VALUES,
     CHECKPOINT_OUTCOME_VALUES,
-    WORK_PLAN_STEP_STATUS_VALUES,
     sql_in,
     utcnow,
 )
@@ -34,6 +33,9 @@ if TYPE_CHECKING:
         ArtifactPublicationModel,
         CheckpointTransientModel,
         TransientLocalizationModel,
+    )
+    from autoclaw.persistence.models.runtime.assignment.work_plan import (
+        AssignmentWorkPlanModel,
     )
     from autoclaw.persistence.models.runtime.dispatch.turns import DispatchTurnModel
     from autoclaw.persistence.models.runtime.flow.graph import FlowNodeModel
@@ -84,6 +86,21 @@ class AssignmentModel(RuntimeBase):
             initially="DEFERRED",
         ),
         CheckConstraint("work_plan_revision >= 0", name="ck_assignments_work_plan_revision"),
+        CheckConstraint(
+            "(child_assignment_limit IS NULL AND child_assignments_remaining IS NULL) OR "
+            "(child_assignment_limit IS NOT NULL AND "
+            "child_assignments_remaining IS NOT NULL AND "
+            "child_assignment_limit >= 0 AND child_assignments_remaining >= 0 AND "
+            "child_assignments_remaining <= child_assignment_limit)",
+            name="ck_assignments_child_budget",
+        ),
+        CheckConstraint(
+            "(retry_limit IS NULL AND retries_remaining IS NULL) OR "
+            "(retry_limit IS NOT NULL AND retries_remaining IS NOT NULL AND "
+            "retry_limit >= 0 AND retries_remaining >= 0 AND "
+            "retries_remaining <= retry_limit)",
+            name="ck_assignments_retry_budget",
+        ),
         Index("ix_assignments_task_node", "task_id", "node_key"),
     )
 
@@ -102,6 +119,10 @@ class AssignmentModel(RuntimeBase):
     produces_json: Mapped[list[dict[str, object]]] = mapped_column(JSON(none_as_null=True))
     current_attempt_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     work_plan_revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    child_assignment_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    child_assignments_remaining: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    retry_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    retries_remaining: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_by_dispatch_id: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
@@ -270,6 +291,25 @@ class AttemptModel(RuntimeBase):
             deferrable=True,
             initially="DEFERRED",
         ),
+        ForeignKeyConstraint(
+            [
+                "task_id",
+                "flow_id",
+                "assignment_id",
+                "attempt_id",
+                "latest_checkpoint_id",
+            ],
+            [
+                "attempt_checkpoints.task_id",
+                "attempt_checkpoints.flow_id",
+                "attempt_checkpoints.assignment_id",
+                "attempt_checkpoints.attempt_id",
+                "attempt_checkpoints.checkpoint_id",
+            ],
+            name="fk_attempts_latest_checkpoint_owner",
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         Index("ix_attempts_task_node", "task_id", "node_key"),
     )
 
@@ -279,6 +319,7 @@ class AttemptModel(RuntimeBase):
     flow_id: Mapped[str] = mapped_column(ForeignKey("flows.flow_id"), index=True)
     node_key: Mapped[str] = mapped_column(String(255), index=True)
     retry_of_attempt_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    latest_checkpoint_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(64), default="running")
     terminal_outcome: Mapped[str | None] = mapped_column(String(64), nullable=True)
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -317,6 +358,19 @@ class AttemptModel(RuntimeBase):
         foreign_keys="[AttemptModel.assignment_id, AttemptModel.retry_of_attempt_id]",
         lazy="raise",
         order_by="AttemptModel.opened_at",
+        viewonly=True,
+    )
+    latest_checkpoint: Mapped[AttemptCheckpointModel | None] = relationship(
+        "AttemptCheckpointModel",
+        foreign_keys=[
+            task_id,
+            flow_id,
+            assignment_id,
+            attempt_id,
+            latest_checkpoint_id,
+        ],
+        lazy="raise",
+        uselist=False,
         viewonly=True,
     )
     checkpoints: Mapped[list[AttemptCheckpointModel]] = relationship(
@@ -495,96 +549,9 @@ class AttemptCheckpointModel(RuntimeBase):
     )
 
 
-class AssignmentWorkPlanModel(RuntimeBase):
-    __tablename__ = "assignment_work_plans"
-    __table_args__ = (
-        UniqueConstraint("assignment_id", "revision"),
-        CheckConstraint("revision >= 1", name="ck_assignment_work_plans_revision"),
-        ForeignKeyConstraint(
-            ["assignment_id", "revision"],
-            ["assignments.assignment_id", "assignments.work_plan_revision"],
-            name="fk_assignment_work_plans_current_revision",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-        ForeignKeyConstraint(
-            ["authoring_dispatch_id", "assignment_id"],
-            ["dispatch_turns.dispatch_id", "dispatch_turns.assignment_id"],
-            name="fk_assignment_work_plans_dispatch_owner",
-            deferrable=True,
-            initially="DEFERRED",
-        ),
-    )
-
-    assignment_id: Mapped[str] = mapped_column(
-        ForeignKey("assignments.assignment_id"), primary_key=True
-    )
-    revision: Mapped[int] = mapped_column(Integer)
-    explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
-    authoring_dispatch_id: Mapped[str] = mapped_column(String(255))
-    committed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    assignment: Mapped[AssignmentModel] = relationship(
-        back_populates="work_plan",
-        primaryjoin=(
-            "and_(AssignmentWorkPlanModel.assignment_id == AssignmentModel.assignment_id, "
-            "AssignmentWorkPlanModel.revision == AssignmentModel.work_plan_revision)"
-        ),
-        foreign_keys=[assignment_id, revision],
-        lazy="raise",
-        viewonly=True,
-    )
-    authoring_dispatch: Mapped[DispatchTurnModel] = relationship(
-        "DispatchTurnModel",
-        back_populates="authored_work_plans",
-        foreign_keys=[authoring_dispatch_id, assignment_id],
-        lazy="raise",
-        viewonly=True,
-    )
-    steps: Mapped[list[AssignmentWorkPlanStepModel]] = relationship(
-        back_populates="work_plan",
-        foreign_keys="AssignmentWorkPlanStepModel.assignment_id",
-        lazy="raise",
-        order_by="AssignmentWorkPlanStepModel.order_index",
-    )
-
-
-class AssignmentWorkPlanStepModel(RuntimeBase):
-    __tablename__ = "assignment_work_plan_steps"
-    __table_args__ = (
-        UniqueConstraint("assignment_id", "order_index"),
-        CheckConstraint("order_index BETWEEN 0 AND 8", name="ck_work_plan_steps_order"),
-        CheckConstraint(
-            f"status IN ({sql_in(WORK_PLAN_STEP_STATUS_VALUES)})",
-            name="ck_work_plan_steps_status",
-        ),
-        Index(
-            "uq_work_plan_steps_one_in_progress",
-            "assignment_id",
-            unique=True,
-            sqlite_where=text("status = 'in_progress'"),
-            postgresql_where=text("status = 'in_progress'"),
-        ),
-    )
-
-    work_plan_step_id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    assignment_id: Mapped[str] = mapped_column(
-        ForeignKey("assignment_work_plans.assignment_id"), index=True
-    )
-    order_index: Mapped[int] = mapped_column(Integer)
-    step: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(64))
-    work_plan: Mapped[AssignmentWorkPlanModel] = relationship(
-        back_populates="steps",
-        foreign_keys=[assignment_id],
-        lazy="raise",
-    )
-
-
 __all__ = [
     "AssignmentCriteriaRefModel",
     "AssignmentModel",
-    "AssignmentWorkPlanModel",
-    "AssignmentWorkPlanStepModel",
     "AttemptCheckpointModel",
     "AttemptModel",
 ]

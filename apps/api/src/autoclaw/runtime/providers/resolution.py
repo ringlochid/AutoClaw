@@ -7,7 +7,13 @@ from urllib.parse import urlsplit
 from pydantic import TypeAdapter, ValidationError, WebsocketUrl
 
 from autoclaw.config import Settings
-from autoclaw.definitions.contracts.workflow import ProviderKind, ProviderSelection
+from autoclaw.definitions.contracts.workflow import (
+    ClaudeProviderSelection,
+    CodexProviderSelection,
+    OpenClawProviderSelection,
+    ProviderKind,
+    ProviderSelection,
+)
 from autoclaw.runtime.contracts.provider_resolution import (
     ClaudeProviderRoute,
     CodexProviderRoute,
@@ -66,6 +72,22 @@ def resolve_provider_route(
         selection_basis=selection_basis,
         route=route,
     )
+
+
+def provider_selection_from_kind(
+    provider_kind: ProviderKind | str | None,
+) -> ProviderSelection | None:
+    """Rebuild the strict authored selection carried by a persisted node."""
+
+    if provider_kind is None:
+        return None
+    match ProviderKind(provider_kind):
+        case ProviderKind.CODEX:
+            return CodexProviderSelection(kind=ProviderKind.CODEX)
+        case ProviderKind.CLAUDE:
+            return ClaudeProviderSelection(kind=ProviderKind.CLAUDE)
+        case ProviderKind.OPENCLAW:
+            return OpenClawProviderSelection(kind=ProviderKind.OPENCLAW)
 
 
 def _select_provider(
@@ -206,5 +228,6 @@ def _validate_openclaw_gateway_url(value: str) -> None:
 __all__ = [
     "ProviderResolutionError",
     "ProviderResolutionErrorCode",
+    "provider_selection_from_kind",
     "resolve_provider_route",
 ]

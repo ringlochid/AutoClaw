@@ -250,6 +250,8 @@ The projection rule applies unchanged to checkpoint, boundary, external-wait, de
 
 `checkpoint`, `boundary`, `request`, and `payload` are semantic fields owned by their strict Pydantic concept contracts; they are not session, callback, or transport envelopes. Managed schemas contain exactly these semantic fields. Compatibility schemas add only full `task_id` and `dispatch_id`. Both forbid additional properties at every owned model boundary. Operation-specific nested fields and success results remain owned by their concept pages and runtime contracts.
 
+`add_child.payload.child` uses the portable node's optional strict `provider` object. `update_child.payload.patch.provider` is tri-state: omitted preserves the current authored selection, an object replaces it, and explicit `null` clears it so the configured default will be resolved for later dispatches. This field never accepts machine-local route details.
+
 For example, managed `open_human_request` contains only the typed request fields, while compatibility `open_human_request` contains `task_id`, `dispatch_id`, and those same request fields. Neither transport projection may reinterpret the human-request transaction or timeout policy.
 
 ## Path normalization and containment

@@ -137,8 +137,8 @@ def test_pyproject_ships_canonical_packages_only() -> None:
         "interfaces/web_console/assets/*",
         "interfaces/web_console/assets/assets/*",
         "platform/managed_services/resources/systemd/*.service",
-        "runtime/prompt/assets/*.json",
-        "runtime/prompt/assets/blocks/*.md",
+        "runtime/prompt/assets/instructions/shared/*.md",
+        "runtime/prompt/assets/instructions/families/*.md",
     ]
 
 

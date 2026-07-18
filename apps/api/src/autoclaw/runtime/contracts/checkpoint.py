@@ -1,4 +1,4 @@
-from pathlib import Path
+import re
 from typing import Annotated, Literal, Self
 
 from pydantic import (
@@ -19,6 +19,8 @@ _CHECKPOINT_NEXT_STEP_MAX_LENGTH = 1_024
 _CHECKPOINT_LIST_ENTRY_MAX_LENGTH = 1_024
 _CHECKPOINT_LIST_MAX_LENGTH = 16
 _VAGUE_TEXT_FINGERPRINTS = frozenset(("", "todo", "tbd"))
+_WINDOWS_DRIVE = re.compile(r"^[A-Za-z]:")
+_CHECKPOINT_SOURCE_ROOTS = frozenset(("workspace", "outputs", "tmp", "_runtime"))
 
 _CheckpointSummaryText = Annotated[
     str,
@@ -76,22 +78,32 @@ class CheckpointHandoffRead(BaseModel):
 
 
 class ProducedArtifactClaim(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     kind: Literal["artifact"] = "artifact"
     slot: RuntimeSchemaText
-    path: Path
+    path: RuntimeSchemaText
+
+    @field_validator("path")
+    @classmethod
+    def normalize_source_path(cls, value: str) -> str:
+        return _normalize_source_path(value)
 
 
 class TransientSurfaceWrite(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
-    path: Path
+    path: RuntimeSchemaText
     description: RuntimeSchemaText
+
+    @field_validator("path")
+    @classmethod
+    def normalize_source_path(cls, value: str) -> str:
+        return _normalize_source_path(value)
 
 
 class CheckpointWriteBody(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     checkpoint_kind: CheckpointKind
     outcome: CheckpointOutcome | None = None
@@ -128,6 +140,19 @@ class CheckpointRead(BaseModel):
 
 def _text_fingerprint(value: str) -> str:
     return "".join(character for character in value.casefold() if character.isalnum())
+
+
+def _normalize_source_path(value: str) -> str:
+    if "\x00" in value or "\\" in value:
+        raise ValueError("checkpoint source path contains a forbidden character")
+    if value.startswith(("/", "//")) or _WINDOWS_DRIVE.match(value):
+        raise ValueError("checkpoint source path must be task-relative")
+    parts = tuple(part for part in value.split("/") if part not in ("", "."))
+    if not parts or ".." in parts:
+        raise ValueError("checkpoint source path must not be empty or traverse upward")
+    if parts[0] not in _CHECKPOINT_SOURCE_ROOTS:
+        raise ValueError("checkpoint source path must use a logical task root")
+    return "/".join(parts)
 
 
 __all__ = [

@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from pydantic import BaseModel
-from sqlalchemy import insert, literal, select, update
+from sqlalchemy import case, insert, literal, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.models import (
@@ -11,6 +11,10 @@ from autoclaw.persistence.models import (
     AssignmentModel,
     AttemptModel,
     FlowNodeModel,
+)
+from autoclaw.runtime.assignment import (
+    AssignmentBudgetSnapshot,
+    snapshot_assignment_budget,
 )
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
@@ -23,12 +27,16 @@ from autoclaw.runtime.dispatch.authority import (
     NodeOperationAuthority,
     exact_node_operation_authority_exists,
 )
-from autoclaw.runtime.errors import RuntimeOperationError
+from autoclaw.runtime.errors import RuntimeOperationError, budget_exhausted_error
 from autoclaw.runtime.launch.bootstrap.criteria import stage_assignment_criteria_refs
 from autoclaw.runtime.node_operations.contracts import (
     AssignChildRequest,
     NodeOperationName,
     ReleaseRequest,
+)
+from autoclaw.runtime.node_operations.follow_on import (
+    CommittedNodeOperationFollowOn,
+    CommittedNodeOperationResult,
 )
 from autoclaw.runtime.node_operations.release import (
     add_release_basis_rows,
@@ -36,6 +44,10 @@ from autoclaw.runtime.node_operations.release import (
     require_release_green_basis,
 )
 from autoclaw.runtime.node_operations.result_reads import runtime_flow_read
+from autoclaw.runtime.node_operations.structural_candidate.definitions import (
+    resolve_pinned_policy_definition,
+)
+from autoclaw.runtime.projection.signals import AttemptAssignmentProjection
 
 
 async def execute_structural_node_operation(
@@ -79,12 +91,24 @@ async def _assign_child(
     session: AsyncSession,
     authority: NodeOperationAuthority,
     request: AssignChildRequest,
-) -> AssignChildSuccess:
+) -> CommittedNodeOperationResult:
     _require_expected_revision(authority, request.expected_structural_revision_id)
     await _require_no_staged_decision(session, authority)
 
     target = await _read_unassigned_direct_child(session, authority, request)
-    assignment, attempt = _build_child_assignment(authority, request, target)
+    pinned_policy = await resolve_pinned_policy_definition(
+        session,
+        policy_key=target.policy_key,
+        policy_revision_no=target.policy_revision_no,
+    )
+    budget = snapshot_assignment_budget(pinned_policy)
+    assignment, attempt = _build_child_assignment(
+        authority,
+        request,
+        target,
+        budget=budget,
+    )
+    await _consume_child_assignment_budget(session, authority)
     await _claim_child_node(session, authority, target, assignment.assignment_id)
 
     session.add_all((assignment, attempt))
@@ -93,7 +117,7 @@ async def _assign_child(
     await session.commit()
 
     flow = await runtime_flow_read(session, authority)
-    return AssignChildSuccess(
+    response = AssignChildSuccess(
         summary="Child assignment staged for a later yield boundary.",
         target_node_key=target.node_key,
         target_assignment_key=assignment.assignment_key,
@@ -101,6 +125,50 @@ async def _assign_child(
         flow=flow,
         workflow_manifest_ref=flow.workflow_manifest_ref,
     )
+    return CommittedNodeOperationResult(
+        response=response,
+        follow_on=CommittedNodeOperationFollowOn(
+            projection_signals=(
+                AttemptAssignmentProjection(
+                    assignment_id=assignment.assignment_id,
+                    attempt_id=attempt.attempt_id,
+                    flow_revision_id=authority.flow_revision_id,
+                ),
+            ),
+        ),
+    )
+
+
+async def _consume_child_assignment_budget(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+) -> None:
+    consumed = await session.scalar(
+        update(AssignmentModel)
+        .where(
+            AssignmentModel.assignment_id == authority.assignment_id,
+            AssignmentModel.task_id == authority.task_id,
+            AssignmentModel.flow_id == authority.flow_id,
+            AssignmentModel.flow_revision_id == authority.flow_revision_id,
+            AssignmentModel.current_attempt_id == authority.attempt_id,
+            AssignmentModel.superseded_at.is_(None),
+            (AssignmentModel.child_assignments_remaining.is_(None))
+            | (AssignmentModel.child_assignments_remaining > 0),
+            exact_node_operation_authority_exists(authority),
+        )
+        .values(
+            child_assignments_remaining=case(
+                (
+                    AssignmentModel.child_assignments_remaining.is_not(None),
+                    AssignmentModel.child_assignments_remaining - 1,
+                ),
+                else_=None,
+            )
+        )
+        .returning(AssignmentModel.assignment_id)
+    )
+    if consumed is None:
+        raise budget_exhausted_error("the current assignment has no child assignments remaining")
 
 
 async def _read_unassigned_direct_child(
@@ -134,6 +202,8 @@ def _build_child_assignment(
     authority: NodeOperationAuthority,
     request: AssignChildRequest,
     target: FlowNodeModel,
+    *,
+    budget: AssignmentBudgetSnapshot,
 ) -> tuple[AssignmentModel, AttemptModel]:
     suffix = uuid4().hex
     assignment_id = f"assignment.{authority.task_id}.{target.node_key}.{suffix}"
@@ -154,6 +224,10 @@ def _build_child_assignment(
         produces_json=_flatten_slots(target.produces_json),
         current_attempt_id=attempt_id,
         work_plan_revision=0,
+        child_assignment_limit=budget.child_assignment_limit,
+        child_assignments_remaining=budget.child_assignments_remaining,
+        retry_limit=budget.retry_limit,
+        retries_remaining=budget.retries_remaining,
         created_by_dispatch_id=authority.dispatch_id,
     )
     attempt = AttemptModel(
@@ -163,6 +237,7 @@ def _build_child_assignment(
         flow_id=authority.flow_id,
         node_key=target.node_key,
         retry_of_attempt_id=None,
+        latest_checkpoint_id=None,
         status="pending",
     )
     return assignment, attempt

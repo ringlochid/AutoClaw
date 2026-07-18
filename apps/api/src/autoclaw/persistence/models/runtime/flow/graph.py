@@ -21,6 +21,7 @@ from autoclaw.persistence.models.runtime.common import (
     FLOW_EDGE_KIND_VALUES,
     NODE_KIND_VALUES,
     NODE_STATE_VALUES,
+    PROVIDER_VALUES,
     sql_in,
 )
 
@@ -41,6 +42,10 @@ class FlowNodeModel(RuntimeBase):
         CheckConstraint(
             f"state IN ({sql_in(NODE_STATE_VALUES)})",
             name="ck_flow_nodes_state",
+        ),
+        CheckConstraint(
+            f"provider_kind IS NULL OR provider_kind IN ({sql_in(PROVIDER_VALUES)})",
+            name="ck_flow_nodes_provider_kind",
         ),
         ForeignKeyConstraint(
             ["flow_id", "flow_revision_id"],
@@ -93,6 +98,7 @@ class FlowNodeModel(RuntimeBase):
     policy_revision_no: Mapped[int] = mapped_column(Integer)
     policy_description: Mapped[str] = mapped_column(Text)
     policy_instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_kind: Mapped[str | None] = mapped_column(String(64), nullable=True)
     description: Mapped[str] = mapped_column(Text)
     node_instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
     child_node_keys_json: Mapped[list[str]] = mapped_column(JSON(none_as_null=True))
@@ -267,6 +273,10 @@ class NodePlanRevisionModel(RuntimeBase):
     __tablename__ = "node_plan_revisions"
     __table_args__ = (
         UniqueConstraint("flow_revision_id", "flow_node_id"),
+        CheckConstraint(
+            f"provider_kind IS NULL OR provider_kind IN ({sql_in(PROVIDER_VALUES)})",
+            name="ck_node_plan_revisions_provider_kind",
+        ),
         ForeignKeyConstraint(
             ["flow_id", "flow_revision_id", "flow_node_id"],
             ["flow_nodes.flow_id", "flow_nodes.flow_revision_id", "flow_nodes.flow_node_id"],
@@ -302,6 +312,7 @@ class NodePlanRevisionModel(RuntimeBase):
     policy_revision_no: Mapped[int] = mapped_column(Integer)
     policy_description: Mapped[str] = mapped_column(Text)
     policy_instruction: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_kind: Mapped[str | None] = mapped_column(String(64), nullable=True)
     flow_revision: Mapped[FlowRevisionModel] = relationship(
         "FlowRevisionModel",
         back_populates="node_plan_revisions",

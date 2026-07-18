@@ -78,6 +78,7 @@ def build_flow_node_row(
         policy_revision_no=node.policy_revision_no,
         policy_description=policy_description,
         policy_instruction=policy_instruction,
+        provider_kind=node.provider.kind.value if node.provider is not None else None,
         description=node.description,
         node_instruction=node.node_instruction,
         child_node_keys_json=list(node.child_node_keys),
@@ -122,6 +123,7 @@ def build_node_plan_revision_row(
         policy_revision_no=node.policy_revision_no,
         policy_description=policy_description,
         policy_instruction=policy_instruction,
+        provider_kind=node.provider.kind.value if node.provider is not None else None,
     )
 
 

@@ -299,6 +299,7 @@ def _normalized_compiler_node(node: StructuralNodeCandidate) -> NormalizedCompil
         role_revision_no=node.role_revision_no,
         policy=node.policy_key,
         policy_revision_no=node.policy_revision_no,
+        provider=node.provider,
         description=node.description,
         node_instruction=node.node_instruction,
         consumes=node.consumes,

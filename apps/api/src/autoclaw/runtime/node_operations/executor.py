@@ -7,6 +7,11 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.persistence.session import get_session_factory
+from autoclaw.runtime.checkpoint import (
+    CheckpointPreparation,
+    plan_checkpoint_preparation,
+    publish_checkpoint_bodies,
+)
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.dispatch.authority import (
@@ -30,13 +35,21 @@ from autoclaw.runtime.node_operations.contracts import (
     NodeOperationName,
     NodeOperationScope,
     OpenHumanRequestRequest,
+    RecordCheckpointRequest,
 )
 from autoclaw.runtime.node_operations.core_handlers import execute_core_node_operation
+from autoclaw.runtime.node_operations.follow_on import (
+    CommittedNodeOperationFollowOn,
+    CommittedNodeOperationResult,
+    SupportProjectionPublisher,
+    committed_node_operation_follow_on,
+)
 from autoclaw.runtime.node_operations.state_legality import (
     node_operation_requires_transition_claim,
     read_node_operation_state_token,
     require_state_legal_node_operation,
 )
+from autoclaw.runtime.post_commit.publisher import RuntimeEffectPublisher
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +59,12 @@ class NodeOperationExecutor:
         self,
         *,
         publish_activity_signal: NodeActivitySignalPublisher | None = None,
+        runtime_effect_publisher: RuntimeEffectPublisher | None = None,
+        support_projection_publisher: SupportProjectionPublisher | None = None,
     ) -> None:
         self._publish_activity_signal = publish_activity_signal
+        self._runtime_effect_publisher = runtime_effect_publisher
+        self._support_projection_publisher = support_projection_publisher
 
     async def list_operations(
         self,
@@ -72,9 +89,17 @@ class NodeOperationExecutor:
         descriptor, request = _resolve_node_operation_request(operation_name, arguments)
         occurred_at = utc_now()
         session_factory = get_session_factory()
+        checkpoint_preparation: CheckpointPreparation | None = None
         async with session_factory() as admission_session:
             authority = await read_node_operation_authority(admission_session, scope)
             _authorize(descriptor, authority, request)
+            if descriptor.name == NodeOperationName.RECORD_CHECKPOINT:
+                assert isinstance(request, RecordCheckpointRequest)
+                checkpoint_preparation = await plan_checkpoint_preparation(
+                    admission_session,
+                    authority,
+                    request,
+                )
             activity = await refresh_node_activity(
                 admission_session,
                 authority,
@@ -90,7 +115,27 @@ class NodeOperationExecutor:
                 occurred_at=activity.occurred_at,
             )
         )
+        if checkpoint_preparation is not None:
+            checkpoint_preparation = await publish_checkpoint_bodies(checkpoint_preparation)
 
+        result, follow_on = await self._commit_node_operation(
+            scope=scope,
+            descriptor=descriptor,
+            request=request,
+            checkpoint_preparation=checkpoint_preparation,
+        )
+        self._publish_follow_on(follow_on)
+        return result
+
+    async def _commit_node_operation(
+        self,
+        *,
+        scope: NodeOperationScope,
+        descriptor: NodeOperationDescriptor,
+        request: BaseModel,
+        checkpoint_preparation: CheckpointPreparation | None,
+    ) -> tuple[BaseModel, CommittedNodeOperationFollowOn]:
+        session_factory = get_session_factory()
         async with session_factory() as operation_session:
             authority = await read_node_operation_authority(operation_session, scope)
             _authorize(descriptor, authority, request)
@@ -122,10 +167,23 @@ class NodeOperationExecutor:
                     authority,
                     descriptor.name,
                     request,
+                    checkpoint_preparation=checkpoint_preparation,
                 )
+            handler_follow_on = CommittedNodeOperationFollowOn()
+            if isinstance(result, CommittedNodeOperationResult):
+                handler_follow_on = result.follow_on
+                result = result.response
             if not isinstance(result, descriptor.success_model):
                 result = descriptor.success_model.model_validate(result)
-            return result
+            derived_follow_on = committed_node_operation_follow_on(
+                operation_name=descriptor.name,
+                authority=authority,
+                request=request,
+                response=result,
+                checkpoint_preparation=checkpoint_preparation,
+            )
+            follow_on = handler_follow_on.combined_with(derived_follow_on)
+            return result, follow_on
 
     async def _publish_activity(self, signal: NodeActivitySignal) -> None:
         if self._publish_activity_signal is None:
@@ -141,6 +199,28 @@ class NodeOperationExecutor:
                     "activity_revision": signal.activity_revision,
                 },
             )
+
+    def _publish_follow_on(self, follow_on: CommittedNodeOperationFollowOn) -> None:
+        if self._runtime_effect_publisher is not None:
+            for runtime_signal in follow_on.runtime_signals:
+                try:
+                    self._runtime_effect_publisher.publish(runtime_signal)
+                except Exception:
+                    logger.exception(
+                        "failed to publish committed Node runtime hint",
+                        extra={"runtime_effect_signal": type(runtime_signal).__name__},
+                    )
+        if self._support_projection_publisher is not None:
+            for projection_signal in follow_on.projection_signals:
+                try:
+                    self._support_projection_publisher.publish(projection_signal)
+                except Exception:
+                    logger.exception(
+                        "failed to publish committed Node support-projection hint",
+                        extra={
+                            "support_projection_signal": type(projection_signal).__name__,
+                        },
+                    )
 
 
 def _resolve_node_operation_request(

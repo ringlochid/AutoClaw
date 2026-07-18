@@ -11,6 +11,7 @@ import autoclaw.runtime.node_operations.executor as executor_module
 from autoclaw.persistence import RuntimeBase
 from autoclaw.runtime.ids import flow_node_id, node_plan_revision_id
 from autoclaw.runtime.node_operations import NodeOperationExecutor, NodeOperationScope
+from autoclaw.runtime.node_operations.follow_on import SupportProjectionPublisher
 from sqlalchemy import Connection, Engine
 from sqlalchemy.orm import Session, sessionmaker
 from tests.integration.runtime_schema_contract.catalog_fixture import seed_catalog
@@ -101,6 +102,7 @@ async def seeded_structural_revision_context(
     tmp_path: Path,
     *,
     suffix: str,
+    support_projection_publisher: SupportProjectionPublisher | None = None,
 ) -> AsyncIterator[StructuralRevisionContext]:
     engine = create_runtime_schema_engine(tmp_path, name=f"structural-{suffix}.sqlite")
     with engine.begin() as connection:
@@ -120,7 +122,9 @@ async def seeded_structural_revision_context(
             return_value=session_factory,
         ):
             yield StructuralRevisionContext(
-                executor=NodeOperationExecutor(),
+                executor=NodeOperationExecutor(
+                    support_projection_publisher=support_projection_publisher,
+                ),
                 session_factory=session_factory,
                 engine=engine,
                 ids=ids,

@@ -2,52 +2,47 @@ from __future__ import annotations
 
 import argparse
 
-from .load import EXAMPLES_PATH, INVENTORY_PATH, load_catalog
-from .render import (
-    render_generated_examples_md,
-    render_inventory_debug,
-    render_inventory_md,
+from scripts.docs.prompt_catalog.render import (
+    PROMPT_CONTRACT_READBACK_PATH,
+    render_prompt_contract_readback,
 )
-from .validation import validate_catalog
+from scripts.docs.prompt_catalog.validation import validate_prompt_contract
 
 
 def generate() -> int:
-    data = load_catalog()
-    errors = validate_catalog(data, skip_inventory_checks=True)
+    errors = validate_prompt_contract(should_check_generated_readback=False)
     if errors:
-        for error in errors:
-            print(f"ERROR: {error}")
+        print_errors(errors)
         return 1
-    INVENTORY_PATH.write_text(render_inventory_md(data), encoding="utf-8")
-    EXAMPLES_PATH.write_text(render_generated_examples_md(data), encoding="utf-8")
+    PROMPT_CONTRACT_READBACK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    PROMPT_CONTRACT_READBACK_PATH.write_text(
+        render_prompt_contract_readback(),
+        encoding="utf-8",
+    )
+    print(f"Generated {PROMPT_CONTRACT_READBACK_PATH}")
     return 0
 
 
 def validate() -> int:
-    data = load_catalog()
-    errors = validate_catalog(data)
+    errors = validate_prompt_contract()
     if errors:
-        for error in errors:
-            print(f"ERROR: {error}")
+        print_errors(errors)
         return 1
-    print("Prompt catalog validation passed.")
+    print("V2 prompt contract validation passed.")
     return 0
 
 
-def inventory() -> int:
-    data = load_catalog()
-    print(render_inventory_debug(data), end="")
-    return 0
+def print_errors(errors: tuple[str, ...]) -> None:
+    for error in errors:
+        print(f"ERROR: {error}")
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["generate", "validate", "inventory"])
+    parser.add_argument("command", choices=("generate", "validate"))
     args = parser.parse_args(argv)
     if args.command == "generate":
         return generate()
-    if args.command == "inventory":
-        return inventory()
     return validate()
 
 

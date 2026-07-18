@@ -94,7 +94,7 @@ async def test_admitted_read_activity_does_not_invalidate_structural_adoption(
                 _add_request(context.ids.flow_revision_id, "activity_safe"),
             )
 
-        assert result.model_dump()["target_node_key"] == "activity_safe"
+        assert result.response.model_dump()["target_node_key"] == "activity_safe"
         assert await _revision_count(context) == 2
 
 

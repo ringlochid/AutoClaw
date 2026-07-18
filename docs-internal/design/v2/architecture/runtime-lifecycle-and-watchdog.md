@@ -51,7 +51,7 @@ FastAPI lifespan
 
 `SupportProjectionOwner` materializes operator/readback projections after commits. Its work cannot make a controller transition eligible and is not the request-file materialization required before D2.
 
-Support projections may reuse the same lifespan, queue, logging, and exact-source utility patterns, but they keep their own source/revision signal family and failure domain. They are not `RuntimeEffectRouter` control routes and cannot open/close a dispatch, clear a wait, start a provider, or refresh watchdog activity.
+Support projections may reuse the same lifespan, queue, logging, and exact-source utility patterns, but they keep their own exact source/generation signal family and process-local health domain. They add no projection authority or status table. They are not `RuntimeEffectRouter` control routes and cannot open/close a dispatch, clear a wait, start a provider, or refresh watchdog activity.
 
 Mounted MCP application lifespan contexts are explicitly entered by the main lifespan. Callers do not manually pair application-level `start()` and `close()` calls.
 
@@ -118,6 +118,8 @@ Handlers do not begin from a task aggregate. They load the exact source first an
 | watchdog due | exact D1, activity revision/deadline, flow current/runnable state, existence of D1-owned human/command source, recovery lineage, and render inputs |
 | dispatch start | exact current D2, provider-start revision/due, committed request refs, resolved provider route, workspace, capability/tool exposure |
 | support projection | exact committed source ID and projection revision plus only the read-model rows that projection owns |
+
+The support variants and generations are frozen by the task-root owner. Startup pages their durable source rows and idempotently republishes every desired projection, including already-present files. It does not scan the filesystem to decide what controller truth ought to exist and does not start a periodic reconcile loop.
 
 Renderer input may require several controller rows, but it is a purpose-built prompt snapshot query, not the broad runtime/task read model used by API or console. Preparatory reads are repeated as exact predicates in the final write whenever they affect legality.
 

@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 
 from autoclaw.config import get_settings
+from autoclaw.runtime.node_operations.follow_on import SupportProjectionPublisher
+from autoclaw.runtime.post_commit import RuntimeEffectPublisher
 
 from ..mcp_operation_failures import ContractFastMCP
 from ..transport import default_transport_security
@@ -47,14 +51,24 @@ OPERATOR_TOOL_NAMES: tuple[str, ...] = (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class OperatorEffectPublishers:
+    """Optional app-owned publication ports used by operator mutations."""
+
+    runtime_effect_publisher: RuntimeEffectPublisher | None = None
+    support_projection_publisher: SupportProjectionPublisher | None = None
+
+
 def create_operator_mcp_app(
     *,
     host: str = "127.0.0.1",
     transport_security: TransportSecuritySettings | None = None,
+    effect_publishers: OperatorEffectPublishers | None = None,
 ) -> Starlette:
     app = create_operator_mcp_server(
         host=host,
         transport_security=transport_security,
+        effect_publishers=effect_publishers,
     ).streamable_http_app()
     add_operator_auth_middleware(
         app,
@@ -67,7 +81,9 @@ def create_operator_mcp_server(
     *,
     host: str = "127.0.0.1",
     transport_security: TransportSecuritySettings | None = None,
+    effect_publishers: OperatorEffectPublishers | None = None,
 ) -> FastMCP:
+    publishers = effect_publishers or OperatorEffectPublishers()
     server = ContractFastMCP(
         "autoclaw-operator",
         instructions=(
@@ -110,10 +126,25 @@ def create_operator_mcp_server(
         transport_security=transport_security or default_transport_security(host=host),
     )
     register_definition_tools(server)
-    register_task_start_tool(server)
+    register_task_start_tool(
+        server,
+        runtime_effect_publisher=publishers.runtime_effect_publisher,
+        support_projection_publisher=publishers.support_projection_publisher,
+    )
     register_runtime_task_tools(server)
     register_operator_read_tools(server)
-    register_runtime_wait_tools(server)
+    register_runtime_wait_tools(
+        server,
+        runtime_effect_publisher=publishers.runtime_effect_publisher,
+    )
     register_runtime_control_tools(server)
     register_observability_ref_tools(server)
     return server
+
+
+__all__ = [
+    "OPERATOR_TOOL_NAMES",
+    "OperatorEffectPublishers",
+    "create_operator_mcp_app",
+    "create_operator_mcp_server",
+]

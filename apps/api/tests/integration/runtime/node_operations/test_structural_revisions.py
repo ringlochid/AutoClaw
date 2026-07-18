@@ -10,6 +10,7 @@ from autoclaw.persistence.models import (
     FlowEdgeModel,
     FlowNodeModel,
     FlowRevisionModel,
+    NodePlanRevisionModel,
 )
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.node_operations import NodeOperationScope
@@ -96,6 +97,73 @@ async def test_add_update_remove_rebuilds_relational_tree_and_exact_edges(
             ("producer", "reviewer", "artifact", "source"),
         )
         assert await _node(context, removed_revision, "qa") is None
+
+
+async def test_structural_revisions_preserve_replace_and_clear_authored_provider(
+    tmp_path: Path,
+) -> None:
+    async with seeded_structural_revision_context(tmp_path, suffix="provider") as context:
+        added = await context.executor.execute(
+            scope=context.scope,
+            operation_name="add_child",
+            arguments={
+                "expected_structural_revision_id": context.ids.flow_revision_id,
+                "payload": {
+                    "target_parent_node_key": "branch",
+                    "child": {
+                        "node_key": "provider_worker",
+                        "role": "role.target",
+                        "policy": "policy.target",
+                        "provider": {"kind": "codex"},
+                        "description": "Worker with an explicit provider.",
+                    },
+                },
+            },
+        )
+        added_revision = added.model_dump()["flow"]["active_flow_revision_id"]
+        await _assert_provider(context, added_revision, "provider_worker", "codex")
+
+        preserved = await context.executor.execute(
+            scope=context.scope,
+            operation_name="update_child",
+            arguments={
+                "expected_structural_revision_id": added_revision,
+                "payload": {
+                    "child_node_key": "provider_worker",
+                    "patch": {"description": "Provider remains explicit."},
+                },
+            },
+        )
+        preserved_revision = preserved.model_dump()["flow"]["active_flow_revision_id"]
+        await _assert_provider(context, preserved_revision, "provider_worker", "codex")
+
+        replaced = await context.executor.execute(
+            scope=context.scope,
+            operation_name="update_child",
+            arguments={
+                "expected_structural_revision_id": preserved_revision,
+                "payload": {
+                    "child_node_key": "provider_worker",
+                    "patch": {"provider": {"kind": "claude"}},
+                },
+            },
+        )
+        replaced_revision = replaced.model_dump()["flow"]["active_flow_revision_id"]
+        await _assert_provider(context, replaced_revision, "provider_worker", "claude")
+
+        cleared = await context.executor.execute(
+            scope=context.scope,
+            operation_name="update_child",
+            arguments={
+                "expected_structural_revision_id": replaced_revision,
+                "payload": {
+                    "child_node_key": "provider_worker",
+                    "patch": {"provider": None},
+                },
+            },
+        )
+        cleared_revision = cleared.model_dump()["flow"]["active_flow_revision_id"]
+        await _assert_provider(context, cleared_revision, "provider_worker", None)
 
 
 @pytest.mark.parametrize(
@@ -448,6 +516,41 @@ async def _node(
                 )
             ),
         )
+
+
+async def _assert_provider(
+    context: StructuralRevisionContext,
+    revision_id: str,
+    node_key: str,
+    expected: str | None,
+) -> None:
+    async with context.session_factory() as session:
+        flow_node = await session.scalar(
+            select(FlowNodeModel).where(
+                FlowNodeModel.flow_revision_id == revision_id,
+                FlowNodeModel.node_key == node_key,
+            )
+        )
+        node_plan = (
+            await session.scalar(
+                select(NodePlanRevisionModel).where(
+                    NodePlanRevisionModel.flow_revision_id == revision_id,
+                    NodePlanRevisionModel.flow_node_id == flow_node.flow_node_id,
+                )
+            )
+            if flow_node is not None
+            else None
+        )
+        revision = await session.get(FlowRevisionModel, revision_id)
+
+    assert flow_node is not None
+    assert flow_node.provider_kind == expected
+    assert node_plan is not None and node_plan.provider_kind == expected
+    assert revision is not None
+    snapshot_nodes = cast(list[dict[str, object]], revision.snapshot_json["nodes"])
+    snapshot = next(node for node in snapshot_nodes if node["node_key"] == node_key)
+    expected_provider = None if expected is None else {"kind": expected}
+    assert snapshot["provider"] == expected_provider
 
 
 async def _child_keys(

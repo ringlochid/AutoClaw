@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
 
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.definitions.contracts.workflow import NodeKind
@@ -16,6 +15,7 @@ from autoclaw.persistence.models import (
     FlowNodeModel,
     HumanRequestModel,
 )
+from autoclaw.runtime.checkpoint import read_exact_latest_checkpoint
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.dispatch.authority import NodeOperationAuthority
 from autoclaw.runtime.errors import RuntimeOperationError, illegal_state_error
@@ -287,28 +287,7 @@ async def _latest_dispatch_checkpoint(
     session: AsyncSession,
     authority: NodeOperationAuthority,
 ) -> AttemptCheckpointModel | None:
-    return cast(
-        AttemptCheckpointModel | None,
-        await session.scalar(
-            select(AttemptCheckpointModel)
-            .where(
-                AttemptCheckpointModel.task_id == authority.task_id,
-                AttemptCheckpointModel.flow_id == authority.flow_id,
-                AttemptCheckpointModel.assignment_id == authority.assignment_id,
-                AttemptCheckpointModel.attempt_id == authority.attempt_id,
-                AttemptCheckpointModel.authoring_dispatch_id == authority.dispatch_id,
-            )
-            .order_by(
-                case(
-                    (AttemptCheckpointModel.checkpoint_kind == "terminal", 1),
-                    else_=0,
-                ).desc(),
-                AttemptCheckpointModel.recorded_at.desc(),
-                AttemptCheckpointModel.checkpoint_id.desc(),
-            )
-            .limit(1)
-        ),
-    )
+    return await read_exact_latest_checkpoint(session, authority)
 
 
 def _boundary_is_ready(
