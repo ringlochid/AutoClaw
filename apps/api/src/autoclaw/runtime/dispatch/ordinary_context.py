@@ -72,7 +72,7 @@ class OrdinaryDispatchSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
-class _OrdinaryRuntimeContext:
+class OrdinaryRuntimeContext:
     task: TaskModel
     workspace: WorkspaceBindingModel
     flow: FlowModel
@@ -105,8 +105,8 @@ async def read_ordinary_dispatch_snapshot(
         return None
     _validate_ordinary_runtime_context(context, basis=basis)
 
-    workflow = await _read_pinned_workflow(session, context.compiled_plan)
-    children = await _read_current_children(session, context)
+    workflow = await read_pinned_workflow_revision(session, context.compiled_plan)
+    children = await read_current_child_nodes(session, context)
     work_plan = await read_assignment_work_plan(
         session,
         assignment_id=context.assignment.assignment_id,
@@ -121,7 +121,7 @@ async def read_ordinary_dispatch_snapshot(
     workflow_description = workflow.content_json.get("description")
     if workflow_description is not None and not isinstance(workflow_description, str):
         raise ValueError("ordinary continuation workflow description must be text")
-    prompt = _build_ordinary_prompt_snapshot(
+    prompt = build_ordinary_prompt_snapshot(
         context,
         basis=basis,
         dispatch_id=dispatch_id,
@@ -224,7 +224,7 @@ async def _read_ordinary_runtime_context(
     basis: OrdinaryContinuationBasis,
     expected_flow_status: OrdinaryExpectedFlowStatus,
     expected_control_revision: int | None,
-) -> _OrdinaryRuntimeContext | None:
+) -> OrdinaryRuntimeContext | None:
     statement = (
         select(
             TaskModel,
@@ -277,11 +277,11 @@ async def _read_ordinary_runtime_context(
     if expected_control_revision is not None:
         statement = statement.where(FlowModel.control_revision == expected_control_revision)
     row = (await session.execute(statement)).one_or_none()
-    return _OrdinaryRuntimeContext(*row) if row is not None else None
+    return OrdinaryRuntimeContext(*row) if row is not None else None
 
 
 def _validate_ordinary_runtime_context(
-    context: _OrdinaryRuntimeContext,
+    context: OrdinaryRuntimeContext,
     *,
     basis: OrdinaryContinuationBasis,
 ) -> None:
@@ -328,7 +328,7 @@ async def _has_active_external_wait(session: AsyncSession, *, flow_id: str) -> b
     return bool(active_wait)
 
 
-async def _read_pinned_workflow(
+async def read_pinned_workflow_revision(
     session: AsyncSession,
     compiled_plan: CompiledPlanModel,
 ) -> WorkflowRevisionModel:
@@ -345,9 +345,9 @@ async def _read_pinned_workflow(
     return workflow
 
 
-async def _read_current_children(
+async def read_current_child_nodes(
     session: AsyncSession,
-    context: _OrdinaryRuntimeContext,
+    context: OrdinaryRuntimeContext,
 ) -> tuple[FlowNodeModel, ...]:
     return tuple(
         await session.scalars(
@@ -363,8 +363,8 @@ async def _read_current_children(
     )
 
 
-def _build_ordinary_prompt_snapshot(
-    context: _OrdinaryRuntimeContext,
+def build_ordinary_prompt_snapshot(
+    context: OrdinaryRuntimeContext,
     *,
     basis: OrdinaryContinuationBasis,
     dispatch_id: str,
@@ -433,6 +433,10 @@ __all__ = [
     "OrdinaryContinuationBasis",
     "OrdinaryDispatchSnapshot",
     "OrdinaryExpectedFlowStatus",
+    "OrdinaryRuntimeContext",
+    "build_ordinary_prompt_snapshot",
     "ordinary_context_is_current",
+    "read_current_child_nodes",
     "read_ordinary_dispatch_snapshot",
+    "read_pinned_workflow_revision",
 ]

@@ -234,12 +234,14 @@ Each command run binds to:
 
 - task, flow, assignment, attempt, and source dispatch;
 - command specification, cwd policy, environment-reference policy, timeout, and log refs;
-- `pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled` state;
+- `pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled | abandoned` state;
 - process ownership revision and bounded locally owned process metadata;
 - terminal result/provenance; and
 - optional successor dispatch ID.
 
 `cancellation_requested` is nonterminal. Terminal state commits only after the owning process outcome rules, including termination and reap for cancellation, are satisfied.
+
+`pending_start` stores `due_at = null`, even when the request has a timeout. Successful process start stores immutable `started_at` and, when a timeout applies, immutable `due_at = started_at + timeout_seconds`. Restart-time loss of exact ownership terminalizes the durable source as `abandoned` with `terminal_failure_code = command_ownership_lost`; it never authorizes blind relaunch or termination.
 
 Any command-run row owned by D1 remains a watchdog exclusion until its exact continuation is consumed or the flow becomes terminal, including terminal-but-unrouted command state.
 
@@ -274,7 +276,7 @@ The exact contract belongs to [Work plan and checkpoint](work-plan-and-checkpoin
 
 Artifact publications are immutable version rows owned by one task, assignment, attempt, checkpoint, declared slot, and logical path. Versions are monotonic within one assignment and slot. The current pointer references that exact publication. A boundary that relies on a publication reaches it through its checkpoint or immutable decision-basis association; filesystem presence cannot supply the link.
 
-Transient localizations are separate first-class rows containing task, assignment, attempt, optional checkpoint, logical source provenance, localized logical path, description, retention status, and timestamps. A transient row never receives an artifact version/current pointer and never becomes durable merely because a checkpoint references it. Checkpoint-to-transient association rows preserve the exact surfaced set.
+Transient localizations are separate first-class rows containing task, assignment, attempt, optional checkpoint, logical source provenance, localized logical path, description, retention status, and timestamps. `active` has no `removed_at`; `expired` has an exact `expires_at` generation and no `removed_at`; `removed` has both timestamps. A transient row never receives an artifact version/current pointer and never becomes durable merely because a checkpoint references it. Checkpoint-to-transient association rows preserve the exact surfaced set.
 
 ## Watchdog recovery lineage
 

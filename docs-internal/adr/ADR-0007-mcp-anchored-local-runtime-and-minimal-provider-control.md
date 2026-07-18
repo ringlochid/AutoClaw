@@ -2,6 +2,8 @@
 
 Status: Accepted
 
+> **Partial supersession notice:** [ADR-0009](ADR-0009-exact-source-runtime-control.md) replaces this ADR's `LocalRuntimeSupervisor`, `AgentControlManager`, semantic-only progress clock, broad provider-control budget, stop fencing, and finite start-exhaustion model. This page remains the accepted origin of MCP-anchored controller truth, local-first scope, same-attempt infrastructure recovery, and provider-neutral adapter control.
+
 > **Partial supersession notice:** [ADR-0009](ADR-0009-exact-source-runtime-control.md) replaces this ADR's broad supervisor/manager, semantic-only progress clock, finite provider-control budget, provider-stop fencing, mandatory attempt plan, and provider-start exhaustion details. This page remains the historical decision that established local-first controller truth, provider-output irrelevance, provider-neutral adapters, and same-attempt watchdog recovery.
 
 ## Decision summary

@@ -7,6 +7,13 @@ from autoclaw.runtime.contracts.common import RuntimeSchemaText
 from autoclaw.runtime.contracts.primitives import FlowStatus
 from autoclaw.runtime.contracts.refs import WorkflowManifestRef
 
+type RuntimeFlowWaitingCause = Literal["human_request", "command_run"]
+type RuntimeFlowPauseReason = Literal[
+    "paused_by_operator",
+    "runtime_recovery_exhausted",
+    "runtime_transition_failed",
+]
+
 
 class RuntimeFlowRead(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
@@ -17,9 +24,14 @@ class RuntimeFlowRead(BaseModel):
     workflow_key: RuntimeSchemaText | None = None
     status: FlowStatus
     active_flow_revision_id: RuntimeSchemaText
+    control_revision: int = Field(ge=0)
     workflow_manifest_ref: WorkflowManifestRef
     current_node_key: RuntimeSchemaText | None = None
+    active_assignment_id: RuntimeSchemaText | None = None
     active_attempt_id: RuntimeSchemaText | None = None
+    current_dispatch_id: RuntimeSchemaText | None = None
+    waiting_cause: RuntimeFlowWaitingCause | None = None
+    pause_reason: RuntimeFlowPauseReason | None = None
     updated_at: datetime
 
 
@@ -55,6 +67,7 @@ class RuntimeFlowControlQuery(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     expected_active_flow_revision_id: RuntimeSchemaText
+    expected_control_revision: int = Field(ge=0)
 
 
 class RuntimeTaskListQuery(BaseModel):
@@ -82,9 +95,11 @@ class RuntimeTaskListQuery(BaseModel):
 
 __all__ = [
     "RuntimeFlowControlQuery",
+    "RuntimeFlowPauseReason",
     "RuntimeFlowPauseResponse",
     "RuntimeFlowRead",
     "RuntimeFlowSummary",
     "RuntimeFlowSummaryListResponse",
+    "RuntimeFlowWaitingCause",
     "RuntimeTaskListQuery",
 ]

@@ -131,6 +131,32 @@ async def test_router_rejects_unregistered_and_full_queue_visibly() -> None:
     assert snapshot.last_failure.failure_kind == "queue_full"
 
 
+async def test_startup_publication_waits_only_for_queue_capacity() -> None:
+    handler_started = asyncio.Event()
+    release_handler = asyncio.Event()
+
+    async def handle_flow_start(
+        session: AsyncSession,
+        signal: FlowStartCommitted,
+    ) -> None:
+        del session, signal
+        handler_started.set()
+        await release_handler.wait()
+
+    router = RuntimeEffectRouter(session_factory=session_context, queue_capacity=1)
+    router.register(FlowStartCommitted, handle_flow_start)
+
+    async with router:
+        assert router.publish(FlowStartCommitted("flow.first")) is True
+        await asyncio.wait_for(handler_started.wait(), timeout=1)
+
+        assert await asyncio.wait_for(
+            router.publish_startup(FlowStartCommitted("flow.second")),
+            timeout=1,
+        )
+        release_handler.set()
+
+
 async def test_router_context_exit_cancels_disposable_handler_work() -> None:
     handler_started = asyncio.Event()
     handler_cancelled = asyncio.Event()

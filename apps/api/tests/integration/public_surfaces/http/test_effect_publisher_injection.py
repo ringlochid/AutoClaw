@@ -17,6 +17,8 @@ from autoclaw.runtime.contracts import (
     HumanRequestResolutionKind,
     HumanRequestResolutionSurface,
     HumanRequestResolveResponse,
+    RuntimeFlowPauseResponse,
+    RuntimeFlowRead,
     TaskStartResponse,
     WorkflowManifestRef,
 )
@@ -27,6 +29,18 @@ _API_HEADERS = {"X-AutoClaw-API-Key": "autoclaw-operator-test-key"}
 
 async def _fake_session() -> AsyncIterator[AsyncSession]:
     yield cast(AsyncSession, object())
+
+
+class _WritableSession:
+    async def commit(self) -> None:
+        pass
+
+    async def rollback(self) -> None:
+        pass
+
+
+async def _fake_writable_session() -> AsyncIterator[AsyncSession]:
+    yield cast(AsyncSession, _WritableSession())
 
 
 async def test_task_start_route_injects_app_owned_effect_publishers(
@@ -142,3 +156,100 @@ async def test_human_resolution_route_injects_app_owned_runtime_publisher(
         "runtime": app.state.runtime_effect_publisher,
         "actor_ref": "operator.http",
     }
+
+
+async def test_flow_control_routes_inject_current_guards_and_runtime_owners(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app(should_enable_mcp_mounts=False)
+    app.dependency_overrides[get_db_session] = _fake_writable_session
+    captured: dict[str, object] = {}
+
+    async def fake_pause_runtime_flow(
+        session: AsyncSession,
+        task_id: str,
+        **kwargs: object,
+    ) -> RuntimeFlowPauseResponse:
+        del session
+        captured["pause"] = kwargs
+        return RuntimeFlowPauseResponse(flow=_runtime_flow_read(task_id, control_revision=8))
+
+    async def fake_continue_runtime_flow(
+        session: AsyncSession,
+        task_id: str,
+        **kwargs: object,
+    ) -> RuntimeFlowRead:
+        del session
+        captured["continue"] = kwargs
+        return _runtime_flow_read(task_id, control_revision=8)
+
+    async def fake_cancel_runtime_flow(
+        session: AsyncSession,
+        task_id: str,
+        **kwargs: object,
+    ) -> RuntimeFlowRead:
+        del session
+        captured["cancel"] = kwargs
+        return _runtime_flow_read(task_id, control_revision=8)
+
+    monkeypatch.setattr(control_router_module, "pause_runtime_flow", fake_pause_runtime_flow)
+    monkeypatch.setattr(
+        control_router_module,
+        "continue_runtime_flow",
+        fake_continue_runtime_flow,
+    )
+    monkeypatch.setattr(control_router_module, "cancel_runtime_flow", fake_cancel_runtime_flow)
+
+    query = {
+        "expected_active_flow_revision_id": "flow-revision.http-injection.1",
+        "expected_control_revision": "7",
+    }
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        responses = [
+            await client.post(
+                f"/control/tasks/task.http-injection/{operation}",
+                headers=_API_HEADERS,
+                params=query,
+            )
+            for operation in ("pause", "continue", "cancel")
+        ]
+
+    assert [response.status_code for response in responses] == [200, 200, 200], [
+        response.text for response in responses
+    ]
+    expected_guards = {
+        "expected_active_flow_revision_id": "flow-revision.http-injection.1",
+        "expected_control_revision": 7,
+        "actor_ref": None,
+    }
+    assert captured["pause"] == {
+        **expected_guards,
+        "runtime_effect_publisher": app.state.runtime_effect_publisher,
+    }
+    assert captured["continue"] == {
+        **expected_guards,
+        "dependencies": app.state.dispatch_opening_dependencies,
+    }
+    assert captured["cancel"] == {
+        **expected_guards,
+        "runtime_effect_publisher": app.state.runtime_effect_publisher,
+    }
+
+
+def _runtime_flow_read(task_id: str, *, control_revision: int) -> RuntimeFlowRead:
+    return RuntimeFlowRead(
+        task_id=task_id,
+        task_title="HTTP publisher injection",
+        task_summary="Keep flow-control runtime ownership explicit.",
+        status=FlowStatus.RUNNING,
+        active_flow_revision_id="flow-revision.http-injection.1",
+        control_revision=control_revision,
+        workflow_manifest_ref=WorkflowManifestRef(
+            path=Path("_runtime/workflow-manifest.md"),
+            description="Committed workflow manifest support projection.",
+        ),
+        updated_at=datetime.now(UTC),
+    )

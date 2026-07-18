@@ -21,11 +21,14 @@ pending_start -> running -> succeeded
                          -> failed
                          -> timed_out
                          -> cancellation_requested -> cancelled
+                                                   -> abandoned
+                         -> abandoned
 
 pending_start -> cancellation_requested -> cancelled
+              -> abandoned
 ```
 
-`succeeded`, `failed`, `timed_out`, and `cancelled` are terminal. `cancellation_requested` is nonterminal until the owner proves that the process terminated and was reaped.
+`succeeded`, `failed`, `timed_out`, `cancelled`, and `abandoned` are terminal. `abandoned` records restart-time loss of exact ownership over a possibly launched command; it is not a relaunch instruction. `cancellation_requested` is nonterminal until the owner proves that the process terminated and was reaped.
 
 Process state is evidence used to commit controller state; it is not a second runtime truth lane.
 
@@ -63,7 +66,7 @@ command_run:
   attempt_id: string
   source_dispatch_id: string
   request: typed command request
-  state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
+  state: pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled | abandoned
   ownership_revision: integer
   due_at: timestamp | null
   started_at: timestamp | null
@@ -107,6 +110,8 @@ It does not create D2, record a terminal checkpoint, call `return_boundary`, cal
 
 After commit, `CommandRunPending(run_id)` wakes the command owner. Lost publication is recovered by the bounded startup source audit.
 
+A new `pending_start` source stores `due_at = null` even when its request has `timeout_seconds`. The command timeout begins only after successful operating-system process creation. That transition stores one immutable `started_at` and, when a timeout applies, immutable `due_at = started_at + timeout_seconds`.
+
 ## Command-process ownership
 
 The lifespan-owned `CommandProcessOwner` handles one exact run at a time by ownership revision. It owns:
@@ -126,9 +131,9 @@ There is no global provider semaphore or broad runtime task lock. An optional co
 
 ## Launch
 
-The command owner opens a fresh database session, conditionally claims a current `pending_start` run, then launches the process outside the claim transaction. It records `running`, start time, log refs, process support metadata, and incremented ownership revision through its owned recovery-safe sequence.
+The command owner opens a fresh database session, conditionally claims a current `pending_start` run, then launches the process outside the claim transaction. It records `running`, the immutable start/deadline pair, log refs, process support metadata, and incremented ownership revision through its owned recovery-safe sequence.
 
-If process creation definitely fails, it commits terminal `failed` with a sanitized result. If restart makes ownership ambiguous, it does not blindly launch another process; it follows the recovery classification below.
+If process creation definitely fails, it commits terminal `failed` with a sanitized result. If restart makes ownership ambiguous, it does not blindly launch or terminate another process; it follows the recovery classification below.
 
 ## Logs and updates
 
@@ -174,7 +179,7 @@ Later exit/timeout/cancel callbacks fail terminal/task-currentness predicates an
 
 ```yaml
 command_run_terminal_result:
-  state: succeeded | failed | timed_out | cancelled
+  state: succeeded | failed | timed_out | cancelled | abandoned
   exit_code: integer | null
   summary: bounded continuation-first explanation
   started_at: timestamp | null
@@ -188,11 +193,13 @@ command_run_terminal_result:
 
 Command exit code plus policy determines succeeded/failed. Timeout/cancel may have no useful exit code. Raw output is never copied into this result.
 
+`abandoned` requires `failure_code = command_ownership_lost`. It is a terminal controller classification for lost process ownership, not proof that the operating-system process exited.
+
 Terminal state, result, and matching wait clear commit atomically. The source event is emitted from that commit.
 
 ## Continuation
 
-Terminal command state is terminal only for the run. After commit, `CommandRunTerminal(run_id)` may create one successor.
+Terminal command state, including `abandoned`, is terminal only for the run. After commit, `CommandRunTerminal(run_id)` may create one successor.
 
 The handler proves the terminal run still belongs to the exact lineage, its matching wait is cleared, the flow is runnable, D1 has no successor, and the terminal source is unconsumed. It then publishes the D2 request pair and conditionally creates D2 on the same assignment, attempt, and plan.
 
@@ -212,13 +219,13 @@ The command timeout is not the dispatch watchdog. It is owned by `run_id + due_a
 
 Startup audits exact command states:
 
-- `pending_start`: emit a launch signal only when no prior ownership can be inferred;
-- `running`: recover or classify local process ownership without blind relaunch;
-- `cancellation_requested`: resume bounded termination/reap when ownership is provable;
+- `pending_start`: emit a launch signal only when no prior launch ownership can be inferred;
+- `running`: recover local process ownership when it is exactly provable;
+- `cancellation_requested`: resume bounded termination/reap only when ownership is exactly provable;
 - terminal without successor: emit terminal continuation if the flow is runnable; and
 - terminal on paused/cancelled flow: retain result or clean resources only.
 
-When a process may still exist but cannot be safely reattached, the source becomes an explicit recoverable command ownership failure according to command policy. The runtime does not duplicate the process merely to make progress.
+When prior launch ownership is possible but the process cannot be safely reattached, the owner conditionally terminalizes the source as `abandoned`, records `failure_code = command_ownership_lost`, clears only its matching wait, emits `command_run_abandoned`, and publishes the ordinary terminal-continuation signal. The runtime does not blindly relaunch or terminate the process merely to make progress.
 
 ## Read and event surfaces
 
@@ -229,8 +236,9 @@ Authorized control surfaces own run list/detail, bounded log reads, and cancel. 
 - `command_run_cancel_requested`;
 - `command_run_succeeded`;
 - `command_run_failed`;
-- `command_run_timed_out`; and
-- `command_run_cancelled`.
+- `command_run_timed_out`;
+- `command_run_cancelled`; and
+- `command_run_abandoned`.
 
 Events are chronology only. They do not drive process ownership or continuation.
 
@@ -242,6 +250,7 @@ Events are chronology only. They do not drive process ownership or continuation.
 - nonterminal state keeps the flow waiting and creates no D2;
 - cancel is nonterminal until termination and reap;
 - exit/timeout/cancel produce one terminal winner;
+- restart ownership loss produces one audited `abandoned` winner and never a blind relaunch;
 - only the exact terminal source may create one successor;
 - terminal result is retained while paused;
 - restart never blindly duplicates an ambiguously owned process;

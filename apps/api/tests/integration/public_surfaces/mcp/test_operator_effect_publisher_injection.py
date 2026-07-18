@@ -20,10 +20,13 @@ from autoclaw.runtime.contracts import (
     HumanRequestResolutionKind,
     HumanRequestResolutionSurface,
     HumanRequestResolveResponse,
+    RuntimeFlowPauseResponse,
+    RuntimeFlowRead,
     TaskStartRequest,
     TaskStartResponse,
     WorkflowManifestRef,
 )
+from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.post_commit import CapturedRuntimeEffectPublisher
 from autoclaw.runtime.projection import SupportProjectionSignal
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -110,7 +113,35 @@ async def test_operator_tools_receive_the_server_owned_effect_publishers(
 ) -> None:
     runtime_publisher = CapturedRuntimeEffectPublisher()
     projection_publisher = _ProjectionPublisher()
+    opening_dependencies = cast(DispatchOpeningDependencies, object())
     captured: dict[str, object] = {}
+
+    async def capture_pause(
+        session: AsyncSession,
+        task_id: str,
+        **kwargs: object,
+    ) -> RuntimeFlowPauseResponse:
+        del session
+        captured["pause"] = kwargs
+        return RuntimeFlowPauseResponse(flow=_runtime_flow_read(task_id, control_revision=8))
+
+    async def capture_continue(
+        session: AsyncSession,
+        task_id: str,
+        **kwargs: object,
+    ) -> RuntimeFlowRead:
+        del session
+        captured["continue"] = kwargs
+        return _runtime_flow_read(task_id, control_revision=8)
+
+    async def capture_cancel(
+        session: AsyncSession,
+        task_id: str,
+        **kwargs: object,
+    ) -> RuntimeFlowRead:
+        del session
+        captured["cancel"] = kwargs
+        return _runtime_flow_read(task_id, control_revision=8)
 
     monkeypatch.setattr(
         definition_tools_module,
@@ -132,10 +163,14 @@ async def test_operator_tools_receive_the_server_owned_effect_publishers(
         "resolve_human_request",
         partial(_capture_human_resolution, captured),
     )
+    monkeypatch.setattr(runtime_tools_module, "pause_runtime_flow", capture_pause)
+    monkeypatch.setattr(runtime_tools_module, "continue_runtime_flow", capture_continue)
+    monkeypatch.setattr(runtime_tools_module, "cancel_runtime_flow", capture_cancel)
     server = create_operator_mcp_server(
         effect_publishers=OperatorEffectPublishers(
             runtime_effect_publisher=runtime_publisher,
             support_projection_publisher=projection_publisher,
+            dispatch_opening_dependencies=opening_dependencies,
         )
     )
 
@@ -151,9 +186,50 @@ async def test_operator_tools_receive_the_server_owned_effect_publishers(
             "item_responses": {"direction": "a"},
         },
     )
+    control_arguments = {
+        "task_id": "task.operator-injection",
+        "expected_active_flow_revision_id": "flow-revision.operator-injection.1",
+        "expected_control_revision": 7,
+    }
+    for tool_name in ("pause_task", "continue_task", "cancel_task"):
+        await server.call_tool(tool_name, control_arguments)
 
     assert captured == {
         "start_runtime": runtime_publisher,
         "start_projection": projection_publisher,
         "resolve_runtime": runtime_publisher,
+        "pause": {
+            "expected_active_flow_revision_id": "flow-revision.operator-injection.1",
+            "expected_control_revision": 7,
+            "event_source": runtime_tools_module.TaskEventSource.OPERATOR_MCP,
+            "runtime_effect_publisher": runtime_publisher,
+        },
+        "continue": {
+            "expected_active_flow_revision_id": "flow-revision.operator-injection.1",
+            "expected_control_revision": 7,
+            "dependencies": opening_dependencies,
+            "event_source": runtime_tools_module.TaskEventSource.OPERATOR_MCP,
+        },
+        "cancel": {
+            "expected_active_flow_revision_id": "flow-revision.operator-injection.1",
+            "expected_control_revision": 7,
+            "event_source": runtime_tools_module.TaskEventSource.OPERATOR_MCP,
+            "runtime_effect_publisher": runtime_publisher,
+        },
     }
+
+
+def _runtime_flow_read(task_id: str, *, control_revision: int) -> RuntimeFlowRead:
+    return RuntimeFlowRead(
+        task_id=task_id,
+        task_title="Operator publisher injection",
+        task_summary="Keep operator flow-control ownership explicit.",
+        status=FlowStatus.RUNNING,
+        active_flow_revision_id="flow-revision.operator-injection.1",
+        control_revision=control_revision,
+        workflow_manifest_ref=WorkflowManifestRef(
+            path=Path("_runtime/workflow-manifest.md"),
+            description="Committed workflow manifest support projection.",
+        ),
+        updated_at=datetime.now(UTC),
+    )

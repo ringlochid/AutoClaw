@@ -91,6 +91,8 @@ Starting a command run is likewise not a boundary outcome. One transaction creat
 
 The command owner launches and supervises the exact run asynchronously. `cancellation_requested` is nonterminal until termination/reap rules commit a terminal result.
 
+If restart cannot prove ownership after a process may have launched, it never blindly relaunches or terminates that process. It commits terminal `abandoned` with `command_ownership_lost`, clears only the matching wait, and retains the exact source for ordinary same-attempt continuation.
+
 Terminal command state clears the matching wait and emits `CommandRunTerminal(run_id)`. A runnable flow may receive one same-attempt successor; a paused or cancelled flow does not.
 
 ## Watchdog semantics

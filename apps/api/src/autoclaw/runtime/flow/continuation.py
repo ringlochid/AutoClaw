@@ -154,7 +154,11 @@ async def read_operator_continue_source(
             FlowModel.waiting_cause == "none",
         )
     )
-    if flow is None or flow.pause_reason is None:
+    if flow is None or flow.pause_reason not in {
+        "paused_by_operator",
+        "runtime_recovery_exhausted",
+        "runtime_transition_failed",
+    }:
         raise _continue_conflict("flow is not paused at the expected revision")
     if await _has_unresolved_external_source(session, flow.flow_id):
         raise _continue_conflict("flow still has an unresolved human request or command run")

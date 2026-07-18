@@ -211,7 +211,10 @@ class TransientLocalizationModel(RuntimeBase):
         ),
         CheckConstraint(
             "(retention_status = 'active' AND removed_at IS NULL) OR "
-            "(retention_status IN ('expired', 'removed') AND removed_at IS NOT NULL)",
+            "(retention_status = 'expired' AND expires_at IS NOT NULL "
+            "AND removed_at IS NULL) OR "
+            "(retention_status = 'removed' AND expires_at IS NOT NULL "
+            "AND removed_at IS NOT NULL)",
             name="ck_transient_localizations_retention_time",
         ),
         ForeignKeyConstraint(
@@ -238,7 +241,12 @@ class TransientLocalizationModel(RuntimeBase):
             deferrable=True,
             initially="DEFERRED",
         ),
-        Index("ix_transient_localizations_retention", "retention_status", "removed_at"),
+        Index(
+            "ix_transient_localizations_retention",
+            "retention_status",
+            "transient_localization_id",
+            "expires_at",
+        ),
     )
 
     transient_localization_id: Mapped[str] = mapped_column(String(255), primary_key=True)

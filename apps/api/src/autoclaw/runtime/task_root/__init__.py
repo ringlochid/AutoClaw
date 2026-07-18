@@ -20,6 +20,8 @@ from autoclaw.runtime.task_root.paths import (
     attempt_dir_path,
     checkpoint_json_path,
     checkpoint_markdown_path,
+    command_run_log_path,
+    command_run_logical_path,
     criteria_file_path,
     criteria_logical_path,
     dispatch_dir_path,
@@ -32,6 +34,7 @@ from autoclaw.runtime.task_root.paths import (
     transient_index_json_path,
 )
 from autoclaw.runtime.task_root.reads import load_task_root_paths, read_task_root_paths
+from autoclaw.runtime.task_root.transient_cleanup import cleanup_expired_transient
 
 __all__ = [
     "DEFAULT_DIRECTORY_ENTRY_LIMIT",
@@ -46,6 +49,9 @@ __all__ = [
     "attempt_dir_path",
     "checkpoint_json_path",
     "checkpoint_markdown_path",
+    "cleanup_expired_transient",
+    "command_run_log_path",
+    "command_run_logical_path",
     "criteria_file_path",
     "criteria_logical_path",
     "dispatch_dir_path",

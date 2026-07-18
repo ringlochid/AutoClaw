@@ -13,12 +13,10 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.dispatch.authority import NodeOperationAuthority
 from autoclaw.runtime.node_operations.contracts import (
     NodeOperationName,
-    OpenHumanRequestRequest,
 )
 from autoclaw.runtime.post_commit.signals import (
     BoundaryAccepted,
     CommandRunPending,
-    HumanRequestDue,
     HumanRequestOpened,
     RuntimeEffectSignal,
 )
@@ -80,19 +78,10 @@ def committed_node_operation_follow_on(
             runtime_signals=(BoundaryAccepted(authority.dispatch_id),),
         )
     if operation_name == NodeOperationName.OPEN_HUMAN_REQUEST:
-        assert isinstance(request, OpenHumanRequestRequest)
         assert isinstance(response, HumanRequestOpenResponse)
-        runtime_signals: tuple[RuntimeEffectSignal, ...] = (
-            HumanRequestOpened(response.request_id),
+        return CommittedNodeOperationFollowOn(
+            runtime_signals=(HumanRequestOpened(response.request_id),),
         )
-        if request.request.timeout.due_at is not None:
-            runtime_signals += (
-                HumanRequestDue(
-                    request_id=response.request_id,
-                    due_at=request.request.timeout.due_at,
-                ),
-            )
-        return CommittedNodeOperationFollowOn(runtime_signals=runtime_signals)
     if operation_name == NodeOperationName.START_COMMAND_RUN:
         assert isinstance(response, CommandRunStartResponse)
         return CommittedNodeOperationFollowOn(

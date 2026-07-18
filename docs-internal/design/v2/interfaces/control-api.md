@@ -237,10 +237,12 @@ Timeout and cancellation are controller-owned terminal paths, not caller-selecte
 List/detail/log routes expose the command source state owned by the command contract:
 
 ```text
-pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
+pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled | abandoned
 ```
 
 Detail identifies the exact `run_id`, task/source dispatch, assignment/attempt, command policy, timing, ownership revision, normalized terminal result/provenance, and bounded log refs. Raw logs remain behind the authorized log route.
+
+`abandoned` is terminal and carries sanitized `failure_code = command_ownership_lost`. It means restart lost exact ownership after a possible launch; it neither proves process exit nor permits blind relaunch or termination.
 
 `POST .../{run_id}/cancel` records intent only for an exact current nonterminal run. `cancellation_requested` remains nonterminal until the process owner proves termination and reap. `CommandRunCancellationRequested(run_id, ownership_revision)` wakes that owner after commit; the HTTP response does not wait for it, a successor dispatch, or provider start.
 

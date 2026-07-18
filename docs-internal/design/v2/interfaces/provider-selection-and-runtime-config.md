@@ -69,6 +69,10 @@ The target configuration stays small and permits zero enabled providers:
 ```toml
 [runtime]
 # default_provider = "codex"
+dispatch_launch_retry_initial_backoff_seconds = 1.0
+dispatch_launch_retry_max_backoff_seconds = 30.0
+watchdog_inactivity_timeout_seconds = 900
+watchdog_same_attempt_replacement_limit = 2
 
 [codex]
 enabled = false
@@ -90,6 +94,9 @@ Rules:
 
 - `runtime.default_provider` may be absent when no default is desired;
 - when present, it must name an enabled route;
+- provider-start retry delay begins at one second and is capped at 30 seconds, without a maximum attempt count;
+- the watchdog inactivity timeout defaults to 900 seconds (15 minutes) and its same-attempt replacement cap defaults to two;
+- target runtime config has no watchdog poll interval, bootstrap timeout, per-tick limit, auto-recover toggle, or separate execution-stale threshold;
 - OpenClaw may be enabled and explicitly/default selected even though its product status remains experimental;
 - provider sections own only AutoClaw enablement, non-secret connection fields, sparse explicit overrides, and resolved machine policy;
 - Codex and Claude inherit provider-native homes, authentication, project/user settings, skills, model catalogs, and compaction;

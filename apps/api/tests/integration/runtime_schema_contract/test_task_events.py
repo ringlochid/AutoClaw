@@ -63,6 +63,7 @@ CANONICAL_TYPES = {
     "command_run_failed",
     "command_run_timed_out",
     "command_run_cancelled",
+    "command_run_abandoned",
     "task_paused",
     "task_resumed",
     "task_cancelled",

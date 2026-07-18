@@ -39,10 +39,12 @@ from autoclaw.runtime.contracts.command_runs import (
 )
 from autoclaw.runtime.contracts.flow import (
     RuntimeFlowControlQuery,
+    RuntimeFlowPauseReason,
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,
     RuntimeFlowSummary,
     RuntimeFlowSummaryListResponse,
+    RuntimeFlowWaitingCause,
     RuntimeTaskListQuery,
 )
 from autoclaw.runtime.contracts.human_requests import (
@@ -103,6 +105,7 @@ from autoclaw.runtime.contracts.primitives import (
     CheckpointKind,
     CheckpointOutcome,
     CommandRunState,
+    CommandRunTerminalSource,
     DispatchDeliveryStatus,
     EgressBoundary,
     EvidenceKind,
@@ -269,6 +272,7 @@ __all__ = [
     "CommandRunState",
     "CommandRunTerminalResult",
     "CommandRunTerminalResultRead",
+    "CommandRunTerminalSource",
     "CommandShellSpec",
     "CommandSpec",
     "CriteriaRef",
@@ -359,10 +363,12 @@ __all__ = [
     "RuntimeBootstrapResult",
     "RuntimeContextRef",
     "RuntimeFlowControlQuery",
+    "RuntimeFlowPauseReason",
     "RuntimeFlowPauseResponse",
     "RuntimeFlowRead",
     "RuntimeFlowSummary",
     "RuntimeFlowSummaryListResponse",
+    "RuntimeFlowWaitingCause",
     "RuntimeLaunchInput",
     "RuntimeTaskListQuery",
     "RuntimeText",

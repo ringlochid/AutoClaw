@@ -82,26 +82,11 @@ class RuntimeEffectRouter:
     def publish(self, signal: RuntimeEffectSignal) -> bool:
         """Attempt nonblocking enqueue and report rejection through runtime health."""
 
-        if type(signal) not in ALL_RUNTIME_EFFECT_SIGNAL_TYPES:
-            self._health.mark_failure(
-                failure_kind="unsupported_signal",
-                signal=signal,
-            )
-            return False
-        if type(signal) not in self._routes:
-            self._health.mark_failure(
-                failure_kind="unregistered_signal",
-                signal=signal,
-            )
-            return False
-        if not self._is_accepting or self._queue is None:
-            self._health.mark_failure(
-                failure_kind="router_inactive",
-                signal=signal,
-            )
+        queue = self._publication_queue(signal)
+        if queue is None:
             return False
         try:
-            self._queue.put_nowait(signal)
+            queue.put_nowait(signal)
         except asyncio.QueueFull:
             self._health.mark_failure(
                 failure_kind="queue_full",
@@ -115,6 +100,26 @@ class RuntimeEffectRouter:
                 exception_type=type(exc).__name__,
             )
             _log_runtime_failure("runtime effect publication failed", signal, exc)
+            return False
+        return True
+
+    async def publish_startup(self, signal: RuntimeEffectSignal) -> bool:
+        """Await queue capacity during finite startup, never handler completion."""
+
+        queue = self._publication_queue(signal)
+        if queue is None:
+            return False
+        try:
+            await queue.put(signal)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self._health.mark_failure(
+                failure_kind="publish_failed",
+                signal=signal,
+                exception_type=type(exc).__name__,
+            )
+            _log_runtime_failure("runtime startup publication failed", signal, exc)
             return False
         return True
 
@@ -202,6 +207,30 @@ class RuntimeEffectRouter:
     def _track_task(self, task: asyncio.Task[None]) -> None:
         self._active_tasks.add(task)
         task.add_done_callback(self._active_tasks.discard)
+
+    def _publication_queue(
+        self,
+        signal: RuntimeEffectSignal,
+    ) -> asyncio.Queue[RuntimeEffectSignal] | None:
+        if type(signal) not in ALL_RUNTIME_EFFECT_SIGNAL_TYPES:
+            self._health.mark_failure(
+                failure_kind="unsupported_signal",
+                signal=signal,
+            )
+            return None
+        if type(signal) not in self._routes:
+            self._health.mark_failure(
+                failure_kind="unregistered_signal",
+                signal=signal,
+            )
+            return None
+        if not self._is_accepting or self._queue is None:
+            self._health.mark_failure(
+                failure_kind="router_inactive",
+                signal=signal,
+            )
+            return None
+        return self._queue
 
 
 def _log_runtime_failure(

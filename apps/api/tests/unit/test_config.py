@@ -55,8 +55,8 @@ gateway_profile = "tested-local"
 default_provider = "openclaw"
 dispatch_launch_retry_initial_backoff_seconds = 0.25
 dispatch_launch_retry_max_backoff_seconds = 3.5
-watchdog_enabled = false
-watchdog_interval_seconds = 20
+watchdog_inactivity_timeout_seconds = 1200
+watchdog_same_attempt_replacement_limit = 3
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -91,8 +91,8 @@ watchdog_interval_seconds = 20
     assert settings.runtime.default_provider == "openclaw"
     assert settings.runtime.dispatch_launch_retry_initial_backoff_seconds == 0.25
     assert settings.runtime.dispatch_launch_retry_max_backoff_seconds == 3.5
-    assert settings.runtime.watchdog_enabled is False
-    assert settings.runtime.watchdog_interval_seconds == 20
+    assert settings.runtime.watchdog_inactivity_timeout_seconds == 1200
+    assert settings.runtime.watchdog_same_attempt_replacement_limit == 3
 
 
 def test_env_overrides_config_file(
@@ -118,7 +118,7 @@ gateway_url = "ws://127.0.0.1:18789"
 gateway_profile = "config-profile"
 
 [runtime]
-watchdog_enabled = true
+watchdog_inactivity_timeout_seconds = 1200
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -132,8 +132,8 @@ watchdog_enabled = true
     monkeypatch.setenv("AUTOCLAW_API_PORT", "9001")
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_URL", "wss://gateway.example.test")
     monkeypatch.setenv("AUTOCLAW_OPENCLAW__GATEWAY_PROFILE", "environment-profile")
-    monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_ENABLED", "false")
-    monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_INTERVAL_SECONDS", "99")
+    monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_INACTIVITY_TIMEOUT_SECONDS", "99")
+    monkeypatch.setenv("AUTOCLAW_RUNTIME__WATCHDOG_SAME_ATTEMPT_REPLACEMENT_LIMIT", "4")
     monkeypatch.setenv(
         "AUTOCLAW_RUNTIME__DISPATCH_LAUNCH_RETRY_INITIAL_BACKOFF_SECONDS",
         "0.3",
@@ -156,8 +156,8 @@ watchdog_enabled = true
     assert settings.openclaw.gateway_profile == "environment-profile"
     assert settings.runtime.dispatch_launch_retry_initial_backoff_seconds == 0.3
     assert settings.runtime.dispatch_launch_retry_max_backoff_seconds == 4.5
-    assert settings.runtime.watchdog_enabled is False
-    assert settings.runtime.watchdog_interval_seconds == 99
+    assert settings.runtime.watchdog_inactivity_timeout_seconds == 99
+    assert settings.runtime.watchdog_same_attempt_replacement_limit == 4
 
 
 @pytest.mark.parametrize(
@@ -198,18 +198,35 @@ api_key = "config-api-key"
         config_module.get_settings()
 
 
+@pytest.mark.parametrize(
+    "field_name",
+    [
+        "is_watchdog_enabled",
+        "should_watchdog_auto_recover",
+        "watchdog_auto_recover",
+        "watchdog_bootstrap_first_progress_timeout_seconds",
+        "watchdog_enabled",
+        "watchdog_execution_stale_after_seconds",
+        "watchdog_interval_seconds",
+        "watchdog_max_auto_recoveries_per_tick",
+        "watchdog_max_flows_per_tick",
+        "watchdog_same_attempt_redispatch_limit",
+        "watchdog_stale_after_seconds",
+    ],
+)
 def test_removed_watchdog_keys_fail_fast(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
+    field_name: str,
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     config_path.write_text(
-        """
+        f"""
 [security]
 api_key = "config-api-key"
 
 [runtime]
-watchdog_stale_after_seconds = 123
+{field_name} = 123
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -219,7 +236,7 @@ watchdog_stale_after_seconds = 123
     config_module = _reload_config_module()
     config_module.get_settings.cache_clear()
 
-    with pytest.raises(Exception, match="watchdog_stale_after_seconds"):
+    with pytest.raises(ValidationError, match=field_name):
         config_module.get_settings()
 
 
@@ -288,18 +305,38 @@ api_key = "config-api-key"
         config_module.get_settings()
 
 
-def test_watchdog_interval_rejects_non_positive_values(
+def test_runtime_deadline_defaults_match_target_contract() -> None:
+    config_module = _reload_config_module()
+
+    settings = config_module.RuntimeSettings()
+
+    assert settings.watchdog_inactivity_timeout_seconds == 900
+    assert settings.watchdog_same_attempt_replacement_limit == 2
+    assert settings.dispatch_launch_retry_initial_backoff_seconds == 1.0
+    assert settings.dispatch_launch_retry_max_backoff_seconds == 30.0
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [
+        ("watchdog_inactivity_timeout_seconds", 0),
+        ("watchdog_same_attempt_replacement_limit", -1),
+    ],
+)
+def test_watchdog_settings_reject_invalid_values(
     monkeypatch: MonkeyPatch,
     tmp_path: Path,
+    field_name: str,
+    value: int,
 ) -> None:
     config_path = tmp_path / "autoclaw-config.toml"
     config_path.write_text(
-        """
+        f"""
 [security]
 api_key = "config-api-key"
 
 [runtime]
-watchdog_interval_seconds = 0
+{field_name} = {value}
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -309,5 +346,5 @@ watchdog_interval_seconds = 0
     config_module = _reload_config_module()
     config_module.get_settings.cache_clear()
 
-    with pytest.raises(Exception, match="watchdog_interval_seconds"):
+    with pytest.raises(ValidationError, match=field_name):
         config_module.get_settings()

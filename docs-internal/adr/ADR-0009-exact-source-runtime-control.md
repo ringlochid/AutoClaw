@@ -44,6 +44,7 @@ CommandRunCancellationRequested(run_id, ownership_revision)
 CommandRunTerminal(run_id)
 CommandProcessExited(run_id, ownership_revision)
 DispatchCleanupRequested(dispatch_id)
+TransientCleanupRequested(transient_localization_id, expires_at)
 WatchdogDeadlineChanged(dispatch_id, activity_revision, due_at)
 WatchdogDue(dispatch_id, activity_revision, due_at)
 DispatchStartDue(dispatch_id, provider_start_revision, due_at)
@@ -112,7 +113,7 @@ Normal boundaries and legal human or command waits never call provider stop. Pro
 
 Each admitted current Node MCP invocation updates `last_node_activity_at` and increments `node_activity_revision` exactly once, including reads, accepted no-ops, and normalized domain failures. Authentication, scope, currentness, and capability rejection do not update it. The after-commit `WatchdogDeadlineChanged` hint replaces only an equal/newer exact scheduler generation; an older hint cannot erase a newer timer.
 
-The watchdog deadline is `(last_node_activity_at ?? adapter_started_at) + watchdog_interval`. Only `open` dispatches are eligible. The due signal contains the observed dispatch ID, activity revision, and due time, so any later admitted call makes it stale.
+The watchdog deadline is `max(adapter_started_at, last_node_activity_at ?? adapter_started_at) + watchdog_inactivity_timeout_seconds`. Only `open` dispatches are eligible. The maximum keeps a Node call admitted during the `starting` handoff from creating a first-open deadline earlier than positive adapter acceptance. The due signal contains the observed dispatch ID, activity revision, and due time, so any later admitted call makes it stale.
 
 A watchdog candidate is ineligible whenever D1 owns a human-request or command-run source, including a terminal source that has not yet been routed. The final watchdog transaction repeats that exclusion after request materialization.
 
@@ -120,7 +121,9 @@ For an eligible stale D1, the handler atomically closes D1 and creates D2 on the
 
 ### Recovery and polling
 
-Startup performs a finite, paged audit of exact indexed source families: missing roots, accepted boundaries without successors, terminal waits without successors, open human deadlines, command ownership, current starting dispatches, eligible open watchdog deadlines, and cleanup-only paused or terminal resources. It exhausts those pages before declaring runtime ready.
+Startup performs a finite, paged audit of exact indexed source families: missing roots, accepted boundaries without successors, terminal waits without successors, open human deadlines, command ownership, current starting dispatches, eligible open watchdog deadlines, exact already-expired transient generations, and other cleanup-only paused or terminal resources. It exhausts those pages before declaring runtime ready.
+
+If restart cannot prove ownership after a command may have launched, it terminalizes the durable run as `abandoned` with `command_ownership_lost`, clears only the matching wait, and uses ordinary exact-source continuation. It never blindly relaunches or terminates the process.
 
 After startup, runtime control is signal-driven. There is no periodic broad task scan. A process crash between source commit and in-memory publication is repaired by the next startup audit.
 

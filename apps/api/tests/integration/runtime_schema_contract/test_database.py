@@ -113,6 +113,10 @@ def test_target_currentness_and_pair_constraints_are_present() -> None:
         "ck_assignments_retry_budget",
     } <= _constraint_names("assignments", CheckConstraint)
     assert {
+        "ck_command_runs_abandoned_diagnostic",
+        "ck_command_runs_launch_deadline",
+    } <= _constraint_names("command_runs", CheckConstraint)
+    assert {
         "ck_flow_nodes_provider_kind",
     } <= _constraint_names("flow_nodes", CheckConstraint)
     assert {

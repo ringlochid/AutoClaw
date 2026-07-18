@@ -1,6 +1,7 @@
 from autoclaw.runtime.node_operations.activity import (
     NodeActivitySignal,
     NodeActivitySignalPublisher,
+    create_watchdog_activity_publisher,
 )
 from autoclaw.runtime.node_operations.catalog import (
     NODE_OPERATION_CATALOG,
@@ -76,6 +77,7 @@ __all__ = [
     "StartCommandRunRequest",
     "StructuralOperationRequest",
     "UpdateChildRequest",
+    "create_watchdog_activity_publisher",
     "get_node_operation_descriptor",
     "list_node_operation_descriptors_for_kind",
 ]

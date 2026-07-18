@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from autoclaw.runtime.contracts import (
     TaskComposeInput,
@@ -88,6 +89,24 @@ def input_markdown_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
     return dispatch_dir_path(paths=paths, dispatch_id=dispatch_id) / "input.md"
 
 
+def command_run_log_path(
+    *,
+    paths: TaskRootPaths,
+    run_id: str,
+    stream: Literal["stdout", "stderr"],
+) -> Path:
+    return paths.task_root / command_run_logical_path(run_id=run_id, stream=stream)
+
+
+def command_run_logical_path(
+    *,
+    run_id: str,
+    stream: Literal["stdout", "stderr"],
+) -> Path:
+    _validate_path_component(run_id, label="command run ID")
+    return Path("_runtime") / "command-runs" / run_id / f"{stream}.log"
+
+
 def criteria_file_path(
     *,
     paths: TaskRootPaths,
@@ -131,6 +150,11 @@ def dispatch_dir_path(*, paths: TaskRootPaths, dispatch_id: str) -> Path:
 
 def coerce_path(path: str | Path) -> Path:
     return Path(path).expanduser().resolve()
+
+
+def _validate_path_component(value: str, *, label: str) -> None:
+    if not value or value in {".", ".."} or any(char in value for char in ("/", "\\", "\x00")):
+        raise ValueError(f"{label} is not a safe path component")
 
 
 def _binding_or_default(binding: TaskRootBindingInput | None) -> TaskRootBindingInput:

@@ -25,10 +25,10 @@ from autoclaw.persistence.models.runtime.common import (
     sql_in,
     utcnow,
 )
+from autoclaw.persistence.models.runtime.waiting import FlowWaitModel
 
 if TYPE_CHECKING:
     from autoclaw.persistence.models.runtime.dispatch.turns import DispatchTurnModel
-    from autoclaw.persistence.models.runtime.waiting import FlowWaitModel
 
 
 class CommandRunModel(RuntimeBase):
@@ -46,9 +46,10 @@ class CommandRunModel(RuntimeBase):
             name="ck_command_runs_timeout_seconds",
         ),
         CheckConstraint(
-            "(timeout_seconds IS NULL AND due_at IS NULL) OR "
-            "(timeout_seconds IS NOT NULL AND due_at IS NOT NULL)",
-            name="ck_command_runs_timeout_due_pair",
+            "(started_at IS NULL AND due_at IS NULL) OR "
+            "(started_at IS NOT NULL AND timeout_seconds IS NULL AND due_at IS NULL) OR "
+            "(started_at IS NOT NULL AND timeout_seconds IS NOT NULL AND due_at IS NOT NULL)",
+            name="ck_command_runs_launch_deadline",
         ),
         CheckConstraint(
             "state != 'timed_out' OR due_at IS NOT NULL",
@@ -58,6 +59,12 @@ class CommandRunModel(RuntimeBase):
             "terminal_event_source IS NULL OR "
             f"terminal_event_source IN ({sql_in(COMMAND_RUN_TERMINAL_SOURCE_VALUES)})",
             name="ck_command_runs_terminal_event_source",
+        ),
+        CheckConstraint(
+            "state != 'abandoned' OR "
+            "(terminal_failure_code IS NOT NULL AND "
+            "terminal_failure_code = 'command_ownership_lost')",
+            name="ck_command_runs_abandoned_diagnostic",
         ),
         CheckConstraint(
             "(state = 'pending_start' AND started_at IS NULL AND ended_at IS NULL AND "
@@ -164,7 +171,7 @@ class CommandRunModel(RuntimeBase):
     flow_wait: Mapped[FlowWaitModel | None] = relationship(
         "FlowWaitModel",
         back_populates="command_run",
-        foreign_keys="FlowWaitModel.command_run_id",
+        foreign_keys=[FlowWaitModel.command_run_id],
         lazy="raise",
         uselist=False,
         viewonly=True,

@@ -12,7 +12,6 @@ from autoclaw.runtime.node_operations import NodeOperationScope
 from autoclaw.runtime.post_commit.publisher import CapturedRuntimeEffectPublisher
 from autoclaw.runtime.post_commit.signals import (
     CommandRunPending,
-    HumanRequestDue,
     HumanRequestOpened,
     RuntimeEffectSignal,
 )
@@ -43,7 +42,7 @@ class _RaisingRuntimePublisher:
         raise RuntimeError("publisher unavailable")
 
 
-async def test_human_request_publishes_exact_open_and_due_signals_after_commit(
+async def test_human_request_publishes_only_exact_open_signal_after_commit(
     tmp_path: Path,
 ) -> None:
     publisher = CapturedRuntimeEffectPublisher()
@@ -79,10 +78,7 @@ async def test_human_request_publishes_exact_open_and_due_signals_after_commit(
             source = await session.get(HumanRequestModel, request_id)
 
     assert source is not None
-    assert publisher.signals == (
-        HumanRequestOpened(request_id),
-        HumanRequestDue(request_id=request_id, due_at=due_at),
-    )
+    assert publisher.signals == (HumanRequestOpened(request_id),)
 
 
 async def test_command_run_commit_survives_runtime_publication_exception(

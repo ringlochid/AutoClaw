@@ -15,7 +15,7 @@ from pydantic import (
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
 from autoclaw.runtime.contracts.primitives import (
     CommandRunState,
-    TaskEventSource,
+    CommandRunTerminalSource,
     TaskEventType,
     TaskIdentifier,
 )
@@ -26,6 +26,7 @@ TERMINAL_COMMAND_RUN_STATES = frozenset(
         CommandRunState.FAILED,
         CommandRunState.TIMED_OUT,
         CommandRunState.CANCELLED,
+        CommandRunState.ABANDONED,
     }
 )
 
@@ -34,6 +35,7 @@ type CommandRunTerminalState = Literal[
     CommandRunState.FAILED,
     CommandRunState.TIMED_OUT,
     CommandRunState.CANCELLED,
+    CommandRunState.ABANDONED,
 ]
 
 COMMAND_RUN_TERMINAL_EVENT_TYPES = {
@@ -41,7 +43,17 @@ COMMAND_RUN_TERMINAL_EVENT_TYPES = {
     CommandRunState.FAILED: TaskEventType.COMMAND_RUN_FAILED,
     CommandRunState.TIMED_OUT: TaskEventType.COMMAND_RUN_TIMED_OUT,
     CommandRunState.CANCELLED: TaskEventType.COMMAND_RUN_CANCELLED,
+    CommandRunState.ABANDONED: TaskEventType.COMMAND_RUN_ABANDONED,
 }
+
+
+def _validate_abandoned_failure_code(
+    state: CommandRunState,
+    failure_code: str | None,
+) -> None:
+    if state == CommandRunState.ABANDONED and failure_code != "command_ownership_lost":
+        raise ValueError("abandoned command runs require command_ownership_lost")
+
 
 type CommandEnvironmentRef = Annotated[
     str,
@@ -130,6 +142,7 @@ class CommandRunTerminalResult(BaseModel):
     exit_code: int | None = None
     signal: RuntimeSchemaText | None = None
     log_ref: RuntimeSchemaText | None = None
+    failure_code: RuntimeSchemaText | None = None
 
 
 class CommandRunRecord(BaseModel):
@@ -152,7 +165,7 @@ class CommandRunRecord(BaseModel):
     cancellation_requested_at: datetime | None = None
     cancellation_requested_by_actor_ref: RuntimeSchemaText | None = None
     terminal_result: CommandRunTerminalResult | None = None
-    terminal_event_source: TaskEventSource | None = None
+    terminal_event_source: CommandRunTerminalSource | None = None
     terminal_actor_ref: RuntimeSchemaText | None = None
 
     @model_validator(mode="after")
@@ -164,6 +177,10 @@ class CommandRunRecord(BaseModel):
                 raise ValueError("terminal command run states require ended_at")
             if self.terminal_event_source is None:
                 raise ValueError("terminal command run states require terminal_event_source")
+            _validate_abandoned_failure_code(
+                self.state,
+                self.terminal_result.failure_code,
+            )
             return self
         if self.terminal_result is not None:
             raise ValueError("non-terminal command run states must not set terminal_result")
@@ -191,7 +208,13 @@ class CommandRunTerminalResultRead(BaseModel):
     exit_code: int | None = None
     signal: RuntimeSchemaText | None = None
     log_ref: RuntimeSchemaText | None = None
+    failure_code: RuntimeSchemaText | None = None
     ended_at: datetime
+
+    @model_validator(mode="after")
+    def validate_abandoned_failure(self) -> CommandRunTerminalResultRead:
+        _validate_abandoned_failure_code(self.state, self.failure_code)
+        return self
 
 
 class CommandRunListItem(BaseModel):
@@ -210,6 +233,12 @@ class CommandRunListItem(BaseModel):
     exit_code: int | None = None
     signal: RuntimeSchemaText | None = None
     log_ref: RuntimeSchemaText | None = None
+    failure_code: RuntimeSchemaText | None = None
+
+    @model_validator(mode="after")
+    def validate_abandoned_failure(self) -> CommandRunListItem:
+        _validate_abandoned_failure_code(self.state, self.failure_code)
+        return self
 
 
 class CommandRunListResponse(BaseModel):

@@ -181,9 +181,9 @@ Large bodies remain behind logical refs. Prompt snapshots, checkpoints, task eve
 
 `tmp/transfers/localized/` holds controller-localized transient inputs needed for the task. Its index records provenance and logical refs. Transient bodies are not automatically durable artifacts and do not become workflow truth.
 
-Active transient bodies use the same prepare-before-commit guarantee and an immutable path keyed by `transient_localization_id`. A committed active localization never points to a missing or partial body. Expiry first commits the inactive retention state; body removal is asynchronous and reference-safe. Cleanup failure may leave excess data, but it cannot erase an active authoritative body.
+Active transient bodies use the same prepare-before-commit guarantee and an immutable path keyed by `transient_localization_id`. A committed active localization never points to a missing or partial body. Expiry first commits `retention_status = expired` plus the exact `expires_at` generation while `removed_at` remains absent. Body removal is asynchronous and reference-safe. A winning exact cleanup records `retention_status = removed` plus `removed_at`; failure may leave excess data, but it cannot erase an active authoritative body.
 
-Cleanup follows the owning task retention policy and never traverses an externally bound workspace path.
+Cleanup follows the owning task retention policy and never traverses an externally bound workspace path. The runtime cleanup handler does not choose that policy or expire active rows; it consumes only already-expired generations.
 
 ## Request and support cleanup
 

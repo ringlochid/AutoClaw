@@ -1,5 +1,10 @@
 """Thin exact-source runtime effect routing substrate."""
 
+from autoclaw.runtime.post_commit.deadlines import (
+    DeadlineDueSignal,
+    DeadlineDueSignalType,
+    DeadlineScheduler,
+)
 from autoclaw.runtime.post_commit.health import (
     RuntimeEffectFailure,
     RuntimeEffectFailureKind,
@@ -29,6 +34,7 @@ from autoclaw.runtime.post_commit.signals import (
     HumanRequestOpened,
     HumanRequestTerminal,
     RuntimeEffectSignal,
+    TransientCleanupRequested,
     WatchdogDeadlineChanged,
     WatchdogDue,
 )
@@ -42,6 +48,9 @@ __all__ = [
     "CommandRunDue",
     "CommandRunPending",
     "CommandRunTerminal",
+    "DeadlineDueSignal",
+    "DeadlineDueSignalType",
+    "DeadlineScheduler",
     "DispatchCleanupRequested",
     "DispatchStartDue",
     "FlowStartCommitted",
@@ -56,6 +65,7 @@ __all__ = [
     "RuntimeEffectPublisher",
     "RuntimeEffectRouter",
     "RuntimeEffectSignal",
+    "TransientCleanupRequested",
     "WatchdogDeadlineChanged",
     "WatchdogDue",
 ]

@@ -8,6 +8,7 @@ from autoclaw.persistence.models import FlowModel, TaskModel
 from autoclaw.runtime.contracts import FlowStatus, RuntimeFlowRead, WorkflowManifestRef
 from autoclaw.runtime.dispatch.authority import NodeOperationAuthority
 from autoclaw.runtime.errors import missing_resource_error
+from autoclaw.runtime.flow.reads import normalized_pause_reason, normalized_waiting_cause
 
 
 async def runtime_flow_read(
@@ -28,12 +29,19 @@ async def runtime_flow_read(
         workflow_key=task.workflow_key,
         status=status,
         active_flow_revision_id=flow.active_flow_revision_id,
+        control_revision=flow.control_revision,
         workflow_manifest_ref=WorkflowManifestRef(
             path=Path("_runtime/workflow-manifest.md"),
             description="Current workflow manifest projection.",
         ),
         current_node_key=current_node_key,
+        active_assignment_id=(
+            authority.assignment_id if flow.current_dispatch_id is not None else None
+        ),
         active_attempt_id=active_attempt_id,
+        current_dispatch_id=flow.current_dispatch_id,
+        waiting_cause=normalized_waiting_cause(flow.waiting_cause),
+        pause_reason=normalized_pause_reason(flow.pause_reason),
         updated_at=flow.updated_at,
     )
 

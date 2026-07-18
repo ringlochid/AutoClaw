@@ -156,6 +156,95 @@ def test_command_run_lifecycle_requires_complete_terminal_provenance(
         engine.dispose()
 
 
+def test_command_timeout_deadline_begins_only_after_process_start(
+    tmp_path: Path,
+) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            ids = seed_runtime_scope(connection)
+            runs = RuntimeBase.metadata.tables["command_runs"]
+            row = _pending_command_run(ids)
+            row["timeout_seconds"] = 60
+            connection.execute(runs.insert(), row)
+            connection.execute(
+                runs.update()
+                .where(runs.c.run_id == "command-run.target")
+                .values(
+                    state="running",
+                    ownership_revision=1,
+                    started_at=NOW + timedelta(seconds=1),
+                    due_at=NOW + timedelta(seconds=61),
+                )
+            )
+        with engine.connect() as connection:
+            run = connection.execute(select(RuntimeBase.metadata.tables["command_runs"])).one()
+        assert run.started_at == (NOW + timedelta(seconds=1)).replace(tzinfo=None)
+        assert run.due_at == (NOW + timedelta(seconds=61)).replace(tzinfo=None)
+    finally:
+        engine.dispose()
+
+
+def test_started_command_with_timeout_requires_a_deadline(tmp_path: Path) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        row = _pending_command_run(scopes["a"])
+        row.update(
+            state="running",
+            timeout_seconds=60,
+            started_at=NOW,
+        )
+        connection.execute(RuntimeBase.metadata.tables["command_runs"].insert(), row)
+
+    _assert_rejected(tmp_path, mutate)
+
+
+@pytest.mark.parametrize("failure_code", [None, "process_not_found"])
+def test_abandoned_command_requires_ownership_lost_diagnostic(
+    tmp_path: Path,
+    failure_code: str | None,
+) -> None:
+    def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
+        row = _pending_command_run(scopes["a"])
+        row.update(
+            state="abandoned",
+            started_at=NOW - timedelta(seconds=1),
+            ended_at=NOW,
+            terminal_summary="Command ownership was lost during restart.",
+            terminal_failure_code=failure_code,
+            terminal_event_source="controller",
+        )
+        connection.execute(RuntimeBase.metadata.tables["command_runs"].insert(), row)
+
+    _assert_rejected(tmp_path, mutate)
+
+
+def test_abandoned_command_accepts_exact_ownership_lost_diagnostic(
+    tmp_path: Path,
+) -> None:
+    engine = create_runtime_schema_engine(tmp_path)
+    try:
+        with engine.begin() as connection:
+            seed_catalog(connection)
+            ids = seed_runtime_scope(connection)
+            row = _pending_command_run(ids)
+            row.update(
+                state="abandoned",
+                started_at=NOW - timedelta(seconds=1),
+                ended_at=NOW,
+                terminal_summary="Command ownership was lost during restart.",
+                terminal_failure_code="command_ownership_lost",
+                terminal_event_source="controller",
+            )
+            connection.execute(RuntimeBase.metadata.tables["command_runs"].insert(), row)
+        with engine.connect() as connection:
+            run = connection.execute(select(RuntimeBase.metadata.tables["command_runs"])).one()
+        assert run.state == "abandoned"
+        assert run.terminal_failure_code == "command_ownership_lost"
+    finally:
+        engine.dispose()
+
+
 def test_command_cancellation_request_requires_owner_timestamp(tmp_path: Path) -> None:
     def mutate(connection: Connection, scopes: dict[str, RuntimeIds]) -> None:
         row = _pending_command_run(scopes["a"])

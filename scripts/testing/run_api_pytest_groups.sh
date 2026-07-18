@@ -53,15 +53,8 @@ list_suite() {
         tests/integration/test_startup_schema_guard.py \
         tests/integration/test_db_reset_db.py
       describe_group "bootstrap" tests/integration/bootstrap
-      describe_group \
-        "runtime-routes-control" \
-        tests/integration/runtime/routes \
-        tests/integration/runtime/control
-      describe_group "runtime-db" tests/integration/runtime/db
-      describe_group "runtime-contracts" tests/integration/runtime/contracts
-      describe_group "gateway" tests/integration/gateway
+      describe_group "runtime" tests/integration/runtime
       describe_group "mcp" tests/integration/mcp
-      describe_group "watchdog" tests/integration/watchdog
       describe_group "public-surfaces" tests/integration/public_surfaces
       ;;
     e2e-bounded)
@@ -98,15 +91,8 @@ run_integration_groups() {
     tests/integration/test_startup_schema_guard.py \
     tests/integration/test_db_reset_db.py
   run_group "bootstrap" tests/integration/bootstrap
-  run_group \
-    "runtime-routes-control" \
-    tests/integration/runtime/routes \
-    tests/integration/runtime/control
-  run_group "runtime-db" tests/integration/runtime/db
-  run_group "runtime-contracts" tests/integration/runtime/contracts
-  run_group "gateway" tests/integration/gateway
+  run_group "runtime" tests/integration/runtime
   run_group "mcp" tests/integration/mcp
-  run_group "watchdog" tests/integration/watchdog
   run_group "public-surfaces" tests/integration/public_surfaces
 }
 

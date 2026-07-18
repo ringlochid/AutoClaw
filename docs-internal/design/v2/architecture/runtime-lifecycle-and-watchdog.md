@@ -23,7 +23,7 @@ The runtime never waits for provider output, final response, drain, or terminati
 | terminal command run | terminalize run and clear matching wait | materialize and conditionally create D2 when runnable |
 | watchdog due | none before due handler | materialize, then atomically close D1 + create D2 or pause on cap |
 | operator pause | persist pause intent and close current dispatch authority | exact dispatch cleanup only; active external source survives |
-| task cancel | persist terminal intent, close current authority, and terminalize sources as owned | exact dispatch and live-process cleanup signals |
+| task cancel | persist terminal intent, close current authority, and terminalize sources as owned | exact dispatch, live-process, and already-expired transient cleanup signals |
 | operator continue | directly await validation, materialization, and run+D2 commit | provider start only |
 | D2 committed `starting` | none | validate refs, create binding, invoke provider, retry if needed |
 
@@ -71,6 +71,7 @@ CommandRunCancellationRequested(run_id, ownership_revision)
 CommandRunTerminal(run_id)
 CommandProcessExited(run_id, ownership_revision)
 DispatchCleanupRequested(dispatch_id)
+TransientCleanupRequested(transient_localization_id, expires_at)
 WatchdogDeadlineChanged(dispatch_id, activity_revision, due_at)
 WatchdogDue(dispatch_id, activity_revision, due_at)
 DispatchStartDue(dispatch_id, provider_start_revision, due_at)
@@ -114,6 +115,7 @@ Handlers do not begin from a task aggregate. They load the exact source first an
 | command pending/due/cancel/exit | exact run request/state/due/ownership revision plus the minimum workspace/process-policy facts; flow/wait only for terminalization |
 | command terminal | exact terminal run, source D1/successor field, flow/wait/current status, same assignment/attempt and render inputs |
 | dispatch cleanup | exact closed dispatch/provider route plus process-local binding/adapter handle keyed by dispatch ID |
+| transient cleanup | exact expired localization ID and expiry generation, task root, localized logical path, and existence of any active reference to that path |
 | watchdog deadline change | no task aggregate; monotonic in-memory replacement by exact dispatch/revision/due key |
 | watchdog due | exact D1, activity revision/deadline, flow current/runnable state, existence of D1-owned human/command source, recovery lineage, and render inputs |
 | dispatch start | exact current D2, provider-start revision/due, committed request refs, resolved provider route, workspace, capability/tool exposure |
@@ -197,6 +199,8 @@ If another operation wins during materialization, the final write affects zero r
 
 If the configured same-attempt watchdog cap is exhausted, the final transaction closes D1 with `control_failed`, pauses the flow with `runtime_recovery_exhausted`, and creates no D2. The default cap is two replacements.
 
+The target runtime settings are `watchdog_inactivity_timeout_seconds`, default `900` (15 minutes), and `watchdog_same_attempt_replacement_limit`, default `2`. There is no watchdog poll interval, bootstrap-only timeout, per-tick work limit, auto-recover toggle, or separate execution-stale threshold.
+
 Before a winning watchdog D2 starts, the dispatch starter makes one bounded adapter stop attempt for D1. A successful return proves stopped/not-running. Unsupported, failed, or timed-out stop does not block D2 start.
 
 ## Node activity clock
@@ -214,10 +218,11 @@ Malformed transport, failed binding authentication, wrong task/dispatch, stale a
 The watchdog deadline is:
 
 ```text
-(last_node_activity_at ?? adapter_started_at) + watchdog_interval
+max(adapter_started_at, last_node_activity_at ?? adapter_started_at)
+  + watchdog_inactivity_timeout_seconds
 ```
 
-Only `open` dispatches have a watchdog deadline. `starting` dispatches are governed by provider-start retry instead.
+Only `open` dispatches have a watchdog deadline. `starting` dispatches are governed by provider-start retry instead. The maximum prevents an admitted call made during the `starting` handoff from producing a first-open deadline earlier than positive adapter acceptance.
 
 After activity commits, `WatchdogDeadlineChanged(dispatch_id, activity_revision, due_at)` asks the scheduler to replace the in-memory due generation. The scheduler never lets an older revision overwrite a newer one. A due signal carrying the old revision or due time loses at the final conditional write.
 
@@ -268,6 +273,8 @@ Consuming command stdout/stderr prevents child-process pipe blockage and feeds b
 
 Restart never blindly relaunches a command process whose ownership is ambiguous. The command owner first classifies the durable run and any locally provable process state according to the command-run contract.
 
+When exact ownership cannot be proved after a possible launch, the command owner terminalizes that source as `abandoned` with `command_ownership_lost`, clears only the matching wait, and publishes the ordinary command-terminal signal. It does not blindly relaunch or terminate the process.
+
 ## Pause, cancel, and cleanup
 
 Pause and task cancel commit controller truth first. Current dispatch authority becomes invalid immediately through database currentness, even if a process-local binding has not yet been removed.
@@ -277,6 +284,8 @@ Provider stop and process cleanup are post-commit best effort. They cannot delay
 An active human request or command run survives ordinary pause. Its terminal result may commit while paused but cannot open a successor until an explicit legal continue consumes it.
 
 Task cancel terminalizes/cancels matching sources as owned, requests process termination, and never opens a successor.
+
+Transient cleanup never invents retention policy or expires an active row. Task cancel discovers only scalar IDs and expiry generations for rows already committed as `expired`, then publishes one exact `TransientCleanupRequested` per row after the cancel transaction. The handler rereads `transient_localization_id + expires_at`, removes only a regular body under `tmp/transfers/localized/`, conditionally records `removed + removed_at`, and republishes the transient support projection. A duplicate or stale generation is a no-op. A cleanup failure may leave an expired body, but it cannot delete an active body, committed artifact, request file, or external workspace content.
 
 ## Startup recovery
 
@@ -289,7 +298,7 @@ Before accepting runtime work, lifespan startup exhausts bounded indexed pages f
 5. command runs pending launch, running, or cancellation-requested;
 6. current `starting` dispatches, treating any possibly attempted start as uncertain;
 7. current eligible `open` dispatches and their watchdog deadlines; and
-8. paused or terminal rows needing resource cleanup only.
+8. expired transient localizations and other paused or terminal rows needing resource cleanup only.
 
 Each discovered row emits or registers the same exact signal used during normal operation. A recovered `open` managed dispatch receives only its existing watchdog registration; startup does not recreate its lost binding or blindly start another provider. Startup does not run a special whole-task reconciler.
 

@@ -28,6 +28,7 @@ from autoclaw.runtime.contracts.prompt import (
     PromptWorkflowNeighbor,
     RootStartTrigger,
     SemanticRetryTrigger,
+    WatchdogRecoveryTrigger,
     prompt_family_for_node_kind,
 )
 from autoclaw.runtime.work_plan import WorkPlanRead
@@ -78,7 +79,9 @@ class RootPromptSnapshot:
 
 
 type BoundaryPromptTrigger = AcceptedBoundaryTrigger | ChildReturnTrigger | SemanticRetryTrigger
-type OrdinaryPromptTrigger = HumanResultTrigger | CommandResultTrigger | OperatorContinueTrigger
+type OrdinaryPromptTrigger = (
+    HumanResultTrigger | CommandResultTrigger | WatchdogRecoveryTrigger | OperatorContinueTrigger
+)
 type RootPromptTrigger = RootStartTrigger | OperatorContinueTrigger
 
 
@@ -434,6 +437,11 @@ def _ordinary_trigger_instruction(trigger: OrdinaryPromptTrigger) -> str:
         return (
             "Read the exact command result and its logical refs, then continue the same "
             "assignment and attempt."
+        )
+    if isinstance(trigger, WatchdogRecoveryTrigger):
+        return (
+            "Resume the same assignment and attempt from controller-owned context after "
+            "the exact predecessor dispatch became inactive."
         )
     return (
         "Reread the current controller context, honor the recorded pause reason, and "

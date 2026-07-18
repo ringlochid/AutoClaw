@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.interfaces.http.dependencies import (
     read_control_actor_ref,
+    read_dispatch_opening_dependencies,
+    read_runtime_effect_publisher,
     require_api_key,
 )
 from autoclaw.interfaces.http.errors import raise_runtime_exception
@@ -19,6 +21,7 @@ from autoclaw.runtime.contracts import (
     RuntimeFlowSummaryListResponse,
     RuntimeTaskListQuery,
 )
+from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.flow.service import (
     cancel_runtime_flow,
     continue_runtime_flow,
@@ -26,12 +29,21 @@ from autoclaw.runtime.flow.service import (
     pause_runtime_flow,
     runtime_flow_read,
 )
+from autoclaw.runtime.post_commit import RuntimeEffectPublisher
 
 router = APIRouter(prefix="/runtime", tags=["runtime"], dependencies=[Depends(require_api_key)])
 type DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 type ControlActorRefDep = Annotated[str | None, Depends(read_control_actor_ref)]
 type RuntimeTaskListParams = Annotated[RuntimeTaskListQuery, Query()]
 type RuntimeFlowControlParams = Annotated[RuntimeFlowControlQuery, Query()]
+type RuntimeEffectPublisherDep = Annotated[
+    RuntimeEffectPublisher | None,
+    Depends(read_runtime_effect_publisher),
+]
+type DispatchOpeningDependenciesDep = Annotated[
+    DispatchOpeningDependencies,
+    Depends(read_dispatch_opening_dependencies),
+]
 
 
 @router.get("/tasks", response_model=RuntimeFlowSummaryListResponse)
@@ -69,6 +81,7 @@ async def continue_task(
     session: DBSession,
     query: RuntimeFlowControlParams,
     actor_ref: ControlActorRefDep,
+    dependencies: DispatchOpeningDependenciesDep,
 ) -> RuntimeFlowRead:
     try:
         return await write_session_operation(
@@ -76,6 +89,8 @@ async def continue_task(
                 active_session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                expected_control_revision=query.expected_control_revision,
+                dependencies=dependencies,
                 actor_ref=actor_ref,
             ),
             session=session,
@@ -90,6 +105,7 @@ async def pause_task(
     session: DBSession,
     query: RuntimeFlowControlParams,
     actor_ref: ControlActorRefDep,
+    runtime_effect_publisher: RuntimeEffectPublisherDep,
 ) -> RuntimeFlowPauseResponse:
     try:
         return await write_session_operation(
@@ -97,7 +113,9 @@ async def pause_task(
                 active_session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                expected_control_revision=query.expected_control_revision,
                 actor_ref=actor_ref,
+                runtime_effect_publisher=runtime_effect_publisher,
             ),
             session=session,
         )
@@ -111,6 +129,7 @@ async def cancel_task(
     session: DBSession,
     query: RuntimeFlowControlParams,
     actor_ref: ControlActorRefDep,
+    runtime_effect_publisher: RuntimeEffectPublisherDep,
 ) -> RuntimeFlowRead:
     try:
         return await write_session_operation(
@@ -118,7 +137,9 @@ async def cancel_task(
                 active_session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                expected_control_revision=query.expected_control_revision,
                 actor_ref=actor_ref,
+                runtime_effect_publisher=runtime_effect_publisher,
             ),
             session=session,
         )

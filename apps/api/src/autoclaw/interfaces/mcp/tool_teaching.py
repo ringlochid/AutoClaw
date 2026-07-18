@@ -10,8 +10,8 @@ LOCAL_FILE_PATH_NOTE = "Local file path on the AutoClaw host."
 STATUS_CHECK_WARNING = "Do not use for status checks."
 RUNTIME_STATE_WARNING = "This changes runtime state."
 FRESH_REVISION_NOTE = (
-    "Use only with a fresh expected_active_flow_revision_id from get_runtime_task "
-    "or get_operator_snapshot."
+    "Use only with fresh expected_active_flow_revision_id and expected_control_revision "
+    "values from get_runtime_task or get_operator_snapshot."
 )
 INSPECT_FIRST_NOTE = "Use only after inspecting current runtime state."
 SUPPORT_FILE_REF_NOTE = "Returns a task-scoped support file ref/path, not a parsed status answer."

@@ -83,6 +83,7 @@ command_run_succeeded
 command_run_failed
 command_run_timed_out
 command_run_cancelled
+command_run_abandoned
 
 task_paused
 task_resumed
@@ -180,6 +181,8 @@ A later `dispatch_opened` may show legal continuation, but the terminal event it
 Command events carry exact run ID, source dispatch, current state, bounded command/description/workdir/timing, process ownership revision when relevant, terminal result summary, and log ref.
 
 `command_run_cancel_requested` remains nonterminal. A concrete terminal event is emitted only after the process owner satisfies the state-specific termination/reap rules.
+
+`command_run_abandoned` records restart-time loss of exact process ownership. Its bounded payload carries `failure_code = command_ownership_lost`; it is terminal chronology, not proof of process exit or a request to relaunch.
 
 Raw stdout/stderr remains behind the authorized log route. Process pipe consumption does not generate provider-drain or runtime-liveness events.
 

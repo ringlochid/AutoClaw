@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import stat
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -19,6 +19,8 @@ from autoclaw.persistence.models import (
     TaskModel,
     TransientLocalizationModel,
 )
+from autoclaw.runtime.node_mcp import DispatchMcpBindingRegistry
+from autoclaw.runtime.post_commit.signals import DispatchCleanupRequested
 from autoclaw.runtime.startup_audit import (
     StartupAuditPage,
     audit_startup_source_family,
@@ -31,6 +33,9 @@ _STAGING_DIRECTORY_PREFIX = ".dispatch-stage-"
 _REQUEST_FILENAMES = frozenset(("instructions.md", "input.md"))
 
 type AsyncSessionContextFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
+type DispatchBindingCleanupHandler = Callable[
+    [AsyncSession, DispatchCleanupRequested], Awaitable[None]
+]
 type _CandidateKind = Literal["final", "staging"]
 type _ReferenceState = Literal["referenced", "unreferenced", "task_changed"]
 
@@ -84,6 +89,26 @@ class _CleanupCounts:
             rejected_count=self.rejected_count,
             changed_count=self.changed_count,
         )
+
+
+def create_dispatch_binding_cleanup_handler(
+    binding_registry: DispatchMcpBindingRegistry,
+) -> DispatchBindingCleanupHandler:
+    """Create exact closed-dispatch cleanup for process-local MCP authority."""
+
+    async def revoke_closed_dispatch_binding(
+        session: AsyncSession,
+        signal: DispatchCleanupRequested,
+    ) -> None:
+        status = await session.scalar(
+            select(DispatchTurnModel.status).where(
+                DispatchTurnModel.dispatch_id == signal.dispatch_id
+            )
+        )
+        if status == "closed":
+            binding_registry.revoke_dispatch(signal.dispatch_id)
+
+    return revoke_closed_dispatch_binding
 
 
 async def cleanup_aged_dispatch_request_directories(
@@ -488,6 +513,8 @@ def _require_safe_directory_operations() -> None:
 
 __all__ = [
     "DISPATCH_REQUEST_CLEANUP_MINIMUM_AGE",
+    "DispatchBindingCleanupHandler",
     "DispatchRequestCleanupResult",
     "cleanup_aged_dispatch_request_directories",
+    "create_dispatch_binding_cleanup_handler",
 ]

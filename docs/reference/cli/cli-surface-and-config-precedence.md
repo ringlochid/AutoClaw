@@ -176,15 +176,10 @@ operator_agent_id = "autoclaw-operator"
 timeout_ms = 120000
 
 [runtime]
-dispatch_drain_timeout_seconds = 30
-watchdog_enabled = true
-watchdog_interval_seconds = 15
-watchdog_execution_stale_after_seconds = 300
-watchdog_bootstrap_first_progress_timeout_seconds = 120
-watchdog_same_attempt_redispatch_limit = 2
-watchdog_auto_recover = true
-watchdog_max_flows_per_tick = 50
-watchdog_max_auto_recoveries_per_tick = 10
+dispatch_launch_retry_initial_backoff_seconds = 1.0
+dispatch_launch_retry_max_backoff_seconds = 30.0
+watchdog_inactivity_timeout_seconds = 900
+watchdog_same_attempt_replacement_limit = 2
 ```
 
 The example above shows the config shape only. When `autoclaw init` generates a fresh config without an explicit key flag, it writes a generated API key rather than the literal placeholder string shown here.

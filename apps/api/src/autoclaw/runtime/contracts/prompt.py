@@ -110,6 +110,7 @@ class PromptCommandOutcome(StrEnum):
     FAILED = "failed"
     TIMED_OUT = "timed_out"
     CANCELLED = "cancelled"
+    ABANDONED = "abandoned"
 
 
 class PromptCommandTerminalSource(StrEnum):
@@ -269,6 +270,11 @@ class PromptCommandResult(PromptContract):
     def validate_timing(self) -> PromptCommandResult:
         if self.started_at is not None and self.ended_at < self.started_at:
             raise ValueError("command result cannot end before it starts")
+        if (
+            self.state == PromptCommandOutcome.ABANDONED
+            and self.failure_code != "command_ownership_lost"
+        ):
+            raise ValueError("abandoned command results require command_ownership_lost")
         return self
 
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -91,7 +90,6 @@ async def start_command_run(
     run_id = f"command-run.{authority.task_id}.{uuid4().hex}"
     body = request.request
     now = utc_now()
-    due_at = now + timedelta(seconds=body.timeout_seconds) if body.timeout_seconds else None
     cwd = _normalize_command_cwd(body.cwd)
     expected_outputs = [
         {
@@ -122,7 +120,7 @@ async def start_command_run(
             summary=body.summary,
             expected_outputs_json=expected_outputs or None,
             timeout_seconds=body.timeout_seconds,
-            due_at=due_at,
+            due_at=None,
             state=CommandRunState.PENDING_START,
             ownership_revision=0,
         )

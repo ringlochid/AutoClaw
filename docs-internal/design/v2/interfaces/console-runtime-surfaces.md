@@ -87,10 +87,12 @@ Continue is not an answer action. Provider-native question/approval UI is never 
 The console renders exact command source state:
 
 ```text
-pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled
+pending_start | running | cancellation_requested | succeeded | failed | timed_out | cancelled | abandoned
 ```
 
 `cancellation_requested` remains nonterminal until process termination and reap. Bounded summary and log refs come from source reads; raw logs require explicit authorized inspection.
+
+`abandoned` is a terminal audited ownership-loss state. The console presents its sanitized `command_ownership_lost` diagnostic and repair/continuation context without implying that the operating-system process exited or should be relaunched.
 
 Command output is never provider output and never replaces normalized run state.
 

@@ -70,6 +70,12 @@ class DispatchCleanupRequested(RuntimeEffectSignal):
 
 
 @dataclass(frozen=True, slots=True)
+class TransientCleanupRequested(RuntimeEffectSignal):
+    transient_localization_id: str
+    expires_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class WatchdogDeadlineChanged(RuntimeEffectSignal):
     dispatch_id: str
     activity_revision: int
@@ -102,6 +108,7 @@ ALL_RUNTIME_EFFECT_SIGNAL_TYPES: tuple[type[RuntimeEffectSignal], ...] = (
     CommandRunTerminal,
     CommandProcessExited,
     DispatchCleanupRequested,
+    TransientCleanupRequested,
     WatchdogDeadlineChanged,
     WatchdogDue,
     DispatchStartDue,
@@ -142,6 +149,14 @@ def runtime_effect_source_context(
             return (("run_id", run_id), ("ownership_revision", ownership_revision))
         case DispatchCleanupRequested(dispatch_id=dispatch_id):
             return (("dispatch_id", dispatch_id),)
+        case TransientCleanupRequested(
+            transient_localization_id=transient_localization_id,
+            expires_at=expires_at,
+        ):
+            return (
+                ("transient_localization_id", transient_localization_id),
+                ("expires_at", expires_at.isoformat()),
+            )
         case WatchdogDeadlineChanged(
             dispatch_id=dispatch_id,
             activity_revision=activity_revision,
@@ -192,6 +207,7 @@ __all__ = [
     "RuntimeEffectContextValue",
     "RuntimeEffectSignal",
     "RuntimeEffectSourceContext",
+    "TransientCleanupRequested",
     "WatchdogDeadlineChanged",
     "WatchdogDue",
     "runtime_effect_source_context",

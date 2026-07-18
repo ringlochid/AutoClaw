@@ -33,7 +33,9 @@ from autoclaw.runtime.contracts import (
     RuntimeFlowRead,
     RuntimeFlowSummaryListResponse,
     RuntimeTaskListQuery,
+    TaskEventSource,
 )
+from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.flow import (
     cancel_runtime_flow,
     continue_runtime_flow,
@@ -66,11 +68,11 @@ LIST_RUNTIME_TASKS_TEACHING = read_only_tool_teaching(
 )
 GET_RUNTIME_TASK_TEACHING = read_only_tool_teaching(
     name="get_runtime_task",
-    summary=("Inspect the current task status and active flow revision for one task."),
+    summary="Inspect current task status and control guards for one task.",
     details=(
         "Use this first for status checks and before pause_task, continue_task, or cancel_task.",
-        "Use this to get a fresh expected_active_flow_revision_id before "
-        "pause_task, continue_task, or cancel_task.",
+        "Use its active_flow_revision_id and control_revision as the fresh expected values "
+        "for pause_task, continue_task, or cancel_task.",
     ),
 )
 GET_OPERATOR_SNAPSHOT_TEACHING = read_only_tool_teaching(
@@ -266,7 +268,12 @@ def register_operator_read_tools(server: FastMCP) -> None:
         )
 
 
-def register_runtime_control_tools(server: FastMCP) -> None:
+def register_runtime_control_tools(
+    server: FastMCP,
+    *,
+    runtime_effect_publisher: RuntimeEffectPublisher | None = None,
+    dependencies: DispatchOpeningDependencies | None = None,
+) -> None:
     @server.tool(
         name="pause_task",
         title=PAUSE_TASK_TEACHING.title,
@@ -276,15 +283,20 @@ def register_runtime_control_tools(server: FastMCP) -> None:
     async def pause_task(
         task_id: str,
         expected_active_flow_revision_id: str,
+        expected_control_revision: int,
     ) -> RuntimeFlowPauseResponse:
         query = RuntimeFlowControlQuery(
-            expected_active_flow_revision_id=expected_active_flow_revision_id
+            expected_active_flow_revision_id=expected_active_flow_revision_id,
+            expected_control_revision=expected_control_revision,
         )
         return await write_session_operation(
             lambda session: pause_runtime_flow(
                 session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                expected_control_revision=query.expected_control_revision,
+                event_source=TaskEventSource.OPERATOR_MCP,
+                runtime_effect_publisher=runtime_effect_publisher,
             )
         )
 
@@ -297,15 +309,21 @@ def register_runtime_control_tools(server: FastMCP) -> None:
     async def continue_task(
         task_id: str,
         expected_active_flow_revision_id: str,
+        expected_control_revision: int,
     ) -> RuntimeFlowRead:
         query = RuntimeFlowControlQuery(
-            expected_active_flow_revision_id=expected_active_flow_revision_id
+            expected_active_flow_revision_id=expected_active_flow_revision_id,
+            expected_control_revision=expected_control_revision,
         )
+        active_dependencies = require_dispatch_opening_dependencies(dependencies)
         return await write_session_operation(
             lambda session: continue_runtime_flow(
                 session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                expected_control_revision=query.expected_control_revision,
+                dependencies=active_dependencies,
+                event_source=TaskEventSource.OPERATOR_MCP,
             )
         )
 
@@ -318,15 +336,20 @@ def register_runtime_control_tools(server: FastMCP) -> None:
     async def cancel_task(
         task_id: str,
         expected_active_flow_revision_id: str,
+        expected_control_revision: int,
     ) -> RuntimeFlowRead:
         query = RuntimeFlowControlQuery(
-            expected_active_flow_revision_id=expected_active_flow_revision_id
+            expected_active_flow_revision_id=expected_active_flow_revision_id,
+            expected_control_revision=expected_control_revision,
         )
         return await write_session_operation(
             lambda session: cancel_runtime_flow(
                 session,
                 task_id,
                 expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                expected_control_revision=query.expected_control_revision,
+                event_source=TaskEventSource.OPERATOR_MCP,
+                runtime_effect_publisher=runtime_effect_publisher,
             )
         )
 
@@ -340,7 +363,18 @@ def register_runtime_wait_tools(
         server,
         runtime_effect_publisher=runtime_effect_publisher,
     )
-    register_command_run_tools(server)
+    register_command_run_tools(
+        server,
+        runtime_effect_publisher=runtime_effect_publisher,
+    )
+
+
+def require_dispatch_opening_dependencies(
+    dependencies: DispatchOpeningDependencies | None,
+) -> DispatchOpeningDependencies:
+    if dependencies is None:
+        raise RuntimeError("dispatch opening dependencies are unavailable")
+    return dependencies
 
 
 def register_human_request_tools(
@@ -383,7 +417,11 @@ def register_human_request_tools(
             )
 
 
-def register_command_run_tools(server: FastMCP) -> None:
+def register_command_run_tools(
+    server: FastMCP,
+    *,
+    runtime_effect_publisher: RuntimeEffectPublisher | None = None,
+) -> None:
     @server.tool(
         name="get_command_runs",
         title=GET_COMMAND_RUNS_TEACHING.title,
@@ -442,5 +480,6 @@ def register_command_run_tools(server: FastMCP) -> None:
                 task_id=task_id,
                 run_id=run_id,
                 actor_ref=_OPERATOR_MCP_ACTOR_REF,
+                runtime_effect_publisher=runtime_effect_publisher,
             )
         )

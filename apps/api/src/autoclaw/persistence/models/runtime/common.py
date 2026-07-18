@@ -89,8 +89,15 @@ COMMAND_RUN_STATE_VALUES = (
     "failed",
     "timed_out",
     "cancelled",
+    "abandoned",
 )
-COMMAND_RUN_TERMINAL_STATE_VALUES = ("succeeded", "failed", "timed_out", "cancelled")
+COMMAND_RUN_TERMINAL_STATE_VALUES = (
+    "succeeded",
+    "failed",
+    "timed_out",
+    "cancelled",
+    "abandoned",
+)
 COMMAND_RUN_TERMINAL_SOURCE_VALUES = (
     "controller",
     "control_api",
@@ -121,6 +128,7 @@ TASK_EVENT_TYPE_VALUES = (
     "command_run_failed",
     "command_run_timed_out",
     "command_run_cancelled",
+    "command_run_abandoned",
     "task_paused",
     "task_resumed",
     "task_cancelled",

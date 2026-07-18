@@ -8,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from autoclaw.config import get_settings
 from autoclaw.interfaces.http.errors import raise_operation_failure
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
+from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.node_operations.follow_on import SupportProjectionPublisher
 from autoclaw.runtime.post_commit import RuntimeEffectPublisher
 
@@ -34,6 +35,13 @@ def read_runtime_effect_publisher(request: Request) -> RuntimeEffectPublisher | 
         RuntimeEffectPublisher | None,
         getattr(request.app.state, "runtime_effect_publisher", None),
     )
+
+
+def read_dispatch_opening_dependencies(request: Request) -> DispatchOpeningDependencies:
+    dependencies = getattr(request.app.state, "dispatch_opening_dependencies", None)
+    if not isinstance(dependencies, DispatchOpeningDependencies):
+        raise RuntimeError("dispatch opening dependencies are unavailable")
+    return dependencies
 
 
 def read_support_projection_publisher(request: Request) -> SupportProjectionPublisher | None:

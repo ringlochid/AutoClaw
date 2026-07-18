@@ -11,6 +11,7 @@ from autoclaw.runtime.post_commit.signals import (
 )
 
 type RuntimeEffectFailureKind = Literal[
+    "command_owner_task_failed",
     "dispatcher_failed",
     "handler_failed",
     "publish_failed",

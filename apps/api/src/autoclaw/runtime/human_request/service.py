@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
 from datetime import datetime
 from typing import cast
 
@@ -12,6 +11,7 @@ from autoclaw.persistence.models import FlowModel, FlowWaitModel, HumanRequestMo
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
     HumanRequestListResponse,
+    HumanRequestResolution,
     HumanRequestResolutionKind,
     HumanRequestResolutionSurface,
     HumanRequestResolveRequest,
@@ -80,50 +80,97 @@ async def resolve_human_request(
     validate_answered_item_responses(source, item_responses)
 
     resolved_at = utc_now()
-    won = await _mark_human_request_answered(
-        session,
-        source=source,
+    resolution = HumanRequestResolution(
+        request_id=source.request_id,
+        task_id=source.task_id,
+        resolution_kind=HumanRequestResolutionKind.ANSWERED,
         item_responses=item_responses,
-        actor_ref=actor_ref,
+        policy_basis={"policy_basis": _RESOLUTION_POLICY_BASIS},
+        summary=_RESOLUTION_SUMMARY,
+        resolved_by_actor_ref=actor_ref,
         resolved_by_surface=resolved_by_surface,
         resolved_at=resolved_at,
     )
+    won = await persist_human_request_resolution(
+        session,
+        source=source,
+        resolution=resolution,
+        runtime_effect_publisher=runtime_effect_publisher,
+    )
     if not won:
         raise _human_request_conflict(f"human request '{request_id}' is already terminal")
+
+    return HumanRequestResolveResponse(task_id=task_id, resolution=resolution)
+
+
+async def persist_human_request_resolution(
+    session: AsyncSession,
+    *,
+    source: HumanRequestModel,
+    resolution: HumanRequestResolution,
+    expected_due_at: datetime | None = None,
+    runtime_effect_publisher: RuntimeEffectPublisher | None = None,
+) -> bool:
+    """Commit one exact answer, timeout, or cancellation winner."""
+
+    if resolution.request_id != source.request_id or resolution.task_id != source.task_id:
+        raise ValueError("human request resolution does not match its exact source")
+    if (
+        resolution.resolution_kind == HumanRequestResolutionKind.TIMED_OUT
+        and expected_due_at is None
+    ):
+        raise ValueError("human request timeout requires its exact stored deadline")
+    terminal_status, event_type = _terminal_resolution_state(resolution.resolution_kind)
+    predicates = [
+        HumanRequestModel.request_id == source.request_id,
+        HumanRequestModel.task_id == source.task_id,
+        HumanRequestModel.status == HumanRequestStatus.OPEN.value,
+    ]
+    if expected_due_at is not None:
+        predicates.append(HumanRequestModel.due_at == expected_due_at)
+    request_id = await session.scalar(
+        update(HumanRequestModel)
+        .where(*predicates)
+        .values(
+            status=terminal_status.value,
+            resolution_kind=resolution.resolution_kind.value,
+            item_responses_json=resolution.item_responses,
+            resolution_policy_basis_json=resolution.policy_basis,
+            resolution_summary=resolution.summary,
+            resolved_by_actor_ref=resolution.resolved_by_actor_ref,
+            resolved_by_surface=resolution.resolved_by_surface.value,
+            resolved_at=resolution.resolved_at,
+        )
+        .returning(HumanRequestModel.request_id)
+    )
+    if request_id is None:
+        await session.rollback()
+        return False
 
     wait_consumed = await _consume_exact_human_wait(session, source=source)
     if not wait_consumed:
         await session.rollback()
         raise _human_request_conflict(
-            f"human request '{request_id}' no longer owns its exact flow wait"
+            f"human request '{source.request_id}' no longer owns its exact flow wait"
         )
 
     await _clear_matching_human_wait_pointer(session, source=source)
-    await _append_human_request_resolved_event(
+    await _append_human_request_terminal_event(
         session,
         source=source,
-        actor_ref=actor_ref,
-        resolved_by_surface=resolved_by_surface,
-        resolved_at=resolved_at,
+        resolution=resolution,
+        terminal_status=terminal_status,
+        event_type=event_type,
     )
     await session.commit()
-
-    resolution = human_request_read_from_model(source).resolution
-    if resolution is None:
-        raise RuntimeOperationError(
-            code=OperationFailureCode.ILLEGAL_STATE,
-            summary="resolved human request is missing committed resolution truth",
-            is_retryable=False,
-        )
-    response = HumanRequestResolveResponse(task_id=task_id, resolution=resolution)
-    _publish_human_request_terminal(
-        request_id=request_id,
+    publish_human_request_terminal(
+        request_id=source.request_id,
         runtime_effect_publisher=runtime_effect_publisher,
     )
-    return response
+    return True
 
 
-def _publish_human_request_terminal(
+def publish_human_request_terminal(
     *,
     request_id: str,
     runtime_effect_publisher: RuntimeEffectPublisher | None,
@@ -137,37 +184,6 @@ def _publish_human_request_terminal(
             "failed to publish committed human-request terminal hint",
             extra={"request_id": request_id},
         )
-
-
-async def _mark_human_request_answered(
-    session: AsyncSession,
-    *,
-    source: HumanRequestModel,
-    item_responses: Mapping[str, object],
-    actor_ref: str | None,
-    resolved_by_surface: HumanRequestResolutionSurface,
-    resolved_at: datetime,
-) -> bool:
-    request_id = await session.scalar(
-        update(HumanRequestModel)
-        .where(
-            HumanRequestModel.request_id == source.request_id,
-            HumanRequestModel.task_id == source.task_id,
-            HumanRequestModel.status == HumanRequestStatus.OPEN.value,
-        )
-        .values(
-            status=HumanRequestStatus.RESOLVED.value,
-            resolution_kind=HumanRequestResolutionKind.ANSWERED.value,
-            item_responses_json=item_responses,
-            resolution_policy_basis_json={"policy_basis": _RESOLUTION_POLICY_BASIS},
-            resolution_summary=_RESOLUTION_SUMMARY,
-            resolved_by_actor_ref=actor_ref,
-            resolved_by_surface=resolved_by_surface.value,
-            resolved_at=resolved_at,
-        )
-        .returning(HumanRequestModel.request_id)
-    )
-    return request_id is not None
 
 
 async def _consume_exact_human_wait(
@@ -209,29 +225,39 @@ async def _clear_matching_human_wait_pointer(
     )
 
 
-async def _append_human_request_resolved_event(
+async def _append_human_request_terminal_event(
     session: AsyncSession,
     *,
     source: HumanRequestModel,
-    actor_ref: str | None,
-    resolved_by_surface: HumanRequestResolutionSurface,
-    resolved_at: datetime,
+    resolution: HumanRequestResolution,
+    terminal_status: HumanRequestStatus,
+    event_type: TaskEventType,
 ) -> None:
     await append_task_event(
         session,
         task_id=source.task_id,
-        event_type=TaskEventType.HUMAN_REQUEST_RESOLVED,
-        event_source=_event_source_for_resolution_surface(resolved_by_surface),
-        occurred_at=resolved_at,
+        event_type=event_type,
+        event_source=_event_source_for_resolution_surface(resolution.resolved_by_surface),
+        occurred_at=resolution.resolved_at,
         dispatch_id=source.source_dispatch_id,
         attempt_id=source.attempt_id,
-        actor_ref=actor_ref,
+        actor_ref=resolution.resolved_by_actor_ref,
         payload={
             "request_id": source.request_id,
-            "status": HumanRequestStatus.RESOLVED.value,
-            "resolution_kind": HumanRequestResolutionKind.ANSWERED.value,
+            "status": terminal_status.value,
+            "resolution_kind": resolution.resolution_kind.value,
         },
     )
+
+
+def _terminal_resolution_state(
+    resolution_kind: HumanRequestResolutionKind,
+) -> tuple[HumanRequestStatus, TaskEventType]:
+    if resolution_kind == HumanRequestResolutionKind.ANSWERED:
+        return HumanRequestStatus.RESOLVED, TaskEventType.HUMAN_REQUEST_RESOLVED
+    if resolution_kind == HumanRequestResolutionKind.TIMED_OUT:
+        return HumanRequestStatus.TIMED_OUT, TaskEventType.HUMAN_REQUEST_TIMED_OUT
+    return HumanRequestStatus.CANCELLED, TaskEventType.HUMAN_REQUEST_CANCELLED
 
 
 async def _human_request_for_task(
@@ -279,4 +305,9 @@ def _event_source_for_resolution_surface(
     return "control_api"
 
 
-__all__ = ["list_human_requests", "resolve_human_request"]
+__all__ = [
+    "list_human_requests",
+    "persist_human_request_resolution",
+    "publish_human_request_terminal",
+    "resolve_human_request",
+]

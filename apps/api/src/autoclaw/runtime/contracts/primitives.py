@@ -127,6 +127,14 @@ class CommandRunState(StrEnum):
     FAILED = "failed"
     TIMED_OUT = "timed_out"
     CANCELLED = "cancelled"
+    ABANDONED = "abandoned"
+
+
+class CommandRunTerminalSource(StrEnum):
+    CONTROLLER = "controller"
+    CONTROL_API = "control_api"
+    OPERATOR_MCP = "operator_mcp"
+    PROCESS_OWNER = "process_owner"
 
 
 class TaskEventSource(StrEnum):
@@ -159,6 +167,7 @@ class TaskEventType(StrEnum):
     COMMAND_RUN_FAILED = "command_run_failed"
     COMMAND_RUN_TIMED_OUT = "command_run_timed_out"
     COMMAND_RUN_CANCELLED = "command_run_cancelled"
+    COMMAND_RUN_ABANDONED = "command_run_abandoned"
     TASK_PAUSED = "task_paused"
     TASK_RESUMED = "task_resumed"
     TASK_CANCELLED = "task_cancelled"
@@ -271,6 +280,7 @@ __all__ = [
     "CheckpointKind",
     "CheckpointOutcome",
     "CommandRunState",
+    "CommandRunTerminalSource",
     "DispatchDeliveryStatus",
     "EgressBoundary",
     "EvidenceKind",

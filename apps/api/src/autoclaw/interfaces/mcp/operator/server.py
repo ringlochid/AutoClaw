@@ -7,6 +7,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 
 from autoclaw.config import get_settings
+from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.node_operations.follow_on import SupportProjectionPublisher
 from autoclaw.runtime.post_commit import RuntimeEffectPublisher
 
@@ -57,6 +58,7 @@ class OperatorEffectPublishers:
 
     runtime_effect_publisher: RuntimeEffectPublisher | None = None
     support_projection_publisher: SupportProjectionPublisher | None = None
+    dispatch_opening_dependencies: DispatchOpeningDependencies | None = None
 
 
 def create_operator_mcp_app(
@@ -95,7 +97,8 @@ def create_operator_mcp_server(
             "Mutating controls:\n"
             "- pause_task, continue_task, and cancel_task change runtime state.\n"
             "- continue_task is not a status-check or polling tool and "
-            "should use a fresh expected_active_flow_revision_id from a current runtime read.\n\n"
+            "should use fresh expected_active_flow_revision_id and "
+            "expected_control_revision values from a current runtime read.\n\n"
             "Human requests and command runs:\n"
             "- get_human_requests and resolve_human_request are the dedicated "
             "inspection and answer path for current pending requests.\n"
@@ -137,7 +140,11 @@ def create_operator_mcp_server(
         server,
         runtime_effect_publisher=publishers.runtime_effect_publisher,
     )
-    register_runtime_control_tools(server)
+    register_runtime_control_tools(
+        server,
+        runtime_effect_publisher=publishers.runtime_effect_publisher,
+        dependencies=publishers.dispatch_opening_dependencies,
+    )
     register_observability_ref_tools(server)
     return server
 

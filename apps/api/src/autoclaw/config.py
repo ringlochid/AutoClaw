@@ -57,43 +57,13 @@ class OpenClawSettings(BaseModel):
 
 
 class RuntimeSettings(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        populate_by_name=True,
-        serialize_by_alias=True,
-    )
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     default_provider: ProviderKind | None = None
     dispatch_launch_retry_initial_backoff_seconds: float = Field(default=1.0, ge=0.0)
     dispatch_launch_retry_max_backoff_seconds: float = Field(default=30.0, ge=0.0)
-    is_watchdog_enabled: bool = Field(
-        default=True,
-        validation_alias=AliasChoices("watchdog_enabled", "is_watchdog_enabled"),
-        serialization_alias="watchdog_enabled",
-    )
-    watchdog_interval_seconds: int = Field(default=15, ge=1)
-    watchdog_execution_stale_after_seconds: int = 300
-    watchdog_bootstrap_first_progress_timeout_seconds: int = Field(default=120)
-    watchdog_same_attempt_redispatch_limit: int = 2
-    should_watchdog_auto_recover: bool = Field(
-        default=True,
-        validation_alias=AliasChoices(
-            "watchdog_auto_recover",
-            "should_watchdog_auto_recover",
-        ),
-        serialization_alias="watchdog_auto_recover",
-    )
-    watchdog_max_flows_per_tick: int = 50
-    watchdog_max_auto_recoveries_per_tick: int = 10
-
-    @property
-    def watchdog_enabled(self) -> bool:
-        return self.is_watchdog_enabled
-
-    @property
-    def watchdog_auto_recover(self) -> bool:
-        return self.should_watchdog_auto_recover
+    watchdog_inactivity_timeout_seconds: int = Field(default=900, ge=1)
+    watchdog_same_attempt_replacement_limit: int = Field(default=2, ge=0)
 
 
 class Settings(BaseSettings):

@@ -270,7 +270,7 @@ async def _pause_current_dispatch(
         dispatch.closed_at = paused_at
         flow.status = "paused"
         flow.current_dispatch_id = None
-        flow.pause_reason = "operator_test"
+        flow.pause_reason = "paused_by_operator"
         flow.pause_details = {"reason": "test"}
         flow.paused_at = paused_at
         flow.paused_by_actor_ref = "local_operator"
@@ -284,7 +284,7 @@ async def _pause_waiting_flow(session_factory: SessionFactory, ids: RuntimeIds) 
         flow = await session.get(FlowModel, ids.flow_id)
         assert flow is not None
         flow.status = "paused"
-        flow.pause_reason = "operator_test"
+        flow.pause_reason = "paused_by_operator"
         flow.pause_details = {"reason": "test"}
         flow.paused_at = utc_now()
         flow.paused_by_actor_ref = "local_operator"

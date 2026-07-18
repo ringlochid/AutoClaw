@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from autoclaw.config import Environment, get_settings
+from autoclaw.config import Environment, Settings, get_settings
 from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.interfaces.http.errors import request_validation_failure
 from autoclaw.interfaces.http.router import api_router
@@ -30,29 +30,63 @@ from autoclaw.persistence.session import (
 )
 from autoclaw.runtime.boundary import create_boundary_accepted_handler
 from autoclaw.runtime.clock import utc_now
-from autoclaw.runtime.command_run import create_command_run_terminal_handler
-from autoclaw.runtime.dispatch.cleanup import cleanup_aged_dispatch_request_directories
+from autoclaw.runtime.command_run import (
+    CommandProcessOwner,
+    create_command_run_terminal_handler,
+)
+from autoclaw.runtime.dispatch.cleanup import (
+    cleanup_aged_dispatch_request_directories,
+    create_dispatch_binding_cleanup_handler,
+)
 from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
-from autoclaw.runtime.human_request import create_human_request_terminal_handler
+from autoclaw.runtime.human_request import (
+    create_human_request_due_handler,
+    create_human_request_opened_handler,
+    create_human_request_terminal_handler,
+)
 from autoclaw.runtime.launch.continuation import create_flow_start_handler
 from autoclaw.runtime.node_mcp import DispatchMcpBindingRegistry
-from autoclaw.runtime.node_operations import NodeOperationExecutor
+from autoclaw.runtime.node_operations import (
+    NodeOperationExecutor,
+    create_watchdog_activity_publisher,
+)
 from autoclaw.runtime.post_commit import (
     BoundaryAccepted,
+    CommandProcessExited,
+    CommandRunCancellationRequested,
+    CommandRunDue,
+    CommandRunPending,
     CommandRunTerminal,
+    DeadlineScheduler,
+    DispatchCleanupRequested,
     FlowStartCommitted,
+    HumanRequestDue,
+    HumanRequestOpened,
     HumanRequestTerminal,
     RuntimeEffectRouter,
+    TransientCleanupRequested,
+    WatchdogDeadlineChanged,
+    WatchdogDue,
 )
 from autoclaw.runtime.post_commit.bootstrap import audit_startup_runtime_effects
-from autoclaw.runtime.projection import SupportProjectionOwner
+from autoclaw.runtime.projection import SupportProjectionOwner, TransientProjection
 from autoclaw.runtime.startup_audit import audit_startup_support_projections
+from autoclaw.runtime.task_root import cleanup_expired_transient
+from autoclaw.runtime.watchdog import (
+    create_watchdog_deadline_changed_handler,
+    create_watchdog_due_handler,
+)
 
 _RUNTIME_STARTUP_ROUTED_SIGNAL_TYPES = (
     FlowStartCommitted,
     BoundaryAccepted,
+    HumanRequestOpened,
     HumanRequestTerminal,
+    CommandRunPending,
+    CommandRunCancellationRequested,
     CommandRunTerminal,
+    TransientCleanupRequested,
+    WatchdogDeadlineChanged,
 )
 
 
@@ -91,14 +125,45 @@ def create_app(
         redoc_url="/redoc" if docs_enabled else None,
         openapi_url="/openapi.json" if docs_enabled else None,
     )
-    runtime_effect_router = _build_runtime_effect_router()
+    binding_registry = DispatchMcpBindingRegistry()
+    runtime_effect_router = RuntimeEffectRouter(session_factory=_runtime_session_context)
+    deadline_scheduler = DeadlineScheduler(publish=runtime_effect_router.publish)
+    dispatch_opening_dependencies = DispatchOpeningDependencies.create(
+        settings=settings,
+        available_adapter_kinds=tuple(ProviderKind),
+        post_commit_publisher=runtime_effect_router,
+    )
+
+    def register_command_run_due(signal: CommandRunDue) -> None:
+        deadline_scheduler.register(signal)
+
+    command_process_owner = CommandProcessOwner(
+        session_factory=_runtime_session_context,
+        runtime_effect_publisher=runtime_effect_router,
+        register_due=register_command_run_due,
+        health=runtime_effect_router.health,
+    )
     support_projection_owner = SupportProjectionOwner(
         session_factory=_runtime_session_context,
     )
+    _register_runtime_effect_routes(
+        router=runtime_effect_router,
+        scheduler=deadline_scheduler,
+        command_process_owner=command_process_owner,
+        support_projection_owner=support_projection_owner,
+        binding_registry=binding_registry,
+        dependencies=dispatch_opening_dependencies,
+        settings=settings,
+    )
     app.state.runtime_effect_router = runtime_effect_router
     app.state.runtime_effect_publisher = runtime_effect_router
+    app.state.deadline_scheduler = deadline_scheduler
+    app.state.command_process_owner = command_process_owner
+    app.state.dispatch_opening_dependencies = dispatch_opening_dependencies
     app.state.support_projection_owner = support_projection_owner
     app.state.support_projection_publisher = support_projection_owner
+    app.state.dispatch_mcp_binding_registry = binding_registry
+    app.state.mcp_lifespan_apps = ()
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.console_origins,
@@ -126,12 +191,18 @@ def create_app(
             effect_publishers=OperatorEffectPublishers(
                 runtime_effect_publisher=runtime_effect_router,
                 support_projection_publisher=support_projection_owner,
+                dispatch_opening_dependencies=dispatch_opening_dependencies,
             ),
         )
-        binding_registry = DispatchMcpBindingRegistry()
         node_mcp_apps = create_node_mcp_apps(
             binding_registry=binding_registry,
             operation_executor=NodeOperationExecutor(
+                publish_activity_signal=create_watchdog_activity_publisher(
+                    runtime_effect_router,
+                    inactivity_timeout_seconds=(
+                        settings.runtime.watchdog_inactivity_timeout_seconds
+                    ),
+                ),
                 runtime_effect_publisher=runtime_effect_router,
                 support_projection_publisher=support_projection_owner,
             ),
@@ -141,7 +212,6 @@ def create_app(
                 allowed_origins=settings.console_origins,
             ),
         )
-        app.state.dispatch_mcp_binding_registry = binding_registry
         app.state.mcp_lifespan_apps = (
             operator_mcp_app,
             node_mcp_apps.managed,
@@ -164,16 +234,23 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             now=utc_now(),
         )
         runtime_effect_router: RuntimeEffectRouter = app.state.runtime_effect_router
+        deadline_scheduler: DeadlineScheduler = app.state.deadline_scheduler
+        command_process_owner: CommandProcessOwner = app.state.command_process_owner
         support_projection_owner: SupportProjectionOwner = app.state.support_projection_owner
         async with AsyncExitStack() as stack:
-            await stack.enter_async_context(runtime_effect_router)
+            await stack.enter_async_context(command_process_owner)
             await stack.enter_async_context(support_projection_owner)
+            await stack.enter_async_context(runtime_effect_router)
+            await stack.enter_async_context(deadline_scheduler)
             for mcp_app in getattr(app.state, "mcp_lifespan_apps", ()):
                 await stack.enter_async_context(mcp_app.router.lifespan_context(mcp_app))
             app.state.runtime_startup_audit = await audit_startup_runtime_effects(
                 session_factory=_runtime_session_context,
-                publish=runtime_effect_router.publish,
+                publish=runtime_effect_router.publish_startup,
                 routed_signal_types=_RUNTIME_STARTUP_ROUTED_SIGNAL_TYPES,
+                watchdog_inactivity_timeout_seconds=(
+                    settings.runtime.watchdog_inactivity_timeout_seconds
+                ),
             )
             app.state.support_projection_startup_audit = await audit_startup_support_projections(
                 session_factory=_runtime_session_context,
@@ -184,24 +261,74 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         await dispose_db_engine()
 
 
-def _build_runtime_effect_router() -> RuntimeEffectRouter:
-    router = RuntimeEffectRouter(session_factory=_runtime_session_context)
-    dependencies = DispatchOpeningDependencies.create(
-        settings=get_settings(),
-        available_adapter_kinds=tuple(ProviderKind),
-        post_commit_publisher=router,
-    )
+def _register_runtime_effect_routes(
+    *,
+    router: RuntimeEffectRouter,
+    scheduler: DeadlineScheduler,
+    command_process_owner: CommandProcessOwner,
+    support_projection_owner: SupportProjectionOwner,
+    binding_registry: DispatchMcpBindingRegistry,
+    dependencies: DispatchOpeningDependencies,
+    settings: Settings,
+) -> None:
+    human_terminal_handler = create_human_request_terminal_handler(dependencies)
+    command_terminal_handler = create_command_run_terminal_handler(dependencies)
+    binding_cleanup_handler = create_dispatch_binding_cleanup_handler(binding_registry)
+
+    async def handle_transient_cleanup(
+        session: AsyncSession,
+        signal: TransientCleanupRequested,
+    ) -> None:
+        if await cleanup_expired_transient(session, signal):
+            support_projection_owner.publish(TransientProjection(signal.transient_localization_id))
+
+    async def handle_human_terminal(
+        session: AsyncSession,
+        signal: HumanRequestTerminal,
+    ) -> None:
+        scheduler.cancel_source(HumanRequestDue, signal.request_id)
+        await human_terminal_handler(session, signal)
+
+    async def handle_command_terminal(
+        session: AsyncSession,
+        signal: CommandRunTerminal,
+    ) -> None:
+        scheduler.cancel_source(CommandRunDue, signal.run_id)
+        await command_terminal_handler(session, signal)
+
+    async def handle_dispatch_cleanup(
+        session: AsyncSession,
+        signal: DispatchCleanupRequested,
+    ) -> None:
+        scheduler.cancel_source(WatchdogDue, signal.dispatch_id)
+        await binding_cleanup_handler(session, signal)
+
     router.register(FlowStartCommitted, create_flow_start_handler(dependencies))
     router.register(BoundaryAccepted, create_boundary_accepted_handler(dependencies))
+    router.register(HumanRequestOpened, create_human_request_opened_handler(scheduler))
     router.register(
-        HumanRequestTerminal,
-        create_human_request_terminal_handler(dependencies),
+        HumanRequestDue,
+        create_human_request_due_handler(runtime_effect_publisher=router),
     )
+    router.register(HumanRequestTerminal, handle_human_terminal)
+    router.register(CommandRunPending, command_process_owner.handle_pending)
+    router.register(CommandRunDue, command_process_owner.handle_due)
     router.register(
-        CommandRunTerminal,
-        create_command_run_terminal_handler(dependencies),
+        CommandRunCancellationRequested,
+        command_process_owner.handle_cancellation_requested,
     )
-    return router
+    router.register(CommandRunTerminal, handle_command_terminal)
+    router.register(CommandProcessExited, command_process_owner.handle_process_exited)
+    router.register(DispatchCleanupRequested, handle_dispatch_cleanup)
+    router.register(TransientCleanupRequested, handle_transient_cleanup)
+    router.register(
+        WatchdogDeadlineChanged,
+        create_watchdog_deadline_changed_handler(
+            scheduler,
+            inactivity_timeout_seconds=settings.runtime.watchdog_inactivity_timeout_seconds,
+        ),
+    )
+    router.register(WatchdogDue, create_watchdog_due_handler(dependencies))
 
 
 def _runtime_session_context() -> AbstractAsyncContextManager[AsyncSession]:
