@@ -50,7 +50,7 @@ from autoclaw.runtime.contracts.prompt import (
 def sample_checkpoint() -> PromptCheckpointSummary:
     return PromptCheckpointSummary(
         checkpoint_id="checkpoint-1",
-        logical_path="_runtime/checkpoints/checkpoint-1.json",
+        logical_path="_runtime/attempts/attempt-1/latest-checkpoint.md",
         summary="The bounded child assignment completed.",
         outcome=CheckpointOutcome.GREEN,
         refs=(

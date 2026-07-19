@@ -27,6 +27,7 @@ from autoclaw.interfaces.cli.providers.contracts import (
 )
 from autoclaw.interfaces.cli.providers.inspection import invoke_provider_identity_action
 from autoclaw.runtime.providers import (
+    ProviderCheckAxisStatus,
     ProviderCheckResult,
     ProviderCheckStatus,
 )
@@ -245,13 +246,19 @@ def test_provider_check_runs_bounded_diagnostic_without_mutation(
         build_parser(),
         ["providers", "check", "codex", "--config", str(config_path), "--json"],
     )
+    human_result = CliRunner().invoke(
+        build_parser(),
+        ["providers", "check", "codex", "--config", str(config_path)],
+    )
 
     assert result.exit_code == 0
+    assert human_result.exit_code == 0
     payload = json.loads(result.output)
     assert payload["outcome"] == "ready"
     assert payload["is_ready"] is True
     assert payload["authentication"] == "not_checked"
     assert payload["reachability"] == "not_checked"
+    assert "authentication: not_checked; reachability: not_checked" in human_result.output
     assert config_path.read_bytes() == previous_bytes
 
 
@@ -274,6 +281,7 @@ def test_provider_check_maps_authentication_failure(
             kind=provider,
             status=ProviderCheckStatus.UNAVAILABLE,
             code="codex_authentication_required",
+            authentication=ProviderCheckAxisStatus.FAILED,
         ),
     )
 
@@ -283,7 +291,10 @@ def test_provider_check_maps_authentication_failure(
     )
 
     assert result.exit_code == 1
-    assert json.loads(result.output)["outcome"] == "authentication_failed"
+    payload = json.loads(result.output)
+    assert payload["outcome"] == "authentication_failed"
+    assert payload["authentication"] == "failed"
+    assert payload["reachability"] == "not_checked"
 
 
 def test_provider_diagnostic_timeout_includes_adapter_cleanup(
@@ -354,11 +365,92 @@ def test_setup_uses_the_shared_configuration_operation(
 def test_setup_without_provider_is_a_zero_write_guide(tmp_path: Path) -> None:
     config_path = tmp_path / "config.toml"
 
-    result = provider_commands.cmd_setup(
-        argparse.Namespace(config=str(config_path), provider=None, json=True)
+    result = CliRunner().invoke(
+        build_parser(),
+        ["setup", "--config", str(config_path), "--json"],
     )
 
-    assert result == 0
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload == {
+        "ok": True,
+        "configured_provider": None,
+        "configured_providers": [],
+        "default_provider": None,
+        "default_provider_configured": False,
+        "next_actions": [
+            "autoclaw init",
+            "autoclaw providers configure <provider>",
+        ],
+    }
+    assert not config_path.exists()
+
+
+@pytest.mark.parametrize(
+    ("config_text", "configured", "default_provider", "next_actions"),
+    (
+        (
+            "[codex]\nenabled = true\n",
+            ["codex"],
+            None,
+            ["autoclaw providers set-default codex"],
+        ),
+        (
+            '[codex]\nenabled = true\n[runtime]\ndefault_provider = "codex"\n',
+            ["codex"],
+            "codex",
+            ["autoclaw providers check codex", "autoclaw serve"],
+        ),
+        (
+            "[codex]\nenabled = true\n[claude]\nenabled = true\n",
+            ["codex", "claude"],
+            None,
+            ["autoclaw providers set-default <provider>"],
+        ),
+    ),
+)
+def test_setup_guide_uses_selected_provider_state_without_writes(
+    tmp_path: Path,
+    config_text: str,
+    configured: list[str],
+    default_provider: str | None,
+    next_actions: list[str],
+) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(config_text, encoding="utf-8")
+    previous_bytes = config_path.read_bytes()
+
+    result = CliRunner().invoke(
+        build_parser(),
+        ["setup", "--config", str(config_path), "--json"],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["configured_providers"] == configured
+    assert payload["configured_provider"] == (configured[0] if len(configured) == 1 else None)
+    assert payload["default_provider"] == default_provider
+    assert payload["default_provider_configured"] is (default_provider is not None)
+    assert payload["next_actions"] == next_actions
+    assert config_path.read_bytes() == previous_bytes
+
+
+def test_setup_guide_configures_environment_only_provider_before_default(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "config.toml"
+
+    result = CliRunner().invoke(
+        build_parser(),
+        ["setup", "--config", str(config_path), "--json"],
+        env={"AUTOCLAW_CODEX__ENABLED": "true"},
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["configured_providers"] == ["codex"]
+    assert payload["default_provider"] is None
+    assert payload["next_actions"] == ["autoclaw providers configure codex"]
     assert not config_path.exists()
 
 

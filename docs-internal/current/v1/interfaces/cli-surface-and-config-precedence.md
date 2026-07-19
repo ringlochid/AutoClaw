@@ -30,7 +30,7 @@ Codex and Claude are managed integrations. OpenClaw is an experimental user-mana
 
 The first configured provider becomes the default when no default exists. Later configuration does not silently replace an existing default; use `providers set-default`.
 
-`providers status` is passive. `providers check` is the explicit bounded diagnostic and does not run an agent task. Codex login and logout use the native Codex CLI found on the service path. Claude and OpenClaw report their user-owned identity instructions instead of mutating those products.
+`providers status` is passive. `providers check` is the explicit bounded diagnostic and does not run an agent task. Codex login and logout use the SDK-bundled Codex CLI. Claude and OpenClaw report their user-owned identity instructions instead of mutating those products.
 
 OpenClaw users maintain their own `openclaw.json` and point it at the compatibility Node MCP endpoint. AutoClaw does not inject that configuration.
 

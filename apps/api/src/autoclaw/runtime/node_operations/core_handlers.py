@@ -9,7 +9,11 @@ from sqlalchemy.orm import raiseload
 
 from autoclaw.definitions.contracts import DefinitionKind, DefinitionListQuery
 from autoclaw.definitions.contracts.workflow import NodeKind
-from autoclaw.persistence.models import DispatchPromptRefsModel, FlowNodeModel
+from autoclaw.persistence.models import (
+    AcceptedBoundaryModel,
+    DispatchPromptRefsModel,
+    FlowNodeModel,
+)
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.contracts.prompt import RuntimeReadbackRefs
 from autoclaw.runtime.dispatch.authority import NodeOperationAuthority
@@ -20,6 +24,8 @@ from autoclaw.runtime.node_operations.catalog import (
 from autoclaw.runtime.node_operations.contracts import (
     AssignmentContextRead,
     AttemptContextRead,
+    CurrentContextTriggerKind,
+    CurrentContextTriggerRead,
     EffectiveCapabilitySetRead,
     EffectiveValueRead,
     EmptyNodeOperationRequest,
@@ -52,6 +58,17 @@ from autoclaw.runtime.work_plan import (
 
 type CapabilityDecisionValue = Literal["allow", "deny"]
 type SlotKind = Literal["artifact", "criteria", "checkpoint", "transient", "workspace"]
+
+_CURRENT_TRIGGER_KIND_BY_OPENED_REASON = {
+    "root": CurrentContextTriggerKind.ROOT_START,
+    "boundary": CurrentContextTriggerKind.ACCEPTED_BOUNDARY,
+    "child_return": CurrentContextTriggerKind.CHILD_RETURN,
+    "human_result": CurrentContextTriggerKind.HUMAN_RESULT,
+    "command_result": CurrentContextTriggerKind.COMMAND_RESULT,
+    "watchdog_recovery": CurrentContextTriggerKind.WATCHDOG_RECOVERY,
+    "semantic_retry": CurrentContextTriggerKind.SEMANTIC_RETRY,
+    "operator_continue": CurrentContextTriggerKind.OPERATOR_CONTINUE,
+}
 
 
 async def execute_core_node_operation(
@@ -115,6 +132,7 @@ async def _get_current_context(
     plan = await read_assignment_work_plan(session, assignment_id=authority.assignment_id)
     workflow_neighborhood = await _read_workflow_neighborhood(session, authority)
     readback_refs = await _read_runtime_readback_refs(session, authority)
+    checkpoint_to_resume_from = await _read_boundary_checkpoint_ref(session, authority)
     capabilities = authority.capabilities
     state_legal_actions = await read_state_legal_node_operations(session, authority)
     allowed_actions = tuple(
@@ -139,10 +157,7 @@ async def _get_current_context(
             assignment_id=authority.assignment_id,
             retry_of_attempt_id=authority.attempt.retry_of_attempt_id,
         ),
-        trigger={
-            "kind": authority.opened_reason,
-            "source_dispatch_id": authority.predecessor_dispatch_id,
-        },
+        trigger=_current_context_trigger(authority),
         plan=plan,
         workflow_neighborhood=workflow_neighborhood,
         readback_refs=readback_refs,
@@ -167,7 +182,48 @@ async def _get_current_context(
         allowed_actions=allowed_actions,
         consume_slots=_slot_reads(authority.assignment.consumes_json, default_kind="artifact"),
         produce_slots=_slot_reads(authority.assignment.produces_json, default_kind="artifact"),
+        checkpoint_to_resume_from=checkpoint_to_resume_from,
     )
+
+
+def _current_context_trigger(authority: NodeOperationAuthority) -> CurrentContextTriggerRead:
+    try:
+        kind = _CURRENT_TRIGGER_KIND_BY_OPENED_REASON[authority.opened_reason]
+    except KeyError as exc:
+        raise RuntimeOperationError(
+            code=OperationFailureCode.INTERNAL_ERROR,
+            summary="current dispatch has an unsupported trigger kind",
+            is_retryable=False,
+        ) from exc
+    return CurrentContextTriggerRead(
+        kind=kind,
+        source_dispatch_id=authority.predecessor_dispatch_id,
+    )
+
+
+async def _read_boundary_checkpoint_ref(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+) -> str | None:
+    source_dispatch_id = authority.predecessor_dispatch_id
+    if source_dispatch_id is None:
+        return None
+    row = (
+        await session.execute(
+            select(
+                AcceptedBoundaryModel.attempt_id,
+                AcceptedBoundaryModel.checkpoint_id,
+            ).where(
+                AcceptedBoundaryModel.successor_dispatch_id == authority.dispatch_id,
+                AcceptedBoundaryModel.source_dispatch_id == source_dispatch_id,
+                AcceptedBoundaryModel.task_id == authority.task_id,
+                AcceptedBoundaryModel.flow_id == authority.flow_id,
+            )
+        )
+    ).one_or_none()
+    if row is None or row.checkpoint_id is None:
+        return None
+    return f"_runtime/attempts/{row.attempt_id}/latest-checkpoint.md"
 
 
 async def _read_workflow_neighborhood(

@@ -68,6 +68,8 @@ The summary may show:
 
 `autoclaw setup` is a guide/orchestrator. It reads current local state, reports the next explicit command, and may invoke only a step the user explicitly selected, including the same provider configuration operation exposed by `autoclaw providers configure <provider>`. It is not one all-or-nothing transaction, does not own a resumable setup journal, and does not silently repair provider or service state.
 
+Guidance distinguishes effective environment overrides from provider enablement persisted in the selected TOML file. It never recommends `set-default` for an environment-only provider because that command can select only a provider enabled in the persisted configuration; it recommends `providers configure` first.
+
 ## Provider list and status
 
 `providers list` reports installed integration definitions and their product status: managed target, experimental, unsupported, or unavailable.
@@ -95,6 +97,8 @@ It must not:
 - substitute for pinned release conformance tests.
 
 Stable outcome categories distinguish at least `ready`, `not_configured`, `not_installed`, `authentication_failed`, `unreachable`, `incompatible`, `policy_blocked`, and `check_failed`.
+
+Authentication and reachability are separate `not_checked | passed | failed` axes. An adapter changes an axis from `not_checked` only when its bounded diagnostic directly proves that fact. A successful overall check therefore does not imply that both axes were inspected.
 
 ## Login and logout
 

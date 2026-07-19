@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from autoclaw.definitions.contracts.workflow import ProviderKind
+from autoclaw.runtime.providers import ProviderCheckAxisStatus
 
 
 class ProviderProductStatus(StrEnum):
@@ -77,8 +78,8 @@ class ProviderCheckSnapshot(BaseModel):
     is_ready: bool | None
     service_identity: str
     native_home: str
-    authentication: Literal["not_checked"] = "not_checked"
-    reachability: Literal["not_checked"] = "not_checked"
+    authentication: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED
+    reachability: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED
     detail: str
     limitations: tuple[str, ...] = ()
 

@@ -24,6 +24,7 @@ from autoclaw.runtime.providers.contracts import (
     MANAGED_NODE_MCP_SERVER_NAME,
     DispatchStartRequest,
     ManagedNodeMcpConnection,
+    ProviderCheckAxisStatus,
     ProviderCheckResult,
     ProviderCheckStatus,
     ProviderStartAccepted,
@@ -154,6 +155,7 @@ class CodexAdapter:
                 kind=self.kind,
                 status=ProviderCheckStatus.UNAVAILABLE,
                 code="codex_authentication_required",
+                authentication=ProviderCheckAxisStatus.FAILED,
             )
         return ProviderCheckResult(
             kind=self.kind,

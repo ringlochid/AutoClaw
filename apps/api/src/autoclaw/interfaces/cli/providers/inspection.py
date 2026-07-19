@@ -24,6 +24,7 @@ from autoclaw.interfaces.cli.providers.contracts import (
     ProviderStatusSnapshot,
 )
 from autoclaw.runtime.providers import (
+    ProviderCheckAxisStatus,
     ProviderCheckResult,
     ProviderCheckStatus,
     ProviderResolutionError,
@@ -49,6 +50,8 @@ class _ProviderCheckBasis:
         outcome: ProviderCheckOutcome,
         is_ready: bool | None,
         detail: str,
+        authentication: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED,
+        reachability: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED,
     ) -> ProviderCheckSnapshot:
         return ProviderCheckSnapshot(
             kind=self.kind,
@@ -56,6 +59,8 @@ class _ProviderCheckBasis:
             is_ready=is_ready,
             service_identity=self.service_identity,
             native_home=self.native_home,
+            authentication=authentication,
+            reachability=reachability,
             detail=detail,
             limitations=self.limitations,
         )
@@ -186,7 +191,7 @@ def invoke_provider_identity_action(
             outcome=ProviderIdentityOutcome.NOT_INSTALLED,
             service_identity=identity,
             native_home=native_home,
-            detail="the native Codex CLI is not available on PATH",
+            detail="the SDK-bundled Codex CLI is not available",
         )
 
     command = [str(codex_binary), normalized_action]
@@ -249,6 +254,8 @@ def provider_check_snapshot(
             outcome=ProviderCheckOutcome.READY,
             is_ready=True,
             detail=result.code,
+            authentication=result.authentication,
+            reachability=result.reachability,
         )
 
     code = result.code
@@ -264,6 +271,8 @@ def provider_check_snapshot(
         outcome=outcome,
         is_ready=False,
         detail=code,
+        authentication=result.authentication,
+        reachability=result.reachability,
     )
 
 

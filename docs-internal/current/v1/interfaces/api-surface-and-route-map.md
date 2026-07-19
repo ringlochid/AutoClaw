@@ -92,7 +92,7 @@ All node kinds may receive current context, contained file reads, work plans, ch
 
 The exact operation names are `get_current_context`, `list_files`, `read_file`, `set_work_plan`, `record_checkpoint`, `return_boundary`, `open_human_request`, `start_command_run`, `search_definitions`, `get_definition`, `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked`.
 
-`get_current_context` currently returns the exact dispatch-request readback refs, the support-only workflow-manifest ref, and the live direct-child neighborhood from controller rows. Its `trigger` is still the bounded dispatch reason/source shape; the optional normalized `continuation` and `checkpoint_to_resume_from` fields are not yet populated by the shipped handler. The richer immutable dispatch input remains available through its committed `input` readback ref.
+`get_current_context` currently returns the exact dispatch-request readback refs, the support-only workflow-manifest ref, and the live direct-child neighborhood from controller rows. Its typed trigger normalizes the bounded dispatch reason and predecessor source. When the current dispatch is the exact successor of an accepted boundary with a checkpoint, `checkpoint_to_resume_from` returns that controller-selected task-relative path. `continuation` remains reserved and `null`; the richer immutable dispatch input remains available through its committed `input` readback ref.
 
 ## Evidence
 

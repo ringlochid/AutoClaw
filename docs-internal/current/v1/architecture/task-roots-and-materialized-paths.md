@@ -19,6 +19,7 @@ The maintained shape is:
     transfers/
       localized/
   _runtime/
+    workflow-manifest.json
     workflow-manifest.md
     criteria/
     attempts/

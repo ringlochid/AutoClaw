@@ -154,6 +154,12 @@ class ProviderCheckStatus(StrEnum):
     UNAVAILABLE = "unavailable"
 
 
+class ProviderCheckAxisStatus(StrEnum):
+    NOT_CHECKED = "not_checked"
+    PASSED = "passed"
+    FAILED = "failed"
+
+
 class ProviderCheckResult(BaseModel):
     """Bounded non-secret result for an explicit non-agent provider check."""
 
@@ -162,6 +168,8 @@ class ProviderCheckResult(BaseModel):
     kind: ProviderKind
     status: ProviderCheckStatus
     code: str = Field(min_length=1, max_length=96, pattern=r"^[a-z0-9_]+$")
+    authentication: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED
+    reachability: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED
 
 
 class ProviderAdapter(Protocol):
@@ -183,6 +191,7 @@ __all__ = [
     "DispatchStartRequest",
     "ManagedNodeMcpConnection",
     "ProviderAdapter",
+    "ProviderCheckAxisStatus",
     "ProviderCheckResult",
     "ProviderCheckStatus",
     "ProviderStartAccepted",

@@ -132,7 +132,7 @@ GetCurrentContextResponse:
   dispatch_id: string
   assignment: AssignmentContextRead
   attempt: AttemptContextRead
-  trigger: object
+  trigger: CurrentContextTriggerRead
   plan: WorkPlanRead | null
   workflow_neighborhood: [WorkflowNeighborRead, ...]
   readback_refs: RuntimeReadbackRefs
@@ -144,15 +144,23 @@ GetCurrentContextResponse:
   checkpoint_to_resume_from: string | null
 ```
 
+```yaml
+CurrentContextTriggerRead:
+  kind: root_start | accepted_boundary | child_return | human_result | command_result | watchdog_recovery | semantic_retry | operator_continue
+  source_dispatch_id: string | null
+```
+
 `allowed_actions` contains provider-neutral logical operation names legal at read time. It can be narrower than the managed `tools/list` ceiling because state and capability remain dynamic.
 
 `provider_native_access` and `network_access` resolve independently. Each object discloses the frozen effective value and the controlling source. Equally restrictive ties use `controller > task_policy > policy_definition > default`; adapter and local hard ceilings report `controller`. The result exposes neither provider configuration nor credentials and does not replace live authorization.
 
-`checkpoint_to_resume_from`, when present, is one controller-selected readable task-relative path. The agent never chooses a recovery checkpoint by scanning filenames, timestamps, or provider history.
+`trigger` is intentionally compact. It normalizes the dispatch opening reason to the prompt trigger vocabulary and includes the predecessor dispatch when one exists. The immutable `input` readback owns the complete exact trigger payload.
+
+`checkpoint_to_resume_from`, when present, is one controller-selected task-relative logical path. The current implementation returns it only when an exact accepted-boundary row identifies the current dispatch as its successor and owns a checkpoint. Its support projection may still be missing or unreadable; the immutable `input` readback retains the exact dispatch-start checkpoint summary. The agent never chooses a recovery checkpoint by scanning filenames, timestamps, or provider history.
 
 `workflow_neighborhood` is the live direct-child read from the active flow revision. `readback_refs.instructions` and `readback_refs.input` come from the current dispatch's committed refs row. `readback_refs.workflow_manifest` is a stable path to a support projection that may be missing or stale and never overrides the live neighborhood.
 
-`continuation` and `checkpoint_to_resume_from` are optional current projections, not promises that every continuation dispatch has a non-null value. The immutable `input` readback remains the complete dispatch-start projection when either current field is absent.
+`continuation` and `checkpoint_to_resume_from` are optional current projections, not promises that every continuation dispatch has a non-null value. The current handler leaves `continuation` as `null`. The immutable `input` readback remains the complete dispatch-start projection when either current field is absent.
 
 This is one coherent current database read. It returns refs and summaries rather than file bodies.
 

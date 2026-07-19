@@ -18,11 +18,12 @@ AutoClaw records those answers in controller-owned runtime rows.
 
 1. A user publishes roles, policies, and a workflow.
 2. Task-compose selects the workflow for one request.
-3. AutoClaw commits a task, flow, assignment, attempt, and starting dispatch.
-4. After commit, the runtime writes the dispatch request pair and starts the selected provider.
-5. The provider receives a narrow prompt and the tools allowed for that node.
-6. Accepted MCP calls record progress, artifacts, waits, boundaries, or structural changes.
-7. An after-commit handler rereads the exact source and opens the next dispatch when the state still permits it.
+3. AutoClaw commits a task, flow, root assignment, root attempt, and exact flow-start source.
+4. After that commit, an independent handler rereads the source, publishes the immutable request pair, and commits the starting dispatch with its refs.
+5. Provider start runs independently after the dispatch commit.
+6. The provider receives the request and its role-appropriate Node tools.
+7. Accepted MCP calls record progress, artifacts, waits, boundaries, or structural changes.
+8. An after-commit handler rereads the exact source and opens the next dispatch when the state still permits it.
 
 The source response does not wait for the next provider turn. This keeps the current agent's boundary return independent from successor start.
 
@@ -36,7 +37,7 @@ This model makes repeated signals safe at the controller boundary. It does not c
 
 Codex, Claude, and OpenClaw are provider adapters. They may differ in transport, tool attachment, and stop behavior, but they do not own task truth. Provider output, final responses, sessions, and terminal status are ignored as runtime authority.
 
-## Files and prompts are projections
+## Support files and dispatch requests
 
 The controller materializes manifests, assignments, checkpoints, and artifact indexes so agents and people can read the task. These support files do not control dispatch start. Each dispatch instead has an immutable `instructions.md` and `input.md` request pair that must be complete before the dispatch is committed and started. The prompt and current-context tool expose logical paths for rereading that pair and the workflow manifest; live controller context still wins when a support file is missing or stale.
 

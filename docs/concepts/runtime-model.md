@@ -21,11 +21,11 @@ The runtime model records one launched task. It answers what is current, what ha
 
 The transaction that accepts a node action commits the authoritative concept change. It can close the current dispatch, open a wait, record a boundary, or stage the exact source for continuation.
 
-After that commit returns, a thin asynchronous handler processes the signal. It rereads only the source rows needed for that signal, rejects stale work, writes the next dispatch request pair, opens a successor when legal, and starts the provider. The original MCP or HTTP response does not wait for this work.
+After that commit returns, a thin asynchronous handler processes the signal. It rereads only the source rows needed for that signal, rejects stale work, publishes the next dispatch request pair, and commits a successor with those refs when legal. Provider start runs independently after the successor commit. The original MCP or HTTP response does not wait for this work.
 
 ## Dispatch states
 
-A newly committed dispatch starts in `starting`. It becomes eligible for provider start only after required task context is ready. Provider acceptance moves it to `open`. Closed dispatches remain history and cannot become current again.
+A dispatch commits in `starting` only after its immutable request pair is published. It is then eligible for provider start. Provider acceptance moves it to `open`. Closed dispatches remain history and cannot become current again. Support projections never gate dispatch eligibility.
 
 ## Human and command waits
 

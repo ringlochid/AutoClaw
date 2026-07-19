@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from typing import Any
 
-from autoclaw.config import load_settings
+from autoclaw.config import Settings, load_settings
 from autoclaw.definitions.contracts.workflow import ProviderKind
+from autoclaw.interfaces.cli.bootstrap.config import read_config_sections
 from autoclaw.interfaces.cli.providers import (
     ProviderConfigurationRequest,
     collect_provider_check,
@@ -81,7 +83,10 @@ def cmd_providers_check(args: argparse.Namespace) -> int:
         print(f"detail: {snapshot.detail}")
         print(f"identity: {snapshot.service_identity}")
         print(f"native home: {snapshot.native_home}")
-        print("authentication: not_checked; reachability: not_checked")
+        print(
+            f"authentication: {snapshot.authentication.value}; "
+            f"reachability: {snapshot.reachability.value}"
+        )
         for limitation in snapshot.limitations:
             print(f"limitation: {limitation}")
     return 1 if snapshot.is_ready is False else 0
@@ -126,20 +131,14 @@ def cmd_providers_identity(args: argparse.Namespace, action: str) -> int:
 
 def cmd_setup(args: argparse.Namespace) -> int:
     if args.provider is None:
-        guide_payload = {
-            "ok": True,
-            "configured_provider": None,
-            "next_actions": [
-                "autoclaw init",
-                "autoclaw providers configure <provider>",
-                "autoclaw providers status",
-            ],
-        }
+        config_path = coerce_path(args.config)
+        with command_env(config_path=config_path):
+            settings = load_settings()
+        guide_payload = build_setup_guide(config_path, settings)
         if args.json:
             print_json(guide_payload)
         else:
-            print("AutoClaw setup is ready with zero configured providers.")
-            print("Next: autoclaw providers configure <provider>")
+            emit_setup_guide(guide_payload)
         return 0
 
     request = provider_configuration_request_from_args(args)
@@ -157,6 +156,70 @@ def cmd_setup(args: argparse.Namespace) -> int:
         print(f"Default provider: {snapshot.default_provider.value}")
         print("Next: autoclaw providers status")
     return 0
+
+
+def build_setup_guide(config_path: Path, settings: Settings) -> dict[str, Any]:
+    statuses = collect_provider_statuses(settings)
+    configured = tuple(status.kind for status in statuses if status.is_configured)
+    persisted_sections = read_config_sections(config_path)
+    persisted = tuple(
+        provider
+        for provider in ProviderKind
+        if persisted_sections.get(provider.value, {}).get("enabled") is True
+    )
+    default_provider = settings.runtime.default_provider
+    is_default_configured = default_provider in configured
+
+    if not configured:
+        next_actions = []
+        if not config_path.exists():
+            next_actions.append("autoclaw init")
+        next_actions.append("autoclaw providers configure <provider>")
+    elif not is_default_configured:
+        persisted_candidates = tuple(provider for provider in configured if provider in persisted)
+        if persisted_candidates:
+            provider = (
+                persisted_candidates[0].value if len(persisted_candidates) == 1 else "<provider>"
+            )
+            next_actions = [f"autoclaw providers set-default {provider}"]
+        else:
+            provider = configured[0].value if len(configured) == 1 else "<provider>"
+            next_actions = [f"autoclaw providers configure {provider}"]
+    else:
+        assert default_provider is not None
+        next_actions = [
+            f"autoclaw providers check {default_provider.value}",
+            "autoclaw serve",
+        ]
+
+    return {
+        "ok": True,
+        "configured_provider": configured[0].value if len(configured) == 1 else None,
+        "configured_providers": [provider.value for provider in configured],
+        "default_provider": (default_provider.value if default_provider is not None else None),
+        "default_provider_configured": is_default_configured,
+        "next_actions": next_actions,
+    }
+
+
+def emit_setup_guide(payload: dict[str, Any]) -> None:
+    configured = payload["configured_providers"]
+    default_provider = payload["default_provider"]
+    is_default_configured = payload["default_provider_configured"]
+
+    print(
+        f"Configured providers: {', '.join(configured)}"
+        if configured
+        else "Configured providers: none"
+    )
+    if default_provider is None:
+        print("Default provider: not configured")
+    elif is_default_configured:
+        print(f"Default provider: {default_provider}")
+    else:
+        print(f"Default provider: {default_provider} (not enabled)")
+    for action in payload["next_actions"]:
+        print(f"Next: {action}")
 
 
 def provider_configuration_request_from_args(
@@ -188,6 +251,7 @@ def emit_provider_configuration(
 
 
 __all__ = [
+    "build_setup_guide",
     "cmd_providers_check",
     "cmd_providers_configure",
     "cmd_providers_identity",
@@ -196,5 +260,6 @@ __all__ = [
     "cmd_providers_status",
     "cmd_setup",
     "emit_provider_configuration",
+    "emit_setup_guide",
     "provider_configuration_request_from_args",
 ]

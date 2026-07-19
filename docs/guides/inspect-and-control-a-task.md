@@ -16,6 +16,6 @@ Use controls narrowly:
 - continue only from a fresh current read
 - cancel only when the task should terminate
 
-Provider output does not prove progress, and silence does not prove a stall. The provider may be starting, the task may be waiting, or the next dispatch may be pending a projection.
+Provider output does not prove progress, and silence does not prove a stall. The provider may be starting, the task may be waiting, or an after-commit handler may still be opening the next dispatch.
 
 Use the [operator reference](../reference/operator/README.md) for exact routes and tools.

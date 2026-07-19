@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
@@ -13,6 +14,8 @@ from autoclaw.runtime.contracts.provider_resolution import CodexProviderRoute
 from autoclaw.runtime.providers.contracts import (
     DispatchStartRequest,
     ManagedNodeMcpConnection,
+    ProviderCheckAxisStatus,
+    ProviderCheckStatus,
     ProviderStartError,
     ProviderStartErrorCode,
     ProviderStopOutcome,
@@ -62,6 +65,21 @@ class _FakeCodex:
         self.was_closed = True
 
 
+class _FakeAvailabilityCodex:
+    def __init__(self, *, account: object | None, requires_openai_auth: bool) -> None:
+        self.account_result = SimpleNamespace(
+            account=account,
+            requires_openai_auth=requires_openai_auth,
+        )
+        self.was_closed = False
+
+    async def account(self) -> object:
+        return self.account_result
+
+    async def close(self) -> None:
+        self.was_closed = True
+
+
 def _request() -> DispatchStartRequest:
     return DispatchStartRequest(
         task_id="task-1",
@@ -83,6 +101,70 @@ def _request() -> DispatchStartRequest:
             enabled_tools=("record_checkpoint", "return_boundary"),
         ),
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("account", "requires_openai_auth", "expected_status", "expected_authentication"),
+    (
+        (
+            object(),
+            False,
+            ProviderCheckStatus.AVAILABLE,
+            ProviderCheckAxisStatus.NOT_CHECKED,
+        ),
+        (
+            object(),
+            True,
+            ProviderCheckStatus.AVAILABLE,
+            ProviderCheckAxisStatus.NOT_CHECKED,
+        ),
+        (
+            SimpleNamespace(
+                root=SimpleNamespace(
+                    type="amazonBedrock",
+                    credential_source="awsManaged",
+                )
+            ),
+            False,
+            ProviderCheckStatus.AVAILABLE,
+            ProviderCheckAxisStatus.NOT_CHECKED,
+        ),
+        (
+            None,
+            False,
+            ProviderCheckStatus.AVAILABLE,
+            ProviderCheckAxisStatus.NOT_CHECKED,
+        ),
+        (
+            None,
+            True,
+            ProviderCheckStatus.UNAVAILABLE,
+            ProviderCheckAxisStatus.FAILED,
+        ),
+    ),
+)
+async def test_codex_check_reports_only_missing_required_authentication(
+    account: object | None,
+    requires_openai_auth: bool,
+    expected_status: ProviderCheckStatus,
+    expected_authentication: ProviderCheckAxisStatus,
+) -> None:
+    fake = _FakeAvailabilityCodex(
+        account=account,
+        requires_openai_auth=requires_openai_auth,
+    )
+    adapter = CodexAdapter(
+        codex_factory=cast(Callable[[], AsyncCodex], lambda: fake),
+    )
+
+    async with adapter.lifespan():
+        result = await adapter.read_availability()
+
+    assert result.status is expected_status
+    assert result.authentication is expected_authentication
+    assert result.reachability is ProviderCheckAxisStatus.NOT_CHECKED
+    assert fake.was_closed is True
 
 
 @pytest.mark.asyncio

@@ -27,7 +27,7 @@ The compatibility server exposes the same logical Node operation catalog as the 
 
 Those IDs are not credentials. The server rereads the current dispatch, role, capability set, and legal state for every call. A stale dispatch ID loses the race and cannot change controller truth.
 
-Unlike managed Codex and Claude bindings, the OpenClaw tool list is not filtered dynamically per dispatch. OpenClaw policy should make the whole compatibility catalog available; the controller rejects operations that the current node may not use.
+Unlike managed Codex and Claude bindings, the compatibility endpoint has no dispatch scope during tool discovery, so it may advertise the complete compatibility catalog. The user-managed OpenClaw profile should expose only the tools its role needs: a worker should not receive parent or operator tools. The controller still rejects every operation that the current node may not use.
 
 ## Known experimental boundary
 

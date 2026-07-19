@@ -21,6 +21,7 @@ from autoclaw.runtime.contracts.provider_resolution import OpenClawProviderRoute
 from autoclaw.runtime.providers.contracts import (
     CompatibilityNodeMcpConnection,
     DispatchStartRequest,
+    ProviderCheckAxisStatus,
     ProviderCheckStatus,
     ProviderStartError,
     ProviderStartErrorCode,
@@ -249,6 +250,8 @@ async def test_check_is_non_agent_and_reports_experimental_limit(
 
     assert result.status is ProviderCheckStatus.LIMITED
     assert result.code == "openclaw_experimental"
+    assert result.authentication is ProviderCheckAxisStatus.NOT_CHECKED
+    assert result.reachability is ProviderCheckAxisStatus.PASSED
     assert calls == [
         {
             "profile": "default",
@@ -257,6 +260,49 @@ async def test_check_is_non_agent_and_reports_experimental_limit(
             "params": {},
         }
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("failure_code", "expected_authentication", "expected_reachability"),
+    (
+        (
+            OpenClawGatewayFailureCode.AUTHENTICATION_FAILED,
+            ProviderCheckAxisStatus.FAILED,
+            ProviderCheckAxisStatus.NOT_CHECKED,
+        ),
+        (
+            OpenClawGatewayFailureCode.UNREACHABLE,
+            ProviderCheckAxisStatus.NOT_CHECKED,
+            ProviderCheckAxisStatus.FAILED,
+        ),
+        (
+            OpenClawGatewayFailureCode.TIMEOUT,
+            ProviderCheckAxisStatus.NOT_CHECKED,
+            ProviderCheckAxisStatus.FAILED,
+        ),
+    ),
+)
+async def test_check_reports_only_the_failed_gateway_axis(
+    monkeypatch: pytest.MonkeyPatch,
+    failure_code: OpenClawGatewayFailureCode,
+    expected_authentication: ProviderCheckAxisStatus,
+    expected_reachability: ProviderCheckAxisStatus,
+) -> None:
+    async def fail_gateway(**_kwargs: object) -> dict[str, object]:
+        raise OpenClawGatewayCliError(
+            code=failure_code,
+            is_acceptance_uncertain=False,
+        )
+
+    monkeypatch.setattr(adapter_module, "call_openclaw_gateway", fail_gateway)
+    adapter = OpenClawGatewayAdapter(config=OpenClawSettings(enabled=True))
+
+    result = await adapter.read_availability()
+
+    assert result.status is ProviderCheckStatus.UNAVAILABLE
+    assert result.authentication is expected_authentication
+    assert result.reachability is expected_reachability
 
 
 def test_failure_classification_does_not_retain_gateway_diagnostics() -> None:

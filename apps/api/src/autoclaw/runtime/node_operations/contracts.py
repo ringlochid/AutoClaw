@@ -86,6 +86,24 @@ class AttemptContextRead(BaseModel):
     retry_of_attempt_id: RuntimeSchemaText | None = None
 
 
+class CurrentContextTriggerKind(StrEnum):
+    ROOT_START = "root_start"
+    ACCEPTED_BOUNDARY = "accepted_boundary"
+    CHILD_RETURN = "child_return"
+    HUMAN_RESULT = "human_result"
+    COMMAND_RESULT = "command_result"
+    WATCHDOG_RECOVERY = "watchdog_recovery"
+    SEMANTIC_RETRY = "semantic_retry"
+    OPERATOR_CONTINUE = "operator_continue"
+
+
+class CurrentContextTriggerRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: CurrentContextTriggerKind
+    source_dispatch_id: RuntimeSchemaText | None = None
+
+
 class WorkflowNeighborRead(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -138,7 +156,7 @@ class GetCurrentContextResponse(BaseModel):
     dispatch_id: RuntimeSchemaText
     assignment: AssignmentContextRead
     attempt: AttemptContextRead
-    trigger: dict[str, object]
+    trigger: CurrentContextTriggerRead
     plan: WorkPlanRead | None
     workflow_neighborhood: tuple[WorkflowNeighborRead, ...]
     readback_refs: RuntimeReadbackRefs
@@ -278,6 +296,8 @@ __all__ = [
     "AssignChildRequest",
     "AssignmentContextRead",
     "AttemptContextRead",
+    "CurrentContextTriggerKind",
+    "CurrentContextTriggerRead",
     "EffectiveCapabilitySetRead",
     "EffectiveValueRead",
     "EmptyNodeOperationRequest",

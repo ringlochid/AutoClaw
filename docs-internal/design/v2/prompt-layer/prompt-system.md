@@ -142,7 +142,7 @@ It does not teach polling, provider-output completion, generic latest-row discov
 
 ## Current context relationship
 
-The immutable input describes complete dispatch-start truth. `get_current_context()` owns current truth at call time and returns the current assignment, bounded trigger, plan or `null`, live workflow neighborhood, capabilities, allowed actions, and bounded logical refs. It reserves optional normalized continuation and checkpoint fields, but callers must handle them as `null` and read the immutable `input` ref when dispatch-start trigger or resume detail is needed. It repeats the three readback refs so recovery does not depend on remembered prompt text. Its capability snapshot includes the exact `provider_native_access` and `network_access` effective/source objects.
+The immutable input describes complete dispatch-start truth. `get_current_context()` owns current truth at call time and returns the current assignment, typed compact trigger, plan or `null`, live workflow neighborhood, capabilities, allowed actions, and bounded logical refs. It returns an exact boundary-selected checkpoint path when one applies and otherwise leaves the optional checkpoint field `null`; normalized `continuation` remains reserved and `null`. Callers read the immutable `input` ref when they need the complete dispatch-start trigger or resume payload. The response repeats the three readback refs so recovery does not depend on remembered prompt text. Its capability snapshot includes the exact `provider_native_access` and `network_access` effective/source objects.
 
 The current-context result is not a lease. Every later operation revalidates live dispatch authority.
 

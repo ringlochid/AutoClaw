@@ -16,6 +16,7 @@ from autoclaw.integrations.openclaw.gateway.cli_transport import (
 from autoclaw.runtime.contracts.provider_resolution import OpenClawProviderRoute
 from autoclaw.runtime.providers.contracts import (
     DispatchStartRequest,
+    ProviderCheckAxisStatus,
     ProviderCheckResult,
     ProviderCheckStatus,
     ProviderStartAccepted,
@@ -142,15 +143,27 @@ class OpenClawGatewayAdapter:
                 params={},
             )
         except OpenClawGatewayCliError as exc:
+            authentication = ProviderCheckAxisStatus.NOT_CHECKED
+            reachability = ProviderCheckAxisStatus.NOT_CHECKED
+            if exc.code is OpenClawGatewayFailureCode.AUTHENTICATION_FAILED:
+                authentication = ProviderCheckAxisStatus.FAILED
+            elif exc.code in {
+                OpenClawGatewayFailureCode.UNREACHABLE,
+                OpenClawGatewayFailureCode.TIMEOUT,
+            }:
+                reachability = ProviderCheckAxisStatus.FAILED
             return ProviderCheckResult(
                 kind=self.kind,
                 status=ProviderCheckStatus.UNAVAILABLE,
                 code=exc.code.value,
+                authentication=authentication,
+                reachability=reachability,
             )
         return ProviderCheckResult(
             kind=self.kind,
             status=ProviderCheckStatus.LIMITED,
             code="openclaw_experimental",
+            reachability=ProviderCheckAxisStatus.PASSED,
         )
 
 

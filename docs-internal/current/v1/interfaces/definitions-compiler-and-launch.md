@@ -20,7 +20,9 @@ A draft records its create or update mode and, for an update, the published revi
 
 ## Compilation
 
-Task preview and task start compile the selected current workflow. Compilation resolves every referenced role and policy, validates graph and node rules, resolves the strict provider route, and computes the effective capability ceiling.
+Task preview compiles the selected current workflow, resolves every referenced role and policy, validates graph and node rules, resolves provider routes, and computes effective capability ceilings without changing controller state.
+
+Task start compiles and pins the definition graph in its bootstrap transaction. It does not resolve the root provider route before that transaction returns. The later flow-start handler rereads the committed source, resolves the root route and capabilities, and prepares the dispatch request.
 
 The compiled launch snapshot pins exact workflow, role, and policy revisions. Later definition changes do not rewrite a running task.
 
@@ -38,7 +40,9 @@ The following surfaces share `start_task_from_definition`:
 
 Task start validates task-root bindings, compiles and pins definitions, creates the task, flow, root assignment, root attempt, and durable flow-start source in one transaction, then commits.
 
-After commit, it publishes independent runtime and support-projection wakeups and returns the task identity and manifest reference. It does not wait for the first provider start or provider output. The flow-start handler prepares the request pair and opens the root dispatch from committed truth.
+After commit, it publishes independent runtime and support-projection wakeups and returns the task identity and manifest reference. The flow-start handler resolves the root provider route, publishes the immutable request pair, and commits the root dispatch with its refs. Provider start runs independently after that dispatch commit. Support projections do not gate any of these steps.
+
+If deterministic route or request preparation fails, the handler performs no provider I/O and pauses the flow with `runtime_transition_failed`. Task start has already returned successfully because its bootstrap source remains committed and recoverable.
 
 ## Evidence
 
