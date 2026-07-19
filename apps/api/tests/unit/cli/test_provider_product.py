@@ -49,9 +49,10 @@ def test_first_configuration_sets_default_and_later_configuration_preserves_it(
 
     payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
     assert first.default_provider == ProviderKind.CODEX
-    assert first.default_changed is True
+    assert first.is_default_changed is True
+    assert first.model_dump(mode="json")["default_changed"] is True
     assert second.default_provider == ProviderKind.CODEX
-    assert second.default_changed is False
+    assert second.is_default_changed is False
     assert payload["codex"] == {"enabled": True, "model": "gpt-5"}
     assert payload["claude"] == {"enabled": True, "effort": "high"}
     assert payload["runtime"]["default_provider"] == "codex"
@@ -78,7 +79,7 @@ def test_openclaw_is_configurable_and_default_eligible(tmp_path: Path) -> None:
     assert configured.product_status.value == "experimental"
     assert configured.default_provider == ProviderKind.CODEX
     assert changed.default_provider == ProviderKind.OPENCLAW
-    assert changed.default_changed is True
+    assert changed.is_default_changed is True
     assert payload["runtime"]["default_provider"] == "openclaw"
     assert payload["openclaw"] == {
         "enabled": True,
@@ -123,7 +124,7 @@ def test_concurrent_first_configuration_has_one_stable_default(tmp_path: Path) -
     payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
     defaults = {result.default_provider for result in results}
     assert len(defaults) == 1
-    assert sum(result.default_changed for result in results) == 1
+    assert sum(result.is_default_changed for result in results) == 1
     assert payload["runtime"]["default_provider"] in {"codex", "claude"}
     assert payload["codex"]["enabled"] is True
     assert payload["claude"]["enabled"] is True
@@ -232,7 +233,7 @@ def test_provider_check_runs_bounded_diagnostic_without_mutation(
         lambda _module: True,
     )
     monkeypatch.setattr(
-        "autoclaw.interfaces.cli.providers.inspection.run_provider_diagnostic",
+        "autoclaw.interfaces.cli.providers.inspection.execute_provider_diagnostic",
         lambda _settings, provider: ProviderCheckResult(
             kind=provider,
             status=ProviderCheckStatus.AVAILABLE,
@@ -268,7 +269,7 @@ def test_provider_check_maps_authentication_failure(
         lambda _module: True,
     )
     monkeypatch.setattr(
-        "autoclaw.interfaces.cli.providers.inspection.run_provider_diagnostic",
+        "autoclaw.interfaces.cli.providers.inspection.execute_provider_diagnostic",
         lambda _settings, provider: ProviderCheckResult(
             kind=provider,
             status=ProviderCheckStatus.UNAVAILABLE,
@@ -296,7 +297,7 @@ def test_provider_diagnostic_timeout_includes_adapter_cleanup(
             finally:
                 await asyncio.Event().wait()
 
-        async def check(self) -> ProviderCheckResult:
+        async def read_availability(self) -> ProviderCheckResult:
             return ProviderCheckResult(
                 kind=ProviderKind.CODEX,
                 status=ProviderCheckStatus.AVAILABLE,
@@ -310,7 +311,7 @@ def test_provider_diagnostic_timeout_includes_adapter_cleanup(
     monkeypatch.setattr(provider_inspection, "PROVIDER_CHECK_TIMEOUT_SECONDS", 0.01)
 
     with pytest.raises(TimeoutError):
-        provider_inspection.run_provider_diagnostic(
+        provider_inspection.execute_provider_diagnostic(
             Settings(),
             ProviderKind.CODEX,
         )

@@ -17,9 +17,9 @@ from autoclaw.runtime.task_events import append_task_event, encode_task_event_cu
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, sessionmaker
-from tests.integration.runtime_schema_contract.catalog_fixture import seed_catalog
-from tests.integration.runtime_schema_contract.runtime_lineage_fixture import seed_runtime_scope
-from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+from tests.helpers.catalog_seed import seed_catalog
+from tests.helpers.lineage_seed import seed_runtime_scope
+from tests.helpers.sqlite_runtime import (
     SyncSessionAdapter,
     create_runtime_schema_engine,
 )
@@ -95,7 +95,7 @@ async def test_task_event_http_and_sse_preserve_cursor_contract(
         assert mismatched_resume.json()["code"] == "invalid_request_shape"
 
         before = await _event_count(factory, task_id=task_a.task_id)
-        stream = control_router_module._stream_task_event_records(
+        stream = control_router_module.stream_task_event_records(
             task_id=task_a.task_id,
             cursor=encode_task_event_cursor(events_a[0].event_id),
         )

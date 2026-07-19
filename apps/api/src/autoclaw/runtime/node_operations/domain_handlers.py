@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -119,6 +120,44 @@ async def _return_boundary(
     request: ReturnBoundaryRequest,
 ) -> BoundaryRead:
     outcome = request.boundary.value
+    checkpoint = await _require_boundary_checkpoint(session, authority, outcome=outcome)
+    decision = await _read_boundary_decision(session, authority, outcome=outcome)
+    now = utc_now()
+    await _persist_boundary_acceptance(
+        session,
+        authority,
+        outcome=outcome,
+        checkpoint=checkpoint,
+        decision=decision,
+        accepted_at=now,
+    )
+    resulting_flow_status = await _read_resulting_flow_status(session, authority)
+    await _append_boundary_accepted_event(
+        session,
+        authority,
+        outcome=outcome,
+        checkpoint=checkpoint,
+        decision=decision,
+        resulting_flow_status=resulting_flow_status,
+        occurred_at=now,
+    )
+    await _append_child_assignment_committed_event(
+        session,
+        authority,
+        outcome=outcome,
+        decision=decision,
+        occurred_at=now,
+    )
+    await session.commit()
+    return await _build_boundary_read(session, authority, request, checkpoint=checkpoint)
+
+
+async def _require_boundary_checkpoint(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    *,
+    outcome: str,
+) -> AttemptCheckpointModel | None:
     checkpoint = await _latest_checkpoint(session, authority)
     if outcome != "yield" and (checkpoint is None or checkpoint.outcome != outcome):
         raise RuntimeOperationError(
@@ -126,17 +165,37 @@ async def _return_boundary(
             summary=f"{outcome} requires a matching terminal checkpoint",
             is_retryable=False,
         )
+    return checkpoint
+
+
+async def _read_boundary_decision(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    *,
+    outcome: str,
+) -> AssignmentDecisionModel | None:
     decision = await session.scalar(
         select(AssignmentDecisionModel).where(
             AssignmentDecisionModel.source_dispatch_id == authority.dispatch_id
         )
     )
     _validate_boundary_decision(authority, outcome, decision)
-    now = utc_now()
+    return decision
+
+
+async def _persist_boundary_acceptance(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    *,
+    outcome: str,
+    checkpoint: AttemptCheckpointModel | None,
+    decision: AssignmentDecisionModel | None,
+    accepted_at: datetime,
+) -> None:
     await close_source_dispatch(
         session,
         authority,
-        now=now,
+        now=accepted_at,
         closed_reason="boundary",
         waiting_cause="none",
         waiting_source_id=None,
@@ -146,7 +205,7 @@ async def _return_boundary(
         authority,
         outcome=outcome,
         decision=decision,
-        transitioned_at=now,
+        transitioned_at=accepted_at,
     )
     session.add(
         AcceptedBoundaryModel(
@@ -163,10 +222,29 @@ async def _return_boundary(
             ),
         )
     )
+
+
+async def _read_resulting_flow_status(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+) -> str:
     resulting_flow_status = await session.scalar(
         select(FlowModel.status).where(FlowModel.flow_id == authority.flow_id)
     )
     assert resulting_flow_status is not None
+    return resulting_flow_status
+
+
+async def _append_boundary_accepted_event(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    *,
+    outcome: str,
+    checkpoint: AttemptCheckpointModel | None,
+    decision: AssignmentDecisionModel | None,
+    resulting_flow_status: str,
+    occurred_at: datetime,
+) -> None:
     checkpoint_ref_path = (
         f"_runtime/attempts/{authority.attempt_id}/latest-checkpoint.md"
         if checkpoint is not None
@@ -177,7 +255,7 @@ async def _return_boundary(
         task_id=authority.task_id,
         event_type=TaskEventType.BOUNDARY_ACCEPTED,
         event_source=TaskEventSource.NODE,
-        occurred_at=now,
+        occurred_at=occurred_at,
         flow_revision_id=authority.flow_revision_id,
         dispatch_id=authority.dispatch_id,
         attempt_id=authority.attempt_id,
@@ -195,36 +273,53 @@ async def _return_boundary(
             "resulting_flow_status": resulting_flow_status,
         },
     )
-    if outcome == "yield" and decision is not None:
-        child_assignment_id = decision.staged_child_assignment_id
-        child_attempt_id = decision.staged_child_attempt_id
-        assert child_assignment_id is not None and child_attempt_id is not None
-        child_node_key = await session.scalar(
-            select(AssignmentModel.node_key).where(
-                AssignmentModel.assignment_id == child_assignment_id
-            )
-        )
-        assert child_node_key is not None
-        await append_task_event(
-            session,
-            task_id=authority.task_id,
-            event_type=TaskEventType.CHILD_ASSIGNMENT_COMMITTED,
-            event_source=TaskEventSource.NODE,
-            occurred_at=now,
-            flow_revision_id=authority.flow_revision_id,
-            dispatch_id=authority.dispatch_id,
-            attempt_id=child_attempt_id,
-            node_key=child_node_key,
-            payload={
-                "source_dispatch_id": authority.dispatch_id,
-                "parent_assignment_id": authority.assignment_id,
-                "child_assignment_id": child_assignment_id,
-                "child_attempt_id": child_attempt_id,
-                "child_node_key": child_node_key,
-                "flow_revision_id": authority.flow_revision_id,
-            },
-        )
-    await session.commit()
+
+
+async def _append_child_assignment_committed_event(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    *,
+    outcome: str,
+    decision: AssignmentDecisionModel | None,
+    occurred_at: datetime,
+) -> None:
+    if outcome != "yield" or decision is None:
+        return
+    child_assignment_id = decision.staged_child_assignment_id
+    child_attempt_id = decision.staged_child_attempt_id
+    assert child_assignment_id is not None and child_attempt_id is not None
+    child_node_key = await session.scalar(
+        select(AssignmentModel.node_key).where(AssignmentModel.assignment_id == child_assignment_id)
+    )
+    assert child_node_key is not None
+    await append_task_event(
+        session,
+        task_id=authority.task_id,
+        event_type=TaskEventType.CHILD_ASSIGNMENT_COMMITTED,
+        event_source=TaskEventSource.NODE,
+        occurred_at=occurred_at,
+        flow_revision_id=authority.flow_revision_id,
+        dispatch_id=authority.dispatch_id,
+        attempt_id=child_attempt_id,
+        node_key=child_node_key,
+        payload={
+            "source_dispatch_id": authority.dispatch_id,
+            "parent_assignment_id": authority.assignment_id,
+            "child_assignment_id": child_assignment_id,
+            "child_attempt_id": child_attempt_id,
+            "child_node_key": child_node_key,
+            "flow_revision_id": authority.flow_revision_id,
+        },
+    )
+
+
+async def _build_boundary_read(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    request: ReturnBoundaryRequest,
+    *,
+    checkpoint: AttemptCheckpointModel | None,
+) -> BoundaryRead:
     flow = await runtime_flow_read(session, authority)
     checkpoint_ref = (
         CheckpointFileRef(

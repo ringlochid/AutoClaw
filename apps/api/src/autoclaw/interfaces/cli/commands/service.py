@@ -91,8 +91,8 @@ def cmd_service_install(
             env_file=service_env_file_path(config_path, args.env_file),
             service_name=args.name,
             unit_dir=coerce_path(args.unit_dir) if args.unit_dir is not None else None,
-            force=args.force,
-            no_start=args.no_start,
+            should_force=args.force,
+            should_skip_start=args.no_start,
             command_observer=active_progress.command_args,
         )
     )
@@ -108,7 +108,7 @@ def cmd_service_uninstall(args: argparse.Namespace) -> int:
             env_file=service_env_file_path(config_path, args.env_file),
             service_name=args.name,
             unit_dir=coerce_path(args.unit_dir) if args.unit_dir is not None else None,
-            remove_env_file=args.remove_env_file,
+            should_remove_env_file=args.remove_env_file,
         )
     )
     return 0
@@ -183,16 +183,16 @@ def service_env_file_path(config_path: Path, explicit_env_file: str | None) -> P
 
 
 def _print_service_status(snapshot: ManagedServiceStatus, *, is_rich: bool) -> None:
-    installed = "installed" if snapshot.installed else "not installed"
-    running = "running" if snapshot.running else "stopped"
+    installed = "installed" if snapshot.is_installed else "not installed"
+    running = "running" if snapshot.is_running else "stopped"
     running_label = (
-        success(running, is_rich=is_rich) if snapshot.running else warn(running, is_rich=is_rich)
+        success(running, is_rich=is_rich) if snapshot.is_running else warn(running, is_rich=is_rich)
     )
     print(heading("AutoClaw service", is_rich=is_rich))
     print(f"status: {running_label} ({muted(installed, is_rich=is_rich)})")
     print(f"manager: {snapshot.manager}")
     print(f"unit: {accent(snapshot.service_name, is_rich=is_rich)}")
-    print(f"enabled: {snapshot.enabled}")
+    print(f"enabled: {snapshot.is_enabled}")
     if snapshot.fragment_path:
         print(f"fragment: {accent(snapshot.fragment_path, is_rich=is_rich)}")
     if snapshot.active_state is not None:

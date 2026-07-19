@@ -69,7 +69,7 @@ read_file(path, start_line=1, max_lines=400)
 
 Every call still carries the current explicit `task_id` and node-session `session_key` as recognition arguments. The shorthand signatures omit that common transport convention only for readability.
 
-`get_current_context` returns the current assignment and attempt, the current plan, effective capabilities and allowed actions, consume and produce slots with logical paths, normalized continuation context, and `checkpoint_to_resume_from`. The prompt owner teaches a worker to read that checkpoint before replanning after continuation or watchdog recovery.
+`get_current_context` returns the current assignment and attempt, the current plan, effective capabilities and allowed actions, consume and produce slots with logical paths, and optional normalized continuation and `checkpoint_to_resume_from` fields. The prompt owner teaches a worker to read a returned checkpoint before replanning after continuation or watchdog recovery and to use the immutable input readback when the optional current projection is absent.
 
 `list_files` is non-recursive. `read_file` returns bounded text only. A shared resolver accepts only logical task-relative paths, rejects absolute paths and `..`, and rejects any symlink resolution that escapes the selected mapped root.
 

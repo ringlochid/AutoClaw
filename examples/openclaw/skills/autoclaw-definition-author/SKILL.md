@@ -106,7 +106,6 @@ Task-compose is one launch:
 - task.instruction
 - workflow.key
 - roots.workspace
-- roots.context
 
 Do not put reusable doctrine in task-compose. Do not include secrets.
 
@@ -120,6 +119,6 @@ Operator MCP registry tools read current truth. `upload_definition` and `start_t
 
 ## Related Skills
 
-- Use `autoclaw-task-interview` when the scope, workflow shape, or `roots` paths behind a definition request are unconfirmed.
+- Use `autoclaw-task-interview` when the scope, workflow shape, or workspace path behind a definition request is unconfirmed.
 - Use `autoclaw-work-orchestrator` for use/reuse/write/start decisions.
 - Use `autoclaw-runtime-operator` after a task starts.

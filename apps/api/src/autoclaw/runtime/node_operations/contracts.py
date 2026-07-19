@@ -22,6 +22,7 @@ from autoclaw.runtime.contracts import (
     UpdateChildPayload,
 )
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
+from autoclaw.runtime.contracts.prompt import RuntimeReadbackRefs
 from autoclaw.runtime.work_plan import WorkPlanRead
 
 
@@ -85,6 +86,15 @@ class AttemptContextRead(BaseModel):
     retry_of_attempt_id: RuntimeSchemaText | None = None
 
 
+class WorkflowNeighborRead(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    node_key: RuntimeSchemaText
+    node_kind: NodeKind
+    relationship: RuntimeSchemaText
+    assignment_id: RuntimeSchemaText | None = None
+
+
 class EffectiveValueRead(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -130,6 +140,8 @@ class GetCurrentContextResponse(BaseModel):
     attempt: AttemptContextRead
     trigger: dict[str, object]
     plan: WorkPlanRead | None
+    workflow_neighborhood: tuple[WorkflowNeighborRead, ...]
+    readback_refs: RuntimeReadbackRefs
     capabilities: EffectiveCapabilitySetRead
     allowed_actions: tuple[NodeOperationName, ...]
     consume_slots: tuple[SlotContextRead, ...]
@@ -292,4 +304,5 @@ __all__ = [
     "StartCommandRunRequest",
     "StructuralOperationRequest",
     "UpdateChildRequest",
+    "WorkflowNeighborRead",
 ]

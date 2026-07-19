@@ -19,7 +19,7 @@ from autoclaw.runtime.providers import (
 )
 from autoclaw.runtime.providers.cleanup import create_provider_dispatch_cleanup_handler
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+from tests.helpers.sqlite_runtime import (
     SyncSessionAdapter,
 )
 from tests.integration.runtime_schema_contract.test_provider_start_acceptance import (
@@ -43,7 +43,7 @@ class _StopRecordingAdapter:
         self.stop_calls.append(dispatch_id)
         return ProviderStopOutcome.STOPPED
 
-    async def check(self) -> ProviderCheckResult:
+    async def read_availability(self) -> ProviderCheckResult:
         return ProviderCheckResult(
             kind=self.kind,
             status=ProviderCheckStatus.AVAILABLE,

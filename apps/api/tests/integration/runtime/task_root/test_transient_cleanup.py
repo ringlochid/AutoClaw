@@ -19,11 +19,11 @@ from autoclaw.runtime.post_commit.bootstrap import read_transient_cleanup_page
 from autoclaw.runtime.task_root import cleanup_expired_transient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.integration.runtime.node_operations.executor_support import (
+from tests.helpers.executor_harness import (
     SessionFactory,
     seeded_executor,
 )
-from tests.integration.runtime_schema_contract.runtime_lineage_fixture import RuntimeIds
+from tests.helpers.lineage_seed import RuntimeIds
 
 
 async def test_exact_expired_transient_cleanup_is_restartable_and_idempotent(

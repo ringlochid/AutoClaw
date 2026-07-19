@@ -16,11 +16,11 @@ from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.node_operations import NodeOperationExecutor, NodeOperationScope
 from sqlalchemy import select
-from tests.integration.runtime.node_operations.executor_support import (
+from tests.helpers.executor_harness import (
     SessionFactory,
     seeded_executor,
 )
-from tests.integration.runtime_schema_contract.runtime_lineage_fixture import RuntimeIds
+from tests.helpers.lineage_seed import RuntimeIds
 
 
 async def test_yield_activates_the_exact_staged_child_in_source_transaction(

@@ -3,6 +3,7 @@ from __future__ import annotations
 import shlex
 from dataclasses import dataclass
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -182,26 +183,124 @@ async def terminalize_command_run(
 ) -> bool:
     """Commit one exact terminal winner and clear only its matching flow wait."""
 
-    event_type = COMMAND_RUN_TERMINAL_EVENT_TYPES.get(terminal_state)
-    if event_type is None:
-        raise ValueError(f"command state is not terminal: {terminal_state.value}")
-    if terminal_state == CommandRunState.ABANDONED:
-        if failure_code != "command_ownership_lost":
-            raise ValueError("abandoned command runs require command_ownership_lost")
-
-    source = await session.scalar(
-        select(CommandRunModel)
-        .options(raiseload("*"))
-        .where(
-            CommandRunModel.task_id == task_id,
-            CommandRunModel.run_id == run_id,
-            CommandRunModel.ownership_revision == expected_ownership_revision,
-            CommandRunModel.state.in_(state.value for state in expected_states),
-        )
+    event_type = _validate_terminal_transition(terminal_state, failure_code)
+    source = await _read_terminal_source(
+        session,
+        task_id=task_id,
+        run_id=run_id,
+        expected_ownership_revision=expected_ownership_revision,
+        expected_states=expected_states,
     )
     if source is None or (should_match_due_at and source.due_at != expected_due_at):
         return False
+    if not await _persist_terminal_state(
+        session,
+        source=source,
+        expected_ownership_revision=expected_ownership_revision,
+        expected_states=expected_states,
+        terminal_state=terminal_state,
+        summary=summary,
+        ended_at=ended_at,
+        exit_code=exit_code,
+        failure_code=failure_code,
+        expected_due_at=expected_due_at,
+        should_match_due_at=should_match_due_at,
+        actor_ref=actor_ref,
+    ):
+        await session.rollback()
+        return False
+    if not await _clear_matching_flow_wait(session, source):
+        await session.rollback()
+        return False
 
+    await _append_terminal_event(
+        session,
+        source=source,
+        event_type=event_type,
+        event_source=event_source,
+        terminal_state=terminal_state,
+        summary=summary,
+        ended_at=ended_at,
+        exit_code=exit_code,
+        failure_code=failure_code,
+        expected_ownership_revision=expected_ownership_revision,
+        actor_ref=actor_ref,
+    )
+    await session.commit()
+    return True
+
+
+def command_run_request_from_model(source: CommandRunModel) -> CommandRunStartRequest:
+    cwd: str | None = None
+    if source.cwd_policy_json is not None:
+        if set(source.cwd_policy_json) != {"logical_path"}:
+            raise ValueError("command cwd policy has an invalid shape")
+        logical_path = source.cwd_policy_json["logical_path"]
+        if not isinstance(logical_path, str):
+            raise ValueError("command cwd policy requires a text logical path")
+        cwd = logical_path
+    return CommandRunStartRequest.model_validate(
+        {
+            "command": source.command_spec_json,
+            "cwd": cwd,
+            "environment": source.environment_refs_json or (),
+            "timeout_seconds": source.timeout_seconds,
+            "summary": source.summary,
+            "expected_outputs": source.expected_outputs_json or (),
+        }
+    )
+
+
+def _validate_terminal_transition(
+    terminal_state: CommandRunState,
+    failure_code: str | None,
+) -> TaskEventType:
+    event_type = COMMAND_RUN_TERMINAL_EVENT_TYPES.get(terminal_state)
+    if event_type is None:
+        raise ValueError(f"command state is not terminal: {terminal_state.value}")
+    if terminal_state == CommandRunState.ABANDONED and failure_code != "command_ownership_lost":
+        raise ValueError("abandoned command runs require command_ownership_lost")
+    return event_type
+
+
+async def _read_terminal_source(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    run_id: str,
+    expected_ownership_revision: int,
+    expected_states: tuple[CommandRunState, ...],
+) -> CommandRunModel | None:
+    return cast(
+        CommandRunModel | None,
+        await session.scalar(
+            select(CommandRunModel)
+            .options(raiseload("*"))
+            .where(
+                CommandRunModel.task_id == task_id,
+                CommandRunModel.run_id == run_id,
+                CommandRunModel.ownership_revision == expected_ownership_revision,
+                CommandRunModel.state.in_(state.value for state in expected_states),
+            )
+        ),
+    )
+
+
+async def _persist_terminal_state(
+    session: AsyncSession,
+    *,
+    source: CommandRunModel,
+    expected_ownership_revision: int,
+    expected_states: tuple[CommandRunState, ...],
+    terminal_state: CommandRunState,
+    summary: str,
+    ended_at: datetime,
+    exit_code: int | None,
+    failure_code: str | None,
+    expected_due_at: datetime | None,
+    should_match_due_at: bool,
+    actor_ref: str | None,
+) -> bool:
     predicates = [
         CommandRunModel.task_id == source.task_id,
         CommandRunModel.run_id == source.run_id,
@@ -225,10 +324,13 @@ async def terminalize_command_run(
         )
         .returning(CommandRunModel.run_id)
     )
-    if won_run_id is None:
-        await session.rollback()
-        return False
+    return won_run_id is not None
 
+
+async def _clear_matching_flow_wait(
+    session: AsyncSession,
+    source: CommandRunModel,
+) -> bool:
     wait_id = await session.scalar(
         delete(FlowWaitModel)
         .where(
@@ -252,7 +354,6 @@ async def terminalize_command_run(
         and flow.status not in {"cancelled", "completed"}
         and flow.waiting_source_id == source.run_id
     ):
-        await session.rollback()
         return False
 
     await session.execute(
@@ -269,6 +370,23 @@ async def terminalize_command_run(
             control_revision=FlowModel.control_revision + 1,
         )
     )
+    return True
+
+
+async def _append_terminal_event(
+    session: AsyncSession,
+    *,
+    source: CommandRunModel,
+    event_type: TaskEventType,
+    event_source: TaskEventSource,
+    terminal_state: CommandRunState,
+    summary: str,
+    ended_at: datetime,
+    exit_code: int | None,
+    failure_code: str | None,
+    expected_ownership_revision: int,
+    actor_ref: str | None,
+) -> None:
     await append_task_event(
         session,
         task_id=source.task_id,
@@ -294,29 +412,6 @@ async def terminalize_command_run(
                 if ref is not None
             ],
         },
-    )
-    await session.commit()
-    return True
-
-
-def command_run_request_from_model(source: CommandRunModel) -> CommandRunStartRequest:
-    cwd: str | None = None
-    if source.cwd_policy_json is not None:
-        if set(source.cwd_policy_json) != {"logical_path"}:
-            raise ValueError("command cwd policy has an invalid shape")
-        logical_path = source.cwd_policy_json["logical_path"]
-        if not isinstance(logical_path, str):
-            raise ValueError("command cwd policy requires a text logical path")
-        cwd = logical_path
-    return CommandRunStartRequest.model_validate(
-        {
-            "command": source.command_spec_json,
-            "cwd": cwd,
-            "environment": source.environment_refs_json or (),
-            "timeout_seconds": source.timeout_seconds,
-            "summary": source.summary,
-            "expected_outputs": source.expected_outputs_json or (),
-        }
     )
 
 

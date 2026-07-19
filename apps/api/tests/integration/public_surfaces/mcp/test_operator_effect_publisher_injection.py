@@ -111,41 +111,43 @@ def _task_start_request() -> TaskStartRequest:
     )
 
 
-async def test_operator_tools_receive_the_server_owned_effect_publishers(
+async def _capture_pause_flow(
+    captured: dict[str, object],
+    session: AsyncSession,
+    task_id: str,
+    **kwargs: object,
+) -> RuntimeFlowPauseResponse:
+    del session
+    captured["pause"] = kwargs
+    return RuntimeFlowPauseResponse(flow=_runtime_flow_read(task_id, control_revision=8))
+
+
+async def _capture_continue_flow(
+    captured: dict[str, object],
+    session: AsyncSession,
+    task_id: str,
+    **kwargs: object,
+) -> RuntimeFlowRead:
+    del session
+    captured["continue"] = kwargs
+    return _runtime_flow_read(task_id, control_revision=8)
+
+
+async def _capture_cancel_flow(
+    captured: dict[str, object],
+    session: AsyncSession,
+    task_id: str,
+    **kwargs: object,
+) -> RuntimeFlowRead:
+    del session
+    captured["cancel"] = kwargs
+    return _runtime_flow_read(task_id, control_revision=8)
+
+
+def _install_effect_capture_patches(
     monkeypatch: pytest.MonkeyPatch,
+    captured: dict[str, object],
 ) -> None:
-    runtime_publisher = CapturedRuntimeEffectPublisher()
-    projection_publisher = _ProjectionPublisher()
-    opening_dependencies = cast(DispatchOpeningDependencies, object())
-    captured: dict[str, object] = {}
-
-    async def capture_pause(
-        session: AsyncSession,
-        task_id: str,
-        **kwargs: object,
-    ) -> RuntimeFlowPauseResponse:
-        del session
-        captured["pause"] = kwargs
-        return RuntimeFlowPauseResponse(flow=_runtime_flow_read(task_id, control_revision=8))
-
-    async def capture_continue(
-        session: AsyncSession,
-        task_id: str,
-        **kwargs: object,
-    ) -> RuntimeFlowRead:
-        del session
-        captured["continue"] = kwargs
-        return _runtime_flow_read(task_id, control_revision=8)
-
-    async def capture_cancel(
-        session: AsyncSession,
-        task_id: str,
-        **kwargs: object,
-    ) -> RuntimeFlowRead:
-        del session
-        captured["cancel"] = kwargs
-        return _runtime_flow_read(task_id, control_revision=8)
-
     monkeypatch.setattr(
         definition_tools_module,
         "task_start_request_from_path",
@@ -156,19 +158,37 @@ async def test_operator_tools_receive_the_server_owned_effect_publishers(
         "start_task_from_definition",
         partial(_capture_start_task, captured),
     )
-    monkeypatch.setattr(
-        runtime_tools_module,
-        "get_session_factory",
-        lambda: _session_context,
-    )
+    monkeypatch.setattr(runtime_tools_module, "get_session_factory", lambda: _session_context)
     monkeypatch.setattr(
         runtime_tools_module,
         "resolve_human_request",
         partial(_capture_human_resolution, captured),
     )
-    monkeypatch.setattr(runtime_tools_module, "pause_runtime_flow", capture_pause)
-    monkeypatch.setattr(runtime_tools_module, "continue_runtime_flow", capture_continue)
-    monkeypatch.setattr(runtime_tools_module, "cancel_runtime_flow", capture_cancel)
+    monkeypatch.setattr(
+        runtime_tools_module,
+        "pause_runtime_flow",
+        partial(_capture_pause_flow, captured),
+    )
+    monkeypatch.setattr(
+        runtime_tools_module,
+        "continue_runtime_flow",
+        partial(_capture_continue_flow, captured),
+    )
+    monkeypatch.setattr(
+        runtime_tools_module,
+        "cancel_runtime_flow",
+        partial(_capture_cancel_flow, captured),
+    )
+
+
+async def test_operator_tools_receive_the_server_owned_effect_publishers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_publisher = CapturedRuntimeEffectPublisher()
+    projection_publisher = _ProjectionPublisher()
+    opening_dependencies = cast(DispatchOpeningDependencies, object())
+    captured: dict[str, object] = {}
+    _install_effect_capture_patches(monkeypatch, captured)
     server = create_operator_mcp_server(
         effect_publishers=OperatorEffectPublishers(
             runtime_effect_publisher=runtime_publisher,

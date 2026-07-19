@@ -1,102 +1,28 @@
 # Diagnostic bundle
 
-Use this page to collect enough local evidence to debug an AutoClaw problem without guessing.
+Collect the smallest evidence that explains the failure.
 
-Do not paste secrets into issues, chat, logs, or tickets. Redact API keys, Gateway tokens, passwords, private task content, and private artifact content before sharing.
-
-## Install and setup bundle
-
-Collect:
+## Local state
 
 ```bash
 autoclaw --version
-autoclaw config path
+autoclaw status --json
 autoclaw config show --json
-autoclaw doctor --json
-autoclaw openclaw check --json
+autoclaw providers status
+autoclaw service status --json
 ```
 
-`autoclaw config show --json` redacts known local secrets. Before sharing output, still check for:
+Add `autoclaw providers check <provider> --json` only when provider reachability is relevant.
 
-- `security.api_key`
-- `openclaw.gateway_token`
-- `openclaw.gateway_password`
-- private local paths when needed
-
-## Service and health bundle
-
-Collect:
+## Server state
 
 ```bash
-autoclaw service status --json
 curl -sS http://127.0.0.1:18125/healthz
 curl -sS http://127.0.0.1:18125/readyz
 ```
 
-If you used the foreground runner, include the recent `autoclaw serve` log instead of only the service status.
+For a task problem, include the task id, current task read, operator snapshot, and the smallest relevant trace or event page. Include the human-request or command-run record when it owns the wait.
 
-## Task bundle
+## Redact before sharing
 
-For a started task, collect:
-
-- task id
-- workflow key
-- task directory path
-- current runtime readback
-- operator snapshot
-- operator trace
-- relevant human request or command-run readback
-
-HTTP reads:
-
-```bash
-curl -sS -H "X-AutoClaw-API-Key: <redacted>" \
-  "http://127.0.0.1:18125/runtime/tasks/<task_id>"
-
-curl -sS -H "X-AutoClaw-API-Key: <redacted>" \
-  "http://127.0.0.1:18125/operator/tasks/<task_id>/snapshot"
-
-curl -sS -H "X-AutoClaw-API-Key: <redacted>" \
-  "http://127.0.0.1:18125/operator/tasks/<task_id>/trace?scope=whole&sort=occurred_at_asc"
-```
-
-Task-root files worth checking locally:
-
-- `_runtime/workflow-manifest.md`
-- `_runtime/attempts/<attempt_id>/assignment.md`
-- `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
-- `outputs/artifacts/`
-
-## Support-state bundle
-
-Use support-state files only after reading current runtime state.
-
-Useful support refs:
-
-- delivery state
-- continuity state
-- watchdog state
-- provider events
-
-HTTP reads:
-
-```bash
-curl -sS -H "X-AutoClaw-API-Key: <redacted>" \
-  "http://127.0.0.1:18125/observability/tasks/<task_id>/delivery-state"
-
-curl -sS -H "X-AutoClaw-API-Key: <redacted>" \
-  "http://127.0.0.1:18125/observability/tasks/<task_id>/watchdog-state"
-```
-
-The returned paths point at generated task files. Controller/runtime reads remain the authority when support files disagree.
-
-## Maintainer bundle
-
-For repo changes, include:
-
-```bash
-git status --short
-make check-docs
-```
-
-Add the relevant focused tests or verification lane from [choose a verification lane](../maintainers/choose-a-verification-lane.md).
+Remove provider credentials, database passwords, private host paths, private task instructions, command output, and artifact content unless each item is necessary and safe to disclose. Preserve IDs and state names when they help correlate controller records.

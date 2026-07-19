@@ -68,6 +68,8 @@ Current fields are:
 
 `capabilities` currently allows:
 
+- `provider_native_access`: `full | restricted | denied`
+- `network_access`: `allow | deny`
 - `human_request`
     - `mode`: `deny | allow`
     - `allowed_kinds`: `direction | approval | input | review`
@@ -79,6 +81,8 @@ Current validator rules include:
 - `child_assignment_limit` requires `root` or `parent`
 - `retry_limit` requires `worker`
 - one policy budget spec must not mix both limits
+- omitted `provider_native_access` defaults to `full`
+- omitted `network_access` defaults to `allow`
 - omitted `capabilities.human_request` defaults to `mode: deny`
 - omitted `capabilities.command_run` defaults to `deny`
 - `capabilities.human_request.mode: allow` requires non-empty `allowed_kinds`
@@ -103,11 +107,12 @@ Current top-level fields are:
 
 Current root node shape is:
 
-- `id` and it must be `root`
+- `node_key`
+- `kind` and it must be `root`
 - `title`
-- `role`
-- `policy`
-- `provider_preference`
+- `role_id`
+- `policy_id`
+- `provider`
 - `description`
 - `instruction`
 - `produces`
@@ -117,11 +122,12 @@ Current root node shape is:
 
 Current non-root node shape is:
 
-- `id`
+- `node_key`
+- `kind`: `parent | worker`
 - `title`
-- `role`
-- `policy`
-- `provider_preference`
+- `role_id`
+- `policy_id`
+- `provider`
 - `description`
 - `instruction`
 - `consumes`
@@ -130,9 +136,14 @@ Current non-root node shape is:
 - `child_defaults`
 - `children`
 
-`title` is optional node display metadata. `instruction` is optional node-local prompt guidance. `provider_preference`, when present, must be one of `openclaw`, `codex`, or `claude`; omission means runtime resolves through the machine-local default provider.
+`title` is optional display metadata. `instruction` is optional node-local prompt guidance. `provider`, when present, is a strict object containing only `kind`:
 
-The current shipped adapter support is OpenClaw Gateway. Use `openclaw` or omit `provider_preference` for the public supported path. `codex` and `claude` are schema-recognized provider preference values, but they require provider-specific support before they are a shipped execution path.
+```yaml
+provider:
+    kind: codex # or claude or openclaw
+```
+
+Omission resolves through the configured default provider. It does not try providers in order or fall back after failure. Codex and Claude use managed dispatch-scoped MCP attachment. OpenClaw is an active experimental route that uses a user-managed compatibility MCP configuration.
 
 Node `description` is node purpose: why this node exists and what success means. Node `instruction` is node-local guidance: how to behave for this node without replacing role or policy guidance. Mode words such as planning, implementation, review, verification, failure analysis, replan, or release belong in role/policy/node instruction text, not in a separate workflow field.
 
@@ -193,9 +204,8 @@ Current fields are:
     - `key`
 - `roots` (optional)
     - `workspace`
-    - `context`
 
-When omitted, the `roots` mapping defaults to task-owned `workspace` and `context` paths. Each explicit path binding uses:
+When omitted, `roots.workspace` defaults to a task-owned directory. An explicit workspace binding uses:
 
 - `mode`
 - `host_path`
@@ -213,7 +223,7 @@ The current task-compose model is the runtime launch contract. The shipped route
 Current workflow validation enforces:
 
 - tree-only authoring rooted at `root`
-- unique node ids
+- unique node keys
 - unique produced artifact slots across the workflow
 - unique criteria slots across the workflow
 - consume selectors must resolve to declared artifact or criteria providers
@@ -232,7 +242,7 @@ Current removed/stale fields are rejected by schema validation, including:
 
 ## Shipped current fixtures
 
-Current shipped fixtures include 14 workflows, 26 roles, and 7 standard policies.
+Current shipped fixtures include reusable workflows, roles, and standard policies. Query registry truth rather than depending on a fixed catalog count.
 
 Current shipped workflow fixtures are:
 
@@ -270,9 +280,10 @@ kind: workflow
 id: bounded-change
 description: Execute one small scoped change with one worker and root-owned evidence review.
 root:
-    id: root
-    role: planning_lead
-    policy: standard-root
+    node_key: root
+    kind: root
+    role_id: planning_lead
+    policy_id: standard-root
     description: Preserve task purpose, delegate one bounded change, and close only after current evidence satisfies criteria.
     instruction: >-
       Read manifest, assignment, checkpoint, surfaced refs, and criteria before assigning or closing. Keep the run to one worker unless current evidence proves the shape is wrong. Verify worker evidence instead of trusting green alone.
@@ -283,9 +294,10 @@ root:
               - the worker stays inside the current bounded assignment
               - root verifies current patch and verification evidence before release
     children:
-        - id: implement_change
-          role: engineer
-          policy: standard-worker
+        - node_key: implement_change
+          kind: worker
+          role_id: engineer
+          policy_id: standard-worker
           description: Understand the scope, implement the bounded change, and publish patch plus verification evidence.
           instruction: >-
             Read current criteria and any surfaced refs before editing. Keep the patch scoped, verify the intended behavior, and checkpoint reasoning plus criteria status.

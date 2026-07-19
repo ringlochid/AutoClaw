@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -41,23 +40,19 @@ from autoclaw.runtime.post_commit import (
     CapturedRuntimeEffectPublisher,
     DispatchCleanupRequested,
     DispatchStartDue,
-    RuntimeEffectSignal,
-    WatchdogDeadlineChanged,
     WatchdogDue,
 )
-from autoclaw.runtime.post_commit.deadlines import DeadlineScheduler
 from autoclaw.runtime.watchdog import (
     calculate_watchdog_due_at,
-    create_watchdog_deadline_changed_handler,
     recover_stale_dispatch,
 )
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.integration.runtime.node_operations.executor_support import (
+from tests.helpers.executor_harness import (
     SessionFactory,
     seeded_executor,
 )
-from tests.integration.runtime_schema_contract.runtime_lineage_fixture import RuntimeIds
+from tests.helpers.lineage_seed import RuntimeIds
 
 _BASE_TIME = datetime(2026, 7, 18, 12, 0, tzinfo=UTC)
 type WaitKind = Literal["human", "command"]
@@ -69,78 +64,6 @@ class _ManualClock:
 
     def __call__(self) -> datetime:
         return self.current
-
-
-@dataclass
-class _FakeTimer:
-    is_cancelled: bool = False
-
-    def cancel(self) -> None:
-        self.is_cancelled = True
-
-
-async def test_first_open_deadline_uses_later_adapter_acceptance_anchor(
-    tmp_path: Path,
-) -> None:
-    adapter_started_at = _BASE_TIME + timedelta(minutes=10)
-    earlier_activity_at = _BASE_TIME + timedelta(minutes=5)
-    expected_due_at = adapter_started_at + timedelta(minutes=15)
-    published: list[object] = []
-    scheduled: list[tuple[float, Callable[[], None], _FakeTimer]] = []
-
-    def schedule_later(delay: float, callback: Callable[[], None]) -> _FakeTimer:
-        timer = _FakeTimer()
-        scheduled.append((delay, callback, timer))
-        return timer
-
-    def capture_due(signal: RuntimeEffectSignal) -> bool:
-        published.append(signal)
-        return True
-
-    async with seeded_executor(tmp_path, suffix="watchdog-first-open") as (
-        _,
-        session_factory,
-        ids,
-        _,
-    ):
-        await _set_open_activity(
-            session_factory,
-            ids.current_dispatch_id,
-            adapter_started_at=adapter_started_at,
-            last_activity_at=earlier_activity_at,
-            activity_revision=3,
-        )
-        scheduler = DeadlineScheduler(
-            publish=capture_due,
-            now=lambda: adapter_started_at,
-            schedule_later=schedule_later,
-        )
-        async with scheduler:
-            handler = create_watchdog_deadline_changed_handler(
-                scheduler,
-                inactivity_timeout_seconds=900,
-            )
-            async with session_factory() as session:
-                await handler(
-                    cast(AsyncSession, session),
-                    WatchdogDeadlineChanged(
-                        dispatch_id=ids.current_dispatch_id,
-                        activity_revision=3,
-                        due_at=expected_due_at,
-                    ),
-                )
-            assert len(scheduled) == 1
-            assert scheduled[0][0] == 900
-
-            scheduled[0][1]()
-
-    assert published == [
-        WatchdogDue(
-            dispatch_id=ids.current_dispatch_id,
-            activity_revision=3,
-            due_at=expected_due_at,
-        )
-    ]
 
 
 async def test_watchdog_replaces_one_stale_dispatch_and_duplicate_signal_loses(

@@ -90,7 +90,7 @@ class _RegistryAdapter:
         del dispatch_id
         return ProviderStopOutcome.NOT_RUNNING
 
-    async def check(self) -> ProviderCheckResult:
+    async def read_availability(self) -> ProviderCheckResult:
         return ProviderCheckResult(
             kind=self.kind,
             status=ProviderCheckStatus.AVAILABLE,

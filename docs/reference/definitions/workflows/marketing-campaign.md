@@ -7,9 +7,10 @@ kind: workflow
 id: marketing-campaign
 description: Research audience, shape positioning, review campaign risk, and prepare a campaign plan without external publishing.
 root:
-    id: root
-    role: root_planning_lead
-    policy: standard-root
+    node_key: root
+    kind: root
+    role_id: root_planning_lead
+    policy_id: standard-root
     description: Preserve campaign purpose and close only when campaign plan evidence, positioning, approvals, and non-publishing scope are clear.
     instruction: >-
       Keep this workflow in campaign planning mode. Do not externally publish, message, spend, or distribute from this workflow.
@@ -21,9 +22,10 @@ root:
               - claims are backed by research or explicitly marked as assumptions
               - external publishing, sending, buying, or distribution is not performed by this workflow
     children:
-        - id: research_audience
-          role: market_researcher
-          policy: standard-worker-human-request
+        - node_key: research_audience
+          kind: worker
+          role_id: market_researcher
+          policy_id: standard-worker-human-request
           description: Research audience, competitor, channel, and positioning evidence for the campaign.
           instruction: >-
             Keep findings source-grounded and tied to campaign decisions.
@@ -32,9 +34,10 @@ root:
                   - slot: audience_research
                     file_hint: audience_research.md
                     description: Audience, competitor, channel, positioning, and proof findings.
-        - id: shape_positioning
-          role: marketing_strategist
-          policy: standard-worker-human-request
+        - node_key: shape_positioning
+          kind: worker
+          role_id: marketing_strategist
+          policy_id: standard-worker-human-request
           description: Shape positioning, message hierarchy, channel strategy, and asset plan.
           instruction: >-
             Separate evidence-backed claims from assumptions and name approval needs.
@@ -46,9 +49,10 @@ root:
                   - slot: campaign_brief
                     file_hint: campaign_brief.md
                     description: Positioning, message hierarchy, channels, asset plan, assumptions, and approvals.
-        - id: review_campaign_risk
-          role: scope_reviewer
-          policy: standard-worker-human-request
+        - node_key: review_campaign_risk
+          kind: worker
+          role_id: scope_reviewer
+          policy_id: standard-worker-human-request
           description: Review campaign scope, proof, approval gaps, and risk before launch planning.
           instruction: >-
             Identify unsupported claims, missing approvals, channel mismatch, and execution risks.
@@ -63,9 +67,10 @@ root:
                   - slot: campaign_risk_review
                     file_hint: campaign_risk_review.md
                     description: Campaign risk, proof, scope, and approval review.
-        - id: prepare_campaign_package
-          role: marketing_strategist
-          policy: standard-worker-human-request
+        - node_key: prepare_campaign_package
+          kind: worker
+          role_id: marketing_strategist
+          policy_id: standard-worker-human-request
           description: Prepare the final campaign package for later approval or execution.
           instruction: >-
             Publish a plan that can be reviewed or executed later without performing external distribution now.

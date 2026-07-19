@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shlex
+from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from autoclaw.persistence.models import CommandRunModel, FlowWaitModel, HumanRequestModel
 from autoclaw.runtime.clock import utc_now
 from autoclaw.runtime.contracts import (
+    CommandExpectedOutput,
     CommandRunStartResponse,
     CommandRunState,
     HumanRequestOpenResponse,
@@ -114,13 +116,7 @@ async def start_command_run(
     body = request.request
     now = utc_now()
     cwd = _normalize_command_cwd(body.cwd)
-    expected_outputs = [
-        {
-            "path": normalize_logical_task_path(output.path),
-            "description": output.description,
-        }
-        for output in body.expected_outputs
-    ]
+    expected_outputs = _normalize_expected_outputs(body.expected_outputs)
     await close_source_dispatch(
         session,
         authority,
@@ -129,6 +125,52 @@ async def start_command_run(
         waiting_cause="command_run",
         waiting_source_id=run_id,
     )
+    _stage_command_run_rows(
+        session,
+        authority,
+        run_id=run_id,
+        request=request,
+        cwd=cwd,
+        expected_outputs=expected_outputs,
+    )
+    await _append_command_run_opened_event(
+        session,
+        authority,
+        run_id=run_id,
+        request=request,
+        cwd=cwd,
+        occurred_at=now,
+    )
+    await session.commit()
+    return CommandRunStartResponse(
+        run_id=run_id,
+        task_id=authority.task_id,
+        state=CommandRunState.PENDING_START,
+    )
+
+
+def _normalize_expected_outputs(
+    expected_outputs: tuple[CommandExpectedOutput, ...],
+) -> list[dict[str, str]]:
+    return [
+        {
+            "path": normalize_logical_task_path(output.path),
+            "description": output.description,
+        }
+        for output in expected_outputs
+    ]
+
+
+def _stage_command_run_rows(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    *,
+    run_id: str,
+    request: StartCommandRunRequest,
+    cwd: str | None,
+    expected_outputs: list[dict[str, str]],
+) -> None:
+    body = request.request
     session.add(
         CommandRunModel(
             run_id=run_id,
@@ -157,13 +199,25 @@ async def start_command_run(
             command_run_id=run_id,
         )
     )
+
+
+async def _append_command_run_opened_event(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    *,
+    run_id: str,
+    request: StartCommandRunRequest,
+    cwd: str | None,
+    occurred_at: datetime,
+) -> None:
+    body = request.request
     command = shlex.join(body.command.argv) if body.command.kind == "argv" else body.command.command
     await append_task_event(
         session,
         task_id=authority.task_id,
         event_type=TaskEventType.COMMAND_RUN_OPENED,
         event_source=TaskEventSource.NODE,
-        occurred_at=now,
+        occurred_at=occurred_at,
         flow_revision_id=authority.flow_revision_id,
         dispatch_id=authority.dispatch_id,
         attempt_id=authority.attempt_id,
@@ -175,16 +229,10 @@ async def start_command_run(
             "command": command,
             "description": body.summary,
             "workdir": cwd,
-            "created_at": now,
+            "created_at": occurred_at,
             "timeout_seconds": body.timeout_seconds,
             "ownership_revision": 0,
         },
-    )
-    await session.commit()
-    return CommandRunStartResponse(
-        run_id=run_id,
-        task_id=authority.task_id,
-        state=CommandRunState.PENDING_START,
     )
 
 

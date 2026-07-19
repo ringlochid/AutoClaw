@@ -30,7 +30,7 @@ def cmd_providers_list(args: argparse.Namespace) -> int:
     else:
         print("AutoClaw provider integrations")
         for definition in definitions:
-            availability = "available" if definition.integration_available else "unavailable"
+            availability = "available" if definition.is_integration_available else "unavailable"
             print(
                 f"{definition.kind.value}: {definition.product_status.value}; "
                 f"{availability}; setup owner: {definition.setup_owner}"
@@ -53,9 +53,9 @@ def cmd_providers_status(args: argparse.Namespace) -> int:
         print_json(payload)
     else:
         for status in statuses:
-            configured = "configured" if status.configured else "not configured"
+            configured = "configured" if status.is_configured else "not configured"
             default = "; default" if status.is_default else ""
-            available = "available" if status.integration_available else "unavailable"
+            available = "available" if status.is_integration_available else "unavailable"
             print(
                 f"{status.kind.value}: {configured}{default}; {available}; "
                 f"{status.product_status.value}"
@@ -182,7 +182,7 @@ def emit_provider_configuration(
         return
     print(f"Configured provider: {snapshot.provider.value}")
     print(f"Default provider: {snapshot.default_provider.value}")
-    print(f"Default changed: {str(snapshot.default_changed).lower()}")
+    print(f"Default changed: {str(snapshot.is_default_changed).lower()}")
     if snapshot.product_status.value == "experimental":
         print("Product status: experimental selectable lane")
 

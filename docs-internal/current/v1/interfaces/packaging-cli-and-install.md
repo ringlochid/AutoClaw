@@ -1,87 +1,54 @@
-# Current packaging, CLI, and install baseline
+# Current packaging, install, and reset
 
 Status: Current
 
-Last verified: 2026-05-12
+Last verified: 2026-07-19
 
-The root package manifest is the current authoritative packaging surface.
+`pyproject.toml` is the package contract. AutoClaw requires Python 3.12 or newer and installs the `autoclaw` console command.
 
-## Current package facts
+## Distribution contents
 
-Authoritative manifest:
+The wheel and source distribution include:
 
-- `pyproject.toml`
+- API and runtime Python packages
+- packaged role, policy, and workflow seeds
+- shared and role-family instruction assets
+- the built web console
+- the systemd user-service template
 
-Current root-manifest facts:
+They must not include environment files, Python cache files, old callback or session-key assets, or old prompt files.
 
-- package name: `autoclaw`
-- script: `autoclaw = "autoclaw.interfaces.cli.main:main"`
-- package dir: `apps/api/src`
-- packaged resources include definitions, prompt assets, and systemd templates
+`make package-build` rebuilds the console assets before building the wheel and source distribution.
 
-## Current CLI facts
+## Installed proof
 
-The installed entrypoint resolves through:
+`scripts/testing/verify_installed_distribution.py` checks both artifacts and installs the wheel into a fresh virtual environment outside the repository without `PYTHONPATH`. It exercises packaged resources, application lifespan, foreground health/readiness and shutdown, SQLite upgrade/reset, provider configuration and default selection, definition import, task start, and the complete user-service command sequence inside an isolated fake home.
 
-- `apps/api/src/autoclaw/interfaces/cli/main.py` as the packaged re-export
-- `apps/api/src/autoclaw/interfaces/cli/__init__.py` as the legacy `app.cli` compatibility surface
-- `apps/api/src/autoclaw/interfaces/cli/**` as the current Click + Rich shell implementation
+This proof catches source-tree imports and missing package data that editable installs cannot catch.
 
-This page is the packaging/install overview. For the exact current command groups and config precedence, see `cli-surface-and-config-precedence.md`.
+## User service
 
-Current surface includes:
+Linux installations may use the shipped systemd user service. `autoclaw service install` writes the selected config and environment paths into the service setup and can start it. The render, start, stop, restart, status, uninstall, and root `make install-user-service` surfaces use the same managed-service support.
 
-- `autoclaw init`
-- `autoclaw serve`
-- `autoclaw onboard`
-- `autoclaw configure`
-- `autoclaw doctor`
-- `autoclaw config path`
-- `autoclaw config show`
-- `autoclaw db upgrade`
-- `autoclaw db reset`
-- `autoclaw openclaw check`
-- `autoclaw openclaw setup`
-- `autoclaw openclaw doctor`
-- `autoclaw service render`
-- `autoclaw service install`
-- `autoclaw service uninstall`
-- `autoclaw service start`
-- `autoclaw service stop`
-- `autoclaw service restart`
-- `autoclaw service status`
+The service still binds only to loopback.
 
-Current note:
+## Exact schema rule
 
-- the managed service implementation in this checkout is Linux `systemd --user`
+Startup and `autoclaw db upgrade` create the schema only when the database is genuinely empty. Otherwise they require an exact current schema. A mismatch stops with guidance to run `autoclaw db reset`; no legacy migration, repair, or backup is attempted.
 
-## Current local defaults
+Reset is destructive:
 
-- default DB: SQLite through `sqlite+aiosqlite`
-- default host: `127.0.0.1`
-- default port: `18125`
-- default config and data dirs come from `platformdirs`
-- non-test environments require public and internal API keys
+- SQLite reset accepts only the configured file-backed database, rejects a symbolic-link database, and replaces that file and its known sidecars
+- PostgreSQL reset drops and recreates only the configured dedicated schema and requires operator-assured exclusive ownership
+- both modes recreate the exact schema, reseed packaged definitions, and remove controller task roots inside the configured data boundary
+- neither mode deletes an external workspace
 
 ## Evidence
 
-Inspected code:
-
-- `apps/api/src/autoclaw/config.py`
-- `apps/api/src/autoclaw/paths.py`
-- `apps/api/src/autoclaw/interfaces/cli/__init__.py`
-- `apps/api/src/autoclaw/interfaces/cli/**`
-- `apps/api/src/autoclaw/interfaces/cli/main.py`
-- `apps/api/src/autoclaw/platform/managed_services/resources/systemd/autoclaw.service`
 - `pyproject.toml`
-
-Inspected tests:
-
-- `apps/api/tests/unit/cli/**`
-- `apps/api/tests/unit/test_package_entrypoints.py`
-
-## Design pointer
-
-For the target CLI, API, and package split, see `../../../design/v1/interfaces/cli-api-and-package-shape.md` and `../../../design/v1/how-to/install-and-onboard.md`.
-
-For current verification lanes, see `../operations/verify-current-install-and-runtime.md` and `../operations/run-docker-postgres-verification.md`.
+- `apps/api/src/autoclaw/interfaces/cli/bootstrap/database.py`
+- `apps/api/src/autoclaw/platform/managed_services/`
+- `scripts/install-systemd-user.sh`
+- `scripts/testing/verify_installed_distribution.py`
+- `apps/api/tests/integration/runtime_schema_contract/`
+- `apps/api/tests/integration/bootstrap/`

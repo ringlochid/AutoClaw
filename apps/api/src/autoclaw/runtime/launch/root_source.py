@@ -34,7 +34,7 @@ from autoclaw.runtime.dispatch.prompt_snapshot import (
     RootPromptTrigger,
 )
 from autoclaw.runtime.providers import (
-    apply_provider_capability_ceiling,
+    narrow_provider_capabilities,
     provider_selection_from_kind,
     resolve_provider_route,
 )
@@ -125,7 +125,7 @@ async def read_root_opening_snapshot(
         settings=dependencies.settings,
         available_adapter_kinds=dependencies.available_adapter_kinds,
     )
-    capabilities = apply_provider_capability_ceiling(
+    capabilities = narrow_provider_capabilities(
         route=provider.route,
         capabilities=capabilities,
     )

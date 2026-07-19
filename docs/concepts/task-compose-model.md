@@ -1,36 +1,15 @@
 # Task-compose model
 
-Task-compose is the launch body for one AutoClaw task. It connects the user's concrete request to reusable definition registry state and optional real host paths.
+Task-compose is one launch request. It should stay small.
 
-## What task-compose owns
-
-Task-compose owns task-specific launch truth:
+It owns:
 
 - task key, title, summary, and instruction
 - selected workflow key
-- optional `roots` mapping for named paths such as `workspace` and `context`
+- optional `workspace` and `context` path bindings
 
-It should stay small. Put reusable behavior in roles, policies, and workflows. Put one-off task detail in task-compose.
+It does not own reusable role behavior, policy authority, workflow structure, runtime evidence, or operator decisions.
 
-## What task-compose does not own
+At task start, AutoClaw validates task-compose against current definition-registry truth and pins the revisions used by the task. Later definition changes do not silently rewrite that running task.
 
-Task-compose does not define role behavior, policy capabilities, workflow structure, runtime checkpoints, artifacts, or operator decisions.
-
-After launch, controller-owned runtime state becomes the authority for the task.
-
-## `roots` mapping
-
-The `roots` mapping is a launch-time dictionary of named filesystem bindings. It is separate from the workflow `root` node.
-
-Named bindings decide where task material lives:
-
-- `workspace`: the working material for the task
-- `context`: supporting context the task can read
-
-If `roots` is omitted, AutoClaw uses task-owned default paths. Each explicit binding can be task-local or bound to a host path. The concept is about ownership and isolation; the YAML recipes live in the task-compose guide.
-
-## Related pages
-
-- [Workspace model](workspace-model.md)
-- [Write a task-compose file](../guides/write-a-task-compose.md)
-- [Task-compose reference examples](../reference/definitions/task-compose/README.md)
+See [write a task-compose file](../guides/write-a-task-compose.md) for examples.

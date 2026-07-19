@@ -1,56 +1,35 @@
 # Capability model
 
-Capabilities are explicit policy-granted powers for a node. They are not generic chat permissions and they do not replace budgets.
+Capabilities are policy-granted controller powers. They are separate from provider-native tools and from budgets.
 
-The two user-visible capability families are human requests and command runs. They are intentionally separate because many nodes need one but not the other.
+## Human requests
 
-## Human request capability
+A human request creates a typed wait for human judgment:
 
-Human requests are typed waits for human judgment.
+- `direction`
+- `approval`
+- `input`
+- `review`
 
-Use them when a node cannot safely continue from current evidence:
+Use one only when a person must decide or supply something. Do not use it for status updates or long commands.
 
-- `direction`: the next path depends on human judgment
-- `approval`: work should not continue without explicit permission
-- `input`: required facts are missing
-- `review`: a human review gate is part of the workflow
+## Command runs
 
-Do not use human requests for status updates, ordinary progress, hidden chat continuation, or long command work.
+A command run is controller-managed external work with a command, deadline, log, terminal state, and cancellation path. Use it when a command needs to outlive an ordinary inline tool call or remain observable after the current provider turn.
 
-Opening a human request creates a controller-visible wait. The task should resume through the control or operator surface after the request is resolved, not through an ad hoc chat reply that bypasses runtime truth.
+## Budgets
 
-## Command-run capability
+Budgets limit repeated controller actions; they do not grant tools:
 
-Command runs are controller-managed long-running command work.
+- worker policies can limit retries
+- root and parent policies can limit child assignments
+- an omitted budget means that controller counter is not applied
 
-Use them when command work is expected to exceed a normal dispatch and needs controller ownership, logs, progress events, terminal state, or cancellation.
+## Recovery choices
 
-Ordinary commands should run inline and finish comfortably under about two minutes. If that is unlikely, use a command-run-enabled worker policy or redesign the assignment.
+- Retry when the assignment shape is still correct.
+- Replan when the workflow shape is wrong.
+- Request human input when judgment is missing.
+- Block when required facts, authority, tools, or external state remain unavailable.
 
-Command-run capability is usually a worker policy concern. Parent and root nodes should route long command work to a command-run-enabled worker instead of owning the process themselves.
-
-A command run is not a synonym for any shell command. It is an external wait lane with controller-owned status, logs, terminal result, and cancellation semantics.
-
-## Budget is separate from capability
-
-Budget fields limit repeated work. They do not grant tools.
-
-- `retry_limit` belongs on worker policies
-- `child_assignment_limit` belongs on root or parent policies
-- omitted `budget_spec` means no controller budget counter for that family
-
-A policy can have a budget without granting human requests or command runs. A capability-enabled policy still needs the right budget for its node kind.
-
-## Replan and recovery
-
-Replan changes workflow shape when the current structure cannot honestly complete the task. Retry keeps the same assignment shape and tries again.
-
-Use retry for recoverable failed attempts. Use replan for structural mismatch.
-
-## Related pages
-
-- [Runtime model](runtime-model.md)
-- [Policy model](policy-model.md)
-- [Use human requests](../guides/use-human-requests.md)
-- [Use long command runs](../guides/use-long-command-runs.md)
-- [Recover or replan a task](../guides/recover-or-replan-a-task.md)
+See [use human requests](../guides/use-human-requests.md), [use long command runs](../guides/use-long-command-runs.md), and [recover or replan a task](../guides/recover-or-replan-a-task.md).

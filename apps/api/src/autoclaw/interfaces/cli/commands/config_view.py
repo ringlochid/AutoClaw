@@ -61,6 +61,14 @@ def build_settings_payload(settings: Any, config_path: Path) -> dict[str, Any]:
     return _redact_config_payload(payload)
 
 
+def redact_database_url(value: str) -> str:
+    """Render a database URL without its password or unsafe malformed userinfo."""
+    try:
+        return make_url(value).render_as_string(hide_password=True)
+    except (ArgumentError, ValueError):
+        return REDACTED_VALUE if "@" in value else value
+
+
 def _redact_config_payload(payload: dict[str, Any]) -> dict[str, Any]:
     redacted = dict(payload)
     openclaw = redacted.get("openclaw")
@@ -79,14 +87,6 @@ def _url_contains_userinfo(value: str) -> bool:
     except ValueError:
         return "@" in value
     return parsed.username is not None or parsed.password is not None
-
-
-def redact_database_url(value: str) -> str:
-    """Render a database URL without its password or unsafe malformed userinfo."""
-    try:
-        return make_url(value).render_as_string(hide_password=True)
-    except (ArgumentError, ValueError):
-        return REDACTED_VALUE if "@" in value else value
 
 
 __all__ = [

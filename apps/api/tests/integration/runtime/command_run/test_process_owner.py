@@ -30,11 +30,11 @@ from autoclaw.runtime.post_commit import (
 from autoclaw.runtime.post_commit.bootstrap import read_command_running_page
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.integration.runtime.node_operations.executor_support import (
+from tests.helpers.executor_harness import (
     SessionFactory,
     seeded_executor,
 )
-from tests.integration.runtime_schema_contract.runtime_lineage_fixture import RuntimeIds
+from tests.helpers.lineage_seed import RuntimeIds
 
 
 class _MutableClock:
@@ -79,7 +79,7 @@ class _OwnerSignalDriver:
     async def _dispatch_exit(self, signal: CommandProcessExited) -> None:
         assert self.owner is not None
         async with self._session_factory() as session:
-            await self.owner.handle_process_exited(cast(AsyncSession, session), signal)
+            await self.owner.record_command_process_exit(cast(AsyncSession, session), signal)
 
     async def _dispatch_cancellation(
         self,
@@ -87,7 +87,7 @@ class _OwnerSignalDriver:
     ) -> None:
         assert self.owner is not None
         async with self._session_factory() as session:
-            await self.owner.handle_cancellation_requested(cast(AsyncSession, session), signal)
+            await self.owner.terminate_cancelled_command(cast(AsyncSession, session), signal)
 
     def _track(self, coroutine: object) -> None:
         assert asyncio.iscoroutine(coroutine)
@@ -161,7 +161,7 @@ async def test_process_owner_drains_both_pipes_and_terminalizes_once(
                 signal for signal in driver.signals if isinstance(signal, CommandProcessExited)
             )
             async with session_factory() as session:
-                await owner.handle_process_exited(
+                await owner.record_command_process_exit(
                     cast(AsyncSession, session),
                     exit_signal,
                 )
@@ -205,7 +205,7 @@ async def test_process_owner_timeout_uses_launch_time_deadline(
             assert due.due_at == clock.now + timedelta(seconds=1)
             clock.now = due.due_at
             async with session_factory() as session:
-                await owner.handle_due(cast(AsyncSession, session), due)
+                await owner.enforce_command_deadline(cast(AsyncSession, session), due)
             await driver.wait_for_terminal()
 
             async with session_factory() as session:
@@ -496,7 +496,7 @@ async def test_shutdown_owner_ignores_late_deadline_without_rewriting_runtime_tr
             await session.commit()
 
         async with session_factory() as session:
-            await owner.handle_due(
+            await owner.enforce_command_deadline(
                 cast(AsyncSession, session),
                 CommandRunDue(run_id=run_id, due_at=clock.now),
             )
@@ -537,7 +537,7 @@ async def _handle_pending(
     run_id: str,
 ) -> None:
     async with session_factory() as session:
-        await owner.handle_pending(
+        await owner.launch_pending_command(
             cast(AsyncSession, session),
             CommandRunPending(run_id),
         )

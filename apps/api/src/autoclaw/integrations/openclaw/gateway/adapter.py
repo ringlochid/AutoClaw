@@ -133,7 +133,7 @@ class OpenClawGatewayAdapter:
             return ProviderStopOutcome.STOPPED
         return ProviderStopOutcome.FAILED
 
-    async def check(self) -> ProviderCheckResult:
+    async def read_availability(self) -> ProviderCheckResult:
         try:
             await call_openclaw_gateway(
                 profile=self.config.gateway_profile,
@@ -161,7 +161,7 @@ def build_openclaw_gateway_adapter(settings: Settings | None = None) -> OpenClaw
 
 def _build_provider_start_error(exc: OpenClawGatewayCliError) -> ProviderStartError:
     kind = ProviderStartFailureKind.DEFINITE_FAILURE
-    if exc.may_have_been_accepted:
+    if exc.is_acceptance_uncertain:
         kind = ProviderStartFailureKind.UNCERTAIN_ACCEPTANCE
     code = {
         OpenClawGatewayFailureCode.NOT_INSTALLED: ProviderStartErrorCode.UNAVAILABLE,

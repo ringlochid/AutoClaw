@@ -61,46 +61,6 @@ class _ProviderCheckBasis:
         )
 
 
-def collect_provider_definitions() -> tuple[ProviderDefinitionSnapshot, ...]:
-    return tuple(
-        ProviderDefinitionSnapshot(
-            kind=provider,
-            integration=integration_name(provider),
-            product_status=product_status_for(provider),
-            integration_available=is_provider_integration_available(provider),
-            setup_owner="user" if provider == ProviderKind.OPENCLAW else "autoclaw",
-        )
-        for provider in PROVIDER_ORDER
-    )
-
-
-def collect_provider_statuses(
-    settings: Settings,
-    provider: ProviderKind | None = None,
-) -> tuple[ProviderStatusSnapshot, ...]:
-    selected = (provider,) if provider is not None else PROVIDER_ORDER
-    return tuple(collect_provider_status(settings, item) for item in selected)
-
-
-def collect_provider_status(
-    settings: Settings,
-    provider: ProviderKind,
-) -> ProviderStatusSnapshot:
-    configured = provider_is_enabled(settings, provider)
-    return ProviderStatusSnapshot(
-        kind=provider,
-        product_status=product_status_for(provider),
-        integration_available=is_provider_integration_available(provider),
-        configured=configured,
-        is_default=settings.runtime.default_provider == provider,
-        configuration_fields_present=provider_fields_are_present(settings, provider),
-        service_identity=service_identity(),
-        native_home=str(provider_native_home(provider)),
-        route=provider_route_readback(settings, provider),
-        limitations=provider_limitations(provider),
-    )
-
-
 def collect_provider_check(
     settings: Settings,
     provider: ProviderKind,
@@ -112,13 +72,13 @@ def collect_provider_check(
         native_home=status.native_home,
         limitations=status.limitations,
     )
-    if not status.configured:
+    if not status.is_configured:
         return basis.snapshot(
             outcome=ProviderCheckOutcome.NOT_CONFIGURED,
             is_ready=False,
             detail=f"provider '{provider.value}' is not enabled in AutoClaw config",
         )
-    if not status.integration_available:
+    if not status.is_integration_available:
         return basis.snapshot(
             outcome=ProviderCheckOutcome.NOT_INSTALLED,
             is_ready=False,
@@ -137,7 +97,7 @@ def collect_provider_check(
             detail=str(exc),
         )
     try:
-        result = run_provider_diagnostic(settings, provider)
+        result = execute_provider_diagnostic(settings, provider)
     except TimeoutError:
         return basis.snapshot(
             outcome=ProviderCheckOutcome.UNREACHABLE,
@@ -153,7 +113,108 @@ def collect_provider_check(
     return provider_check_snapshot(basis=basis, result=result)
 
 
-def run_provider_diagnostic(
+def collect_provider_definitions() -> tuple[ProviderDefinitionSnapshot, ...]:
+    return tuple(
+        ProviderDefinitionSnapshot.model_validate(
+            {
+                "kind": provider,
+                "integration": integration_name(provider),
+                "product_status": product_status_for(provider),
+                "integration_available": is_provider_integration_available(provider),
+                "setup_owner": "user" if provider == ProviderKind.OPENCLAW else "autoclaw",
+            }
+        )
+        for provider in PROVIDER_ORDER
+    )
+
+
+def collect_provider_statuses(
+    settings: Settings,
+    provider: ProviderKind | None = None,
+) -> tuple[ProviderStatusSnapshot, ...]:
+    selected = (provider,) if provider is not None else PROVIDER_ORDER
+    return tuple(collect_provider_status(settings, item) for item in selected)
+
+
+def collect_provider_status(
+    settings: Settings,
+    provider: ProviderKind,
+) -> ProviderStatusSnapshot:
+    configured = provider_is_enabled(settings, provider)
+    return ProviderStatusSnapshot.model_validate(
+        {
+            "kind": provider,
+            "product_status": product_status_for(provider),
+            "integration_available": is_provider_integration_available(provider),
+            "configured": configured,
+            "is_default": settings.runtime.default_provider == provider,
+            "configuration_fields_present": provider_fields_are_present(settings, provider),
+            "service_identity": service_identity(),
+            "native_home": str(provider_native_home(provider)),
+            "route": provider_route_readback(settings, provider),
+            "limitations": provider_limitations(provider),
+        }
+    )
+
+
+def invoke_provider_identity_action(
+    provider: ProviderKind,
+    action: str,
+    *,
+    is_json_output: bool,
+    command_runner: NativeCommandRunner | None = None,
+) -> ProviderIdentitySnapshot:
+    normalized_action = identity_action(action)
+    identity = service_identity()
+    native_home = str(provider_native_home(provider))
+    if provider != ProviderKind.CODEX:
+        return ProviderIdentitySnapshot(
+            provider=provider,
+            action=normalized_action,
+            outcome=ProviderIdentityOutcome.USER_MANAGED,
+            service_identity=identity,
+            native_home=native_home,
+            detail=provider_identity_owner_message(provider),
+        )
+
+    try:
+        codex_binary = bundled_codex_path()
+    except FileNotFoundError:
+        return ProviderIdentitySnapshot(
+            provider=provider,
+            action=normalized_action,
+            outcome=ProviderIdentityOutcome.NOT_INSTALLED,
+            service_identity=identity,
+            native_home=native_home,
+            detail="the native Codex CLI is not available on PATH",
+        )
+
+    command = [str(codex_binary), normalized_action]
+    completed = invoke_native_identity_command(
+        command,
+        is_json_output=is_json_output,
+        command_runner=command_runner,
+    )
+    outcome = (
+        ProviderIdentityOutcome.SUCCEEDED
+        if completed.returncode == 0
+        else ProviderIdentityOutcome.FAILED
+    )
+    return ProviderIdentitySnapshot(
+        provider=provider,
+        action=normalized_action,
+        outcome=outcome,
+        service_identity=identity,
+        native_home=native_home,
+        detail=(
+            f"native Codex {normalized_action} completed"
+            if completed.returncode == 0
+            else f"native Codex {normalized_action} failed"
+        ),
+    )
+
+
+def execute_provider_diagnostic(
     settings: Settings,
     provider: ProviderKind,
 ) -> ProviderCheckResult:
@@ -165,7 +226,7 @@ def run_provider_diagnostic(
         adapter = build_provider_adapter(provider, settings)
         async with asyncio.timeout(PROVIDER_CHECK_TIMEOUT_SECONDS):
             async with adapter.lifespan():
-                return await adapter.check()
+                return await adapter.read_availability()
 
     return asyncio.run(run())
 
@@ -206,63 +267,6 @@ def provider_check_snapshot(
     )
 
 
-def invoke_provider_identity_action(
-    provider: ProviderKind,
-    action: str,
-    *,
-    is_json_output: bool,
-    command_runner: NativeCommandRunner | None = None,
-) -> ProviderIdentitySnapshot:
-    normalized_action = identity_action(action)
-    identity = service_identity()
-    native_home = str(provider_native_home(provider))
-    if provider != ProviderKind.CODEX:
-        return ProviderIdentitySnapshot(
-            provider=provider,
-            action=normalized_action,
-            outcome=ProviderIdentityOutcome.USER_MANAGED,
-            service_identity=identity,
-            native_home=native_home,
-            detail=provider_identity_owner_message(provider),
-        )
-
-    try:
-        codex_binary = bundled_codex_path()
-    except FileNotFoundError:
-        return ProviderIdentitySnapshot(
-            provider=provider,
-            action=normalized_action,
-            outcome=ProviderIdentityOutcome.NOT_INSTALLED,
-            service_identity=identity,
-            native_home=native_home,
-            detail="the native Codex CLI is not available on PATH",
-        )
-
-    command = [str(codex_binary), normalized_action]
-    completed = run_native_identity_command(
-        command,
-        is_json_output=is_json_output,
-        command_runner=command_runner,
-    )
-    outcome = (
-        ProviderIdentityOutcome.SUCCEEDED
-        if completed.returncode == 0
-        else ProviderIdentityOutcome.FAILED
-    )
-    return ProviderIdentitySnapshot(
-        provider=provider,
-        action=normalized_action,
-        outcome=outcome,
-        service_identity=identity,
-        native_home=native_home,
-        detail=(
-            f"native Codex {normalized_action} completed"
-            if completed.returncode == 0
-            else f"native Codex {normalized_action} failed"
-        ),
-    )
-
-
 def identity_action(action: str) -> Literal["login", "logout"]:
     if action == "login":
         return "login"
@@ -271,7 +275,7 @@ def identity_action(action: str) -> Literal["login", "logout"]:
     raise ValueError(f"unsupported provider identity action: {action}")
 
 
-def run_native_identity_command(
+def invoke_native_identity_command(
     command: list[str],
     *,
     is_json_output: bool,
@@ -341,16 +345,6 @@ def provider_native_home(provider: ProviderKind) -> Path:
             return Path(os.environ.get("OPENCLAW_STATE_DIR", user_home / ".openclaw")).expanduser()
 
 
-def provider_is_enabled(settings: Settings, provider: ProviderKind) -> bool:
-    match provider:
-        case ProviderKind.CODEX:
-            return settings.codex.enabled
-        case ProviderKind.CLAUDE:
-            return settings.claude.enabled
-        case ProviderKind.OPENCLAW:
-            return settings.openclaw.enabled
-
-
 def provider_fields_are_present(settings: Settings, provider: ProviderKind) -> bool:
     match provider:
         case ProviderKind.CODEX | ProviderKind.CLAUDE:
@@ -361,6 +355,16 @@ def provider_fields_are_present(settings: Settings, provider: ProviderKind) -> b
                 and settings.openclaw.gateway_url.strip()
                 and settings.openclaw.gateway_profile.strip()
             )
+
+
+def provider_is_enabled(settings: Settings, provider: ProviderKind) -> bool:
+    match provider:
+        case ProviderKind.CODEX:
+            return settings.codex.enabled
+        case ProviderKind.CLAUDE:
+            return settings.claude.enabled
+        case ProviderKind.OPENCLAW:
+            return settings.openclaw.enabled
 
 
 def provider_route_readback(
@@ -444,13 +448,14 @@ __all__ = [
     "collect_provider_definitions",
     "collect_provider_status",
     "collect_provider_statuses",
+    "execute_provider_diagnostic",
     "integration_name",
+    "invoke_native_identity_command",
     "invoke_provider_identity_action",
     "is_provider_integration_available",
     "module_is_available",
     "provider_native_home",
     "providers_payload",
     "redact_url_userinfo",
-    "run_native_identity_command",
     "service_identity",
 ]

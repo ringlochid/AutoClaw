@@ -4,6 +4,7 @@ import re
 from collections import deque
 from pathlib import Path
 
+from .definition_examples import definition_example_findings
 from .discovery import ROOT, discover_front_doors, iter_contract_markdown_files
 from .links import (
     is_filename_style_label,
@@ -35,6 +36,7 @@ def build_contract_report(root: Path = ROOT) -> ContractReport:
         findings.extend(current_evidence_findings(root=root, path=path, text=text))
         findings.extend(deleted_route_findings(root=root, path=path, text=text))
         findings.extend(link_findings(root=root, path=path, text=text))
+    findings.extend(definition_example_findings(root))
     findings.extend(front_door_findings(root=root, files=files, front_doors=front_doors))
     return ContractReport(
         root=root,

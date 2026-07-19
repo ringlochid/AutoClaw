@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from autoclaw.definitions.contracts.workflow import ProviderKind
 
@@ -33,24 +33,34 @@ class ProviderIdentityOutcome(StrEnum):
 
 
 class ProviderDefinitionSnapshot(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        validate_by_name=True,
+        serialize_by_alias=True,
+    )
 
     kind: ProviderKind
     integration: str
     product_status: ProviderProductStatus
-    integration_available: bool
+    is_integration_available: bool = Field(alias="integration_available")
     setup_owner: Literal["autoclaw", "user"]
 
 
 class ProviderStatusSnapshot(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        validate_by_name=True,
+        serialize_by_alias=True,
+    )
 
     kind: ProviderKind
     product_status: ProviderProductStatus
-    integration_available: bool
-    configured: bool
+    is_integration_available: bool = Field(alias="integration_available")
+    is_configured: bool = Field(alias="configured")
     is_default: bool
-    configuration_fields_present: bool
+    has_configuration_fields: bool = Field(alias="configuration_fields_present")
     service_identity: str
     native_home: str
     authentication: Literal["not_checked"] = "not_checked"
@@ -74,12 +84,17 @@ class ProviderCheckSnapshot(BaseModel):
 
 
 class ProviderConfigurationSnapshot(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        validate_by_name=True,
+        serialize_by_alias=True,
+    )
 
     provider: ProviderKind
-    configured: bool = True
+    is_configured: bool = Field(default=True, alias="configured")
     default_provider: ProviderKind
-    default_changed: bool
+    is_default_changed: bool = Field(alias="default_changed")
     product_status: ProviderProductStatus
 
 

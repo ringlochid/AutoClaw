@@ -16,7 +16,7 @@ from autoclaw.runtime.providers.registry import ProviderAdapterRegistry
 from autoclaw.runtime.providers.resolution import (
     ProviderResolutionError,
     ProviderResolutionErrorCode,
-    apply_provider_capability_ceiling,
+    narrow_provider_capabilities,
     provider_selection_from_kind,
     resolve_provider_route,
     validate_provider_execution_policy,
@@ -38,7 +38,7 @@ __all__ = [
     "ProviderStartErrorCode",
     "ProviderStartFailureKind",
     "ProviderStopOutcome",
-    "apply_provider_capability_ceiling",
+    "narrow_provider_capabilities",
     "provider_selection_from_kind",
     "resolve_provider_route",
     "validate_provider_execution_policy",

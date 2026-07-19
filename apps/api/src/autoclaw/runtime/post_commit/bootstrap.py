@@ -45,6 +45,7 @@ type RuntimeEffectPageFetcher = Callable[
     [str | None, int],
     Awaitable[StartupAuditPage[RuntimeEffectSignal, str]],
 ]
+type RuntimeEffectFamily = tuple[str, RuntimeEffectPageFetcher]
 
 _HUMAN_REQUEST_TERMINAL_STATUSES = ("resolved", "timed_out", "cancelled")
 
@@ -70,88 +71,9 @@ async def audit_startup_runtime_effects(
     if watchdog_inactivity_timeout_seconds <= 0:
         raise ValueError("watchdog inactivity timeout must be positive")
 
-    families: tuple[tuple[str, RuntimeEffectPageFetcher], ...] = (
-        (
-            "runnable_flow_start",
-            lambda cursor, size: read_flow_start_page(session_factory, cursor, size),
-        ),
-        (
-            "accepted_boundary",
-            lambda cursor, size: read_boundary_continuation_page(
-                session_factory,
-                cursor,
-                size,
-            ),
-        ),
-        (
-            "open_human_request",
-            lambda cursor, size: read_human_deadline_page(
-                session_factory,
-                cursor,
-                size,
-            ),
-        ),
-        (
-            "terminal_human_request",
-            lambda cursor, size: read_human_continuation_page(
-                session_factory,
-                cursor,
-                size,
-            ),
-        ),
-        (
-            "terminal_command_run",
-            lambda cursor, size: read_command_continuation_page(
-                session_factory,
-                cursor,
-                size,
-            ),
-        ),
-        (
-            "pending_command_run",
-            lambda cursor, size: read_command_pending_page(
-                session_factory,
-                cursor,
-                size,
-            ),
-        ),
-        (
-            "running_command_run",
-            lambda cursor, size: read_command_running_page(
-                session_factory,
-                cursor,
-                size,
-            ),
-        ),
-        (
-            "cancellation_requested_command_run",
-            lambda cursor, size: read_command_cancellation_page(
-                session_factory,
-                cursor,
-                size,
-            ),
-        ),
-        (
-            "expired_transient_localization",
-            lambda cursor, size: read_transient_cleanup_page(
-                session_factory,
-                cursor,
-                size,
-            ),
-        ),
-        (
-            "current_starting_dispatch",
-            lambda cursor, size: read_dispatch_start_page(session_factory, cursor, size),
-        ),
-        (
-            "current_open_watchdog",
-            lambda cursor, size: read_watchdog_deadline_page(
-                session_factory,
-                cursor,
-                size,
-                inactivity_timeout_seconds=watchdog_inactivity_timeout_seconds,
-            ),
-        ),
+    families = _startup_runtime_families(
+        session_factory,
+        watchdog_inactivity_timeout_seconds=watchdog_inactivity_timeout_seconds,
     )
     routable = frozenset(routed_signal_types)
     results: dict[str, StartupRuntimeFamilyResult] = {}
@@ -515,6 +437,93 @@ async def read_watchdog_deadline_page(
     return StartupAuditPage(
         tuple(signals),
         rows[-1][0] if len(rows) == page_size else None,
+    )
+
+
+def _startup_runtime_families(
+    session_factory: AsyncSessionContextFactory,
+    *,
+    watchdog_inactivity_timeout_seconds: int,
+) -> tuple[RuntimeEffectFamily, ...]:
+    return (
+        *_continuation_runtime_families(session_factory),
+        *_command_runtime_families(session_factory),
+        *_resource_runtime_families(
+            session_factory,
+            watchdog_inactivity_timeout_seconds=watchdog_inactivity_timeout_seconds,
+        ),
+    )
+
+
+def _continuation_runtime_families(
+    session_factory: AsyncSessionContextFactory,
+) -> tuple[RuntimeEffectFamily, ...]:
+    return (
+        (
+            "runnable_flow_start",
+            lambda cursor, size: read_flow_start_page(session_factory, cursor, size),
+        ),
+        (
+            "accepted_boundary",
+            lambda cursor, size: read_boundary_continuation_page(session_factory, cursor, size),
+        ),
+        (
+            "open_human_request",
+            lambda cursor, size: read_human_deadline_page(session_factory, cursor, size),
+        ),
+        (
+            "terminal_human_request",
+            lambda cursor, size: read_human_continuation_page(session_factory, cursor, size),
+        ),
+    )
+
+
+def _command_runtime_families(
+    session_factory: AsyncSessionContextFactory,
+) -> tuple[RuntimeEffectFamily, ...]:
+    return (
+        (
+            "terminal_command_run",
+            lambda cursor, size: read_command_continuation_page(session_factory, cursor, size),
+        ),
+        (
+            "pending_command_run",
+            lambda cursor, size: read_command_pending_page(session_factory, cursor, size),
+        ),
+        (
+            "running_command_run",
+            lambda cursor, size: read_command_running_page(session_factory, cursor, size),
+        ),
+        (
+            "cancellation_requested_command_run",
+            lambda cursor, size: read_command_cancellation_page(session_factory, cursor, size),
+        ),
+    )
+
+
+def _resource_runtime_families(
+    session_factory: AsyncSessionContextFactory,
+    *,
+    watchdog_inactivity_timeout_seconds: int,
+) -> tuple[RuntimeEffectFamily, ...]:
+    return (
+        (
+            "expired_transient_localization",
+            lambda cursor, size: read_transient_cleanup_page(session_factory, cursor, size),
+        ),
+        (
+            "current_starting_dispatch",
+            lambda cursor, size: read_dispatch_start_page(session_factory, cursor, size),
+        ),
+        (
+            "current_open_watchdog",
+            lambda cursor, size: read_watchdog_deadline_page(
+                session_factory,
+                cursor,
+                size,
+                inactivity_timeout_seconds=watchdog_inactivity_timeout_seconds,
+            ),
+        ),
     )
 
 

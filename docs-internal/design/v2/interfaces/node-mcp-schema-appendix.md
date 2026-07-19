@@ -85,6 +85,17 @@ SlotContextRead:
   path: string | null
   version: integer >= 1 | null
 
+RuntimeReadbackRefs:
+  instructions: task-relative logical path
+  input: task-relative logical path
+  workflow_manifest: task-relative logical path
+
+WorkflowNeighborRead:
+  node_key: string
+  node_kind: worker | parent | root
+  relationship: string
+  assignment_id: string | null
+
 EffectiveCapabilitySet:
   dispatch_id: string
   provider_native_access:
@@ -123,6 +134,8 @@ GetCurrentContextResponse:
   attempt: AttemptContextRead
   trigger: object
   plan: WorkPlanRead | null
+  workflow_neighborhood: [WorkflowNeighborRead, ...]
+  readback_refs: RuntimeReadbackRefs
   capabilities: EffectiveCapabilitySet
   allowed_actions: [string, ...]
   consume_slots: [SlotContextRead, ...]
@@ -136,6 +149,10 @@ GetCurrentContextResponse:
 `provider_native_access` and `network_access` resolve independently. Each object discloses the frozen effective value and the controlling source. Equally restrictive ties use `controller > task_policy > policy_definition > default`; adapter and local hard ceilings report `controller`. The result exposes neither provider configuration nor credentials and does not replace live authorization.
 
 `checkpoint_to_resume_from`, when present, is one controller-selected readable task-relative path. The agent never chooses a recovery checkpoint by scanning filenames, timestamps, or provider history.
+
+`workflow_neighborhood` is the live direct-child read from the active flow revision. `readback_refs.instructions` and `readback_refs.input` come from the current dispatch's committed refs row. `readback_refs.workflow_manifest` is a stable path to a support projection that may be missing or stale and never overrides the live neighborhood.
+
+`continuation` and `checkpoint_to_resume_from` are optional current projections, not promises that every continuation dispatch has a non-null value. The immutable `input` readback remains the complete dispatch-start projection when either current field is absent.
 
 This is one coherent current database read. It returns refs and summaries rather than file bodies.
 

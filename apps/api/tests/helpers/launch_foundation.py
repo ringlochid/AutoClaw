@@ -26,7 +26,7 @@ from autoclaw.runtime import TaskComposeInput
 from autoclaw.runtime.contracts import RuntimeBootstrapInput
 from sqlalchemy import Connection
 
-from tests.integration.runtime_schema_contract.catalog_fixture import seed_catalog
+from tests.helpers.catalog_seed import seed_catalog
 
 
 def build_launch_foundation_definitions() -> tuple[

@@ -58,17 +58,17 @@ list_suite() {
       describe_group "public-surfaces" tests/integration/public_surfaces
       ;;
     e2e-bounded)
-      describe_group "workflow-bounded" tests/e2e/workflows/bounded/test_bounded_change_lane.py
+      describe_group "workflow-bounded" tests/e2e/workflows/test_registry_start_provider.py
       ;;
     e2e-reviewed)
       describe_group \
         "workflow-reviewed" \
-        tests/e2e/workflows/reviewed/test_reviewed_change_release_lane.py
+        tests/e2e/workflows/test_parent_child_release.py
       ;;
     e2e-staged)
       describe_group \
         "workflow-staged" \
-        tests/e2e/workflows/staged/test_staged_delivery_release_lane.py
+        tests/e2e/workflows/test_wait_watchdog_recovery.py
       ;;
     e2e-all)
       list_suite e2e-bounded
@@ -100,17 +100,17 @@ run_e2e_suite() {
   suite="$1"
   case "$suite" in
     e2e-bounded)
-      run_group "workflow-bounded" tests/e2e/workflows/bounded/test_bounded_change_lane.py
+      run_group "workflow-bounded" tests/e2e/workflows/test_registry_start_provider.py
       ;;
     e2e-reviewed)
       run_group \
         "workflow-reviewed" \
-        tests/e2e/workflows/reviewed/test_reviewed_change_release_lane.py
+        tests/e2e/workflows/test_parent_child_release.py
       ;;
     e2e-staged)
       run_group \
         "workflow-staged" \
-        tests/e2e/workflows/staged/test_staged_delivery_release_lane.py
+        tests/e2e/workflows/test_wait_watchdog_recovery.py
       ;;
     e2e-all)
       run_e2e_suite e2e-bounded

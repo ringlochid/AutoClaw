@@ -7,9 +7,10 @@ kind: workflow
 id: delivery-batch
 description: Turn a larger purpose into bounded delivery units, execute one unit, verify, review, and release.
 root:
-    id: root
-    role: root_planning_lead
-    policy: standard-root
+    node_key: root
+    kind: root
+    role_id: root_planning_lead
+    policy_id: standard-root
     description: Preserve the higher-level purpose, delegate package planning, and release only after implementation, verification, and review evidence agree.
     instruction: >-
       Start purpose-first. Use the package plan to guide assignment, but challenge weak evidence before release.
@@ -21,9 +22,10 @@ root:
               - implementation, verification, and review evidence all refer to the same package scope
               - unresolved high-risk items are fixed, explicitly deferred by criteria, or block release
     children:
-        - id: plan_packages
-          role: delivery_planner
-          policy: standard-worker
+        - node_key: plan_packages
+          kind: worker
+          role_id: delivery_planner
+          policy_id: standard-worker
           description: Convert the larger purpose into bounded delivery units and gates.
           instruction: >-
             Produce scoped packages with sequencing, dependencies, consumes, produces, criteria, review, verification, and risks.
@@ -32,9 +34,10 @@ root:
                   - slot: package_plan
                     file_hint: package_plan.md
                     description: Purpose-oriented package plan and execution gates.
-        - id: execute_package
-          role: planning_lead
-          policy: standard-parent
+        - node_key: execute_package
+          kind: parent
+          role_id: planning_lead
+          policy_id: standard-parent
           description: Coordinate implementation, verification, and review for one package inside the owned subtree.
           instruction: >-
             Use child mission packets and current evidence. Replan only when package shape or dependencies are wrong.
@@ -52,9 +55,10 @@ root:
               criteria:
                   - package_subtree_criteria
           children:
-              - id: implement_package
-                role: engineer
-                policy: standard-worker
+              - node_key: implement_package
+                kind: worker
+                role_id: engineer
+                policy_id: standard-worker
                 description: Implement the selected package and publish the required patch.
                 instruction: >-
                   Read the package plan and criteria first. Keep implementation scoped and publish residual risk.
@@ -66,9 +70,10 @@ root:
                         - slot: package_patch
                           file_hint: package_patch.diff
                           description: Scoped package implementation patch.
-              - id: verify_package
-                role: test_verifier
-                policy: standard-worker
+              - node_key: verify_package
+                kind: worker
+                role_id: test_verifier
+                policy_id: standard-worker
                 description: Verify the selected package against current criteria.
                 instruction: >-
                   Publish reproducible evidence, untested areas, and blockers.
@@ -81,9 +86,10 @@ root:
                         - slot: package_verification_report
                           file_hint: package_verification_report.md
                           description: Verification evidence for the selected package.
-              - id: review_package
-                role: code_reviewer
-                policy: standard-worker
+              - node_key: review_package
+                kind: worker
+                role_id: code_reviewer
+                policy_id: standard-worker
                 description: Critically review package implementation and verification evidence.
                 instruction: >-
                   Publish findings with severity, evidence, reasoning, approval or rejection, and residual risk.
@@ -98,9 +104,10 @@ root:
                         - slot: package_review_report
                           file_hint: package_review_report.md
                           description: Review findings for the selected package.
-        - id: release_closure
-          role: release_operator
-          policy: standard-worker
+        - node_key: release_closure
+          kind: worker
+          role_id: release_operator
+          policy_id: standard-worker
           description: Perform final bounded release work for the selected package.
           instruction: >-
             Use only package plan, implementation, verification, review evidence, and release criteria. Report gaps instead of reopening scope.

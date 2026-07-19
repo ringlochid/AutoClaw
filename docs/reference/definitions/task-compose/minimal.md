@@ -1,6 +1,6 @@
 # Minimal task-compose example
 
-Use this example to launch the shipped topic-research workflow with default task-owned `workspace` and `context` paths.
+Use this example to launch the shipped topic-research workflow with a default task-owned workspace.
 
 ```yaml
 task:

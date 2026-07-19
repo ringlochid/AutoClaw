@@ -7,9 +7,10 @@ kind: workflow
 id: bugfix-review-release
 description: Diagnose, fix, verify, review, and release one defect with explicit evidence gates.
 root:
-    id: root
-    role: root_planning_lead
-    policy: standard-root
+    node_key: root
+    kind: root
+    role_id: root_planning_lead
+    policy_id: standard-root
     description: Preserve the defect-fix purpose, coordinate specialist work, and release only when current criteria and evidence are satisfied.
     instruction: >-
       Treat child green as evidence, not proof. Use review, verification, failure analysis, or replan when evidence is weak.
@@ -21,9 +22,10 @@ root:
               - current patch, verification, and review evidence all address the same defect
               - unresolved high-risk defects block release
     children:
-        - id: triage_defect
-          role: bug_triage
-          policy: standard-worker
+        - node_key: triage_defect
+          kind: worker
+          role_id: bug_triage
+          policy_id: standard-worker
           description: Reproduce, narrow, and explain the defect before implementation.
           instruction: >-
             Publish reproducible findings, rejected leads, likely failing path, and next recommended assignment.
@@ -32,9 +34,10 @@ root:
                   - slot: triage_report
                     file_hint: triage_report.md
                     description: Defect reproduction, likely cause, scope, and uncertainties.
-        - id: plan_fix
-          role: delivery_planner
-          policy: standard-worker
+        - node_key: plan_fix
+          kind: worker
+          role_id: delivery_planner
+          policy_id: standard-worker
           description: Convert triage evidence into a bounded fix package.
           instruction: >-
             Plan the narrow fix, dependencies, criteria, risks, and verification gates. Do not implement.
@@ -46,9 +49,10 @@ root:
                   - slot: fix_plan
                     file_hint: fix_plan.md
                     description: Bounded fix plan and verification strategy.
-        - id: implement_fix
-          role: bug_fix_engineer
-          policy: standard-worker
+        - node_key: implement_fix
+          kind: worker
+          role_id: bug_fix_engineer
+          policy_id: standard-worker
           description: Implement the bounded defect fix from triage and plan evidence.
           instruction: >-
             Read triage and plan first. Keep the patch scoped and publish residual risk.
@@ -67,9 +71,10 @@ root:
                   - slot: change_patch
                     file_hint: change_patch.diff
                     description: Scoped defect-fix patch.
-        - id: verify_fix
-          role: test_verifier
-          policy: standard-worker
+        - node_key: verify_fix
+          kind: worker
+          role_id: test_verifier
+          policy_id: standard-worker
           description: Verify the defect fix against current criteria.
           instruction: >-
             Verify intended behavior with reproducible commands or artifacts and name untested areas.
@@ -84,9 +89,10 @@ root:
                   - slot: verification_report
                     file_hint: verification_report.md
                     description: Verification evidence for the defect fix.
-        - id: review_fix
-          role: code_reviewer
-          policy: standard-worker
+        - node_key: review_fix
+          kind: worker
+          role_id: code_reviewer
+          policy_id: standard-worker
           description: Review the fix patch and verification evidence.
           instruction: >-
             Publish findings with severity, reasoning, approval or rejection, and evidence gaps.
@@ -101,9 +107,10 @@ root:
                   - slot: review_report
                     file_hint: review_report.md
                     description: Critical review of patch and verification evidence.
-        - id: analyze_failure
-          role: failure_analyst
-          policy: standard-worker
+        - node_key: analyze_failure
+          kind: worker
+          role_id: failure_analyst
+          policy_id: standard-worker
           description: Analyze repeated failure or blocked evidence when fix, verification, or review stalls.
           instruction: >-
             Recommend retry, specialist reassignment, structural replan, or blocked closure from current evidence.
@@ -117,9 +124,10 @@ root:
                   - slot: failure_analysis
                     file_hint: failure_analysis.md
                     description: Failure analysis and next-action recommendation.
-        - id: release_closure
-          role: release_operator
-          policy: standard-worker
+        - node_key: release_closure
+          kind: worker
+          role_id: release_operator
+          policy_id: standard-worker
           description: Perform final bounded defect-fix release work from current surfaced evidence.
           instruction: >-
             Use only triage, patch, verification, review, and release criteria. Report gaps instead of reopening scope.

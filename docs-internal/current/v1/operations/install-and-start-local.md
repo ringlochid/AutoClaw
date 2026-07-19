@@ -1,59 +1,56 @@
-# Install and start the current system locally
+# Install and start AutoClaw locally
 
 Status: Current
 
-Last verified: 2026-05-28
+Last verified: 2026-07-19
 
-This page describes the current local-start paths reflected in the package manifest, shipped CLI, and repo files today.
+AutoClaw needs Python 3.12 or newer.
 
-## Package-shaped CLI path
+## Install
 
-1. Install or otherwise expose the current `autoclaw` package so the CLI is on `PATH`.
-2. Run first-run setup: `autoclaw onboard`
-3. Verify local state: `autoclaw doctor`
-4. Verify the OpenClaw integration side: `autoclaw openclaw check`
-5. If you did not install the managed service during onboarding, install it now: `autoclaw service install`
-6. Start the managed Linux user service: `autoclaw service start`
-7. Optional foreground host-proof path: `autoclaw serve`
+For repository development:
 
-This page does not hard-code one installer such as `pipx`. The current repo proves the package shape and CLI entrypoint, but install mechanics vary by release or local packaging lane.
+```bash
+python3.12 -m venv .venv
+.venv/bin/pip install --upgrade -e ".[dev]"
+```
 
-## Repo-native contributor path
+For a built release, install the wheel into a dedicated virtual environment instead.
 
-1. Change into the repo root: `cd <autoclaw-repo>`
-2. Create a virtual environment: `python -m venv .venv`
-3. Install the repo package with dev dependencies: `<venv-python> -m pip install -e .[dev]`
-4. Run first-run setup: `<venv-bin>/autoclaw onboard`
-5. Verify local state: `<venv-bin>/autoclaw doctor`
-6. Verify the OpenClaw integration side: `<venv-bin>/autoclaw openclaw check`
-7. If you did not install the managed service during onboarding, install it now: `<venv-bin>/autoclaw service install`
-8. Start the managed Linux user service: `<venv-bin>/autoclaw service start`
-9. Optional foreground host-proof path: `<venv-bin>/autoclaw serve`
+## Initialize
 
-## Path notes
+```bash
+.venv/bin/autoclaw init
+.venv/bin/autoclaw setup --provider codex
+.venv/bin/autoclaw providers status
+```
 
-- on Windows, `<venv-python>` is `.venv\\Scripts\\python` and `<venv-bin>/autoclaw` is `.venv\\Scripts\\autoclaw`
-- on POSIX, `<venv-python>` is `.venv/bin/python` and `<venv-bin>/autoclaw` is `.venv/bin/autoclaw`
+Choose `claude` or `openclaw` when that is the intended provider. The first configured provider becomes the default. Run `providers check <provider>` only when you want an explicit diagnostic.
 
-## Current facts
+## Start
 
-- current config/data defaults come from `platformdirs`, not from one Linux-only hard-coded path
-- Windows example config path: `C:\\Users\\<user>\\AppData\\Local\\autoclaw\\config.toml`
-- Linux example config path: `~/.config/autoclaw/config.toml`
-- default local DB: SQLite in the AutoClaw data dir
-- default API bind: `127.0.0.1:18125`
-- `serve` remains a foreground process that exits with its parent shell/session
-- current shipped service lifecycle is the managed Linux `systemd --user` surface
-- `autoclaw onboard` installs the managed service only when the flow opts into that path, for example with `--install-daemon` or the interactive install prompt
-- current shipped CLI commands also include `onboard`, `configure`, `doctor`, `config path|show`, and `openclaw check|setup|doctor`
-- the current shipped onboarding/configuration flow now reconciles both local AutoClaw state and the AutoClaw-owned OpenClaw integration slice
-- when the local SQLite runtime comes from an older incompatible schema, `autoclaw onboard` now backs that DB up and reconciles a fresh current-schema runtime DB instead of failing immediately
-- the AutoClaw port is stored in `server.port`, while the current shipped v1 loopback-only OpenClaw port is stored through `openclaw.base_url`
+Run in the foreground:
 
-## Evidence
+```bash
+.venv/bin/autoclaw serve
+```
 
-- inspected code in `apps/api/src/autoclaw/interfaces/cli/__init__.py`
-- inspected code in `apps/api/src/autoclaw/paths.py`
-- inspected package manifest in `pyproject.toml`
-- inspected CLI tests in `apps/api/tests/unit/cli/**`
-- inspected repo automation in `Makefile`
+Or install the Linux user service:
+
+```bash
+.venv/bin/autoclaw service install
+.venv/bin/autoclaw service status
+```
+
+The default API is `http://127.0.0.1:18125`. The packaged console is on the same origin.
+
+## Verification
+
+```bash
+curl --fail http://127.0.0.1:18125/healthz
+curl --fail http://127.0.0.1:18125/readyz
+```
+
+`readyz` must succeed before starting tasks.
+
+Do not run `autoclaw db reset` as a routine startup command. It destroys controller runtime data and controller-owned task roots.

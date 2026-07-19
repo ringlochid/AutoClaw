@@ -33,7 +33,7 @@ from autoclaw.runtime.providers import (
 from autoclaw.runtime.providers.starter import DispatchStarter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+from tests.helpers.sqlite_runtime import (
     SyncSessionAdapter,
 )
 from tests.integration.runtime_schema_contract.test_provider_start_acceptance import (
@@ -89,7 +89,7 @@ class _RecordingAdapter:
         self.stop_calls.append(dispatch_id)
         return ProviderStopOutcome.STOPPED
 
-    async def check(self) -> ProviderCheckResult:
+    async def read_availability(self) -> ProviderCheckResult:
         return ProviderCheckResult(
             kind=self.kind,
             status=ProviderCheckStatus.AVAILABLE,
@@ -464,7 +464,7 @@ async def test_ambiguous_acceptance_commit_rereads_truth_before_cleanup(
         )
 
         async with _CommitThenRaiseSession(database.session_factory) as session:
-            await starter.handle(cast(AsyncSession, session), _signal(database))
+            await starter.schedule_or_start_dispatch(cast(AsyncSession, session), _signal(database))
 
         dispatch = _dispatch_row(database)
         request = adapter.requests[0]
@@ -522,7 +522,7 @@ async def _handle(
     signal: DispatchStartDue,
 ) -> None:
     async with SyncSessionAdapter(database.session_factory) as session:
-        await starter.handle(cast(AsyncSession, session), signal)
+        await starter.schedule_or_start_dispatch(cast(AsyncSession, session), signal)
 
 
 def _signal(database: StartingDispatchDatabase) -> DispatchStartDue:

@@ -1,69 +1,29 @@
-# Inspect approvals and watchdog state
+# Inspect waits and watchdog recovery
 
-This page describes the shipped watchdog inspection surfaces and where approval-related activity now appears.
+Read current task state before taking action. A quiet provider is not proof that a task is stuck.
 
-## Approvals
+## Human requests
 
-The shipped router no longer exposes dedicated approval routes.
+Use `get_human_requests` or `GET /control/tasks/{task_id}/human-requests`. Resolve the exact open request through `resolve_human_request` or its matching HTTP route. Do not use task continue to answer a human request.
 
-Current code does not ship:
+A request remains a watchdog exclusion until its terminal result has been routed or the flow is terminal.
 
-- `GET /approvals/{approval_id}`
-- `POST /approvals/{approval_id}/resolve`
-- `POST /internal/approvals`
+## Command runs
 
-Approval remains legacy vocabulary in some older docs, but the live inspection and control surfaces now flow through the runtime, operator, and observability route families instead.
+Use the command-run list and detail reads first. Read the bounded log only when needed. Cancel one command with `cancel_command_run`; do not cancel the whole task when the command is the only problem.
 
-### Current operator inspection surfaces
-
-| Route                                               | Current effect                                               |
-| --------------------------------------------------- | ------------------------------------------------------------ |
-| `GET /runtime/tasks/{task_id}`                      | inspect current runtime summary, including active task state |
-| `GET /operator/tasks/{task_id}/snapshot`            | inspect current operator summary                             |
-| `GET /operator/tasks/{task_id}/trace`               | inspect dispatch, checkpoint, and boundary history           |
-| `GET /observability/tasks/{task_id}/watchdog-state` | fetch the latest watchdog projection ref                     |
-| `POST /runtime/tasks/{task_id}/continue`            | continue after operator-side inspection when legal           |
-| `POST /runtime/tasks/{task_id}/pause`               | pause the live runtime and revoke callback access            |
-| `POST /runtime/tasks/{task_id}/cancel`              | cancel the live runtime                                      |
-
-Approval-specific state is therefore inspected indirectly through the task runtime and operator views, not through standalone approval endpoints.
+Cancellation first commits `cancellation_requested`. The process owner then terminates, reaps, and records the terminal result. A command source remains a watchdog exclusion until its continuation is consumed.
 
 ## Watchdog
 
-Current watchdog state is exposed as an operator-facing observability surface, not as a dedicated recover endpoint.
+The default inactivity deadline is 15 minutes. Admitted Node MCP calls advance the current dispatch activity revision and reschedule the deadline.
 
-Current operator-facing facts:
+At a due signal, the handler rereads the exact dispatch, activity revision, and deadline. It does nothing when the dispatch changed, activity advanced, the deadline is not due, a human or command source is still active or unrouted, or the flow is paused or terminal.
 
-- watchdog blocks stale running attempts
-- watchdog also tracks accepted first-dispatch turns that have not produced committed first progress yet
-- watchdog projections are published under `_runtime/dispatch/<dispatch_id>/`
-- watchdog escalation is surfaced for operator inspection rather than a standalone recover call
+If the dispatch is still stale, one transaction closes it and opens a same-attempt replacement. After two same-attempt replacements, AutoClaw pauses the flow for recovery instead of opening another dispatch.
 
-### Watchdog route-to-effect map
+The watchdog does not poll provider output and does not wait for provider shutdown.
 
-| Route                                               | Current effect                                                        |
-| --------------------------------------------------- | --------------------------------------------------------------------- |
-| `GET /observability/tasks/{task_id}/watchdog-state` | return the latest task-scoped watchdog projection ref                 |
-| `GET /operator/tasks/{task_id}/trace`               | expose the checkpoints and boundaries that explain the watchdog path  |
-| `POST /runtime/tasks/{task_id}/continue`            | resume a paused task after operator review when the runtime allows it |
+## Task controls
 
-### Important current exclusions
-
-- operator wait is not a watchdog stall candidate
-- dependency wait is not a watchdog stall candidate
-
-### Operator expectation after ambiguity
-
-If watchdog wake times out ambiguously or fails:
-
-- inspect delegated session binding
-- inspect recent checkpoints
-- do not assume timeout proves failed delivery
-- prefer explicit operator retry only after inspection
-
-## Related pages
-
-- [API route families and lane map](../api/api-surface-and-route-map.md)
-- [Runtime read models and operator surfaces](runtime-read-models-and-operator-surfaces.md)
-- [OpenClaw integration boundary](openclaw-integration-boundary.md)
-- [API trust lanes](../api/api-trust-lanes.md)
+Pause, continue, and cancel need fresh active-flow and control revisions from a current read. Prefer the narrow wait-specific operation when it matches the problem.

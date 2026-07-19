@@ -54,36 +54,6 @@ def settings_to_config_text(
     return config_sections_to_text(payload)
 
 
-def read_config_sections(config_path: Path) -> ConfigSections:
-    if not config_path.is_file():
-        return {}
-
-    parsed = tomllib.loads(config_path.read_text(encoding="utf-8"))
-    sections: ConfigSections = {}
-    for section_name, section_values in parsed.items():
-        if not isinstance(section_values, dict):
-            raise ValueError(f"config section '{section_name}' must be a TOML table")
-        sections[section_name] = dict(section_values)
-    return sections
-
-
-def persist_config_mutation(
-    config_path: Path,
-    mutation: ConfigMutation,
-    *,
-    timeout_seconds: float = CONFIG_MUTATION_LOCK_TIMEOUT_SECONDS,
-) -> ConfigSections:
-    """Validate and atomically replace one AutoClaw configuration revision."""
-
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    with acquire_config_mutation_lock(config_path, timeout_seconds=timeout_seconds):
-        current_sections = read_config_sections(config_path)
-        candidate_sections = mutation(copy.deepcopy(current_sections))
-        rendered = config_sections_to_text(candidate_sections)
-        write_config_text_atomically(config_path, rendered)
-    return candidate_sections
-
-
 def update_config_sections(
     config_path: Path,
     *,
@@ -104,6 +74,36 @@ def update_config_sections(
         return payload
 
     persist_config_mutation(config_path, apply_section_updates)
+
+
+def persist_config_mutation(
+    config_path: Path,
+    mutation: ConfigMutation,
+    *,
+    timeout_seconds: float = CONFIG_MUTATION_LOCK_TIMEOUT_SECONDS,
+) -> ConfigSections:
+    """Validate and atomically replace one AutoClaw configuration revision."""
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    with acquire_config_mutation_lock(config_path, timeout_seconds=timeout_seconds):
+        current_sections = read_config_sections(config_path)
+        candidate_sections = mutation(copy.deepcopy(current_sections))
+        rendered = config_sections_to_text(candidate_sections)
+        write_config_text_atomically(config_path, rendered)
+    return candidate_sections
+
+
+def read_config_sections(config_path: Path) -> ConfigSections:
+    if not config_path.is_file():
+        return {}
+
+    parsed = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    sections: ConfigSections = {}
+    for section_name, section_values in parsed.items():
+        if not isinstance(section_values, dict):
+            raise ValueError(f"config section '{section_name}' must be a TOML table")
+        sections[section_name] = dict(section_values)
+    return sections
 
 
 def config_sections_to_text(payload: ConfigSections) -> str:

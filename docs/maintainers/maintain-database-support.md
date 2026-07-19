@@ -1,78 +1,32 @@
 # Maintain database support
 
-Use this guide when changing persistence, schema, migrations, reset, upgrade, registry currentness, or SQLite/Postgres behavior.
+Use this guide for schema, persistence, reset, registry, SQLite, or PostgreSQL changes.
 
-## Supported DB posture
+## Supported posture
 
-AutoClaw is SQLite-first for local use.
+SQLite is the default local database. The optional `postgres` package extra adds `asyncpg`; a PostgreSQL URL still must be configured explicitly.
 
-The stronger DB-backed lane is Postgres through:
+AutoClaw has one exact current schema. Startup and `autoclaw db upgrade` create it only for an empty database. Any incompatible non-empty schema fails with `autoclaw db reset` guidance. There is no legacy migration, repair, or backup lane.
 
-- `pipx install "autoclaw[postgres]"`
-- `uv tool install "autoclaw[postgres]"`
-- `AUTOCLAW_DATABASE_URL=postgresql+asyncpg://...`
+## Reset boundary
 
-Installing the Postgres extra only adds the driver. It does not select Postgres without a Postgres database URL.
+Reset is destructive and must use the configured database:
 
-## When DB changes require Postgres proof
+- SQLite replaces the configured regular file and known sidecars; symbolic-link database paths are rejected.
+- PostgreSQL drops and recreates only the configured dedicated non-system schema. The operator must ensure exclusive ownership.
+- Both modes recreate the exact schema, reseed definitions, and remove controller task roots inside the configured data directory.
+- Neither mode deletes an external workspace.
 
-Run the Postgres lane when a change touches:
+## Proof
 
-- schema creation, migration, reset, or upgrade
-- runtime persistence models
-- registry currentness or revision storage
-- task launch persistence
-- command-run or human-request source rows
-- SQL that may behave differently across SQLite and Postgres
-- legacy repair or cross-DB compatibility code
-
-## Required checks
-
-Use focused tests while iterating. Before closeout, run the applicable lanes:
+Use focused tests while iterating, then run the applicable lanes:
 
 ```bash
 make check-api
-make test-api-unit
 make test-api-integration
 make test-api-db
 ```
 
-Use the e2e lanes when DB changes can affect launched workflow execution:
+Add the focused E2E lane when the change can affect launched workflows. PostgreSQL proof uses `infra/testing/api/Dockerfile`; it must not become a production image contract.
 
-```bash
-make test-api-e2e-bounded
-make test-api-e2e-reviewed
-make test-api-e2e-staged
-```
-
-Choose the smallest e2e lane that proves the changed surface; use heavier lanes when parent-first or multi-subtree behavior is affected.
-
-## Reset and upgrade expectations
-
-`autoclaw db upgrade` should ensure schema and seed packaged definitions.
-
-`autoclaw db reset` recreates the shipped SQLite database path, reapplies schema, and reseeds definitions.
-
-Onboarding can repair some older incompatible local SQLite state by backing it up and reconciling a fresh current-schema runtime DB.
-
-When changing repair behavior, prove both:
-
-- successful current-schema setup
-- the relevant legacy or incompatible-state path
-
-## Cross-DB review checklist
-
-- constraints encode real runtime truth
-- relationship and foreign-key behavior works on SQLite and Postgres
-- enum and JSON usage stays portable unless the boundary is intentionally Postgres-only
-- reseeding preserves controller-owned currentness
-- task launch reads registry current truth, not repo seed files
-- `/readyz` still reflects DB readiness
-- docs explain the package extra plus database URL requirement
-
-## Related pages
-
-- [Use Postgres on the DB-backed lane](../reference/maintainers/use-postgres.md)
-- [Run Docker-backed Postgres verification](../reference/maintainers/run-docker-postgres-verification.md)
-- [Distribution and database support matrix](../reference/maintainers/distribution-and-database-support-matrix.md)
-- [Postgres and database problems](../help/postgres-and-database.md)
+Review portable constraints, foreign keys, conditional writes, JSON behavior, schema ownership, reseeding, and `/readyz`.

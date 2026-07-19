@@ -1,12 +1,10 @@
 # Publish a release
 
-This page describes the maintainer release path.
+1. Set the intended version and finish the [release checklist](testing-and-release-checklist.md).
+2. Run `make package-build` to create one wheel and one source distribution.
+3. Inspect both artifacts and run the installed-distribution verifier outside the checkout.
+4. Publish those immutable artifacts through the project's package-index release process.
+5. Install the published version in a clean environment and repeat the short smoke.
+6. Record the exact checks and any intentionally skipped lanes.
 
-## Procedure
-
-1. Confirm release tests, docs, and examples are updated.
-2. Run the full release checklist.
-3. Build the root package artifact.
-4. Run package-install smoke, migration smoke, and provider-lane smoke checks.
-5. Update release notes.
-6. Publish only from the root packaging surface.
+Never replace an artifact for an existing version. Publish a new version for a correction.

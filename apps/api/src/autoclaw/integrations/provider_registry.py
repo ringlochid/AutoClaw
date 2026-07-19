@@ -9,6 +9,14 @@ from autoclaw.runtime.providers.contracts import ProviderAdapter
 from autoclaw.runtime.providers.registry import ProviderAdapterRegistry
 
 
+def build_provider_adapter_registry(settings: Settings) -> ProviderAdapterRegistry:
+    """Build the complete isolated provider registry for application lifespan."""
+
+    return ProviderAdapterRegistry(
+        build_provider_adapter(provider, settings) for provider in ProviderKind
+    )
+
+
 def build_provider_adapter(
     provider: ProviderKind,
     settings: Settings,
@@ -22,14 +30,6 @@ def build_provider_adapter(
             return ClaudeAdapter()
         case ProviderKind.OPENCLAW:
             return build_openclaw_gateway_adapter(settings)
-
-
-def build_provider_adapter_registry(settings: Settings) -> ProviderAdapterRegistry:
-    """Build the complete isolated provider registry for application lifespan."""
-
-    return ProviderAdapterRegistry(
-        build_provider_adapter(provider, settings) for provider in ProviderKind
-    )
 
 
 __all__ = ["build_provider_adapter", "build_provider_adapter_registry"]

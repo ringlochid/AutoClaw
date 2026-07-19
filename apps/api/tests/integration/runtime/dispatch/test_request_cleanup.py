@@ -29,7 +29,7 @@ from tests.helpers.launch_foundation import (
     build_launch_foundation_input,
     seed_launch_foundation_catalog,
 )
-from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+from tests.helpers.sqlite_runtime import (
     SyncSessionAdapter,
     create_runtime_schema_engine,
 )

@@ -1,209 +1,37 @@
-# Operator roles and API trust lanes
+# API trust lanes
 
-This page owns the exact current operator authority, trust-lane split, and the difference between operator agent, human operator, callback caller, node-tool caller, worker, parent/root, and controller in the shipped tree.
+AutoClaw is a one-process, loopback-only application. The database owns runtime truth; each public surface has a narrower job.
 
-For the exact current path families and route nouns, see [API route families and lane map](api-surface-and-route-map.md).
+## Local HTTP lane
 
-## Operator definition
+HTTP and operator MCP calls are admitted by direct-loopback peer, exact `Host`, and, for unsafe browser requests, exact `Origin` checks. There is no browser session, cookie, CSRF token, or global API key in the shipped local lane.
 
-In the current system, `operator` means a trusted principal allowed to inspect, mutate, or launch trusted runtime and definition-service work through operator-authorized surfaces.
+This lane can browse and author definitions, start tasks, inspect controller state, resolve human requests, inspect or cancel command runs, and pause, continue, or cancel tasks. It cannot act as a node dispatch.
 
-The intended product shape is a trusted OpenClaw operator agent profile using operator MCP when possible. Human operators are also trusted operators, but their natural surface is the UI, which calls operator-authorized backend surfaces on their behalf.
+## Managed Node MCP
 
-An operator may be:
+Codex and Claude receive a private, short-lived binding for one dispatch at `/_internal/node/mcp`. The binding supplies task identity, dispatch identity, provider-start revision, and the maximum tool exposure. Managed tool schemas therefore contain semantic arguments only.
 
-- a trusted OpenClaw operator agent profile using mounted operator MCP tools
-- a human using UI clients backed by operator-authorized backend routes
-- a trusted automation client authenticated into API-key-protected HTTP surfaces
+The server still rereads current controller truth for every call. A stale or revoked binding cannot mutate the task.
 
-Operator is defined by authority and allowed actions, not by embodiment alone. The interface still matters: operator agents use tools, humans use UI, and automation clients use APIs.
+## Compatibility Node MCP
 
-## User and operator roles
+OpenClaw uses the user-configured `/node/mcp` endpoint. Its static schemas add full `task_id` and `dispatch_id` arguments to every tool. Those selectors identify the intended dispatch; they are not secrets and do not bypass currentness, role, capability, or state checks.
 
-- `user` supplies task intent, task directory, or surrounding product inputs
-- `operator agent` starts tasks, inspects runtime state, resolves waits, and steers live runtime control through operator MCP or equivalent trusted operator tools
-- `human operator` uses UI surfaces to review state, make decisions, approve or reject actions, resolve waits, and request recovery
+AutoClaw does not write `openclaw.json` or inject a filtered OpenClaw tool set. The user owns the OpenClaw MCP entry and tool policy. OpenClaw remains experimental but may be selected explicitly or configured as the default provider.
 
-The same human may supply user intent and later act as human operator, but the authority and surface are different.
+## Node roles and tools
 
-## Role boundary matrix
+All node kinds may receive current-context, contained file-read, work-plan, checkpoint, boundary, human-request, and command-run operations when their role and capabilities allow them.
 
-| Role         | Current meaning                                                                   | Owns                                                                                                                                   | Does not own                                       |
-| ------------ | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `operator`   | trusted runtime-steering principal, preferably an OpenClaw operator agent profile | operator MCP plus `/definitions`, `/authoring`, `/tasks/start`, `/runtime`, `/operator`, `/control`, and `/observability` HTTP actions | callback or node write authority, controller truth |
-| `worker`     | current worker-node caller                                                        | checkpoint and boundary writes for the bound dispatch                                                                                  | operator reads, parent/root tools                  |
-| `parent`     | current parent-node caller                                                        | parent/root tool calls and parent/root boundary decisions                                                                              | operator reads, controller truth                   |
-| `root`       | current root-node caller                                                          | root-only `release_blocked` and root closure decisions                                                                                 | operator reads, delegated worker execution         |
-| `controller` | runtime truth owner                                                               | DB rows, dispatch and session bindings, legality checks, materialization                                                               | delegated execution content                        |
-| `provider`   | continuity and provider-event concept only in this tree                           | transport-state and provider-event projections                                                                                         | API-lane authority or controller truth             |
+Parent and root nodes may also search definitions, assign or revise children, and record green release readiness. Only root nodes may record blocked release readiness. A worker never receives parent/root-only tools.
 
-`worker` is never `operator`.
+## Operator MCP
 
-`parent` or `root` on the callback or node-tool lane is still not `operator`.
+Operator MCP is a trusted local control surface at `/operator/mcp`. It shares controller services with HTTP, so the two surfaces must return the same domain truth and enforce the same currentness rules. Operator identity never grants Node MCP authority, and Node identity never grants operator controls.
 
-## Lane boundary matrix
+## Commit and return rules
 
-| Lane               | Typical caller                       | Current capability level                                                                                                                                                                                     | Notes                                                                   |
-| ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| health lane        | any caller                           | `/healthz`, `/readyz`                                                                                                                                                                                        | unauthenticated                                                         |
-| console bootstrap  | packaged browser console             | `/console/config`                                                                                                                                                                                            | same-origin runtime config with `Cache-Control: no-store`              |
-| operator HTTP lane | operator                             | definition discovery and upload, definition authoring drafts, task start, runtime list/read, continue, pause, cancel, snapshot, trace, control events, human requests, command runs, observability file refs | protected by `X-AutoClaw-API-Key`                                       |
-| callback HTTP lane | bound worker, parent, or root caller | checkpoint writes, boundary acceptance, parent/root tools                                                                                                                                                    | explicit `session_key` query parameter + route `task_id`                |
-| node MCP mount     | bound worker, parent, or root caller | current-only definition reads plus checkpoint, boundary, and parent/root tools                                                                                                                               | explicit `session_key` + `task_id`, mounted at `/node/mcp` when enabled |
+Mutations commit controller rows first. A boundary, human request, or command-run request closes its source dispatch in that transaction. After-commit handlers perform independent continuation, provider start, process ownership, cleanup, and projection work.
 
-Lane and role are not identical in the current system.
-
-The callback and node-tool lanes are scoped to one live dispatch. They are not general trusted operator lanes.
-
-## Current trust lanes
-
-### 1. Operator HTTP lane
-
-Protected by `X-AutoClaw-API-Key` via `require_api_key`.
-
-Current grouped surfaces:
-
-- `/definitions/*`
-- `/authoring/*`
-- `/tasks/start`
-- `/runtime/*`
-- `/operator/*`
-- `/control/*`
-- `/observability/*`
-
-Current operator actions on this lane include:
-
-- list, inspect, or upload definitions
-- create, inspect, save, validate, publish, replace, or delete backend-owned definition drafts
-- start a task from the definition service
-- list or inspect runtime tasks
-- continue, pause, or cancel a task runtime
-- read operator snapshot and trace views
-- read control snapshots, task events, human requests, and command runs
-- request cancellation of the current active command run without cancelling the whole task
-- fetch task-scoped observability file refs
-
-Current operator GET routes are read-only in the shipped tree: they surface current file refs or current backend-owned draft state but do not repair projections inline. `POST /definitions`, `/authoring/*`, and `POST /tasks/start` are trusted API-key write paths on the same lane.
-
-Mounted operator MCP is a narrower operator surface over the same trusted principal. It exposes registry reads, definition upload, task start, runtime control/readback, and support refs. Definition draft authoring remains on HTTP `/authoring`.
-
-### 2. Callback HTTP lane
-
-Current live authority is explicit `session_key` plus route `task_id`.
-
-Current grouped surfaces:
-
-- `/callback/tasks/{task_id}/checkpoint`
-- `/callback/tasks/{task_id}/boundary`
-- `/callback/tasks/{task_id}/tools/{tool_name}`
-
-Current lane uses include:
-
-- worker checkpoint publication
-- worker terminal or retry boundary submission
-- parent/root child-assignment staging
-- parent/root structural subtree edits
-- parent/root release-precondition marking
-- controller-side validation resolves structural role and policy refs from current registry rows during validation; the callback lane does not expose a separate registry-read HTTP surface
-
-This lane is explicitly non-operator. It is scoped to the currently live dispatch and becomes invalid when the dispatch is paused, cancelled, fenced, replaced, or otherwise no longer current.
-
-The current implementation validates that the presented session key still matches live `NodeSession`, the live dispatch, and the persisted current assignment and attempt basis for that task before a callback write can commit. The callback route requires explicit `session_key` request input.
-
-Most callback writes now return only after controller truth commits and the owned generated task-file surfaces are refreshed synchronously. That includes manifest, attempt, dispatch, artifact-pointer, and observability projections for the cases that expose or return those refs.
-
-Structural callback tools are stricter. `add_child`, `update_child`, and `remove_child` stage stable-manifest rewrites for the selected task. `commit_runtime_session()` commits controller truth first and then applies the owned `_runtime/workflow-manifest.*` writes synchronously before route success, so tool success still means the taught reread path is already refreshed. If the commit fails, `rollback_runtime_session()` clears the staged writes and preserves the last committed stable manifest.
-
-### 3. Node MCP mount
-
-Mounted under `/node/mcp` when MCP mounts are enabled.
-
-Current grouped tools are:
-
-- `search_definitions`
-- `get_definition`
-- `record_checkpoint`
-- `return_boundary`
-- `open_human_request`
-- `start_command_run`
-- `assign_child`
-- `add_child`
-- `update_child`
-- `remove_child`
-- `release_green`
-- `release_blocked`
-
-Current lane rules:
-
-- every tool call must carry explicit `session_key` and `task_id`
-- the same shared authority validator used by callback HTTP resolves that session against live `NodeSession` and current dispatch truth
-- this lane is not the operator lane and does not inherit operator API-key authority
-- this lane keeps node-only tool inventory separate from operator MCP inventory
-- current shipped node-MCP wrapper now preserves the strict typed request and result shapes:
-    - `assign_child`, `add_child`, `update_child`, and `remove_child` each take their own typed `payload` body, while `release_green` and `release_blocked` use only `expected_structural_revision_id?`
-    - `open_human_request` and `start_command_run` each take their shared typed `request` body and create their external wait directly when current capability and dispatch authority allow it
-    - node-operation success surfaces typed `CheckpointRead`, `BoundaryRead`, `HumanRequestOpenResponse`, `CommandRunStartResponse`, `AssignChildSuccess`, `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`, `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` bodies
-
-### 4. Health lane
-
-Unauthenticated:
-
-- `GET /healthz`
-- `GET /readyz`
-
-### 5. Packaged console bootstrap
-
-When packaged console assets are available, `GET /console/config` returns the runtime browser config for the same API origin:
-
-- `apiBaseUrl`
-- `apiKey`
-
-The route sets `Cache-Control: no-store`. It is a local browser bootstrap for the packaged UI, not a general operator action lane and not part of generated OpenAPI.
-
-Current code does not ship the older flow, approval, or legacy registry route families.
-
-## Operator action summary
-
-| Action                        | Current lane                  | Current effect                                                                                                                                                                                                     |
-| ----------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| list definitions              | operator HTTP                 | read definition summaries by kind, filter, and page                                                                                                                                                                |
-| inspect definition detail     | operator HTTP                 | read one current definition revision                                                                                                                                                                               |
-| inspect definition history    | operator HTTP                 | read historical revisions for one definition                                                                                                                                                                       |
-| upload definition             | operator HTTP                 | create or update a definition revision                                                                                                                                                                             |
-| manage definition drafts      | operator HTTP                 | create, inspect, save, validate, publish, replace, or delete one backend-owned draft per `(kind, key)` under the configured data dir                                                                               |
-| start task                    | operator HTTP                 | create a task from the definition service and wait for initial runtime effects                                                                                                                                     |
-| inspect runtime list          | operator HTTP                 | read `GET /runtime/tasks`                                                                                                                                                                                          |
-| inspect one task runtime      | operator HTTP                 | read `GET /runtime/tasks/{task_id}`                                                                                                                                                                                |
-| continue task runtime         | operator HTTP                 | current shipped behavior: resume a paused task runtime when revision expectations match; ordinary accepted-boundary child handoff, parent wake, and retry progression now reopen internally after inactivity proof |
-| pause task runtime            | operator HTTP                 | mark the flow paused and keep replacement dispatch blocked until inactivity is proven or timed out                                                                                                                 |
-| cancel task runtime           | operator HTTP                 | mark abort requested, close the current task flow, and keep the dispatch controller-visible until inactivity is proven or timed out                                                                                |
-| inspect snapshot              | operator HTTP                 | read `GET /operator/tasks/{task_id}/snapshot`                                                                                                                                                                      |
-| inspect trace                 | operator HTTP                 | read `GET /operator/tasks/{task_id}/trace`                                                                                                                                                                         |
-| inspect control task events   | operator HTTP                 | read `GET /control/tasks/{task_id}/events` or stream `GET /control/tasks/{task_id}/events/stream`                                                                                                                  |
-| inspect command runs          | operator HTTP                 | read `GET /control/tasks/{task_id}/command-runs` for compact controller-owned command-run truth                                                                                                                    |
-| cancel current command run    | operator HTTP                 | request `POST /control/tasks/{task_id}/command-runs/{run_id}/cancel`; accepted cancellation moves the run to `cancellation_requested` and leaves the task waiting for terminal command-run closure                 |
-| fetch observability file      | operator HTTP                 | read task-scoped `delivery-state`, `continuity-state`, `watchdog-state`, or `provider-events` refs                                                                                                                 |
-| record checkpoint             | callback HTTP or node MCP     | persist checkpoint truth and optional produced or transient refs                                                                                                                                                   |
-| accept boundary               | callback HTTP or node MCP     | close the current dispatch with `yield`, `green`, `retry`, or `blocked`; any child or replacement dispatch still waits for the prior dispatch to be proven inactive                                                |
-| start command run             | node MCP                      | persist controller-owned command-run truth, create `waiting_for_command_run`, emit `command_run_started`, and fence the current dispatch without accepting a workflow boundary                                     |
-| call parent/root tool         | callback HTTP or node MCP     | stage child work, mutate subtree structure, or mark release preconditions                                                                                                                                          |
-| current-only definition read  | node MCP                      | read current role or policy detail without switching to the operator HTTP lane                                                                                                                                     |
-
-## Mutation timing
-
-- runtime writes, checkpoint writes, boundary writes, callback writes, node-tool writes, definition uploads, definition draft publish writes, and task-start writes commit controller-owned rows first
-- the same request then applies the owned generated task-file writes synchronously before returning when that route family owns those projections
-- launch returns only after the stable root workflow-manifest, root attempt files, and opened-dispatch projections are readable
-- structural callback and node-tool writes return only after the stable manifest reread path is current
-- operator and observability GET routes do not recreate deleted projection files inline
-
-## What operator does not mean
-
-Operator is not:
-
-- the callback caller by default
-- the node-tool caller by default
-- the worker
-- the controller
-- the provider
-- a browser bootstrap client
+The caller does not wait for provider output, provider shutdown, a final response, or a generic drain. Task events and support files are readbacks of committed truth, not an authority path.

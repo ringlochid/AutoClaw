@@ -1,50 +1,16 @@
 # Testing and release checklist
 
-This page defines the stable maintainer checklist for tests, package validation, release readiness, and docs parity.
-
-## Hard rule
-
-Release-ready means:
-
-- code, tests, docs, and examples agree
-- the required public and maintainer surfaces are exercised at the appropriate lane depth
-- package, install, DB, and reset behavior are explicitly checked
-- missing mandatory evidence blocks release
-
-## Required evidence groups
-
-### Unit and integration
-
-- unit coverage for changed core logic
-- integration coverage for changed runtime, DB, route, provider, CLI, package, or OpenClaw integration behavior
-- explicit note when a test category was not viable and why
-
-### E2E lanes
-
-The required workflow lanes follow the progressive lane matrix:
-
-- bounded lane when prompt/runtime/bootstrap flow is viable
-- reviewed lane when parent/review/closure flow is viable
-- staged lane when multi-subtree/review/replan flow is viable
-
-### Package, install, and DB
-
-- package build success for the shipped package surface
-- install smoke for the supported `pipx` path
-- package resource presence checks for bundled console assets, definitions, migrations, and service templates
-- SQLite local-smoke verification
-- Postgres + Docker strong-lane verification
-- reset or migration smoke when DB, package, or public-surface truth changed
-
-### Docs and examples
-
-- updated docs for every changed contract
-- updated examples for every changed example contract
-- regenerated prompt inventory and rendered examples when prompt-layer authorities changed
-- validator pass for the docs set
-
-## Related maintainer pages
-
-- [Run Docker-backed Postgres verification](run-docker-postgres-verification.md)
-- [Run real e2e workflow lanes](run-real-e2e-workflow-lanes.md)
-- [Publish a release](publish-a-release.md)
+- [ ] Code, docs, examples, and generated outputs agree.
+- [ ] `make check-api` passes for backend changes.
+- [ ] `make check-console` passes for console changes.
+- [ ] `make check-docs` passes for maintained docs.
+- [ ] Focused unit and integration tests cover the changed behavior.
+- [ ] The applicable bounded, reviewed, or staged workflow lane passes.
+- [ ] `make test-api-db` passes for schema, reset, or PostgreSQL changes.
+- [ ] `make console-e2e-real` passes when browser behavior depends on a real backend.
+- [ ] `make package-build` creates one wheel and one source distribution.
+- [ ] Both artifacts were inspected for required and forbidden files.
+- [ ] The wheel runs outside the checkout without `PYTHONPATH`.
+- [ ] Packaged resources, FastAPI lifespan, foreground health/readiness, SQLite reset, provider setup/defaults, definition import, and task start were exercised from the installed wheel.
+- [ ] The user-service installer and start/status/restart/stop/uninstall command sequence were proved in an isolated home.
+- [ ] Skipped lanes have an exact scope reason.

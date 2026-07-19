@@ -18,11 +18,11 @@ from autoclaw.runtime.projection.signals import (
     SupportProjectionSignal,
 )
 from sqlalchemy import func, select
-from tests.integration.runtime.node_operations.executor_support import (
+from tests.helpers.executor_harness import (
     SessionFactory,
     seeded_executor,
 )
-from tests.integration.runtime_schema_contract.runtime_lineage_fixture import RuntimeIds
+from tests.helpers.lineage_seed import RuntimeIds
 
 
 class _CapturedProjectionPublisher:

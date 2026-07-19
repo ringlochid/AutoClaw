@@ -1,289 +1,32 @@
 # Write a workflow
 
-Write a workflow when you want AutoClaw to run your own automation. A workflow is a purpose-specific evidence path, not a menu choice from the shipped examples.
+A workflow is a reusable node tree and evidence contract.
 
-Start with the work your automation must prove. Then choose roles, policies, node structure, artifacts, criteria, and scope-control instructions that make closure honest.
+## Build from closure backward
 
-## Start from the purpose
+1. State the user outcome in one sentence.
+2. Name the artifacts and criteria that prove it.
+3. Add the smallest nodes that can produce and review that evidence.
+4. Assign each node one role, one compatible policy, a bounded mission, and explicit inputs and outputs.
+5. Add human or command waits only where required.
 
-Write one sentence that defines success:
+Use a fixed chain when the evidence order is known. Use a routing parent when current evidence must choose the next child. Every parent needs a real routing job; every worker needs one bounded assignment.
 
-- "Classify inbound support reports and produce a reviewed escalation package."
-- "Investigate a regression, fix it, and prove regression behavior is covered."
-- "Research campaign positioning and produce an approval-ready campaign brief."
-- "Reconcile invoices against source records and flag mismatches for review."
+## Make criteria enforceable
 
-If the purpose changes, write a different workflow. Similar-looking work can need different evidence.
+Good criteria can reject the result: the patch fixes the reproduced defect, the required verification passed, and unresolved high-risk regressions block release. Wording such as "do a good job" belongs in instruction, not criteria.
 
-## Preflight the tool assumptions
+## Route failure honestly
 
-Before writing nodes, list the tools the workflow expects:
+- Retry for another attempt at the same assignment.
+- Replan when the node tree or dependencies are wrong.
+- Ask a human when judgment is missing and policy allows it.
+- Block when required external state remains unavailable.
 
-- file read/write/patch tools
-- shell or CLI tools
-- browser tools
-- visual screenshot or image tools
-- PDF or document tools
-- external service tools
-- provider skills
+Publish with the console authoring workbench or:
 
-Then verify the selected harness can actually use them. If a workflow requires browser review of local pages, check that the browser tool can reach localhost. If a workflow needs long verification, assign it to a command-run-enabled worker. If the required tool is unavailable, encode the fallback, human request, or blocked route explicitly.
-
-## Decide fixed or dynamic
-
-Use a fixed workflow when the path is known.
-
-Fixed workflows should use explicit `consumes`, `produces`, and `criteria` because the evidence pipeline is known.
-
-```text
-triage_report -> fix_plan -> patch -> verification_report -> review_report
+```bash
+autoclaw definitions import --file ./workflow.yaml
 ```
 
-Use a dynamic workflow when the route is not knowable up front.
-
-Dynamic workflows should use `consumes`, `produces`, and `criteria` as stable anchors and phase gates, not as a full predeclared future chain.
-
-```text
-root owns purpose
-parent owns routing
-children publish current evidence
-review consumes surfaced current evidence
-root closes from evidence bundle and root criteria
-```
-
-Dynamic does not mean loose. It means the parent/root chooses the next child from evidence while the workflow still defines purpose, authority, and closure.
-
-## Choose the smallest useful structure
-
-| Shape                    | Use when                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| Single worker            | one bounded output and one proof loop are enough                                      |
-| Root + worker + reviewer | ordinary implementation, research, docs, or planning work needs one independent check |
-| Fixed sequence           | each step depends on the previous artifact                                            |
-| Parent orchestration     | a parent must inspect evidence and choose the next child                              |
-| Parallel specialists     | independent perspectives improve confidence                                           |
-| Review/fix loop          | clear criteria allow useful critique and correction                                   |
-| Human checkpoint         | direction, approval, input, or review needs human judgment                            |
-| Command-run worker       | long/log-heavy/cancelable command work matters                                        |
-| Delivery batch parent    | many similar scopes should run one at a time                                          |
-
-Every parent should have a real routing job. Every worker should have one bounded mode.
-
-## Merge tasks when the handoff adds no value
-
-One agent can often do more than one mechanical activity inside a single assignment.
-
-Good merges:
-
-- read docs, patch code, and run focused tests
-- inspect root cause, patch the narrow defect, and report regression risk
-- review implementation and test evidence together
-- gather sources and synthesize a bounded research brief
-
-Good splits:
-
-- implementer and reviewer should be separate when review gates release
-- long command execution needs command-run state
-- human judgment changes the route
-- a parent must route repeated scopes or ambiguous evidence
-- permissions or tool requirements differ sharply
-
-The question is not "can I name four roles?" The question is "does this handoff improve evidence, authority, or recovery?"
-
-## Control repeated scope with parent instructions
-
-For repeated work, make the parent the scope controller.
-
-Example: implementing 10 frontend pages from design should usually be one parent that assigns one page or slice at a time, not 10 parallel workers.
-
-Parent/root scope-control instructions should define:
-
-- one child assignment size
-- required input references for each assignment
-- required artifacts before the next assignment
-- when to stop and ask for direction
-- when to route to review, verification, failure analysis, or replan
-- what should not be parallelized
-
-Example:
-
-```yaml
-instruction: >-
-  Assign one page at a time. Each child assignment must include the page route, design reference, expected states, viewport targets, required screenshots, and validation commands. Inspect child checkpoint and artifacts before assigning the next page. Do not assign parallel page work when pages share components, fixtures, or visual tokens.
-```
-
-## Define the evidence path
-
-Before writing YAML, answer:
-
-- what evidence must exist before root closure?
-- which criteria can block closure?
-- which artifacts will later nodes consume?
-- where does review or verification happen?
-- when should a parent retry, replan, release, or block?
-- where is human judgment required?
-- where might long command work need command-run capability?
-
-Do this before choosing node count. A smaller workflow is better only when it can still prove the work is done.
-
-## Choose policies by authority
-
-Use policies by authority, not by domain:
-
-- root and parent nodes use child-assignment budget
-- worker nodes use retry budget
-- command-run policy belongs on the worker that will own the long command
-- human-request policy belongs only where human judgment is a real gate
-
-Omitted `budget_spec` means no controller budget counter for that budget family. Use that intentionally, not by accident.
-
-## Author nodes around contracts
-
-Each node should have:
-
-- `description`: why the node exists
-- `instruction`: node-local guidance that does not replace role or policy
-- `consumes`: specific artifact or criteria inputs it needs
-- `produces`: durable artifacts it must publish
-- `criteria`: hard closure or guardrail requirements
-
-Use `criteria` only for requirements that can block closure. Put softer guidance, review rubrics, and behavior posture in role, policy, or node instruction.
-
-## Use criteria carefully
-
-Criteria should be hard enough to make a result fail.
-
-Good criteria:
-
-```yaml
-criteria:
-    - slot: defect_release_criteria
-      description: Hard criteria for defect-fix release.
-      criteria:
-          - current patch addresses the reported defect
-          - verification evidence covers the reproduced behavior
-          - unresolved high-risk regression blocks release
-```
-
-Weak criteria:
-
-```yaml
-criteria:
-    - slot: general_quality
-      criteria:
-          - do a good job
-          - be careful
-```
-
-If a statement cannot block closure, put it in instruction instead.
-
-## Use produces and consumes by workflow type
-
-For fixed workflows, make handoffs explicit:
-
-```yaml
-produces:
-    artifacts:
-        - slot: triage_report
-          file_hint: triage_report.md
-          description: Reproduction, likely cause, scope, and uncertainty.
-```
-
-```yaml
-consumes:
-    artifacts:
-        - slot: triage_report
-```
-
-For dynamic workflows, keep artifacts broad and stable:
-
-- `research_brief`
-- `risk_log`
-- `current_plan`
-- `evidence_bundle`
-- `closure_report`
-
-Avoid speculative slots for future branches the parent may never assign.
-
-## Add skills when the provider supports them
-
-Use provider skills to give the harness loop sharper task-specific guidance:
-
-- frontend visual verification
-- security review
-- PDF/document reading
-- browser repro and UI triage
-- database query review
-- release safety
-
-Skills should support the node mission. They do not replace workflow criteria, assignment scope, checkpoints, or artifact requirements.
-
-## Pilot before scaling
-
-Pilot a small version first:
-
-- root
-- one worker
-- one reviewer when quality matters
-
-After the run, inspect:
-
-- workflow manifest
-- assignment
-- checkpoint
-- artifacts
-- provider tool usage
-- operator snapshot and trace
-
-Scale the workflow after the pilot has clear assignment size, evidence path, and review gate behavior.
-
-## Route ambiguity
-
-Add explicit routing posture when a workflow may encounter gaps.
-
-Dynamic parent instruction example:
-
-```yaml
-instruction: >-
-  Inspect current evidence before assigning the next child. Route unclear scope to a scope reviewer, weak verification to a verifier, repeated failure to failure analysis, and workflow-shape mismatch to replan. Do not force a worker to widen scope to make progress.
-```
-
-Workers should surface ambiguity. Parent and root nodes should route it.
-
-## Keep shipped workflows as examples
-
-The shipped workflows show valid patterns, but they are not the product boundary. Use them as structural examples, then write workflows for your own automation.
-
-Domain-specific workflow examples:
-
-- support triage
-- accounting reconciliation
-- release readiness
-- research synthesis
-- security review
-- product planning
-- migration execution
-
-## Workflow checklist
-
-- the root knows what final closure means
-- every parent has a reason to exist
-- every worker has one bounded mode
-- artifacts let later nodes inspect evidence without transcript memory
-- criteria are hard enough to block closure
-- fixed workflows have explicit handoffs
-- dynamic workflows use sparse stable anchors
-- human request points are intentional
-- command-run points are isolated to nodes that need them
-- parent/root instructions control repeated scope size
-- provider skills are listed only where the harness can use them
-- the workflow defines what is out of scope
-
-## Related pages
-
-- [Design workflows and instructions](design-workflows-and-instructions.md)
-- [Write layered instructions](write-layered-instructions.md)
-- [Write a role](write-a-role.md)
-- [Write a policy](write-a-policy.md)
-- [Inspect and control a task](inspect-and-control-a-task.md)
-- [Workflow reference examples](../reference/definitions/workflows/README.md)
+Use `--overwrite allow_new_revision` only when you intend to publish changed content as a new current revision. See the [workflow examples](../reference/definitions/workflows/README.md) for exact YAML.

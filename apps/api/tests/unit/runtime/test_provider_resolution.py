@@ -30,7 +30,7 @@ from autoclaw.runtime.contracts import (
 from autoclaw.runtime.providers import (
     ProviderResolutionError,
     ProviderResolutionErrorCode,
-    apply_provider_capability_ceiling,
+    narrow_provider_capabilities,
     resolve_provider_route,
     validate_provider_execution_policy,
 )
@@ -230,7 +230,7 @@ def test_codex_network_deny_applies_an_attributed_native_access_ceiling() -> Non
         )
     )
 
-    effective = apply_provider_capability_ceiling(
+    effective = narrow_provider_capabilities(
         route=resolution.route,
         capabilities=capabilities,
     )

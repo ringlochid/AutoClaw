@@ -126,6 +126,8 @@ Managed schemas contain semantic arguments only. The managed binding supplies ta
 
 `get_current_context` reads controller records directly. It does not reconstruct currentness from files.
 
+The response names three bounded readbacks: the current dispatch's committed `instructions.md` and `input.md` refs, plus `_runtime/workflow-manifest.md`. The first pair identifies immutable dispatch input. The manifest remains an optional support projection and never substitutes for the live workflow neighborhood returned from controller rows.
+
 `list_files` is non-recursive and returns bounded entries with logical paths and basic type/size metadata. `read_file` returns bounded UTF-8 text and a stable truncation/continuation shape.
 
 The MCP surface does not expose generic task-file writes or search in this phase.

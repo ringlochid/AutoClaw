@@ -174,7 +174,7 @@ async def test_start_preserves_two_request_lanes_and_stop_aborts_once(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("transport_code", "may_have_been_accepted", "expected_kind", "expected_code"),
+    ("transport_code", "is_acceptance_uncertain", "expected_kind", "expected_code"),
     [
         (
             OpenClawGatewayFailureCode.AUTHENTICATION_FAILED,
@@ -194,14 +194,14 @@ async def test_start_classifies_definite_and_uncertain_failures(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     transport_code: OpenClawGatewayFailureCode,
-    may_have_been_accepted: bool,
+    is_acceptance_uncertain: bool,
     expected_kind: ProviderStartFailureKind,
     expected_code: ProviderStartErrorCode,
 ) -> None:
     async def fail_gateway(**_kwargs: object) -> dict[str, object]:
         raise OpenClawGatewayCliError(
             code=transport_code,
-            may_have_been_accepted=may_have_been_accepted,
+            is_acceptance_uncertain=is_acceptance_uncertain,
         )
 
     monkeypatch.setattr(adapter_module, "call_openclaw_gateway", fail_gateway)
@@ -245,7 +245,7 @@ async def test_check_is_non_agent_and_reports_experimental_limit(
     monkeypatch.setattr(adapter_module, "call_openclaw_gateway", call_gateway)
     adapter = OpenClawGatewayAdapter(config=OpenClawSettings(enabled=True))
 
-    result = await adapter.check()
+    result = await adapter.read_availability()
 
     assert result.status is ProviderCheckStatus.LIMITED
     assert result.code == "openclaw_experimental"

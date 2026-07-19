@@ -4,7 +4,6 @@ import asyncio
 import logging
 from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager, suppress
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import TracebackType
@@ -17,16 +16,17 @@ from sqlalchemy.orm import raiseload
 
 from autoclaw.persistence.models import CommandRunModel
 from autoclaw.runtime.clock import utc_now
+from autoclaw.runtime.command_run.owned_process import OwnedCommandProcess
+from autoclaw.runtime.command_run.ownership_recovery import abandon_unowned_command_run
 from autoclaw.runtime.command_run.process_resources import (
     CommandTerminalCause,
     classify_command_process_exit,
     command_launch_failure_code,
-    create_command_log_pair,
     drain_command_stream,
-    remove_command_log_pair,
     resolve_command_environment,
     spawn_command_process,
 )
+from autoclaw.runtime.command_run.task_paths import CommandProcessPaths
 from autoclaw.runtime.command_run.transitions import (
     CommandRunLaunchClaim,
     claim_command_run_launch,
@@ -45,8 +45,6 @@ from autoclaw.runtime.post_commit import (
 from autoclaw.runtime.post_commit.health import RuntimeEffectHealth
 from autoclaw.runtime.task_root import (
     command_run_logical_path,
-    read_task_root_paths,
-    resolve_logical_task_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,15 +57,6 @@ DEFAULT_COMMAND_OWNER_SHUTDOWN_SECONDS = 5.0
 type AsyncSessionContextFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 type RegisterCommandRunDue = Callable[[CommandRunDue], None]
 type CommandOwnerClock = Callable[[], datetime]
-
-
-@dataclass(slots=True)
-class _OwnedCommand:
-    claim: CommandRunLaunchClaim
-    process: asyncio.subprocess.Process | None = None
-    terminal_cause: CommandTerminalCause | None = None
-    termination_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-    launch_state_resolved: asyncio.Event = field(default_factory=asyncio.Event)
 
 
 class CommandProcessOwner:
@@ -96,6 +85,7 @@ class CommandProcessOwner:
             if value <= 0:
                 raise ValueError(f"command {label} seconds must be positive")
         self._session_factory = session_factory
+        self._process_paths = CommandProcessPaths(session_factory)
         self._runtime_effect_publisher = runtime_effect_publisher
         self._register_due = register_due
         self._health = health or RuntimeEffectHealth()
@@ -105,7 +95,7 @@ class CommandProcessOwner:
         self._kill_wait_seconds = kill_wait_seconds
         self._shutdown_seconds = shutdown_seconds
         self._owner_ref = f"command-owner.{uuid4().hex}"
-        self._owned: dict[str, _OwnedCommand] = {}
+        self._owned: dict[str, OwnedCommandProcess] = {}
         self._tasks: set[asyncio.Task[None]] = set()
         self._is_active = False
         self._is_shutting_down = False
@@ -128,7 +118,7 @@ class CommandProcessOwner:
         self._is_active = False
         return None
 
-    async def handle_pending(
+    async def launch_pending_command(
         self,
         session: AsyncSession,
         signal: CommandRunPending,
@@ -155,7 +145,7 @@ class CommandProcessOwner:
         if claim is None:
             await self._recover_unowned_command(session, signal.run_id)
             return
-        owned = _OwnedCommand(claim=claim)
+        owned = OwnedCommandProcess(claim=claim)
         self._owned[claim.run_id] = owned
         self._track_task(
             asyncio.create_task(
@@ -164,7 +154,7 @@ class CommandProcessOwner:
             )
         )
 
-    async def handle_due(
+    async def enforce_command_deadline(
         self,
         session: AsyncSession,
         signal: CommandRunDue,
@@ -185,12 +175,12 @@ class CommandProcessOwner:
             return
         owned = self._owned.get(signal.run_id)
         if owned is None or owned.claim.ownership_revision != source.ownership_revision:
-            if await self._abandon_unowned_source(session, source):
+            if await abandon_unowned_command_run(session, source, ended_at=self._clock()):
                 self._publish_terminal(source.run_id)
             return
         await self._request_owned_termination(owned, cause="timed_out")
 
-    async def handle_cancellation_requested(
+    async def terminate_cancelled_command(
         self,
         session: AsyncSession,
         signal: CommandRunCancellationRequested,
@@ -224,11 +214,15 @@ class CommandProcessOwner:
                 ended_at=self._clock(),
             )
         else:
-            won = await self._abandon_unowned_source(session, source)
+            won = await abandon_unowned_command_run(
+                session,
+                source,
+                ended_at=self._clock(),
+            )
         if won:
             self._publish_terminal(source.run_id)
 
-    async def handle_process_exited(
+    async def record_command_process_exit(
         self,
         session: AsyncSession,
         signal: CommandProcessExited,
@@ -276,18 +270,21 @@ class CommandProcessOwner:
         if won:
             self._publish_terminal(signal.run_id)
 
-    async def _launch_owned(self, owned: _OwnedCommand) -> None:
+    async def _launch_owned(self, owned: OwnedCommandProcess) -> None:
         claim = owned.claim
         stdout_path: Path | None = None
         stderr_path: Path | None = None
         try:
             if await self._finish_unlaunched_cancellation(owned):
                 return
-            cwd = await self._resolve_command_cwd(claim)
+            cwd = await self._process_paths.resolve_working_directory(claim)
             environment = resolve_command_environment(claim)
-            stdout_path, stderr_path = await self._create_log_files(claim)
+            stdout_path, stderr_path = await self._process_paths.create_log_files(claim)
             if await self._finish_unlaunched_cancellation(owned):
-                await self._remove_unreferenced_log_files(stdout_path, stderr_path)
+                await self._process_paths.cleanup_unreferenced_log_files(
+                    stdout_path,
+                    stderr_path,
+                )
                 return
             process = await spawn_command_process(
                 claim,
@@ -305,32 +302,7 @@ class CommandProcessOwner:
                     name=f"autoclaw-command-supervise-{claim.run_id}",
                 )
             )
-            started_at = self._clock()
-            due_at = (
-                started_at + timedelta(seconds=claim.request.timeout_seconds)
-                if claim.request.timeout_seconds is not None
-                else None
-            )
-            async with self._session_factory() as session:
-                running = await mark_command_run_running(
-                    session,
-                    claim=claim,
-                    owner_ref=self._owner_ref,
-                    pid=process.pid,
-                    started_at=started_at,
-                    due_at=due_at,
-                )
-            if running is None:
-                if owned.terminal_cause is None:
-                    owned.terminal_cause = "cancelled"
-                owned.launch_state_resolved.set()
-                await self._request_owned_termination(owned, cause="cancelled")
-                return
-            owned.launch_state_resolved.set()
-            if running.due_at is not None:
-                self._register_due(CommandRunDue(claim.run_id, running.due_at))
-            if owned.terminal_cause is not None:
-                await self._request_owned_termination(owned, cause=owned.terminal_cause)
+            await self._record_owned_process_start(owned)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -339,7 +311,10 @@ class CommandProcessOwner:
                 extra={"run_id": claim.run_id, "exception_type": type(exc).__name__},
             )
             if owned.process is None and stdout_path is not None and stderr_path is not None:
-                await self._remove_unreferenced_log_files(stdout_path, stderr_path)
+                await self._process_paths.cleanup_unreferenced_log_files(
+                    stdout_path,
+                    stderr_path,
+                )
             if self._is_shutting_down:
                 return
             if owned.process is not None:
@@ -356,9 +331,40 @@ class CommandProcessOwner:
                     failure_code=command_launch_failure_code(exc),
                 )
 
+    async def _record_owned_process_start(self, owned: OwnedCommandProcess) -> None:
+        claim = owned.claim
+        process = owned.process
+        assert process is not None
+        started_at = self._clock()
+        due_at = (
+            started_at + timedelta(seconds=claim.request.timeout_seconds)
+            if claim.request.timeout_seconds is not None
+            else None
+        )
+        async with self._session_factory() as session:
+            running = await mark_command_run_running(
+                session,
+                claim=claim,
+                owner_ref=self._owner_ref,
+                pid=process.pid,
+                started_at=started_at,
+                due_at=due_at,
+            )
+        if running is None:
+            if owned.terminal_cause is None:
+                owned.terminal_cause = "cancelled"
+            owned.launch_state_resolved.set()
+            await self._request_owned_termination(owned, cause="cancelled")
+            return
+        owned.launch_state_resolved.set()
+        if running.due_at is not None:
+            self._register_due(CommandRunDue(claim.run_id, running.due_at))
+        if owned.terminal_cause is not None:
+            await self._request_owned_termination(owned, cause=owned.terminal_cause)
+
     async def _supervise_process(
         self,
-        owned: _OwnedCommand,
+        owned: OwnedCommandProcess,
         *,
         stdout_path: Path,
         stderr_path: Path,
@@ -411,7 +417,7 @@ class CommandProcessOwner:
 
     async def _request_owned_termination(
         self,
-        owned: _OwnedCommand,
+        owned: OwnedCommandProcess,
         *,
         cause: CommandTerminalCause,
     ) -> None:
@@ -424,7 +430,7 @@ class CommandProcessOwner:
             )
         )
 
-    async def _terminate_owned_process(self, owned: _OwnedCommand) -> None:
+    async def _terminate_owned_process(self, owned: OwnedCommandProcess) -> None:
         async with owned.termination_lock:
             process = owned.process
             if process is None or process.returncode is not None:
@@ -446,7 +452,7 @@ class CommandProcessOwner:
                 timeout=self._kill_wait_seconds,
             )
 
-    async def _finish_unlaunched_cancellation(self, owned: _OwnedCommand) -> bool:
+    async def _finish_unlaunched_cancellation(self, owned: OwnedCommandProcess) -> bool:
         if owned.terminal_cause != "cancelled":
             return False
         claim = owned.claim
@@ -492,53 +498,6 @@ class CommandProcessOwner:
         if owned is not None:
             await self._finish_unlaunched_cancellation(owned)
 
-    async def _resolve_command_cwd(self, claim: CommandRunLaunchClaim) -> Path:
-        async with self._session_factory() as session:
-            paths = await read_task_root_paths(session, claim.task_id)
-        logical_cwd = claim.request.cwd or "workspace"
-        resolved = resolve_logical_task_path(paths, logical_cwd)
-        assert resolved is not None
-        if resolved.logical_path != "workspace" and not resolved.logical_path.startswith(
-            "workspace/"
-        ):
-            raise ValueError("command cwd is outside the task workspace")
-        if not resolved.physical_path.is_dir():
-            raise NotADirectoryError("command cwd is not an existing directory")
-        return resolved.physical_path
-
-    async def _create_log_files(
-        self,
-        claim: CommandRunLaunchClaim,
-    ) -> tuple[Path, Path]:
-        async with self._session_factory() as session:
-            paths = await read_task_root_paths(session, claim.task_id)
-        stdout = resolve_logical_task_path(paths, claim.stdout_log_ref)
-        stderr = resolve_logical_task_path(paths, claim.stderr_log_ref)
-        assert stdout is not None and stderr is not None
-        await asyncio.to_thread(
-            create_command_log_pair,
-            stdout.physical_path,
-            stderr.physical_path,
-        )
-        return stdout.physical_path, stderr.physical_path
-
-    async def _remove_unreferenced_log_files(
-        self,
-        stdout_path: Path,
-        stderr_path: Path,
-    ) -> None:
-        try:
-            await asyncio.to_thread(
-                remove_command_log_pair,
-                stdout_path,
-                stderr_path,
-            )
-        except Exception as exc:
-            logger.warning(
-                "unreferenced command log cleanup failed",
-                extra={"exception_type": type(exc).__name__},
-            )
-
     async def _recover_unowned_command(self, session: AsyncSession, run_id: str) -> None:
         source = await session.scalar(
             select(CommandRunModel).options(raiseload("*")).where(CommandRunModel.run_id == run_id)
@@ -569,33 +528,13 @@ class CommandProcessOwner:
                 ended_at=self._clock(),
             )
         else:
-            won = await self._abandon_unowned_source(session, source)
+            won = await abandon_unowned_command_run(
+                session,
+                source,
+                ended_at=self._clock(),
+            )
         if won:
             self._publish_terminal(source.run_id)
-
-    async def _abandon_unowned_source(
-        self,
-        session: AsyncSession,
-        source: CommandRunModel,
-    ) -> bool:
-        state = CommandRunState(source.state)
-        if state not in {
-            CommandRunState.PENDING_START,
-            CommandRunState.RUNNING,
-            CommandRunState.CANCELLATION_REQUESTED,
-        }:
-            return False
-        return await terminalize_command_run(
-            session,
-            task_id=source.task_id,
-            run_id=source.run_id,
-            expected_ownership_revision=source.ownership_revision,
-            expected_states=(state,),
-            terminal_state=CommandRunState.ABANDONED,
-            summary="The controller restarted without provable ownership of the command process.",
-            failure_code="command_ownership_lost",
-            ended_at=self._clock(),
-        )
 
     async def _shutdown_owned_processes(self) -> None:
         termination_tasks = [

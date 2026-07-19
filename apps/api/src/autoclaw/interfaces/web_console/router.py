@@ -54,7 +54,6 @@ async def get_web_console_runtime_config(request: Request) -> JSONResponse:
 @web_console_router.get("/definitions")
 @web_console_router.get("/definitions/{console_path:path}")
 @web_console_router.get("/task-start")
-@web_console_router.get("/fixtures")
 async def get_web_console_index(console_path: str = "") -> FileResponse:
     del console_path
     return _packaged_asset_response("index.html", media_type="text/html")
@@ -68,11 +67,6 @@ async def get_web_console_app_icon() -> FileResponse:
 @web_console_router.get("/site.webmanifest")
 async def get_web_console_manifest() -> FileResponse:
     return _packaged_asset_response("site.webmanifest", media_type="application/manifest+json")
-
-
-@web_console_router.get("/mockServiceWorker.js")
-async def get_web_console_mock_service_worker() -> FileResponse:
-    return _packaged_asset_response("mockServiceWorker.js", media_type="text/javascript")
 
 
 def _packaged_asset_response(relative_path: str, *, media_type: str) -> FileResponse:

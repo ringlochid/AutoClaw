@@ -1,30 +1,20 @@
 # Guides
 
-Use guides for practical authoring and operator workflows.
+## Create a task
 
-## OpenClaw setup
+1. [Design the workflow](design-workflows-and-instructions.md).
+2. [Write roles](write-a-role.md) and [policies](write-a-policy.md).
+3. [Write the workflow](write-a-workflow.md).
+4. [Write task-compose](write-a-task-compose.md).
 
-- [Set up OpenClaw agents and operator skills](set-up-openclaw-agents-and-skills.md)
+Use [layered instructions](write-layered-instructions.md) when wording seems to belong in more than one definition.
 
-## Recommended authoring path
-
-1. [Design workflows and instructions](design-workflows-and-instructions.md)
-2. [Write a role](write-a-role.md)
-3. [Write a policy](write-a-policy.md)
-4. [Write a workflow](write-a-workflow.md)
-5. [Write a task-compose file](write-a-task-compose.md)
-6. [Use definition reference examples](../reference/definitions/README.md)
-
-Start with the design guide when you are writing reusable definitions. Use the individual write guides when you already know which object you are authoring. Use the definitions reference for exact copyable YAML.
-
-## Runtime operation
+## Operate a task
 
 - [Inspect and control a task](inspect-and-control-a-task.md)
-- [Recover or replan a task](recover-or-replan-a-task.md)
 - [Use human requests](use-human-requests.md)
 - [Use long command runs](use-long-command-runs.md)
+- [Recover or replan a task](recover-or-replan-a-task.md)
 - [Handle ambiguity and incidents](handle-ambiguity-and-incidents.md)
 
-## Instruction writing
-
-- [Write layered instructions](write-layered-instructions.md)
+OpenClaw users can read [configure OpenClaw tools](set-up-openclaw-agents-and-skills.md).

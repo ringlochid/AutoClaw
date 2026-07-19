@@ -116,7 +116,7 @@ Because this projection has no per-dispatch AutoClaw credential, it is weaker an
 
 ## Current-context and file behavior
 
-`get_current_context` returns one coherent current read of assignment, attempt, trigger/continuation, optional work plan, effective capabilities, allowed actions, logical consume/produce refs, and any exact checkpoint selected for resumption.
+`get_current_context` returns one coherent current read of assignment, attempt, a bounded trigger, optional work plan, direct-child workflow neighborhood, effective capabilities, allowed actions, logical consume/produce refs, the exact dispatch-request readbacks, and the support-only workflow-manifest readback. Its response reserves optional normalized `continuation` and `checkpoint_to_resume_from` fields. A caller must handle either field being `null` and may read the immutable `input` ref for dispatch-start trigger or resume detail that is not projected into the current read.
 
 `list_files` is bounded and non-recursive. `read_file` is bounded and text-only. Both use the shared logical resolver owned by [Task root and file access](../architecture/task-root-and-file-access.md).
 

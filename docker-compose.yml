@@ -35,7 +35,7 @@ services:
     api-test:
         build:
             context: .
-            dockerfile: apps/api/Dockerfile
+            dockerfile: infra/testing/api/Dockerfile
         depends_on:
             postgres-test:
                 condition: service_healthy

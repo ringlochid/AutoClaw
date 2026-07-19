@@ -24,68 +24,12 @@ from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.paths import default_config_path, default_data_dir, default_database_url
 from autoclaw.platform.environment import Environment
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
 CONFIG_ENV_VAR = "AUTOCLAW_CONFIG"
 DEFAULT_LOG_LEVEL = "WARNING"
 DEFAULT_API_PORT = 18125
-_ENV_FILE = REPO_ROOT / ".env"
 ConfigText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 ProviderConfigText = Annotated[str, StringConstraints(strip_whitespace=True)]
 _POSTGRES_SCHEMA_PATTERN = re.compile(r"[a-z_][a-z0-9_$]{0,62}\Z")
-
-
-def normalize_loopback_host(value: str) -> str:
-    """Return one canonical loopback listener host or reject it."""
-    normalized_host = value.strip()
-    has_opening_bracket = normalized_host.startswith("[")
-    has_closing_bracket = normalized_host.endswith("]")
-    if has_opening_bracket != has_closing_bracket:
-        raise ValueError("api_host has mismatched IPv6 brackets")
-    if has_opening_bracket:
-        normalized_host = normalized_host[1:-1]
-    elif "[" in normalized_host or "]" in normalized_host:
-        raise ValueError("api_host has invalid IPv6 brackets")
-    if "%" in normalized_host:
-        raise ValueError("api_host must not contain an IPv6 scope identifier")
-    if normalized_host.casefold() == "localhost":
-        return "localhost"
-    try:
-        parsed_host = ipaddress.ip_address(normalized_host)
-    except ValueError as exc:
-        raise ValueError("api_host must be a loopback IP address or localhost") from exc
-    if not parsed_host.is_loopback:
-        raise ValueError("api_host must be loopback-only")
-    return parsed_host.compressed
-
-
-def format_loopback_authority(host: str, port: int) -> str:
-    """Render a validated loopback host and port as an HTTP authority."""
-    normalized_host = normalize_loopback_host(host)
-    rendered_host = f"[{normalized_host}]" if ":" in normalized_host else normalized_host
-    return f"{rendered_host}:{port}"
-
-
-def normalize_loopback_origin(value: str) -> str:
-    """Return one canonical absolute loopback HTTP origin or reject it."""
-    normalized_value = value.strip()
-    parsed_origin = urlsplit(normalized_value)
-    if parsed_origin.scheme.casefold() not in {"http", "https"}:
-        raise ValueError("console origins must use HTTP or HTTPS")
-    if parsed_origin.hostname is None:
-        raise ValueError("console origins must be absolute")
-    if parsed_origin.username is not None or parsed_origin.password is not None:
-        raise ValueError("console origins must not contain user information")
-    if parsed_origin.path not in {"", "/"} or parsed_origin.query or parsed_origin.fragment:
-        raise ValueError("console origins must not contain a path, query, or fragment")
-    try:
-        port = parsed_origin.port
-    except ValueError as exc:
-        raise ValueError("console origins must contain a valid port") from exc
-
-    host = normalize_loopback_host(parsed_origin.hostname)
-    rendered_host = f"[{host}]" if ":" in host else host
-    netloc = rendered_host if port is None else f"{rendered_host}:{port}"
-    return urlunsplit((parsed_origin.scheme.casefold(), netloc, "", "", ""))
 
 
 class CodexSettings(BaseModel):
@@ -124,7 +68,6 @@ class RuntimeSettings(BaseModel):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=_ENV_FILE if _ENV_FILE.is_file() else None,
         env_prefix="AUTOCLAW_",
         env_nested_delimiter="__",
         extra="ignore",
@@ -202,11 +145,11 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
+        del dotenv_settings
         return (
             init_settings,
             env_settings,
             TomlConfigSettingsSource(settings_cls),
-            dotenv_settings,
             file_secret_settings,
         )
 
@@ -248,6 +191,60 @@ def load_settings() -> Settings:
     if "database_url" not in settings.model_fields_set:
         settings.database_url = default_database_url(settings.data_dir)
     return settings
+
+
+def format_loopback_authority(host: str, port: int) -> str:
+    """Render a validated loopback host and port as an HTTP authority."""
+    normalized_host = normalize_loopback_host(host)
+    rendered_host = f"[{normalized_host}]" if ":" in normalized_host else normalized_host
+    return f"{rendered_host}:{port}"
+
+
+def normalize_loopback_origin(value: str) -> str:
+    """Return one canonical absolute loopback HTTP origin or reject it."""
+    normalized_value = value.strip()
+    parsed_origin = urlsplit(normalized_value)
+    if parsed_origin.scheme.casefold() not in {"http", "https"}:
+        raise ValueError("console origins must use HTTP or HTTPS")
+    if parsed_origin.hostname is None:
+        raise ValueError("console origins must be absolute")
+    if parsed_origin.username is not None or parsed_origin.password is not None:
+        raise ValueError("console origins must not contain user information")
+    if parsed_origin.path not in {"", "/"} or parsed_origin.query or parsed_origin.fragment:
+        raise ValueError("console origins must not contain a path, query, or fragment")
+    try:
+        port = parsed_origin.port
+    except ValueError as exc:
+        raise ValueError("console origins must contain a valid port") from exc
+
+    host = normalize_loopback_host(parsed_origin.hostname)
+    rendered_host = f"[{host}]" if ":" in host else host
+    netloc = rendered_host if port is None else f"{rendered_host}:{port}"
+    return urlunsplit((parsed_origin.scheme.casefold(), netloc, "", "", ""))
+
+
+def normalize_loopback_host(value: str) -> str:
+    """Return one canonical loopback listener host or reject it."""
+    normalized_host = value.strip()
+    has_opening_bracket = normalized_host.startswith("[")
+    has_closing_bracket = normalized_host.endswith("]")
+    if has_opening_bracket != has_closing_bracket:
+        raise ValueError("api_host has mismatched IPv6 brackets")
+    if has_opening_bracket:
+        normalized_host = normalized_host[1:-1]
+    elif "[" in normalized_host or "]" in normalized_host:
+        raise ValueError("api_host has invalid IPv6 brackets")
+    if "%" in normalized_host:
+        raise ValueError("api_host must not contain an IPv6 scope identifier")
+    if normalized_host.casefold() == "localhost":
+        return "localhost"
+    try:
+        parsed_host = ipaddress.ip_address(normalized_host)
+    except ValueError as exc:
+        raise ValueError("api_host must be a loopback IP address or localhost") from exc
+    if not parsed_host.is_loopback:
+        raise ValueError("api_host must be loopback-only")
+    return parsed_host.compressed
 
 
 def _coerce_path(value: str | os.PathLike[str] | Path) -> Path:

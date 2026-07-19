@@ -289,17 +289,6 @@ def runtime_flow_summary_statement(
     return statement.order_by(FlowModel.updated_at.desc(), TaskModel.task_id.desc())
 
 
-def _filter_runtime_flow_status(
-    statement: Select[tuple[TaskModel, FlowModel, DispatchTurnModel]],
-    status: str,
-) -> Select[tuple[TaskModel, FlowModel, DispatchTurnModel]]:
-    if status == "any":
-        return statement
-    if status == "pending":
-        return statement.where(false())
-    return statement.where(FlowModel.status == status)
-
-
 async def read_latest_dispatch_id(
     session: AsyncSession,
     flow: FlowModel,
@@ -373,6 +362,17 @@ def coerce_datetime_to_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+
+
+def _filter_runtime_flow_status(
+    statement: Select[tuple[TaskModel, FlowModel, DispatchTurnModel]],
+    status: str,
+) -> Select[tuple[TaskModel, FlowModel, DispatchTurnModel]]:
+    if status == "any":
+        return statement
+    if status == "pending":
+        return statement.where(false())
+    return statement.where(FlowModel.status == status)
 
 
 def _optional_utc(value: datetime | None) -> datetime | None:

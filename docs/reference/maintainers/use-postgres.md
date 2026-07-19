@@ -1,52 +1,27 @@
-# Use Postgres on the DB-backed lane
+# Use PostgreSQL
 
-This page defines the stronger DB-backed verification and concurrency lane for the shipped AutoClaw package.
+Install AutoClaw with the `postgres` extra, then configure a dedicated non-system schema:
 
-## Package path
-
-Primary package path:
-
-```bash
-pipx install "autoclaw[postgres]"
+```toml
+[database]
+url = "postgresql+asyncpg://autoclaw:secret@127.0.0.1:5432/autoclaw"
+postgres_schema = "autoclaw"
 ```
 
-Secondary package path:
+Initialize or verify the exact schema:
 
 ```bash
-uv tool install "autoclaw[postgres]"
+autoclaw init
+autoclaw db upgrade
+autoclaw serve
 ```
 
-## Runtime configuration
+`db upgrade` does not migrate an incompatible database. Use destructive reset only when the configured schema is exclusively owned by AutoClaw and its data may be deleted.
 
-Set the exact DB environment variable:
-
-```bash
-AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@127.0.0.1:5432/autoclaw
-```
-
-## Product procedure
-
-1. Install the Postgres extra
-2. Set `AUTOCLAW_DATABASE_URL`
-3. Run onboarding: `autoclaw onboard`
-4. Run migrations: `autoclaw db upgrade`
-5. Confirm health: `autoclaw doctor`
-6. Verify the OpenClaw integration side without writing: `autoclaw openclaw check`
-7. If you did not install the managed service during onboarding, install it now: `autoclaw service install`
-8. Start the managed service: `autoclaw service start`
-
-`autoclaw init` remains available as a low-level AutoClaw-local bootstrap primitive for automation, tests, and package smoke. `autoclaw serve` remains available as a foreground debug runner and as the process a service manager may execute.
-
-## Strong verification lane
-
-Use the stronger Docker-backed verification path:
+Repository verification is self-contained:
 
 ```bash
 make test-api-db
 ```
 
-`make docker-up` and `make docker-down` remain optional manual development-stack commands. They are not required for the self-contained DB-backed proof lane.
-
-## Lane rule
-
-Postgres + Docker is the stronger verification lane and the required release proof path for DB-backed behavior.
+The test lane uses the isolated `postgres-test` service and `infra/testing/api/Dockerfile`, then removes its containers and volumes. It is not a production deployment image or a reset procedure for an existing database.

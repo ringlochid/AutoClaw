@@ -354,10 +354,17 @@ class PromptWorkflowNeighbor(PromptContract):
     assignment_id: PromptIdentifier | None = None
 
 
+class RuntimeReadbackRefs(PromptContract):
+    instructions: PromptLogicalPath
+    input: PromptLogicalPath
+    workflow_manifest: PromptLogicalPath
+
+
 class PromptContext(PromptContract):
     capabilities: EffectiveCapabilitySet
     allowed_actions: tuple[PromptIdentifier, ...]
     workflow_neighborhood: tuple[PromptWorkflowNeighbor, ...] = ()
+    readback_refs: RuntimeReadbackRefs
     refs: tuple[PromptLogicalRef, ...] = ()
     checkpoint_to_resume_from: PromptLogicalRef | None = None
     constraints: tuple[PromptText, ...] = ()
@@ -469,6 +476,7 @@ __all__ = [
     "PromptWorkflowNeighbor",
     "RenderedDispatchRequest",
     "RootStartTrigger",
+    "RuntimeReadbackRefs",
     "SemanticRetryTrigger",
     "WatchdogRecoveryTrigger",
     "prompt_family_for_node_kind",

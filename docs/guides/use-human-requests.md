@@ -1,63 +1,16 @@
 # Use human requests
 
-Use human requests when a node needs human judgment before it can safely continue.
+Use a human request when the task needs human judgment that current evidence cannot supply.
 
-Human requests are policy-granted capabilities. They are not a generic way to keep chatting with the operator.
+Choose the narrowest kind:
 
-## Use a human request when
+- `direction` for a route choice
+- `approval` before an action that needs permission
+- `input` for a missing fact
+- `review` for a human quality gate
 
-- the next direction depends on human judgment
-- explicit approval is required before continuing
-- required input is missing from available evidence
-- human review is part of the workflow's closure path
-- an unresolved risk decision cannot be settled from current artifacts
+The node's policy must allow that kind. Opening the request commits an explicit wait and returns promptly. The request deadline is managed asynchronously. Resolving the current request commits its terminal state; an after-commit handler then opens the next dispatch when the task is still eligible.
 
-## Choose the request kind
+Resolve requests through the console, operator HTTP, or operator MCP surface. Do not reply in an unrelated provider chat or edit a generated file.
 
-- `direction`: ask which path to take next
-- `approval`: ask whether to proceed with a specific action
-- `input`: ask for facts the node cannot discover from current context
-- `review`: ask for human review of evidence or output
-
-## Avoid human requests when
-
-- the node already has enough evidence to proceed
-- the request is only a status update
-- the workflow should block honestly instead
-- the issue is a long command that should use command-run capability
-- a parent/root should route the ambiguity to research, review, verification, failure analysis, or replan
-
-## Author the policy gate
-
-Grant only the kinds this node actually needs:
-
-```yaml
-capabilities:
-    human_request:
-        mode: allow
-        allowed_kinds:
-            - direction
-            - approval
-    command_run: deny
-```
-
-Keep the policy instruction specific about when the node may ask:
-
-```yaml
-instruction: >-
-  Ask for approval only before externally visible action. Ask for direction only when current evidence leaves multiple valid routes with different risk.
-```
-
-Do not bundle human-request and command-run capability by default. A node can have human request only, command run only, both, or neither.
-
-## Operator follow-up
-
-Operators inspect and resolve pending requests through the control or operator surfaces. After resolution, the controller resumes the waiting task path from runtime truth.
-
-## Related pages
-
-- [Capability model](../concepts/capability-model.md)
-- [Operator model](../concepts/operator-model.md)
-- [Write a policy](write-a-policy.md)
-- [Handle ambiguity and incidents](handle-ambiguity-and-incidents.md)
-- [Inspect and control a task](inspect-and-control-a-task.md)
+See [capability model](../concepts/capability-model.md).

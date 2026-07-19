@@ -1,153 +1,45 @@
-# Runtime read models and operator surfaces
+# Runtime reads and operator surfaces
 
-This page defines the current read-model and operator-query surfaces for task runtime inspection, operator summary, trace drilldown, and task-scoped observability.
+Use current controller reads to answer what a task is doing now. Use task events or the trace to explain how it got there. Generated files and provider output are support evidence only.
 
-Operator here means a trusted runtime-steering principal, not a callback caller and not the controller itself.
+## HTTP and MCP parity
 
-## Keywords
+The HTTP control domain and operator MCP use the same runtime services. Equivalent reads and mutations must enforce the same task identity, current revisions, and state legality.
 
-- current runtime list
-- operator snapshot
-- operator trace
-- control task event reads
-- control human-request reads
-- control command-run reads
-- observability file refs
-- dispatch history
-- current paths
+Operator MCP is mounted at `/operator/mcp` and exposes these tools:
 
-## Current runtime and operator read surfaces
+- definitions: `search_definitions`, `get_definition`, `list_definition_versions`, `upload_definition`
+- launch: `start_task`
+- current reads: `list_runtime_tasks`, `get_runtime_task`, `get_operator_snapshot`, `get_operator_trace`
+- chronology: `get_task_events`
+- human requests: `get_human_requests`, `resolve_human_request`
+- command runs: `get_command_runs`, `get_command_run`, `get_command_run_log`, `cancel_command_run`
+- controls: `pause_task`, `continue_task`, `cancel_task`
 
-Current read surfaces are:
+Definition draft authoring remains on the HTTP `/authoring` routes.
 
-- runtime task list
-- runtime task read
-- operator snapshot
-- operator trace
-- observability file refs
+## Read order
 
-Current routes are:
+1. Read `get_runtime_task` for task status and fresh control revisions.
+2. Read `get_operator_snapshot` for the current actionable view.
+3. Read human requests or command runs when the task is waiting on one.
+4. Read `get_operator_trace` or `get_task_events` only when chronology matters.
 
-- `GET /runtime/tasks`
-- `GET /runtime/tasks/{task_id}`
-- `GET /operator/tasks/{task_id}/snapshot`
-- `GET /operator/tasks/{task_id}/trace`
-- `GET /control/tasks/{task_id}`
-- `GET /control/tasks/{task_id}/snapshot`
-- `GET /control/tasks/{task_id}/trace`
-- `GET /control/tasks/{task_id}/events`
-- `GET /control/tasks/{task_id}/events/stream`
-- `GET /control/tasks/{task_id}/human-requests`
-- `GET /control/tasks/{task_id}/command-runs`
-- `GET /observability/tasks/{task_id}/delivery-state`
-- `GET /observability/tasks/{task_id}/continuity-state`
-- `GET /observability/tasks/{task_id}/watchdog-state`
-- `GET /observability/tasks/{task_id}/provider-events`
+Do not use `continue_task` as a status check. It is a mutation for a paused flow and requires fresh `expected_active_flow_revision_id` and `expected_control_revision` values.
 
-## Current response shape facts
+## Chronology
 
-Current runtime list/read responses include:
+Task events are ordered, bounded, controller-owned facts. Cursors are exclusive and task-bound. If a cursor can no longer resume, reread current state and restart the chronology instead of guessing across the gap.
 
-- task id, title, and summary
-- workflow key
-- flow status
-- active flow revision id
-- workflow manifest ref
-- current node key
-- active attempt id
-- updated timestamp
+Events do not contain provider output, managed MCP credentials, raw human answers, command logs, or in-memory wakeup state.
 
-Current operator snapshot returns:
+## Mutation timing
 
-- the runtime flow read
-- one or more top actionable items
-- `current_paths` readback refs for the current semantic task view
-- the workflow manifest is always included in `current_paths`
-- dispatch-scoped observability refs appear in `current_paths` only while a current open dispatch exists; these refs are readback aids only and do not define semantic currentness
+Operator responses report the controller transaction they committed. Independent work may continue after return:
 
-Current operator trace returns:
+- task start returns before root dispatch and provider start
+- human-request resolution commits the answer before successor opening
+- command cancellation returns at `cancellation_requested`, before process exit and terminalization
+- pause and cancel do not wait for provider shutdown
 
-- active-flow graph nodes from the committed node tree
-- dependency edges from declared producer-to-consumer flow edge rows only
-- dispatch history
-- checkpoint history
-- boundary history
-- `current_paths` readback refs for the current semantic task view
-- the workflow manifest is always included in `current_paths`
-- dispatch-scoped observability refs appear in `current_paths` only while a current open dispatch exists; these refs are readback aids only and do not define semantic currentness
-- cursor pagination
-
-Current operator trace supports:
-
-- `scope=current|whole`
-- `q`
-- `cursor`
-- `limit`
-- `sort=occurred_at_desc|occurred_at_asc`
-
-Current control command-run reads return compact controller-owned command-run truth for `GET /control/tasks/{task_id}/command-runs`, including run id, state, command, description, workdir, timestamps, timeout, latest or terminal summary, exit code, signal, and log ref. Full logs are not inlined into the read model.
-
-## Current task-event streaming coverage
-
-Current `/control/tasks/{task_id}/events` and `/control/tasks/{task_id}/events/stream` are real reads over persisted `task_events` rows.
-
-Current implemented append coverage is limited to:
-
-- human-request opened and terminal events
-- command-run started, progress, cancel-requested, and terminal events
-- task pause, resume, and cancel events
-
-The current enum vocabulary also includes `task_started`, `dispatch_opened`, `checkpoint_recorded`, `boundary_accepted`, `child_assignment_staged`, and `child_assignment_committed`. Those names are not enough to make the current stream carry those runtime facts.
-
-Provider-event source rows and provider-resolution provenance are observability or dispatch context, not control task-event rows. The control event API and UI timeline must not expose provider-event-normalized or provider-resolution rows.
-
-Current `record_checkpoint`, `accept_boundary`, `assign_child`, and structural replan or adoption paths persist controller-owned rows and projections, but they do not append task-event rows today.
-
-Rules:
-
-- UI timelines may render those facts from trace or readback as current-state context, but not as live SSE chronology unless a persisted task event exists
-- support files and generated projections must not be parsed to synthesize missing task-event stream rows
-- a future streaming implementation should add append sites and payload schemas before the UI treats checkpoint, boundary, child-assignment, or structural-revision cards as stream-backed
-
-## Current observability rule
-
-Current observability endpoints do not return assembled runtime truth directly. They return file refs to task-scoped generated projections under:
-
-- `_runtime/dispatch/<dispatch_id>/delivery-state.json`
-- `_runtime/dispatch/<dispatch_id>/continuity-state.json`
-- `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
-- `_runtime/dispatch/<dispatch_id>/provider-events.ndjson`
-
-If a task has no current open dispatch, observability lookup falls back to the most recently rendered dispatch for that task.
-
-That fallback is limited to the task-scoped `/observability/...` file-ref routes. Operator snapshot and trace `current_paths` do not reuse the latest rendered dispatch when there is no current open dispatch; in that state they surface only semantic-current readback refs such as the workflow manifest.
-
-Those observability support refs may therefore diverge from semantic currentness such as `current_node_key` or the next resumable attempt. They remain operator/readback aids only.
-
-These GET surfaces are pure rereads. They resolve task-directory path bindings, reference the current manifest/dispatch files if present, and do not `mkdir()` or rematerialize deleted projections inline.
-
-## Current read-model rule
-
-Read models are not runtime truth. They are assembled views over controller-owned runtime records and generated task-directory projections.
-
-That means:
-
-- runtime list/read is a convenience surface, not the authority
-- operator snapshot is a summary surface, not the authority
-- operator trace is a drilldown surface, not the authority
-- operator trace graph rows are a read-model projection of controller-owned flow-node and flow-edge rows
-- console graph rendering uses structural flow-node parentage; dependency rows stay out of the main canvas by default
-- boundary history, previous/next node fields, and dispatch order are chronology facts and must not be reinterpreted as graph edges
-- control event, human-request, and command-run reads are convenience surfaces over controller-owned task events and source rows
-- observability file refs point at generated projections, not the authority
-
-## Current gaps versus older docs
-
-Current code does not ship the older per-flow operator drilldown, internal runtime-slice/timeline/audit style reads, legacy bundle reads, or legacy registry snapshot/validation routes anymore.
-
-Current code also does not expose a dedicated manifest-ack query surface or the older bundle-read contract.
-
-## Related pages
-
-- [API route families and lane map](../api/api-surface-and-route-map.md)
-- [OpenClaw integration boundary](openclaw-integration-boundary.md)
+There is no provider-output or provider-drain completion contract.

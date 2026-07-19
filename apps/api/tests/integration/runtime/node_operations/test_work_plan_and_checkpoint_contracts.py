@@ -9,7 +9,7 @@ from autoclaw.runtime.contracts import CheckpointHandoffRead
 from autoclaw.runtime.node_operations import NodeOperationScope
 from autoclaw.runtime.work_plan import SetWorkPlanRequest
 from pydantic import ValidationError
-from tests.integration.runtime.node_operations.executor_support import seeded_executor
+from tests.helpers.executor_harness import seeded_executor
 
 
 def test_work_plan_contract_enforces_exact_bounded_meaningful_text() -> None:

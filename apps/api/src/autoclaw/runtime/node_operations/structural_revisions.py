@@ -74,6 +74,61 @@ async def adopt_structural_revision(
     _require_expected_revision(authority, request)
     await _require_no_decision(session, authority)
     source_revision, source_rows = await _load_source_revision(session, authority)
+    candidate, target_node_key, cause = await _prepare_structural_candidate(
+        session,
+        authority,
+        operation_name=operation_name,
+        request=request,
+        source_rows=source_rows,
+    )
+    next_revision_id = flow_revision_id(
+        authority.flow_id,
+        source_revision.revision_index + 1,
+    )
+    follow_on = CommittedNodeOperationFollowOn(
+        projection_signals=_build_structural_projection_signals(
+            authority=authority,
+            next_revision_id=next_revision_id,
+            candidate=candidate,
+        ),
+    )
+    await _persist_structural_revision(
+        session,
+        authority,
+        source_revision=source_revision,
+        source_rows=source_rows,
+        next_revision_id=next_revision_id,
+        cause=cause,
+        candidate=candidate,
+    )
+    await _append_structural_revision_event(
+        session,
+        authority,
+        operation_name=operation_name,
+        next_revision_id=next_revision_id,
+        target_node_key=target_node_key,
+        cause=cause,
+    )
+    await session.commit()
+    response = await _success_result(
+        session,
+        authority,
+        operation_name=operation_name,
+        cause=cause,
+        target_node_key=target_node_key,
+        next_revision_id=next_revision_id,
+    )
+    return CommittedNodeOperationResult(response=response, follow_on=follow_on)
+
+
+async def _prepare_structural_candidate(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    *,
+    operation_name: NodeOperationName,
+    request: BaseModel,
+    source_rows: list[FlowNodeModel],
+) -> tuple[StructuralRevisionCandidate, str, str]:
     try:
         loaded_nodes = load_structural_nodes(source_rows)
         previous_criteria = criteria_history(loaded_nodes)
@@ -103,23 +158,20 @@ async def adopt_structural_revision(
         raise _candidate_failure(exc) from exc
     validate_open_work_preserved(source_candidate, candidate, open_work)
     await validate_candidate_definition_references(session, candidate)
+    return candidate, target_node_key, cause
 
-    next_revision_id = flow_revision_id(
-        authority.flow_id,
-        source_revision.revision_index + 1,
-    )
-    follow_on = CommittedNodeOperationFollowOn(
-        projection_signals=_build_structural_projection_signals(
-            authority=authority,
-            next_revision_id=next_revision_id,
-            candidate=candidate,
-        ),
-    )
-    await _adopt_candidate_head(
-        session,
-        authority,
-        next_revision_id=next_revision_id,
-    )
+
+async def _persist_structural_revision(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    *,
+    source_revision: FlowRevisionModel,
+    source_rows: list[FlowNodeModel],
+    next_revision_id: str,
+    cause: str,
+    candidate: StructuralRevisionCandidate,
+) -> None:
+    await _adopt_candidate_head(session, authority, next_revision_id=next_revision_id)
     await _stage_revision_rows(
         session,
         authority,
@@ -135,6 +187,17 @@ async def adopt_structural_revision(
         next_revision_id=next_revision_id,
         candidate=candidate,
     )
+
+
+async def _append_structural_revision_event(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    *,
+    operation_name: NodeOperationName,
+    next_revision_id: str,
+    target_node_key: str,
+    cause: str,
+) -> None:
     await append_task_event(
         session,
         task_id=authority.task_id,
@@ -153,16 +216,6 @@ async def adopt_structural_revision(
             "adopted_by_dispatch_id": authority.dispatch_id,
         },
     )
-    await session.commit()
-    response = await _success_result(
-        session,
-        authority,
-        operation_name=operation_name,
-        cause=cause,
-        target_node_key=target_node_key,
-        next_revision_id=next_revision_id,
-    )
-    return CommittedNodeOperationResult(response=response, follow_on=follow_on)
 
 
 def _build_structural_projection_signals(

@@ -1,41 +1,15 @@
 # Distribution and database support matrix
 
-This page defines the supported v1 distribution and database matrix.
+| Surface | Shipped support |
+| --- | --- |
+| Python | 3.12 or newer |
+| Artifacts | Wheel and source distribution from the root `pyproject.toml` |
+| Default database | SQLite through `aiosqlite` |
+| Optional database | PostgreSQL through the `postgres` extra and an explicit URL |
+| Managed service | Linux `systemd --user` |
+| Foreground service | `autoclaw serve` |
+| Browser | Packaged same-origin console; real-backend Playwright proof is repository-only |
 
-## Shipped package paths
+The repository editable install is a development path. A release must also pass an installed-wheel check outside the checkout.
 
-- PyPI wheel/sdist
-- `pipx install autoclaw`
-- `uv tool install autoclaw`
-
-## Shipped DB lanes
-
-- SQLite local-first smoke lane
-- Postgres lane via `pipx install "autoclaw[postgres]"` plus a real `AUTOCLAW_DATABASE_URL`
-- Postgres lane via `uv tool install "autoclaw[postgres]"` plus a real `AUTOCLAW_DATABASE_URL`
-
-## Service-manager support
-
-- Linux with `systemd --user`: shipped v1 managed-service path
-- intended Linux distros: Ubuntu, Debian, Fedora, Arch, and similar systemd user-service hosts with Python 3.12
-- macOS `launchd`: not yet shipped as v1 parity
-- Windows Scheduled Task: not yet shipped as v1 parity
-- macOS and Windows foreground path: `autoclaw serve`
-
-Repo-native editable checkout is a contributor/dev path, not part of the public distribution matrix.
-
-## Required strong verification lane
-
-- `make test-api-db`
-
-Optional manual development stack commands remain available when you want a long-lived local Postgres container:
-
-- `make docker-up`
-- `make docker-down`
-
-## Not currently supported
-
-- standalone binaries
-- npm shim package
-- Homebrew or other convenience installer
-- native macOS or Windows managed-service parity
+Standalone binaries, npm wrappers, Homebrew packages, and native macOS or Windows service management are not shipped support.

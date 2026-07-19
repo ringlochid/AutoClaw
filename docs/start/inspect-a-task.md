@@ -1,84 +1,42 @@
 # Inspect a task
 
-After a task starts, inspect the console task detail page first. Use generated files and operator read surfaces when you need exact evidence or diagnostics.
+Start with controller-owned state. Generated files help people and agents read that state, but they do not replace it.
 
-## Console
+## Use the console
 
-Find the port:
+Open `http://127.0.0.1:18125/` and select the task. The task page shows current state, the workflow graph, waits, controls, and event chronology.
+
+## Use operator readbacks
+
+The operator HTTP and MCP surfaces can read:
+
+- current runtime task state
+- operator snapshot and trace
+- task events
+- pending human requests
+- command runs and logs
+
+Use the [operator reference](../reference/operator/README.md) for exact tools and routes.
+
+## Read task files
+
+Find the data directory with:
 
 ```bash
 autoclaw config show --json
 ```
 
-Open:
-
-```text
-http://127.0.0.1:<server.port>/tasks/<task_id>
-```
-
-The task detail page shows the current node, execution graph, and event stream. A successful first research task publishes the `research_brief` artifact from `workspace/research_brief.md`.
-
-![Example first-task research brief result](../assets/first-task-result.png)
-
-## Task directory
-
-`autoclaw config show --json` also prints `paths.data_dir`. Per-task directories live under:
-
-```text
-<data_dir>/tasks/<task_id>/
-```
-
-For the first research task, check the task-owned workspace file at:
-
-```text
-<data_dir>/tasks/<task_id>/workspace/research_brief.md
-```
-
-On Linux with defaults:
-
-```text
-~/.local/share/autoclaw/tasks/<task_id>/workspace/research_brief.md
-```
-
-## Generated task files
-
-AutoClaw materializes these files under the task directory:
+Each task has a task root under `<data_dir>/tasks/<task_id>/`. Useful projections include:
 
 - `_runtime/workflow-manifest.md`
 - `_runtime/attempts/<attempt_id>/assignment.md`
 - `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
 - `outputs/artifacts/`
 
-The workflow manifest explains the current workflow shape. The assignment file shows the current node mission. The latest checkpoint records durable progress or terminal handoff. `outputs/artifacts/` holds published outputs.
+The controller materializes these files after authoritative commits. Support files do not control provider start. The exact `instructions.md` and `input.md` pair referenced by a dispatch is different: it must exist before that dispatch can start. If a support file and a current controller readback disagree, trust the controller.
 
-## What to check
+## Read events correctly
 
-- the task used the workflow you expected
-- the current assignment has explicit scope and evidence requirements
-- the assigned node published the outputs the workflow declared
-- the latest checkpoint matches the work that actually happened
-- artifacts and surfaced evidence are consistent with runtime state
-- any wait is a real human request or command run, not an absence of output
+Task events explain chronology. They are not the current-state model. Read the task, snapshot, human-request, or command-run source row when you need current truth.
 
-## Observability-only files
-
-Dispatch-local support files can help debug transport and recovery, but they are not ordinary task truth:
-
-- `_runtime/dispatch/<dispatch_id>/delivery-state.json`
-- `_runtime/dispatch/<dispatch_id>/continuity-state.json`
-- `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
-
-Use them after reading generated task evidence and operator readbacks.
-
-## Operator read surfaces
-
-Use the operator reference when you need controller readbacks beyond generated files:
-
-- [Runtime read models and operator surfaces](../reference/operator/runtime-read-models-and-operator-surfaces.md)
-- [Inspect approvals and watchdog state](../reference/operator/inspect-approvals-and-watchdog.md)
-
-For the concept behind these files and read models, see the [runtime model](../concepts/runtime-model.md).
-
-## Next step
-
-If the seeded topic-research workflow makes sense, continue by writing your own [role](../guides/write-a-role.md), [policy](../guides/write-a-policy.md), or [workflow](../guides/write-a-workflow.md).
+Next, read [inspect and control a task](../guides/inspect-and-control-a-task.md).

@@ -21,7 +21,7 @@ from autoclaw.runtime.node_operations.contracts import AddChildRequest, NodeOper
 from autoclaw.runtime.node_operations.structural_revisions import adopt_structural_revision
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.integration.runtime.node_operations.executor_support import (
+from tests.helpers.executor_harness import (
     synchronized_transition_claims,
 )
 from tests.integration.runtime.node_operations.structural_revision_fixture import (

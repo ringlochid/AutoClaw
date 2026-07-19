@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,8 @@ name = "autoclaw"
 version = "0.1.5"
 description = "Local-first orchestration tool for delegated AI work"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
   { name = "Leo Zhang", email = "yzha0012@uni.sydney.edu.au" },
 ]
@@ -15,9 +16,6 @@ maintainers = [
   { name = "Leo Zhang", email = "yzha0012@uni.sydney.edu.au" },
 ]
 requires-python = ">=3.12"
-classifiers = [
-  "License :: OSI Approved :: MIT License",
-]
 dependencies = [
   "click>=8.1.6,<9.0.0",
   "rich>=13.7.1,<14.0.0",

@@ -38,76 +38,16 @@ async def commit_checkpoint_preparation(
 ) -> None:
     _validate_preparation(authority, preparation)
     now = utc_now()
-    body = preparation.body
-    evidence: dict[str, object] = {
-        "next_step": body.handoff.next_step,
-        "blockers": list(body.handoff.blockers),
-        "risks": list(body.handoff.risks),
-    }
+    evidence = _checkpoint_evidence(preparation)
     try:
-        await _insert_checkpoint(session, authority, preparation, evidence=evidence, now=now)
-        for artifact in preparation.artifacts:
-            await _insert_artifact_publication(
-                session,
-                authority,
-                preparation,
-                artifact,
-                now=now,
-            )
-            await _advance_artifact_pointer(
-                session,
-                authority,
-                preparation,
-                artifact,
-                now=now,
-            )
-        await _insert_transient_localizations(
+        await _persist_checkpoint_rows(
             session,
             authority,
             preparation,
+            evidence=evidence,
             now=now,
         )
-        await _advance_attempt_latest_checkpoint(session, authority, preparation)
-        await append_task_event(
-            session,
-            task_id=authority.task_id,
-            event_type=TaskEventType.CHECKPOINT_RECORDED,
-            event_source=TaskEventSource.NODE,
-            occurred_at=now,
-            flow_revision_id=authority.flow_revision_id,
-            dispatch_id=authority.dispatch_id,
-            attempt_id=authority.attempt_id,
-            node_key=authority.node_key,
-            payload={
-                "checkpoint_id": preparation.checkpoint_id,
-                "assignment_id": authority.assignment_id,
-                "attempt_id": authority.attempt_id,
-                "checkpoint_kind": body.checkpoint_kind.value,
-                "outcome": body.outcome.value if body.outcome is not None else None,
-                "summary": body.handoff.summary,
-                "checkpoint_ref": (
-                    f"_runtime/attempts/{authority.attempt_id}/latest-checkpoint.md"
-                ),
-                "produced_artifacts": [
-                    {
-                        "publication_id": artifact.artifact_publication_id,
-                        "slot": artifact.slot,
-                        "path": artifact.final_logical_path,
-                        "version": artifact.version,
-                    }
-                    for artifact in preparation.artifacts
-                ],
-                "transient_surfaces": [
-                    {
-                        "localization_id": transient.transient_localization_id,
-                        "path": transient.final_logical_path,
-                        "description": transient.description,
-                    }
-                    for transient in preparation.transients
-                ],
-                "authored_by_dispatch_id": authority.dispatch_id,
-            },
-        )
+        await _append_checkpoint_recorded_event(session, authority, preparation, occurred_at=now)
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
@@ -119,6 +59,91 @@ async def commit_checkpoint_preparation(
     except RuntimeOperationError:
         await session.rollback()
         raise
+
+
+def _checkpoint_evidence(preparation: CheckpointPreparation) -> dict[str, object]:
+    handoff = preparation.body.handoff
+    return {
+        "next_step": handoff.next_step,
+        "blockers": list(handoff.blockers),
+        "risks": list(handoff.risks),
+    }
+
+
+async def _persist_checkpoint_rows(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    preparation: CheckpointPreparation,
+    *,
+    evidence: dict[str, object],
+    now: datetime,
+) -> None:
+    await _insert_checkpoint(session, authority, preparation, evidence=evidence, now=now)
+    for artifact in preparation.artifacts:
+        await _insert_artifact_publication(
+            session,
+            authority,
+            preparation,
+            artifact,
+            now=now,
+        )
+        await _advance_artifact_pointer(
+            session,
+            authority,
+            preparation,
+            artifact,
+            now=now,
+        )
+    await _insert_transient_localizations(session, authority, preparation, now=now)
+    await _advance_attempt_latest_checkpoint(session, authority, preparation)
+
+
+async def _append_checkpoint_recorded_event(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+    preparation: CheckpointPreparation,
+    *,
+    occurred_at: datetime,
+) -> None:
+    body = preparation.body
+    await append_task_event(
+        session,
+        task_id=authority.task_id,
+        event_type=TaskEventType.CHECKPOINT_RECORDED,
+        event_source=TaskEventSource.NODE,
+        occurred_at=occurred_at,
+        flow_revision_id=authority.flow_revision_id,
+        dispatch_id=authority.dispatch_id,
+        attempt_id=authority.attempt_id,
+        node_key=authority.node_key,
+        payload={
+            "checkpoint_id": preparation.checkpoint_id,
+            "assignment_id": authority.assignment_id,
+            "attempt_id": authority.attempt_id,
+            "checkpoint_kind": body.checkpoint_kind.value,
+            "outcome": body.outcome.value if body.outcome is not None else None,
+            "summary": body.handoff.summary,
+            "checkpoint_ref": f"_runtime/attempts/{authority.attempt_id}/latest-checkpoint.md",
+            "produced_artifacts": [
+                {
+                    "publication_id": artifact.artifact_publication_id,
+                    "slot": artifact.slot,
+                    "path": artifact.final_logical_path,
+                    "version": artifact.version,
+                }
+                for artifact in preparation.artifacts
+            ],
+            "transient_surfaces": [
+                {
+                    "localization_id": transient.transient_localization_id,
+                    "path": transient.final_logical_path,
+                    "description": transient.description,
+                }
+                for transient in preparation.transients
+            ],
+            "authored_by_dispatch_id": authority.dispatch_id,
+        },
+    )
 
 
 async def _insert_checkpoint(

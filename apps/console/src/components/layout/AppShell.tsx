@@ -405,7 +405,7 @@ function getShellContext(pathname: string): ShellContext {
         };
     }
 
-    if (segments[0] === "fixtures") {
+    if (import.meta.env.DEV && segments[0] === "fixtures") {
         return {
             breadcrumbs: [{ label: "Fixtures" }],
             status: { label: "Internal", tone: "success" },

@@ -27,7 +27,7 @@ from autoclaw.runtime.post_commit.publisher import CapturedRuntimeEffectPublishe
 from autoclaw.runtime.post_commit.signals import BoundaryAccepted
 from pydantic import ValidationError
 from sqlalchemy import select
-from tests.integration.runtime.node_operations.executor_support import seeded_executor
+from tests.helpers.executor_harness import seeded_executor
 
 
 async def test_record_checkpoint_persists_exact_source_and_keeps_dispatch_open(

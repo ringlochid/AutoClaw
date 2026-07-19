@@ -7,9 +7,10 @@ kind: workflow
 id: mvp-build
 description: Validate a real product pain and charter before planning, building, reviewing, and verifying one thin MVP story.
 root:
-    id: root
-    role: root_planning_lead
-    policy: standard-root
+    node_key: root
+    kind: root
+    role_id: root_planning_lead
+    policy_id: standard-root
     description: Preserve MVP purpose and close only when charter, delivery, and validation evidence prove one real differentiated story.
     instruction: >-
       Keep the workflow waterfall-gated. Do not allow delivery planning before an authorized charter exists. Treat weak pain evidence, solved opponent gaps, or an undifferentiated story as blockers rather than reasons to build anyway.
@@ -22,9 +23,10 @@ root:
               - runnable MVP evidence demonstrates the story's advantage and uniqueness over current alternatives
               - unresolved real-pain, differentiation, feasibility, coverage, or demo-story risk blocks closure
     children:
-        - id: charter_phase
-          role: planning_lead
-          policy: standard-parent
+        - node_key: charter_phase
+          kind: parent
+          role_id: planning_lead
+          policy_id: standard-parent
           description: Coordinate proposal construction, charter validation, refinement loops, and charter authorization before any delivery planning.
           instruction: >-
             Run proposal work before validation. If validation finds fixable gaps, assign proposal_build again with the exact missing evidence or story corrections. If research cannot prove real pain, an unsolved opponent gap, and a credible differentiated story, return blocked instead of advancing to delivery.
@@ -39,9 +41,10 @@ root:
               criteria:
                   - charter_phase_criteria
           children:
-              - id: proposal_build
-                role: planning_lead
-                policy: standard-parent
+              - node_key: proposal_build
+                kind: parent
+                role_id: planning_lead
+                policy_id: standard-parent
                 description: Build or refine the MVP charter proposal from product discovery, opponent gaps, and core story evidence.
                 instruction: >-
                   Gather evidence first, then shape the proposal. Do not write an implementation plan. Preserve rejected opportunities, source limits, and disconfirming evidence so validation can judge the idea honestly.
@@ -53,9 +56,10 @@ root:
                           - proposal states the core product story, why current alternatives fail, the better wedge, included MVP scope, excluded scope, and proof path
                           - proposal does not contain a delivery plan or implementation schedule
                 children:
-                    - id: product_discovery_research
-                      role: product_discovery_researcher
-                      policy: standard-worker
+                    - node_key: product_discovery_research
+                      kind: worker
+                      role_id: product_discovery_researcher
+                      policy_id: standard-worker
                       description: Research real user pain, current workarounds, alternatives, communities, and disconfirming evidence.
                       instruction: >-
                         Search broadly across credible public and task-provided sources. Prefer real complaints, repeated community patterns, review-site pain, forum threads, support issues, and current workaround evidence over opinions about the idea.
@@ -71,9 +75,10 @@ root:
                               - slot: product_discovery_report
                                 file_hint: product_discovery_report.md
                                 description: Source-grounded real-pain, workaround, alternative, community, and confidence evidence.
-                    - id: opponent_gap_research
-                      role: product_discovery_researcher
-                      policy: standard-worker
+                    - node_key: opponent_gap_research
+                      kind: worker
+                      role_id: product_discovery_researcher
+                      policy_id: standard-worker
                       description: Research why current alternatives fail and where a narrow MVP could be meaningfully better.
                       instruction: >-
                         Compare current alternatives by workflow, audience, pricing, positioning, review complaints, missing jobs, and switching friction. Look for a narrow wedge, not a generic claim that the MVP is better.
@@ -85,9 +90,10 @@ root:
                               - slot: opponent_gap_report
                                 file_hint: opponent_gap_report.md
                                 description: Opponent and workaround gap analysis with differentiated opportunity signals.
-                    - id: core_story_scope_proposal
-                      role: product_story_strategist
-                      policy: standard-worker
+                    - node_key: core_story_scope_proposal
+                      kind: worker
+                      role_id: product_story_strategist
+                      policy_id: standard-worker
                       description: Convert discovery and opponent-gap evidence into a charter proposal with core story and scope boundaries.
                       instruction: >-
                         Write a marketing-aware but evidence-bound product story. Tie target user, painful job, current alternatives, better wedge, demo proof path, included scope, and excluded scope into one charter proposal.
@@ -103,9 +109,10 @@ root:
                               - slot: mvp_charter_proposal
                                 file_hint: mvp_charter_proposal.md
                                 description: MVP charter proposal covering real pain, opponent gap, core story, proof path, included scope, and excluded scope.
-              - id: charter_validation
-                role: planning_lead
-                policy: standard-parent-human-request
+              - node_key: charter_validation
+                kind: parent
+                role_id: planning_lead
+                policy_id: standard-parent-human-request
                 description: Validate the MVP charter proposal and authorize only a scope that passes real-pain, positioning, feasibility, and boundary checks.
                 instruction: >-
                   Review before authorization. If validation gaps are fixable, return the exact critique to charter_phase for another proposal_build pass. If the evidence cannot prove real pain, an unsolved gap, and a differentiated story, return blocked. Use human requests only for material direction, approval, input, or review that cannot be settled from evidence.
@@ -128,9 +135,10 @@ root:
                     criteria:
                         - charter_validation_criteria
                 children:
-                    - id: pain_evidence_review
-                      role: product_reviewer
-                      policy: standard-worker
+                    - node_key: pain_evidence_review
+                      kind: worker
+                      role_id: product_reviewer
+                      policy_id: standard-worker
                       description: Review whether the proposal proves real target-user pain from evidence rather than assumption.
                       instruction: >-
                         Judge source quality, repeated pain patterns, current behaviors, workaround cost, and disconfirming evidence. Do not approve guessed demand.
@@ -143,9 +151,10 @@ root:
                               - slot: pain_evidence_review
                                 file_hint: pain_evidence_review.md
                                 description: Pass, fail, or gap review of real-pain evidence.
-                    - id: story_positioning_review
-                      role: marketing_strategist
-                      policy: standard-worker
+                    - node_key: story_positioning_review
+                      kind: worker
+                      role_id: marketing_strategist
+                      policy_id: standard-worker
                       description: Review whether the product story is differentiated, marketing-aware, and grounded in opponent gaps.
                       instruction: >-
                         Judge the story against current alternatives, audience language, competitor complaints, proof points, and positioning risk. Reject generic better/faster/cheaper claims without evidence.
@@ -158,9 +167,10 @@ root:
                               - slot: story_positioning_review
                                 file_hint: story_positioning_review.md
                                 description: Positioning, differentiation, opponent-gap, and story-risk review.
-                    - id: feasibility_scope_review
-                      role: scope_reviewer
-                      policy: standard-worker
+                    - node_key: feasibility_scope_review
+                      kind: worker
+                      role_id: scope_reviewer
+                      policy_id: standard-worker
                       description: Review whether the proposed included and excluded scope can prove the story without expanding into a full product.
                       instruction: >-
                         Check scope boundaries, feasibility, demo proof path, hidden dependencies, acceptance criteria, and whether the story can be shown by a thin MVP slice.
@@ -176,9 +186,10 @@ root:
                               - slot: feasibility_scope_review
                                 file_hint: feasibility_scope_review.md
                                 description: Feasibility, scope-boundary, and proof-path review for the MVP charter.
-                    - id: authorize_charter
-                      role: product_reviewer
-                      policy: standard-worker-human-request
+                    - node_key: authorize_charter
+                      kind: worker
+                      role_id: product_reviewer
+                      policy_id: standard-worker-human-request
                       description: Authorize the validated MVP charter or report the exact blocker that prevents authorization.
                       instruction: >-
                         Authorize only if pain, story, positioning, feasibility, and scope reviews pass. Ask for human approval or direction only when evidence leaves a material product decision unresolved. If the proposal cannot pass, publish blocker evidence instead of authorizing.
@@ -195,9 +206,10 @@ root:
                               - slot: authorized_charter
                                 file_hint: authorized_charter.md
                                 description: Authorized MVP charter with final story, included scope, excluded scope, proof path, and unresolved risks.
-        - id: delivery_phase
-          role: planning_lead
-          policy: standard-parent
+        - node_key: delivery_phase
+          kind: parent
+          role_id: planning_lead
+          policy_id: standard-parent
           description: Coordinate post-charter waterfall planning, setup, implementation, review, verification, and story validation.
           instruction: >-
             Start only from the authorized charter. Enforce waterfall order: plan, review plan coverage, setup contract, implement one scope, review, verify, then validate story advantage. If the plan cannot cover the charter or the built slice cannot demonstrate advantage, route correction or return blocked.
@@ -216,9 +228,10 @@ root:
               criteria:
                   - delivery_phase_criteria
           children:
-              - id: waterfall_plan
-                role: planning_lead
-                policy: standard-parent
+              - node_key: waterfall_plan
+                kind: parent
+                role_id: planning_lead
+                policy_id: standard-parent
                 description: Produce, review, and contract the delivery plan before implementation starts.
                 instruction: >-
                   Convert the authorized charter into a strict waterfall delivery plan. Review coverage before setup. Do not assign implementation until the plan and setup contract prove the demo story can run and show the intended advantage.
@@ -233,9 +246,10 @@ root:
                           - plan names the demo path, validation commands, acceptance checks, dependencies, setup needs, and risk gates
                           - review confirms the plan can demonstrate uniqueness and advantage over current alternatives
                 children:
-                    - id: project_plan
-                      role: project_manager
-                      policy: standard-worker
+                    - node_key: project_plan
+                      kind: worker
+                      role_id: project_manager
+                      policy_id: standard-worker
                       description: Convert the authorized charter into a waterfall delivery plan with demo path, dependencies, acceptance checks, and risk gates.
                       instruction: >-
                         Plan only from the authorized charter. Produce sequencing, prerequisites, one-scope implementation boundary, review and verification gates, demo path, and excluded scope.
@@ -247,9 +261,10 @@ root:
                               - slot: waterfall_delivery_plan
                                 file_hint: waterfall_delivery_plan.md
                                 description: Waterfall delivery plan tied to the authorized charter and runnable demo story.
-                    - id: plan_coverage_review
-                      role: scope_reviewer
-                      policy: standard-worker
+                    - node_key: plan_coverage_review
+                      kind: worker
+                      role_id: scope_reviewer
+                      policy_id: standard-worker
                       description: Review the delivery plan for charter coverage, demo proof, scope control, and validation readiness.
                       instruction: >-
                         Verify that the plan covers the authorized story without overbuilding. Reject plans that cannot run the story, prove the advantage, or preserve excluded scope.
@@ -264,9 +279,10 @@ root:
                               - slot: plan_coverage_review
                                 file_hint: plan_coverage_review.md
                                 description: Coverage and proof-path review for the waterfall delivery plan.
-                    - id: setup_contract
-                      role: project_manager
-                      policy: standard-worker
+                    - node_key: setup_contract
+                      kind: worker
+                      role_id: project_manager
+                      policy_id: standard-worker
                       description: Publish the concrete setup and implementation contract required before build work starts.
                       instruction: >-
                         Define workspace assumptions, commands, files or areas to inspect, implementation boundary, acceptance checks, validation route, and handoff requirements for the first scope.
@@ -282,9 +298,10 @@ root:
                               - slot: setup_contract
                                 file_hint: setup_contract.md
                                 description: Concrete setup, implementation boundary, commands, checks, and handoff contract for the MVP slice.
-              - id: implementation
-                role: planning_lead
-                policy: standard-parent
+              - node_key: implementation
+                kind: parent
+                role_id: planning_lead
+                policy_id: standard-parent
                 description: Coordinate implementation, review, and verification for the one authorized MVP scope.
                 instruction: >-
                   Assign one implementation scope at a time. Inspect child evidence before routing the next step. Do not parallelize shared code or widen beyond the setup contract.
@@ -303,9 +320,10 @@ root:
                     criteria:
                         - implementation_subtree_criteria
                 children:
-                    - id: implement_one_scope
-                      role: engineer
-                      policy: standard-worker
+                    - node_key: implement_one_scope
+                      kind: worker
+                      role_id: engineer
+                      policy_id: standard-worker
                       description: Implement one bounded MVP scope from the authorized charter and setup contract.
                       instruction: >-
                         Read the authorized charter, delivery plan, plan review, and setup contract before editing. Keep the patch thin and publish residual risks instead of widening scope.
@@ -320,9 +338,10 @@ root:
                               - slot: scope_patch
                                 file_hint: scope_patch.diff
                                 description: Patch for the one authorized MVP implementation scope.
-                    - id: review_scope
-                      role: code_reviewer
-                      policy: standard-worker
+                    - node_key: review_scope
+                      kind: worker
+                      role_id: code_reviewer
+                      policy_id: standard-worker
                       description: Review the MVP scope patch against charter, setup contract, correctness, and scope boundaries.
                       instruction: >-
                         Focus on correctness, regression risk, missing tests, implementation fit, and whether the patch stayed inside the authorized MVP scope.
@@ -338,9 +357,10 @@ root:
                               - slot: scope_review
                                 file_hint: scope_review.md
                                 description: Code review findings for the MVP scope patch.
-                    - id: verify_scope
-                      role: test_verifier
-                      policy: standard-worker-command-run
+                    - node_key: verify_scope
+                      kind: worker
+                      role_id: test_verifier
+                      policy_id: standard-worker-command-run
                       description: Verify the MVP scope behavior, acceptance checks, and runnable demo path.
                       instruction: >-
                         Verify the smallest evidence set that proves accepted behavior and demo readiness. Use command runs only for long or log-heavy checks.
@@ -357,9 +377,10 @@ root:
                               - slot: scope_verification_report
                                 file_hint: scope_verification_report.md
                                 description: Verification evidence for accepted MVP behavior and demo readiness.
-              - id: validate_story_advantage
-                role: product_reviewer
-                policy: standard-worker-human-request
+              - node_key: validate_story_advantage
+                kind: worker
+                role_id: product_reviewer
+                policy_id: standard-worker-human-request
                 description: Validate that the built MVP slice can run the authorized story and demonstrate real advantage over current alternatives.
                 instruction: >-
                   Judge the runnable story against the authorized charter, opponent gap, delivery plan, patch, review, and verification evidence. Treat weak uniqueness, unproven advantage, or failed demo path as a blocker. Ask for human review only when the evidence leaves a material product judgment unresolved.
@@ -379,9 +400,10 @@ root:
                         - slot: story_advantage_validation
                           file_hint: story_advantage_validation.md
                           description: Product validation that the runnable MVP story demonstrates the intended advantage and uniqueness.
-        - id: release_closure
-          role: release_operator
-          policy: standard-worker
+        - node_key: release_closure
+          kind: worker
+          role_id: release_operator
+          policy_id: standard-worker
           description: Close the MVP build from authorized charter, delivery, review, verification, and story-validation evidence.
           instruction: >-
             Use only surfaced MVP evidence and release criteria. Do not reopen research, planning, or implementation. Report release gaps or blockers instead of converting weak evidence into success.

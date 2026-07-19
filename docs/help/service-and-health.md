@@ -1,96 +1,29 @@
 # Service and health problems
 
-Use this page when the API process, managed service, `/healthz`, or `/readyz` fails.
+`/healthz` proves the process is answering. `/readyz` also checks controller database readiness.
 
-## Supported service lane
-
-The shipped v1 managed-service path is Linux with `systemd --user`.
-
-Ubuntu, Debian, Fedora, Arch, and similar systemd user-service hosts are the intended lane when Python 3.12 is available. macOS `launchd` and Windows Scheduled Task parity are not shipped v1 support. Use `autoclaw serve` as the foreground fallback for local host proof and debugging.
-
-## `autoclaw service install` fails
-
-Check:
-
-```bash
-autoclaw openclaw check --json
-autoclaw service render
-```
-
-Likely causes:
-
-- OpenClaw support preflight is blocked
-- the selected API port is already in use
-- Linux `systemd --user` is not available
-- the user service unit or env-file path is not writable
-
-Fix:
-
-- fix the OpenClaw support check first
-- choose a free API port with `--port`
-- use `autoclaw serve` on hosts without shipped service-manager support
-
-## `autoclaw service start` or `restart` fails
-
-Check:
-
-```bash
-autoclaw service status --json
-autoclaw openclaw check --json
-```
-
-If the service was never installed, run:
-
-```bash
-autoclaw service install
-```
-
-If the foreground path works but the service path fails, inspect the managed service unit and environment:
-
-```bash
-autoclaw service render
-```
-
-## `/healthz` fails
-
-`/healthz` proves the API process is answering.
-
-Check:
-
-```bash
-autoclaw service status
-curl http://127.0.0.1:18125/healthz
-```
-
-If no managed service is running, prove the foreground path:
+## Check the foreground path
 
 ```bash
 autoclaw serve
 ```
 
-## `/readyz` fails
-
-`/readyz` performs a database readiness check.
-
-Check:
+In another shell:
 
 ```bash
-curl http://127.0.0.1:18125/readyz
-autoclaw doctor --json
-autoclaw db upgrade
+curl -sS http://127.0.0.1:18125/healthz
+curl -sS http://127.0.0.1:18125/readyz
 ```
 
-Likely causes:
+If this works, the application and active config are usable.
 
-- database URL is wrong
-- database server is unavailable
-- schema has not been created or upgraded
-- Postgres driver is missing because the package was installed without `autoclaw[postgres]`
+## Check the managed service
 
-Continue with [Postgres and database problems](postgres-and-database.md) when the failure is DB-backed.
+```bash
+autoclaw service status --json
+autoclaw service render
+```
 
-## Related pages
+The managed service lane uses a Linux user service. Confirm the unit uses the same config, data directory, database URL, and port as your shell. Use `autoclaw service install` only when the service has not been installed.
 
-- [Verify an install and runtime](../reference/cli/verify-current-install-and-runtime.md)
-- [Install and start AutoClaw locally](../reference/cli/install-and-start-local.md)
-- [Distribution and database support matrix](../reference/maintainers/distribution-and-database-support-matrix.md)
+If health succeeds and readiness fails, continue with [Postgres and database problems](postgres-and-database.md).

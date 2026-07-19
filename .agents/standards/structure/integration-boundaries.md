@@ -59,7 +59,8 @@ It must not become a second runtime, registry, support-state reader, or API cont
 Rules:
 
 - generate TypeScript API types from the FastAPI OpenAPI schema and fail drift before relying on changed payloads
-- keep one API client responsible for base URL resolution, `X-AutoClaw-API-Key`, request headers, query construction, JSON parsing, and error envelopes
+- keep one API client responsible for base URL resolution, request headers, query construction, JSON parsing, and error envelopes
+- keep local admission in the API boundary: direct loopback peer, exact loopback `Host`, and exact allowed `Origin` for unsafe browser requests; do not add a browser API key, cookie, or session authority beside it
 - keep one SSE client responsible for task event stream URLs, cursor resume, `Last-Event-ID` handling when used, backfill handoff, dedupe, and reset behavior
 - keep runtime task list reads on `GET /runtime/tasks` until a real `/control/tasks` list route exists
 - keep selected task, snapshot, trace, events, human requests, and command runs on `/control/tasks/{task_id}/*`

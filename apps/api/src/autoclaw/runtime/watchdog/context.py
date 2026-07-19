@@ -33,7 +33,7 @@ from autoclaw.runtime.dispatch.ordinary_context import (
 from autoclaw.runtime.dispatch.preparation import DispatchOpeningDependencies
 from autoclaw.runtime.post_commit import WatchdogDue
 from autoclaw.runtime.providers import (
-    apply_provider_capability_ceiling,
+    narrow_provider_capabilities,
     provider_selection_from_kind,
     resolve_provider_route,
 )
@@ -52,6 +52,12 @@ class WatchdogRecoverySnapshot:
     same_attempt_replacement_count: int
 
 
+@dataclass(frozen=True, slots=True)
+class _WatchdogRecoveryCandidate:
+    context: OrdinaryRuntimeContext
+    authoritative_due_at: datetime
+
+
 async def read_watchdog_recovery_snapshot(
     session: AsyncSession,
     *,
@@ -63,6 +69,64 @@ async def read_watchdog_recovery_snapshot(
 ) -> WatchdogRecoverySnapshot | None:
     """Read the exact stale dispatch and only the rows needed to render its D2."""
 
+    candidate = await _read_watchdog_recovery_candidate(
+        session,
+        signal=signal,
+        now=now,
+        inactivity_timeout_seconds=inactivity_timeout_seconds,
+    )
+    if candidate is None:
+        return None
+    context = candidate.context
+    source = context.source_dispatch
+    assert source.adapter_started_at is not None
+    if await dispatch_owns_external_source(session, dispatch_id=source.dispatch_id):
+        return None
+
+    replacement_count = await _read_same_attempt_replacement_count(
+        session,
+        source_dispatch=source,
+    )
+    dispatch = await _build_watchdog_replacement_dispatch(
+        session,
+        context=context,
+        candidate_dispatch_id=candidate_dispatch_id,
+        replacement_count=replacement_count,
+        dependencies=dependencies,
+    )
+    return WatchdogRecoverySnapshot(
+        dispatch=dispatch,
+        adapter_started_at=source.adapter_started_at,
+        last_node_activity_at=source.last_node_activity_at,
+        activity_revision=source.node_activity_revision,
+        authoritative_due_at=candidate.authoritative_due_at,
+        same_attempt_replacement_count=replacement_count,
+    )
+
+
+async def dispatch_owns_external_source(
+    session: AsyncSession,
+    *,
+    dispatch_id: str,
+) -> bool:
+    """Return whether any human or command source remains bound to a dispatch."""
+
+    owned_source = await session.scalar(
+        select(
+            exists().where(HumanRequestModel.source_dispatch_id == dispatch_id)
+            | exists().where(CommandRunModel.source_dispatch_id == dispatch_id)
+        )
+    )
+    return bool(owned_source)
+
+
+async def _read_watchdog_recovery_candidate(
+    session: AsyncSession,
+    *,
+    signal: WatchdogDue,
+    now: datetime,
+    inactivity_timeout_seconds: int,
+) -> _WatchdogRecoveryCandidate | None:
     context = await _read_watchdog_runtime_context(session, signal.dispatch_id)
     if context is None or not _context_is_plausible(context, signal=signal):
         return None
@@ -75,22 +139,39 @@ async def read_watchdog_recovery_snapshot(
     )
     if due_at != _as_utc(signal.due_at) or _as_utc(now) < due_at:
         return None
-    if await dispatch_owns_external_source(session, dispatch_id=source.dispatch_id):
-        return None
-
-    replacement_count = int(
-        await session.scalar(
-            select(func.count())
-            .select_from(DispatchTurnModel)
-            .where(
-                DispatchTurnModel.flow_id == source.flow_id,
-                DispatchTurnModel.assignment_id == source.assignment_id,
-                DispatchTurnModel.attempt_id == source.attempt_id,
-                DispatchTurnModel.opened_reason == "watchdog_recovery",
-            )
-        )
-        or 0
+    return _WatchdogRecoveryCandidate(
+        context=context,
+        authoritative_due_at=due_at,
     )
+
+
+async def _read_same_attempt_replacement_count(
+    session: AsyncSession,
+    *,
+    source_dispatch: DispatchTurnModel,
+) -> int:
+    count = await session.scalar(
+        select(func.count())
+        .select_from(DispatchTurnModel)
+        .where(
+            DispatchTurnModel.flow_id == source_dispatch.flow_id,
+            DispatchTurnModel.assignment_id == source_dispatch.assignment_id,
+            DispatchTurnModel.attempt_id == source_dispatch.attempt_id,
+            DispatchTurnModel.opened_reason == "watchdog_recovery",
+        )
+    )
+    return int(count or 0)
+
+
+async def _build_watchdog_replacement_dispatch(
+    session: AsyncSession,
+    *,
+    context: OrdinaryRuntimeContext,
+    candidate_dispatch_id: str,
+    replacement_count: int,
+    dependencies: DispatchOpeningDependencies,
+) -> OrdinaryDispatchSnapshot:
+    source = context.source_dispatch
     workflow = await read_pinned_workflow_revision(session, context.compiled_plan)
     children = await read_current_child_nodes(session, context)
     work_plan = await read_assignment_work_plan(
@@ -103,7 +184,7 @@ async def read_watchdog_recovery_snapshot(
         settings=dependencies.settings,
         available_adapter_kinds=dependencies.available_adapter_kinds,
     )
-    capabilities = apply_provider_capability_ceiling(
+    capabilities = narrow_provider_capabilities(
         route=provider.route,
         capabilities=capabilities,
     )
@@ -149,30 +230,7 @@ async def read_watchdog_recovery_snapshot(
         capabilities=capabilities,
         paths=paths,
     )
-    return WatchdogRecoverySnapshot(
-        dispatch=dispatch,
-        adapter_started_at=source.adapter_started_at,
-        last_node_activity_at=source.last_node_activity_at,
-        activity_revision=source.node_activity_revision,
-        authoritative_due_at=due_at,
-        same_attempt_replacement_count=replacement_count,
-    )
-
-
-async def dispatch_owns_external_source(
-    session: AsyncSession,
-    *,
-    dispatch_id: str,
-) -> bool:
-    """Return whether any human or command source remains bound to a dispatch."""
-
-    owned_source = await session.scalar(
-        select(
-            exists().where(HumanRequestModel.source_dispatch_id == dispatch_id)
-            | exists().where(CommandRunModel.source_dispatch_id == dispatch_id)
-        )
-    )
-    return bool(owned_source)
+    return dispatch
 
 
 async def _read_watchdog_runtime_context(

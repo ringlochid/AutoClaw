@@ -1,82 +1,21 @@
-# Current API route families and lane map
+# Current API surface and route map
 
 Status: Current
 
-Last verified: 2026-06-28
+Last verified: 2026-07-19
 
-This page owns the exact current HTTP route families, mounted surface nouns, and auth grouping for the shipped FastAPI tree.
+AutoClaw ships one loopback FastAPI application with HTTP, same-origin console, operator MCP, and Node MCP surfaces.
 
-For operator-role meaning and lane authority, see `api-trust-lanes.md`.
+## Local admission
 
-## Ownership rule
+Network requests must come directly from loopback and use one exact configured loopback Host authority. Unsafe browser requests and preflight requests must use an exact allowed Origin. CORS does not allow credentials.
 
-Use this page for current path families, route nouns, and auth split.
+There is no global API key and no provider callback route. The packaged console receives only `apiBaseUrl` from `GET /console/config`; the response is `no-store`.
 
-Use `api-trust-lanes.md` for caller authority and the difference between operator, callback, node-tool, and controller roles.
-
-## Current route families
-
-Current router families are:
-
-- `health`
-- `web_console`
-- `definitions`
-- `authoring`
-- `tasks`
-- `runtime`
-- `operator`
-- `control`
-- `callback`
-- `observability`
-
-The split is implemented in `apps/api/src/autoclaw/interfaces/http/router.py`.
-
-Mounted MCP app surfaces are enabled separately in `apps/api/src/autoclaw/main.py`:
-
-- `/operator` mounted operator MCP app when MCP mounts are enabled
-- `/node/mcp` mounted static node MCP app when MCP mounts are enabled
-
-## Current health routes
-
-Unauthenticated health routes are:
+## Health and definitions
 
 - `GET /healthz`
 - `GET /readyz`
-
-`/readyz` performs a DB ping before returning ready.
-
-## Current packaged web console routes
-
-When packaged console assets are available, the web-console router serves the browser shell on the API origin. These routes are not part of generated OpenAPI.
-
-Current routes are:
-
-- `GET /console/config`
-- `GET /`
-- `GET /tasks`
-- `GET /tasks/{console_path:path}`
-- `GET /definitions`
-- `GET /definitions/{console_path:path}`
-- `GET /task-start`
-- `GET /fixtures`
-- `GET /app-icon.png`
-- `GET /site.webmanifest`
-- `GET /mockServiceWorker.js`
-- `GET /assets/*`
-
-`GET /console/config` returns the same-origin runtime config used by the packaged browser app:
-
-- `apiBaseUrl`
-- `apiKey`
-
-The route sets `Cache-Control: no-store` and does not return any other API key material.
-
-## Current definition and task-start routes
-
-The current definition and task-start HTTP subset is protected by `X-AutoClaw-API-Key` via `require_api_key`.
-
-Current routes are:
-
 - `GET /definitions/roles`
 - `GET /definitions/policies`
 - `GET /definitions/workflows`
@@ -85,38 +24,29 @@ Current routes are:
 - `POST /definitions`
 - `POST /tasks/start`
 
-Current authoring routes on the same trusted operator lane are:
+`/readyz` checks database connectivity. Definition list and history routes support their typed query contracts. Uploading a definition creates an immutable revision or returns the existing identical revision.
 
+## Authoring
+
+- `POST /authoring/task-compose/preview`
 - `GET /authoring/definition-drafts`
 - `POST /authoring/definition-drafts`
 - `GET /authoring/definitions/{kind}/{key}/draft`
 - `PUT /authoring/definitions/{kind}/{key}/draft`
 - `DELETE /authoring/definitions/{kind}/{key}/draft`
+- `POST /authoring/definitions/{kind}/{key}/draft/replace-current`
 - `POST /authoring/definitions/{kind}/{key}/draft/validate`
 - `POST /authoring/definitions/{kind}/{key}/draft/publish`
 
-Current query-backed route details include:
+Drafts are controller-managed authoring state. Preview validates a task compose request without reserving or starting a task.
 
-- `/definitions/roles|policies|workflows` support the shared definition list query contract
-- `/definitions/{kind}/{key}/versions` supports history paging and sort queries
-- `/authoring/definition-drafts` supports `cursor` and `limit`
-- `POST /definitions` returns `201 Created` for a new revision and `200 OK` for a no-op replay
-- `POST /tasks/start` waits for initial runtime effects before returning the task start readback
-
-## Current operator routes
-
-The runtime, operator, and observability HTTP subset is protected by `X-AutoClaw-API-Key` via `require_api_key`.
-
-Current operator-visible routes are:
+## Runtime and control
 
 - `GET /runtime/tasks`
-- `GET /runtime/tasks/{task_id}`
-- `POST /runtime/tasks/{task_id}/continue`
-- `POST /runtime/tasks/{task_id}/pause`
-- `POST /runtime/tasks/{task_id}/cancel`
-- `GET /operator/tasks/{task_id}/snapshot`
-- `GET /operator/tasks/{task_id}/trace`
 - `GET /control/tasks/{task_id}`
+- `POST /control/tasks/{task_id}/pause`
+- `POST /control/tasks/{task_id}/continue`
+- `POST /control/tasks/{task_id}/cancel`
 - `GET /control/tasks/{task_id}/snapshot`
 - `GET /control/tasks/{task_id}/trace`
 - `GET /control/tasks/{task_id}/human-requests`
@@ -127,167 +57,50 @@ Current operator-visible routes are:
 - `POST /control/tasks/{task_id}/command-runs/{run_id}/cancel`
 - `GET /control/tasks/{task_id}/events`
 - `GET /control/tasks/{task_id}/events/stream`
-- `GET /observability/tasks/{task_id}/delivery-state`
-- `GET /observability/tasks/{task_id}/continuity-state`
-- `GET /observability/tasks/{task_id}/watchdog-state`
-- `GET /observability/tasks/{task_id}/provider-events`
 
-Current query-backed route details include:
+Pause, continue, and cancel use expected flow and control revisions. The event stream is server-sent events and accepts either a cursor or `Last-Event-ID`.
 
-- `/runtime/tasks` supports `q`, `limit`, `cursor`, `sort`, and `status`
-- `/runtime/tasks/{task_id}/continue|pause|cancel` require `expected_active_flow_revision_id`
-- `/operator/tasks/{task_id}/trace` supports `scope`, `q`, `limit`, `cursor`, and `sort`
-- `/control/tasks/{task_id}/events` supports `cursor`, `limit`, and `through_event_id`
-- `/control/tasks/{task_id}/command-runs` supports `cursor` and `limit`
-- `/control/tasks/{task_id}/command-runs/{run_id}/log` returns bounded UTF-8 log text only when a controller-backed log ref currently exists for that run
-- `/control/tasks/{task_id}/command-runs/{run_id}/cancel` requests cancellation of the current active nonterminal command run without cancelling the whole task
+## Packaged console
 
-## Current mounted operator MCP surface
+The same-origin console serves:
 
-When MCP mounts are enabled, the current operator tool surface is mounted at `/operator/mcp`.
+- `GET /console/config`
+- `GET /`
+- `GET /tasks` and task subpaths
+- `GET /definitions` and definition subpaths
+- `GET /task-start`
+- packaged assets
 
-Current operator-MCP definition and draft inventory is:
+These shell routes are not part of generated OpenAPI.
 
-- `search_definitions`
-- `get_definition`
-- `list_definition_versions`
-- `upload_definition`
-- `start_task`
+## Operator MCP
 
-Current mounted-operator facts:
+The operator server is mounted at `/operator/mcp`. It exposes definition search, definition reads and uploads, task start and list, task readbacks and events, human-request resolution, command-run inspection and cancellation, and pause, continue, and cancel controls.
 
-- `search_definitions`, `get_definition`, and `list_definition_versions` are read-only registry truth tools
-- `upload_definition` and `start_task` load local files on the AutoClaw host and mutate controller-owned state
-- definition draft authoring stays on the trusted HTTP `/authoring` API rather than on operator MCP
+The exact tool names are `search_definitions`, `get_definition`, `list_definition_versions`, `upload_definition`, `start_task`, `list_runtime_tasks`, `get_runtime_task`, `get_operator_snapshot`, `get_operator_trace`, `get_task_events`, `get_human_requests`, `resolve_human_request`, `get_command_runs`, `get_command_run`, `get_command_run_log`, `cancel_command_run`, `pause_task`, `continue_task`, and `cancel_task`.
 
-## Current callback routes
+## Node MCP
 
-The callback lane requires the live `session_key` query parameter together with the route `task_id`.
+Both Node MCP surfaces use the same operation catalog and controller checks:
 
-Current callback routes are:
+- managed dispatches use `/_internal/node/mcp`; a short-lived bearer binding supplies task, dispatch, provider-start revision, and the maximum exposed tool set
+- compatibility providers use `/node/mcp`; every call supplies the full `task_id` and `dispatch_id`
 
-- `POST /callback/tasks/{task_id}/checkpoint`
-- `POST /callback/tasks/{task_id}/boundary`
-- `POST /callback/tasks/{task_id}/tools/{tool_name}`
+The executor always rereads current dispatch authority, state legality, role, and capabilities. The compatibility identifiers do not bypass those checks.
 
-Current tool names are:
+All node kinds may receive current context, contained file reads, work plans, checkpoints, boundary return, and policy-enabled human-request or command-run operations. Parent and root nodes may also receive definition search, definition read, child assignment and structural edits, and green release. Only the root may receive blocked release.
 
-- `assign_child`
-- `add_child`
-- `update_child`
-- `remove_child`
-- `release_green`
-- `release_blocked`
+The exact operation names are `get_current_context`, `list_files`, `read_file`, `set_work_plan`, `record_checkpoint`, `return_boundary`, `open_human_request`, `start_command_run`, `search_definitions`, `get_definition`, `assign_child`, `add_child`, `update_child`, `remove_child`, `release_green`, and `release_blocked`.
 
-Callback auth is runtime-bound, not operator-bound:
-
-- the route layer validates the session key against the current live `NodeSession` plus current dispatch, flow, assignment, and attempt truth
-- stale, revoked, inactive, or mismatched-task session usage is rejected
-- structural callback tool success for `add_child`, `update_child`, and `remove_child` means the stable `_runtime/workflow-manifest.*` reread path was refreshed through the control-side commit and rollback helpers before the final commit completed
-
-## Current mounted node MCP surface
-
-When MCP mounts are enabled, the current node-tool surface is mounted at `/node/mcp`.
-
-Current node-tool inventory is:
-
-- `search_definitions`
-- `get_definition`
-- `record_checkpoint`
-- `return_boundary`
-- `open_human_request`
-- `start_command_run`
-- `assign_child`
-- `add_child`
-- `update_child`
-- `remove_child`
-- `release_green`
-- `release_blocked`
-
-Current mounted-node facts:
-
-- every tool input schema requires explicit `session_key` and `task_id`
-- mounted node tools use the same shared authority path as callback HTTP writes
-- mounted node inventory stays separate from operator MCP inventory
-- mounted node tools now preserve the strict surfaced wrapper contracts:
-    - `assign_child`, `add_child`, `update_child`, and `remove_child` each take their own typed `payload` body, while `release_green` and `release_blocked` use only `expected_structural_revision_id?`
-    - `record_checkpoint`, `return_boundary`, and the split structural mutation tools return typed structured success bodies
-- current contrast remains that this mounted node-MCP surface is implementation truth only, not the design owner surface
-
-## Current route-shape facts
-
-Current shipped path families are:
-
-- `/console/config`
-- `/assets/*`
-- `/definitions/*`
-- `/tasks/*`
-- `/runtime/*`
-- `/operator/*`
-- `/control/*`
-- `/callback/*`
-- `/observability/*`
-- `/node/mcp`
-
-Current docs must treat these as implementation truth only. They are not the clean-break design surface.
-
-Current code does not ship the older legacy flow, approval, registry-internal, task-compose-start, or browser-bootstrap route families anymore.
-
-## Minimal example
-
-```text
-operator HTTP:
-  GET  /definitions/roles
-  POST /authoring/definition-drafts
-  POST /tasks/start
-  GET  /runtime/tasks
-  GET  /runtime/tasks/{task_id}
-  POST /runtime/tasks/{task_id}/pause?expected_active_flow_revision_id=...
-  GET  /operator/tasks/{task_id}/trace
-  GET  /control/tasks/{task_id}/command-runs
-  GET  /control/tasks/{task_id}/command-runs/{run_id}
-  GET  /control/tasks/{task_id}/command-runs/{run_id}/log
-  POST /control/tasks/{task_id}/command-runs/{run_id}/cancel
-  GET  /observability/tasks/{task_id}/delivery-state
-
-callback HTTP:
-  POST /callback/tasks/{task_id}/checkpoint
-  POST /callback/tasks/{task_id}/boundary
-  POST /callback/tasks/{task_id}/tools/assign_child
-
-mounted node MCP:
-  assign_child(session_key, task_id, payload, expected_structural_revision_id?)
-  start_command_run(session_key, task_id, request)
-```
+`get_current_context` currently returns the exact dispatch-request readback refs, the support-only workflow-manifest ref, and the live direct-child neighborhood from controller rows. Its `trigger` is still the bounded dispatch reason/source shape; the optional normalized `continuation` and `checkpoint_to_resume_from` fields are not yet populated by the shipped handler. The richer immutable dispatch input remains available through its committed `input` readback ref.
 
 ## Evidence
 
-- inspected code in `apps/api/src/autoclaw/interfaces/http/router.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/health.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/definitions.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/authoring.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/tasks.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/runtime.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/operator.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/control.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/callback.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/routers/observability.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/mcp/node/server.py`
-- inspected code in `apps/api/src/autoclaw/interfaces/http/dependencies.py`
-- inspected code in `apps/api/src/autoclaw/main.py`
-- inspected tests in `apps/api/tests/integration/runtime/routes/test_query_contract.py`
-- inspected tests in `apps/api/tests/integration/runtime/routes/test_surface_contract.py`
-- inspected tests in `apps/api/tests/integration/runtime/routes/test_command_run_control_api.py`
-- inspected tests in `apps/api/tests/integration/public_surfaces/test_definition_authoring_api.py`
-- inspected tests in `apps/api/tests/integration/mcp/node_server`
-- inspected tests in `apps/api/tests/integration/public_surfaces/test_public_http_subset.py`
-
-## Related current pages
-
-- `api-trust-lanes.md`
-- `../architecture/runtime-control-plane.md`
-- `../architecture/runtime-read-models-and-operator-surfaces.md`
-
-## Design pointer
-
-For the clean-break target lane map, see `../../../design/v1/interfaces/api-surface-and-trust-lane-map.md`.
+- `apps/api/src/autoclaw/interfaces/http/`
+- `apps/api/src/autoclaw/interfaces/web_console/`
+- `apps/api/src/autoclaw/interfaces/mcp/operator/`
+- `apps/api/src/autoclaw/interfaces/mcp/node/`
+- `apps/api/src/autoclaw/runtime/node_operations/catalog.py`
+- `apps/api/src/autoclaw/main.py`
+- `apps/api/tests/integration/public_surfaces/`
+- `apps/api/tests/integration/mcp/`

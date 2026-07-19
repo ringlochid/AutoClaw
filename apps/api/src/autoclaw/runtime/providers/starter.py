@@ -3,26 +3,16 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from pathlib import PurePosixPath
 
-from pydantic import SecretStr, ValidationError
-from sqlalchemy import exists, select, update
+from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.config import RuntimeSettings
-from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
 from autoclaw.definitions.contracts.workflow import ProviderKind
-from autoclaw.persistence.models import DispatchTurnModel, FlowModel
+from autoclaw.persistence.models import DispatchTurnModel
 from autoclaw.runtime.clock import utc_now
-from autoclaw.runtime.contracts import TaskEventSource, TaskEventType
-from autoclaw.runtime.contracts.provider_resolution import (
-    ClaudeProviderRoute,
-    CodexProviderRoute,
-    OpenClawProviderRoute,
-    ProviderRoute,
-)
 from autoclaw.runtime.dispatch.provider_start import (
     ProviderStartAcceptanceResult,
     ProviderStartCandidate,
@@ -34,7 +24,7 @@ from autoclaw.runtime.dispatch.provider_start import (
 )
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.node_mcp import DispatchMcpBinding, DispatchMcpBindingRegistry
-from autoclaw.runtime.node_operations import NodeOperationExecutor, NodeOperationScope
+from autoclaw.runtime.node_operations import NodeOperationExecutor
 from autoclaw.runtime.post_commit import (
     AsyncSessionContextFactory,
     DeadlineScheduler,
@@ -44,34 +34,24 @@ from autoclaw.runtime.post_commit import (
 )
 from autoclaw.runtime.providers.contracts import (
     DEFAULT_PROVIDER_STOP_TIMEOUT_SECONDS,
-    CompatibilityNodeMcpConnection,
-    DispatchStartRequest,
-    ManagedNodeMcpConnection,
     ProviderAdapter,
     ProviderStartError,
     ProviderStartErrorCode,
     ProviderStartFailureKind,
 )
 from autoclaw.runtime.providers.registry import ProviderAdapterRegistry
-from autoclaw.runtime.providers.resolution import validate_provider_execution_policy
-from autoclaw.runtime.task_events import append_task_event
-from autoclaw.runtime.task_root import (
-    read_logical_regular_file_bytes,
-    read_task_root_paths,
+from autoclaw.runtime.providers.request_preparation import (
+    PreparedProviderStart,
+    ProviderStartRequestBuilder,
 )
+from autoclaw.runtime.providers.transition_failure import pause_invalid_provider_start
 from autoclaw.runtime.watchdog import calculate_watchdog_due_at
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True, slots=True)
-class _PreparedProviderStart:
-    request: DispatchStartRequest
-    binding: DispatchMcpBinding | None
-
-
 class DispatchStarter:
-    """Handle one exact provider-start generation without provider observation."""
+    """Schedule or start one exact provider generation without observing output."""
 
     def __init__(
         self,
@@ -92,13 +72,16 @@ class DispatchStarter:
             raise ValueError("provider stop timeout must be positive")
         self._adapters = adapters
         self._binding_registry = binding_registry
-        self._operation_executor = operation_executor
+        self._request_builder = ProviderStartRequestBuilder(
+            binding_registry=binding_registry,
+            operation_executor=operation_executor,
+            managed_node_mcp_url=managed_node_mcp_url,
+            compatibility_node_mcp_url=compatibility_node_mcp_url,
+        )
         self._scheduler = scheduler
         self._runtime_effect_publisher = runtime_effect_publisher
         self._runtime_settings = runtime_settings.model_copy(deep=True)
         self._session_factory = session_factory
-        self._managed_node_mcp_url = managed_node_mcp_url
-        self._compatibility_node_mcp_url = compatibility_node_mcp_url
         self._clock = clock
         self._stop_timeout_seconds = stop_timeout_seconds
         self._in_flight_dispatches: set[str] = set()
@@ -108,7 +91,11 @@ class DispatchStarter:
         """Mark one startup-audit signal for conservative stop-and-retry."""
         self._recovered_start_signals.add(signal)
 
-    async def handle(self, session: AsyncSession, signal: DispatchStartDue) -> None:
+    async def schedule_or_start_dispatch(
+        self,
+        session: AsyncSession,
+        signal: DispatchStartDue,
+    ) -> None:
         """Schedule a future hint or process one due exact generation once."""
         if _as_utc(signal.due_at) > _as_utc(self._clock()):
             self._scheduler.register(signal)
@@ -121,7 +108,7 @@ class DispatchStarter:
             if signal in self._recovered_start_signals:
                 await self._handle_recovered_due(session, signal)
             else:
-                await self._handle_due(session, signal)
+                await self._start_due_dispatch(session, signal)
         finally:
             self._in_flight_dispatches.discard(signal.dispatch_id)
             self._recovered_start_signals.discard(signal)
@@ -131,30 +118,10 @@ class DispatchStarter:
         session: AsyncSession,
         signal: DispatchStartDue,
     ) -> None:
-        candidate = await read_provider_start_candidate(session, signal)
-        await session.rollback()
-        if candidate is None:
+        loaded = await self._read_candidate_and_adapter(session, signal)
+        if loaded is None:
             return
-        if candidate.provider_kind is None:
-            await _fail_invalid_request(
-                session,
-                signal=signal,
-                candidate=candidate,
-                failed_at=self._clock(),
-                failure_code="dispatch_provider_route_invalid",
-            )
-            return
-        try:
-            adapter = self._adapters.get(candidate.provider_kind)
-        except LookupError:
-            await _fail_invalid_request(
-                session,
-                signal=signal,
-                candidate=candidate,
-                failed_at=self._clock(),
-                failure_code="dispatch_provider_adapter_missing",
-            )
-            return
+        candidate, adapter = loaded
 
         if _is_initial_watchdog_recovery(candidate, signal):
             await self._stop_watchdog_predecessor(session, candidate)
@@ -169,35 +136,73 @@ class DispatchStarter:
             error_code=ProviderStartErrorCode.UNCERTAIN,
         )
 
-    async def _handle_due(self, session: AsyncSession, signal: DispatchStartDue) -> None:
+    async def _start_due_dispatch(
+        self,
+        session: AsyncSession,
+        signal: DispatchStartDue,
+    ) -> None:
+        loaded = await self._read_candidate_and_adapter(session, signal)
+        if loaded is None:
+            return
+        candidate, adapter = loaded
+        prepared = await self._prepare_request_or_pause(session, signal, candidate)
+        if prepared is None:
+            return
+
+        if _is_initial_watchdog_recovery(candidate, signal):
+            await self._stop_watchdog_predecessor(session, candidate)
+        await self._invoke_provider_start(
+            session,
+            signal=signal,
+            candidate=candidate,
+            adapter=adapter,
+            prepared=prepared,
+        )
+
+    async def _read_candidate_and_adapter(
+        self,
+        session: AsyncSession,
+        signal: DispatchStartDue,
+    ) -> tuple[ProviderStartCandidate, ProviderAdapter] | None:
         candidate = await read_provider_start_candidate(session, signal)
         await session.rollback()
         if candidate is None:
-            return
+            return None
 
         if candidate.provider_kind is None:
-            await _fail_invalid_request(
+            await pause_invalid_provider_start(
                 session,
                 signal=signal,
                 candidate=candidate,
                 failed_at=self._clock(),
                 failure_code="dispatch_provider_route_invalid",
             )
-            return
+            return None
         try:
             adapter = self._adapters.get(candidate.provider_kind)
         except LookupError:
-            await _fail_invalid_request(
+            await pause_invalid_provider_start(
                 session,
                 signal=signal,
                 candidate=candidate,
                 failed_at=self._clock(),
                 failure_code="dispatch_provider_adapter_missing",
             )
-            return
+            return None
+        return candidate, adapter
 
+    async def _prepare_request_or_pause(
+        self,
+        session: AsyncSession,
+        signal: DispatchStartDue,
+        candidate: ProviderStartCandidate,
+    ) -> PreparedProviderStart | None:
         try:
-            prepared = await self._prepare_request(session, signal, candidate)
+            return await self._request_builder.prepare_provider_start(
+                session,
+                signal,
+                candidate,
+            )
         except (
             RuntimeOperationError,
             ValidationError,
@@ -206,18 +211,24 @@ class DispatchStarter:
             ValueError,
         ) as exc:
             await session.rollback()
-            await _fail_invalid_request(
+            await pause_invalid_provider_start(
                 session,
                 signal=signal,
                 candidate=candidate,
                 failed_at=self._clock(),
                 failure_code=_controller_failure_code(exc),
             )
-            return
+            return None
 
-        if _is_initial_watchdog_recovery(candidate, signal):
-            await self._stop_watchdog_predecessor(session, candidate)
-
+    async def _invoke_provider_start(
+        self,
+        session: AsyncSession,
+        *,
+        signal: DispatchStartDue,
+        candidate: ProviderStartCandidate,
+        adapter: ProviderAdapter,
+        prepared: PreparedProviderStart,
+    ) -> None:
         if not await provider_start_is_current(
             session,
             signal=signal,
@@ -261,97 +272,6 @@ class DispatchStarter:
             candidate=candidate,
             adapter=adapter,
             binding=prepared.binding,
-        )
-
-    async def _prepare_request(
-        self,
-        session: AsyncSession,
-        signal: DispatchStartDue,
-        candidate: ProviderStartCandidate,
-    ) -> _PreparedProviderStart:
-        if (
-            candidate.instructions_logical_path is None
-            or candidate.input_logical_path is None
-            or candidate.provider_native_access is None
-            or candidate.network_access is None
-        ):
-            raise ValueError("current starting dispatch is missing request records")
-        _require_exact_request_refs(
-            signal.dispatch_id,
-            instructions_logical_path=candidate.instructions_logical_path,
-            input_logical_path=candidate.input_logical_path,
-        )
-
-        paths = await read_task_root_paths(session, candidate.task_id)
-        await session.rollback()
-        instructions = read_logical_regular_file_bytes(
-            paths,
-            candidate.instructions_logical_path,
-        )
-        input_bytes = read_logical_regular_file_bytes(paths, candidate.input_logical_path)
-        instructions.decode("utf-8")
-        input_bytes.decode("utf-8")
-
-        binding: DispatchMcpBinding | None = None
-        try:
-            route = _provider_route(candidate)
-            native_access = ProviderNativeAccess(candidate.provider_native_access)
-            network_access = NetworkAccess(candidate.network_access)
-            validate_provider_execution_policy(
-                route=route,
-                provider_native_access=native_access,
-                network_access=network_access,
-            )
-            managed_connection: ManagedNodeMcpConnection | None = None
-            compatibility_connection: CompatibilityNodeMcpConnection | None = None
-            if candidate.provider_kind is None:
-                raise ValueError("current starting dispatch has an invalid provider route")
-            if candidate.provider_kind in {ProviderKind.CODEX, ProviderKind.CLAUDE}:
-                descriptors = await self._operation_executor.list_operations(
-                    NodeOperationScope(
-                        task_id=candidate.task_id,
-                        dispatch_id=signal.dispatch_id,
-                        provider_start_revision=signal.provider_start_revision,
-                    )
-                )
-                operation_names = tuple(str(descriptor.name) for descriptor in descriptors)
-                issued = self._binding_registry.issue_binding(
-                    task_id=candidate.task_id,
-                    dispatch_id=signal.dispatch_id,
-                    provider_start_revision=signal.provider_start_revision,
-                    exposure_ceiling=operation_names,
-                )
-                binding = issued.binding
-                managed_connection = ManagedNodeMcpConnection(
-                    url=self._managed_node_mcp_url,
-                    bearer_token=SecretStr(issued.credential),
-                    enabled_tools=operation_names,
-                )
-            else:
-                compatibility_connection = CompatibilityNodeMcpConnection(
-                    url=self._compatibility_node_mcp_url
-                )
-
-            request = DispatchStartRequest(
-                task_id=candidate.task_id,
-                dispatch_id=signal.dispatch_id,
-                provider_start_revision=signal.provider_start_revision,
-                working_directory=paths.workspace_path,
-                instructions=instructions,
-                input=input_bytes,
-                provider_route=route,
-                provider_native_access=native_access,
-                network_access=network_access,
-                managed_node_mcp=managed_connection,
-                compatibility_node_mcp=compatibility_connection,
-            )
-        except Exception:
-            self._revoke(binding)
-            raise
-
-        return _PreparedProviderStart(
-            request=request,
-            binding=binding,
         )
 
     async def _stop_watchdog_predecessor(
@@ -507,43 +427,6 @@ class DispatchStarter:
             )
 
 
-def _provider_route(candidate: ProviderStartCandidate) -> ProviderRoute:
-    if candidate.provider_kind is None:
-        raise ValueError("current starting dispatch has an invalid provider route")
-    match candidate.provider_kind:
-        case ProviderKind.CODEX:
-            return CodexProviderRoute(
-                kind=ProviderKind.CODEX,
-                model_override=candidate.model_override,
-                effort_override=candidate.effort_override,
-            )
-        case ProviderKind.CLAUDE:
-            return ClaudeProviderRoute(
-                kind=ProviderKind.CLAUDE,
-                model_override=candidate.model_override,
-                effort_override=candidate.effort_override,
-            )
-        case ProviderKind.OPENCLAW:
-            return OpenClawProviderRoute(
-                kind=ProviderKind.OPENCLAW,
-                gateway_profile=candidate.gateway_profile or "",
-            )
-
-
-def _require_exact_request_refs(
-    dispatch_id: str,
-    *,
-    instructions_logical_path: str,
-    input_logical_path: str,
-) -> None:
-    expected_root = PurePosixPath("_runtime", "dispatch", dispatch_id)
-    if (
-        PurePosixPath(instructions_logical_path) != expected_root / "instructions.md"
-        or PurePosixPath(input_logical_path) != expected_root / "input.md"
-    ):
-        raise ValueError("dispatch request refs do not identify the exact dispatch pair")
-
-
 def _is_initial_watchdog_recovery(
     candidate: ProviderStartCandidate,
     signal: DispatchStartDue,
@@ -580,107 +463,6 @@ def _controller_failure_code(exc: Exception) -> str:
     if isinstance(value, str):
         return value
     return "dispatch_start_request_invalid"
-
-
-async def _fail_invalid_request(
-    session: AsyncSession,
-    *,
-    signal: DispatchStartDue,
-    candidate: ProviderStartCandidate,
-    failed_at: datetime,
-    failure_code: str,
-) -> bool:
-    """Pause only the exact still-current dispatch with invalid committed input."""
-    dispatch_id = await session.scalar(
-        update(DispatchTurnModel)
-        .where(
-            DispatchTurnModel.dispatch_id == signal.dispatch_id,
-            DispatchTurnModel.task_id == candidate.task_id,
-            DispatchTurnModel.flow_id == candidate.flow_id,
-            DispatchTurnModel.status == "starting",
-            DispatchTurnModel.provider_start_revision == signal.provider_start_revision,
-            DispatchTurnModel.provider_start_attempt_count
-            == candidate.provider_start_attempt_count,
-            DispatchTurnModel.next_provider_start_at == candidate.persisted_due_at,
-            exists().where(
-                FlowModel.flow_id == candidate.flow_id,
-                FlowModel.task_id == candidate.task_id,
-                FlowModel.status == "running",
-                FlowModel.current_dispatch_id == signal.dispatch_id,
-                FlowModel.waiting_cause == "none",
-                FlowModel.control_revision == candidate.flow_control_revision,
-            ),
-        )
-        .values(
-            status="closed",
-            closed_at=failed_at,
-            closed_reason="control_failed",
-            next_provider_start_at=None,
-            provider_start_retry_kind=None,
-            provider_start_last_error_code=None,
-        )
-        .returning(DispatchTurnModel.dispatch_id)
-    )
-    if dispatch_id is None:
-        await session.rollback()
-        return False
-
-    details = {
-        "source": "provider_start",
-        "source_dispatch_id": signal.dispatch_id,
-        "failure_code": failure_code,
-    }
-    flow_id = await session.scalar(
-        update(FlowModel)
-        .where(
-            FlowModel.flow_id == candidate.flow_id,
-            FlowModel.task_id == candidate.task_id,
-            FlowModel.status == "running",
-            FlowModel.active_flow_revision_id == candidate.flow_revision_id,
-            FlowModel.current_dispatch_id == signal.dispatch_id,
-            FlowModel.waiting_cause == "none",
-            FlowModel.control_revision == candidate.flow_control_revision,
-        )
-        .values(
-            status="paused",
-            current_dispatch_id=None,
-            pause_reason="runtime_transition_failed",
-            pause_details=details,
-            paused_at=failed_at,
-            paused_by_actor_ref="controller.runtime",
-            control_revision=FlowModel.control_revision + 1,
-            updated_at=failed_at,
-        )
-        .returning(FlowModel.flow_id)
-    )
-    if flow_id is None:
-        await session.rollback()
-        return False
-
-    await append_task_event(
-        session,
-        task_id=candidate.task_id,
-        event_type=TaskEventType.TASK_PAUSED,
-        event_source=TaskEventSource.CONTROLLER,
-        occurred_at=failed_at,
-        flow_revision_id=candidate.flow_revision_id,
-        dispatch_id=signal.dispatch_id,
-        attempt_id=candidate.attempt_id,
-        node_key=candidate.node_key,
-        actor_ref="controller.runtime",
-        payload={
-            "pause_reason": "runtime_transition_failed",
-            "control_revision": candidate.flow_control_revision + 1,
-            "actor_ref": "controller.runtime",
-            "summary": f"Provider start could not continue: {failure_code}.",
-        },
-    )
-    try:
-        await session.commit()
-    except Exception:
-        await session.rollback()
-        raise
-    return True
 
 
 def _as_utc(value: datetime) -> datetime:

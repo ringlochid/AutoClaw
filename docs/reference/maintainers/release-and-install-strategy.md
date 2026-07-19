@@ -1,128 +1,21 @@
 # Release and install strategy
 
-This page defines the supported v1 install and release posture.
-
-## Primary v1 path
-
-The primary v1 install path is:
-
-1. publish root package artifacts to PyPI
-2. install with `pipx`
-
-The root package remains the primary release artifact.
-
-## Secondary v1 tool-install path
-
-`uv` is a supported secondary install lane for the same published package artifacts.
-
-- default package: `uv tool install autoclaw`
-- Postgres package: `uv tool install "autoclaw[postgres]"`
-
-This does not replace the primary `pipx` story. It is an alternate tool-install path over the same PyPI package release.
-
-## Supported local install stories
-
-### Default local lane: `pipx`
+The root Python distribution is the release artifact. Build both wheel and source distribution from `pyproject.toml`:
 
 ```bash
-pipx install autoclaw
-autoclaw onboard --install-daemon
-autoclaw doctor
-autoclaw openclaw check
-autoclaw service status
+make package-build
 ```
 
-### Supported Postgres lane: `pipx`
+The wheel must contain the backend, definition seeds, prompt instruction assets, packaged console, and systemd user-service template. Verify it from a clean environment outside the repository without `PYTHONPATH`.
+
+For a built artifact, the Linux helper can install into a dedicated virtual environment and user service:
 
 ```bash
-pipx install "autoclaw[postgres]"
-export AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@127.0.0.1:5432/autoclaw
-autoclaw onboard --install-daemon
-autoclaw doctor
-autoclaw openclaw check
-autoclaw service status
+scripts/install-systemd-user.sh --wheel dist/autoclaw-*.whl --no-start
 ```
 
-### Default local lane: `uv`
+`--no-start` is the safe release-proof path. Starting a real user service is a separate operator action.
 
-```bash
-uv tool install autoclaw
-autoclaw onboard --install-daemon
-autoclaw doctor
-autoclaw openclaw check
-autoclaw service status
-```
+SQLite is included by default. PostgreSQL requires the `postgres` extra and an explicit database URL. Installing the extra does not select or create PostgreSQL automatically.
 
-### Supported Postgres lane: `uv`
-
-```bash
-uv tool install "autoclaw[postgres]"
-export AUTOCLAW_DATABASE_URL=postgresql+asyncpg://autoclaw:autoclaw@127.0.0.1:5432/autoclaw
-autoclaw onboard --install-daemon
-autoclaw doctor
-autoclaw openclaw check
-autoclaw service status
-```
-
-Installing `autoclaw[postgres]` only adds the async Postgres driver. Set `AUTOCLAW_DATABASE_URL` to a Postgres URL before onboarding if you actually want the runtime on Postgres instead of the default SQLite lane.
-
-Use the Postgres extra together with [Use Postgres](use-postgres.md).
-
-## Release architecture
-
-```mermaid
-flowchart TD
-    A["Git tag or release commit"] --> B["build root package artifacts"]
-    B --> C["publish PyPI wheel and sdist"]
-    C --> D["pipx primary install path"]
-    C --> E["uv secondary install path"]
-    B --> F["package bundled console, migrations, and service resources"]
-```
-
-Figure: v1 release truth is the packaged root Python distribution plus bundled runtime resources needed by the supported install path.
-
-## Support matrix boundary
-
-Shipped v1 support includes:
-
-- PyPI wheel and sdist
-- `pipx install autoclaw`
-- `pipx install "autoclaw[postgres]"`
-- `uv tool install autoclaw`
-- `uv tool install "autoclaw[postgres]"`
-- SQLite local-first smoke lane
-- Postgres plus Docker strong verification lane
-- guided first-run through `autoclaw onboard`
-- Linux with `systemd --user` managed service lifecycle through `autoclaw service install|start|stop|restart|status`
-
-Managed-service support boundary for v1:
-
-- Linux: `systemd --user` by default on systemd user-service hosts such as Ubuntu, Debian, Fedora, and Arch
-- macOS: not yet a shipped v1 parity lane
-- Windows: not yet a shipped v1 parity lane
-
-Windows and macOS service-manager support belong to later follow-on work and should not be taught as shipped v1 behavior.
-
-See [Distribution and database support matrix](distribution-and-database-support-matrix.md) for the supported matrix.
-
-## Not currently supported
-
-These are not part of the supported v1 install story:
-
-- standalone binaries
-- npm shim package
-- Homebrew or other convenience installer
-- repo-native editable install as the primary public onboarding story
-
-They must not be taught as supported v1 install paths until they gain explicit support and tests.
-
-## Release rule
-
-Publish only from the root packaging surface.
-
-Convenience channels, if added later, must wrap the primary release artifacts rather than becoming the source of truth.
-
-## Related contracts
-
-- [Distribution and database support matrix](distribution-and-database-support-matrix.md)
-- [Testing and release checklist](testing-and-release-checklist.md)
+Publish only immutable versioned artifacts from the root package surface.

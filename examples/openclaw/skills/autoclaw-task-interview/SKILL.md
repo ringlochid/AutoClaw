@@ -1,6 +1,6 @@
 ---
 name: "autoclaw-task-interview"
-description: "Deep intake interview for new AutoClaw work: confirm intent, scope, workflow shape, and the roots workspace/context path bindings before anything is drafted or launched. Use FIRST whenever the user asks to use AutoClaw to build, make, research, fix, plan, or run something (for example 'use autoclaw to build an MVP for me') and the scope, workflow shape, or target directories are not already confirmed. Not for operating tasks that are already running, and not for integrating AutoClaw into an app or developing AutoClaw internals."
+description: "Deep intake interview for new AutoClaw work: confirm intent, scope, workflow shape, and the workspace binding before anything is drafted or launched. Use FIRST whenever the user asks to use AutoClaw to build, make, research, fix, plan, or run something (for example 'use autoclaw to build an MVP for me') and the scope, workflow shape, or target directory is not already confirmed. Not for operating tasks that are already running, and not for integrating AutoClaw into an app or developing AutoClaw internals."
 ---
 
 # autoclaw-task-interview
@@ -63,15 +63,14 @@ Then confirm the loop shape:
 - long command work (builds, test suites, deploys over ~2 minutes) that needs a command-run-enabled lane
 - review gates strong enough to block weak output
 
-### 3. Task roots (workspace and context)
+### 3. Workspace binding
 
-`roots` is the task-compose dictionary of named filesystem bindings: `workspace` is where the task works, `context` is what the task reads. It is not the workflow `root` node. This binding decides whether AutoClaw touches real user files, so it is never guessable.
+`roots.workspace` says where the task works. It is not the workflow `root` node. This binding decides whether AutoClaw touches real user files, so it is never guessable.
 
-Confirm for each name:
+Confirm:
 
 - task-owned isolated default (`ensure_task_default`), or a real host directory
 - `ensure_host_path` when AutoClaw may create the host path, `use_existing_host` when it must already exist
-- for context: what supporting material exists, and where
 
 Rules:
 
@@ -93,7 +92,7 @@ End the interview by restating a short brief and getting one confirmation:
 
 - job sentence and deliverable
 - workflow: reuse key, adapt, or new — and the loop shape
-- roots plan: mode plus verified path for `workspace` and `context`
+- workspace plan: mode plus verified path when using a host directory
 - human decision points and command-run needs
 - authorized writes: draft only, upload definitions, or start now
 

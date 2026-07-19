@@ -27,7 +27,7 @@ from autoclaw.runtime.node_operations import NodeActivitySignal, NodeOperationSc
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.integration.runtime.node_operations.executor_support import (
+from tests.helpers.executor_harness import (
     SessionFactory,
     seeded_executor,
 )
@@ -57,6 +57,41 @@ async def _seed_definition_lookup_content(
             "applies_to": ["root", "parent", "worker"],
         }
         await session.commit()
+
+
+async def test_current_context_exposes_request_readbacks_and_live_children(
+    tmp_path: Path,
+) -> None:
+    async with seeded_executor(tmp_path, suffix="current-context") as (
+        executor,
+        _session_factory,
+        ids,
+        _signals,
+    ):
+        context = await executor.execute(
+            scope=NodeOperationScope(
+                task_id=ids.task_id,
+                dispatch_id=ids.current_dispatch_id,
+            ),
+            operation_name="get_current_context",
+            arguments={},
+        )
+
+    payload = context.model_dump(mode="json")
+    dispatch_root = f"_runtime/dispatch/{ids.current_dispatch_id}"
+    assert payload["readback_refs"] == {
+        "instructions": f"{dispatch_root}/instructions.md",
+        "input": f"{dispatch_root}/input.md",
+        "workflow_manifest": "_runtime/workflow-manifest.md",
+    }
+    assert payload["workflow_neighborhood"] == [
+        {
+            "node_key": "child",
+            "node_kind": "worker",
+            "relationship": "direct child",
+            "assignment_id": ids.child_assignment_id,
+        }
+    ]
 
 
 async def test_executor_refreshes_activity_once_and_plan_revisions_only_on_change(

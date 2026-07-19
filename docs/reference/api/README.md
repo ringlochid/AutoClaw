@@ -1,6 +1,6 @@
 # API reference
 
-This surface owns shipped API route, auth-lane, and definition/task-start reference material.
+This surface owns shipped API routes, local trust boundaries, and definition and task-start contracts.
 
 ## Start here
 

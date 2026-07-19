@@ -39,6 +39,7 @@ from autoclaw.runtime.node_operations.contracts import (
     StartCommandRunRequest,
     StructuralOperationRequest,
     UpdateChildRequest,
+    WorkflowNeighborRead,
 )
 from autoclaw.runtime.node_operations.executor import NodeOperationExecutor
 
@@ -77,6 +78,7 @@ __all__ = [
     "StartCommandRunRequest",
     "StructuralOperationRequest",
     "UpdateChildRequest",
+    "WorkflowNeighborRead",
     "create_watchdog_activity_publisher",
     "get_node_operation_descriptor",
     "list_node_operation_descriptors_for_kind",

@@ -29,11 +29,11 @@ class OpenClawGatewayCliError(RuntimeError):
         self,
         *,
         code: OpenClawGatewayFailureCode,
-        may_have_been_accepted: bool,
+        is_acceptance_uncertain: bool,
     ) -> None:
         super().__init__(code.value)
         self.code = code
-        self.may_have_been_accepted = may_have_been_accepted
+        self.is_acceptance_uncertain = is_acceptance_uncertain
 
 
 async def call_openclaw_gateway(
@@ -65,12 +65,12 @@ async def call_openclaw_gateway(
     except FileNotFoundError:
         raise OpenClawGatewayCliError(
             code=OpenClawGatewayFailureCode.NOT_INSTALLED,
-            may_have_been_accepted=False,
+            is_acceptance_uncertain=False,
         ) from None
     except OSError:
         raise OpenClawGatewayCliError(
             code=OpenClawGatewayFailureCode.PROCESS_LAUNCH_FAILED,
-            may_have_been_accepted=False,
+            is_acceptance_uncertain=False,
         ) from None
 
     try:
@@ -83,16 +83,16 @@ async def call_openclaw_gateway(
         await process.wait()
         raise OpenClawGatewayCliError(
             code=OpenClawGatewayFailureCode.TIMEOUT,
-            may_have_been_accepted=method in {"agent", "sessions.abort"},
+            is_acceptance_uncertain=method in {"agent", "sessions.abort"},
         ) from None
 
     if process.returncode != 0:
         code, is_definite = classify_gateway_cli_failure(stderr)
         raise OpenClawGatewayCliError(
             code=code,
-            may_have_been_accepted=method == "agent" and not is_definite,
+            is_acceptance_uncertain=method == "agent" and not is_definite,
         )
-    return parse_gateway_response(stdout, may_accept_work=method == "agent")
+    return parse_gateway_response(stdout, can_accept_work=method == "agent")
 
 
 def build_openclaw_gateway_command(
@@ -174,26 +174,26 @@ def classify_gateway_cli_failure(
 def parse_gateway_response(
     stdout: bytes,
     *,
-    may_accept_work: bool,
+    can_accept_work: bool,
 ) -> dict[str, object]:
     """Parse one bounded JSON object without retaining raw CLI output."""
 
     if len(stdout) > MAX_GATEWAY_RESPONSE_BYTES:
         raise OpenClawGatewayCliError(
             code=OpenClawGatewayFailureCode.INVALID_RESPONSE,
-            may_have_been_accepted=may_accept_work,
+            is_acceptance_uncertain=can_accept_work,
         )
     try:
         payload = json.loads(stdout)
     except (UnicodeDecodeError, json.JSONDecodeError):
         raise OpenClawGatewayCliError(
             code=OpenClawGatewayFailureCode.INVALID_RESPONSE,
-            may_have_been_accepted=may_accept_work,
+            is_acceptance_uncertain=can_accept_work,
         ) from None
     if not isinstance(payload, dict):
         raise OpenClawGatewayCliError(
             code=OpenClawGatewayFailureCode.INVALID_RESPONSE,
-            may_have_been_accepted=may_accept_work,
+            is_acceptance_uncertain=can_accept_work,
         )
     return payload
 

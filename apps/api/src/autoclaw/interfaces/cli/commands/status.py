@@ -44,7 +44,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         print("database schema: not_checked")
         print("service: not_checked")
         for provider in providers:
-            configured = "configured" if provider.configured else "not configured"
+            configured = "configured" if provider.is_configured else "not configured"
             print(
                 f"provider {provider.kind.value}: {configured}; "
                 "authentication not_checked; reachability not_checked"

@@ -41,6 +41,7 @@ from autoclaw.runtime.contracts.prompt import (
     PromptRefKind,
     PromptTrigger,
     RootStartTrigger,
+    RuntimeReadbackRefs,
     SemanticRetryTrigger,
     WatchdogRecoveryTrigger,
 )
@@ -89,6 +90,11 @@ def sample_dynamic_input(
             )
             if node_kind != NodeKind.WORKER
             else ("get_current_context", "return_boundary"),
+            readback_refs=RuntimeReadbackRefs(
+                instructions="_runtime/dispatch/dispatch-1/instructions.md",
+                input="_runtime/dispatch/dispatch-1/input.md",
+                workflow_manifest="_runtime/workflow-manifest.md",
+            ),
             refs=(),
             constraints=("Do not edit unrelated files.",),
         ),

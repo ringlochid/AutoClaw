@@ -116,6 +116,7 @@ For child return, the child assignment, attempt, source dispatch, accepted bound
 
 - effective capabilities and allowed actions;
 - workflow neighborhood needed for the next decision;
+- exact logical readback refs for this dispatch's `instructions.md` and `input.md`, plus the workflow manifest support projection;
 - consume/produce slots and rich logical refs;
 - controller-selected `checkpoint_to_resume_from` when applicable;
 - relevant constraints and bounded budget facts; and
@@ -124,6 +125,8 @@ For child return, the child assignment, attempt, source dispatch, accepted bound
 The two capability disclosures use the controller readback vocabulary `effective` and `source`, with source `default | policy_definition | task_policy | controller`. They remain independent axes; the prompt renderer does not infer one from the other or derive either value from provider selection.
 
 Rich refs may include kind, logical path, purpose, description, slot, and version where applicable. The renderer does not open artifact bodies, raw command logs, ORM objects, support projections, physical roots, environment values, or secrets.
+
+`readback_refs.instructions` and `readback_refs.input` intentionally name the two files being delivered. This path-only self-reference does not rerender or embed either file. `readback_refs.workflow_manifest` names a readable support projection that may be missing or stale; the live workflow neighborhood and controller operations remain authoritative.
 
 ## Dispatch section
 
@@ -139,7 +142,7 @@ It does not teach polling, provider-output completion, generic latest-row discov
 
 ## Current context relationship
 
-The immutable input describes dispatch-start truth. `get_current_context()` owns current truth at call time and returns the complete current assignment, trigger/continuation, plan or `null`, capabilities, allowed actions, and bounded logical refs. Its capability snapshot includes the exact `provider_native_access` and `network_access` effective/source objects.
+The immutable input describes complete dispatch-start truth. `get_current_context()` owns current truth at call time and returns the current assignment, bounded trigger, plan or `null`, live workflow neighborhood, capabilities, allowed actions, and bounded logical refs. It reserves optional normalized continuation and checkpoint fields, but callers must handle them as `null` and read the immutable `input` ref when dispatch-start trigger or resume detail is needed. It repeats the three readback refs so recovery does not depend on remembered prompt text. Its capability snapshot includes the exact `provider_native_access` and `network_access` effective/source objects.
 
 The current-context result is not a lease. Every later operation revalidates live dispatch authority.
 
@@ -171,6 +174,8 @@ AutoClaw ignores provider final output for correctness and never waits for a dra
 - missing or escaped files cause zero provider calls;
 - all six responsibilities render for worker, parent/root, child return, waits, recovery, retry, and continue;
 - dispatch input and current context disclose both independent capability values and controlling sources;
+- dispatch input and current context disclose the exact request-pair readbacks and support-only workflow-manifest readback;
+- current context rereads the direct-child workflow neighborhood from controller rows;
 - full canonical dispatch identity renders without credentials or aliases;
 - tool teaching matches the role-specific operation ceiling; and
 - request files contain no secret, private handle, physical root, raw log, or provider configuration.

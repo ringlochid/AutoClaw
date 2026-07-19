@@ -322,84 +322,15 @@ def register_runtime_control_tools(
     runtime_effect_publisher: RuntimeEffectPublisher | None = None,
     dependencies: DispatchOpeningDependencies | None = None,
 ) -> None:
-    @server.tool(
-        name="pause_task",
-        title=PAUSE_TASK_TEACHING.title,
-        description=PAUSE_TASK_TEACHING.description,
-        annotations=PAUSE_TASK_TEACHING.annotations,
+    _register_pause_task_tool(
+        server,
+        runtime_effect_publisher=runtime_effect_publisher,
     )
-    async def pause_task(
-        task_id: str,
-        expected_active_flow_revision_id: str,
-        expected_control_revision: int,
-    ) -> RuntimeFlowPauseResponse:
-        query = RuntimeFlowControlRequest(
-            expected_active_flow_revision_id=expected_active_flow_revision_id,
-            expected_control_revision=expected_control_revision,
-        )
-        async with get_session_factory()() as session:
-            return await pause_runtime_flow(
-                session,
-                task_id,
-                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
-                expected_control_revision=query.expected_control_revision,
-                actor_ref=_OPERATOR_MCP_ACTOR_REF,
-                event_source=TaskEventSource.OPERATOR_MCP,
-                runtime_effect_publisher=runtime_effect_publisher,
-            )
-
-    @server.tool(
-        name="continue_task",
-        title=CONTINUE_TASK_TEACHING.title,
-        description=CONTINUE_TASK_TEACHING.description,
-        annotations=CONTINUE_TASK_TEACHING.annotations,
+    _register_continue_task_tool(server, dependencies=dependencies)
+    _register_cancel_task_tool(
+        server,
+        runtime_effect_publisher=runtime_effect_publisher,
     )
-    async def continue_task(
-        task_id: str,
-        expected_active_flow_revision_id: str,
-        expected_control_revision: int,
-    ) -> RuntimeFlowRead:
-        query = RuntimeFlowControlRequest(
-            expected_active_flow_revision_id=expected_active_flow_revision_id,
-            expected_control_revision=expected_control_revision,
-        )
-        active_dependencies = require_dispatch_opening_dependencies(dependencies)
-        async with get_session_factory()() as session:
-            return await continue_runtime_flow(
-                session,
-                task_id,
-                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
-                expected_control_revision=query.expected_control_revision,
-                dependencies=active_dependencies,
-                actor_ref=_OPERATOR_MCP_ACTOR_REF,
-                event_source=TaskEventSource.OPERATOR_MCP,
-            )
-
-    @server.tool(
-        name="cancel_task",
-        title=CANCEL_TASK_TEACHING.title,
-        description=CANCEL_TASK_TEACHING.description,
-        annotations=CANCEL_TASK_TEACHING.annotations,
-    )
-    async def cancel_task(
-        task_id: str,
-        expected_active_flow_revision_id: str,
-        expected_control_revision: int,
-    ) -> RuntimeFlowRead:
-        query = RuntimeFlowControlRequest(
-            expected_active_flow_revision_id=expected_active_flow_revision_id,
-            expected_control_revision=expected_control_revision,
-        )
-        async with get_session_factory()() as session:
-            return await cancel_runtime_flow(
-                session,
-                task_id,
-                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
-                expected_control_revision=query.expected_control_revision,
-                actor_ref=_OPERATOR_MCP_ACTOR_REF,
-                event_source=TaskEventSource.OPERATOR_MCP,
-                runtime_effect_publisher=runtime_effect_publisher,
-            )
 
 
 def register_runtime_wait_tools(
@@ -528,5 +459,102 @@ def register_command_run_tools(
                 task_id=task_id,
                 run_id=run_id,
                 actor_ref=_OPERATOR_MCP_ACTOR_REF,
+                runtime_effect_publisher=runtime_effect_publisher,
+            )
+
+
+def _register_pause_task_tool(
+    server: FastMCP,
+    *,
+    runtime_effect_publisher: RuntimeEffectPublisher | None,
+) -> None:
+    @server.tool(
+        name="pause_task",
+        title=PAUSE_TASK_TEACHING.title,
+        description=PAUSE_TASK_TEACHING.description,
+        annotations=PAUSE_TASK_TEACHING.annotations,
+    )
+    async def pause_task(
+        task_id: str,
+        expected_active_flow_revision_id: str,
+        expected_control_revision: int,
+    ) -> RuntimeFlowPauseResponse:
+        query = RuntimeFlowControlRequest(
+            expected_active_flow_revision_id=expected_active_flow_revision_id,
+            expected_control_revision=expected_control_revision,
+        )
+        async with get_session_factory()() as session:
+            return await pause_runtime_flow(
+                session,
+                task_id,
+                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                expected_control_revision=query.expected_control_revision,
+                actor_ref=_OPERATOR_MCP_ACTOR_REF,
+                event_source=TaskEventSource.OPERATOR_MCP,
+                runtime_effect_publisher=runtime_effect_publisher,
+            )
+
+
+def _register_continue_task_tool(
+    server: FastMCP,
+    *,
+    dependencies: DispatchOpeningDependencies | None,
+) -> None:
+    @server.tool(
+        name="continue_task",
+        title=CONTINUE_TASK_TEACHING.title,
+        description=CONTINUE_TASK_TEACHING.description,
+        annotations=CONTINUE_TASK_TEACHING.annotations,
+    )
+    async def continue_task(
+        task_id: str,
+        expected_active_flow_revision_id: str,
+        expected_control_revision: int,
+    ) -> RuntimeFlowRead:
+        query = RuntimeFlowControlRequest(
+            expected_active_flow_revision_id=expected_active_flow_revision_id,
+            expected_control_revision=expected_control_revision,
+        )
+        active_dependencies = require_dispatch_opening_dependencies(dependencies)
+        async with get_session_factory()() as session:
+            return await continue_runtime_flow(
+                session,
+                task_id,
+                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                expected_control_revision=query.expected_control_revision,
+                dependencies=active_dependencies,
+                actor_ref=_OPERATOR_MCP_ACTOR_REF,
+                event_source=TaskEventSource.OPERATOR_MCP,
+            )
+
+
+def _register_cancel_task_tool(
+    server: FastMCP,
+    *,
+    runtime_effect_publisher: RuntimeEffectPublisher | None,
+) -> None:
+    @server.tool(
+        name="cancel_task",
+        title=CANCEL_TASK_TEACHING.title,
+        description=CANCEL_TASK_TEACHING.description,
+        annotations=CANCEL_TASK_TEACHING.annotations,
+    )
+    async def cancel_task(
+        task_id: str,
+        expected_active_flow_revision_id: str,
+        expected_control_revision: int,
+    ) -> RuntimeFlowRead:
+        query = RuntimeFlowControlRequest(
+            expected_active_flow_revision_id=expected_active_flow_revision_id,
+            expected_control_revision=expected_control_revision,
+        )
+        async with get_session_factory()() as session:
+            return await cancel_runtime_flow(
+                session,
+                task_id,
+                expected_active_flow_revision_id=query.expected_active_flow_revision_id,
+                expected_control_revision=query.expected_control_revision,
+                actor_ref=_OPERATOR_MCP_ACTOR_REF,
+                event_source=TaskEventSource.OPERATOR_MCP,
                 runtime_effect_publisher=runtime_effect_publisher,
             )

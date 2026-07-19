@@ -20,6 +20,7 @@ Use this guide when adding tests, reorganizing test trees, or deciding what coun
 - `make console-test`: frontend unit and component behavior under `apps/console/tests/unit` and `apps/console/tests/component`
 - `make console-test-integration`: MSW-backed frontend flow behavior under `apps/console/tests/integration`
 - `make console-e2e`: browser end-to-end behavior under `apps/console/tests/e2e`
+- `make console-e2e-real`: focused browser behavior against a disposable real AutoClaw backend
 - `make console-openapi-check`: generated frontend API type drift against the current FastAPI OpenAPI schema
 
 ## Placement rules
@@ -126,12 +127,12 @@ Rules:
 
 ## Runtime wait and timing rules
 
-- use `wait_for_runtime_effects(...)` for post-commit visibility or task-scoped drain only; do not stack it as an outer retry loop when a predicate-driven helper is the real owner
-- use `drive_runtime_until(...)` when the proof is waiting for controller-owned runtime state to reach a predicate
-- use `drive_watchdog_until(...)` when the proof is waiting for watchdog-owned state to reach a predicate
-- shared test contexts and helper stacks must not widen `dispatch_drain_timeout_seconds` broadly by default; keep the fast template baseline and opt specific long-drain tests up locally
-- avoid helper loops that combine `for range(...)`, `wait_for_runtime_effects(...)`, `drive_runtime_once(...)`, and fixed sleeps in one stack
-- direct sleeps in tests are acceptable only when the boundary is genuinely external or commit-visibility polling cannot yet be expressed through the runtime or watchdog helpers; keep them narrow and explain the reason
+- publish the exact after-commit signal owned by the test, then reread the minimum controller state that proves its result
+- test duplicate and stale signals by publishing that same exact source more than once; do not build a broad runtime-drain helper
+- for deadline behavior, use a controlled clock and invoke the exact due handler or scheduler boundary; do not poll provider output or wait for provider shutdown
+- use bounded condition polling only when the boundary is a real child process, SSE connection, or separately managed server
+- keep any direct sleep narrow and explain why a committed-state read or exact signal cannot express the proof
+- do not add a generic runtime driver, watchdog driver, provider-output wait, or widened global timeout to make one test pass
 
 ## Review checklist
 

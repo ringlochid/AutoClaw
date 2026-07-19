@@ -21,7 +21,7 @@ from autoclaw.runtime.projection.signals import (
     SupportProjectionSignal,
     TransientProjection,
 )
-from tests.integration.runtime.node_operations.executor_support import seeded_executor
+from tests.helpers.executor_harness import seeded_executor
 
 
 class _CapturedProjectionPublisher:

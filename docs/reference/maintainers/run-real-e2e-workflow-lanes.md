@@ -1,324 +1,41 @@
-# Run real bounded, reviewed, and staged e2e workflow lanes
+# Run focused end-to-end lanes
 
-This page describes the current manual operator runbook for exercising the shipped bounded, reviewed, and staged workflow fixtures against a real local `autoclaw serve` process.
+The repository has three backend workflow lanes. Each uses real SQLite controller records. The bounded lane uses the shipped task-start service; the other lanes call the exact runtime operations they verify.
 
-Use this page when you want a real current-service e2e check instead of an in-process pytest helper.
-
-## What this page covers
-
-- start a fresh local service on the shipped CLI path
-- optionally upload or update definitions
-- start a real task run for the shipped bounded, reviewed, and staged workflow fixtures
-- inspect runtime status, operator snapshot, operator trace, and observability refs
-- locate the current criteria files and decide whether the lane satisfied them
-
-## What this page does not cover
-
-- external OpenClaw client packaging or UI wiring outside this checkout
-- every possible callback or mounted node-MCP step needed to drive a live worker by hand
-
-For the current callback and node-MCP surfaces, see [Use the OpenClaw integration](../operator/use-openclaw-integration.md).
-
-## Current lane keys
-
-| Lane     | Workflow key                | Current proving goal                                                            |
-| -------- | --------------------------- | ------------------------------------------------------------------------------- |
-| bounded  | `bounded-change`            | one bounded implementation child plus root release                              |
-| reviewed | `reviewed-change-release`   | parent-owned change subtree, review, and bounded root closure                   |
-| staged   | `staged-delivery-release`   | discovery, delivery planning, implementation, review, QA, and final root release |
-
-These workflow keys are shipped seed fixtures.
-
-You do not need a definition upload just to run the stock lanes.
-
-## Recommended isolated local setup
-
-Use an explicit config and data dir so the e2e lane does not share state with a different local run.
+## Bounded
 
 ```bash
-cd <autoclaw-repo>
-python -m venv .venv
-./.venv/bin/pip install -e .[dev]
-
-export CONFIG=/tmp/autoclaw-real-e2e/autoclaw-config.toml
-export DATA=/tmp/autoclaw-real-e2e/data
-export API=http://127.0.0.1:8123
-export API_KEY=api-test-key
-
-./.venv/bin/autoclaw init \
-  --config "$CONFIG" \
-  --data-dir "$DATA" \
-  --port 8123 \
-  --api-key "$API_KEY" \
-  --force
+make test-api-e2e-bounded
 ```
 
-Optional clean SQLite reset before another lane:
+Proves registry compilation, immutable launch-revision pinning, task bootstrap, root-dispatch opening, provider acceptance, and one managed Node MCP binding with its exact tool allowlist.
+
+## Reviewed
 
 ```bash
-./.venv/bin/autoclaw db reset --config "$CONFIG" --json
+make test-api-e2e-reviewed
 ```
 
-Start the real service in one terminal and keep it running:
+Proves parent-to-child assignment, role-scoped tools, child completion, parent resumption, release, and final completion.
+
+## Staged
 
 ```bash
-./.venv/bin/autoclaw serve --config "$CONFIG" 2>&1 | tee /tmp/autoclaw-real-e2e/serve.log
+make test-api-e2e-staged
 ```
 
-Fast health check from a second terminal:
+Proves human-wait exclusion, answer continuation, one watchdog replacement, and a duplicate deadline signal losing without another replacement.
+
+Focused runtime integration tests own command exit, cancellation, timeout, reap, restart ownership loss, and watchdog replacement-cap cases. This staged lane does not repeat them.
+
+`make test-api-e2e` runs all three. During rewrite-heavy work, run only the lane that owns the change.
+
+## Browser with real backend
 
 ```bash
-curl -s "$API/healthz"
-curl -s "$API/readyz"
+make console-e2e-real
 ```
 
-## Optional definition upload
+Playwright starts a disposable AutoClaw backend, waits for `/healthz`, runs the focused browser smoke, and stops the process. The smoke reads stored definitions, starts a task, performs guarded pause and cancel mutations, receives their SSE events, checks cursor reset, and verifies local Host/Origin admission without a browser API key. It does not contact a live provider or mutate a real user service.
 
-The shipped seed definitions are enough for the stock bounded, reviewed, and staged lanes.
-
-Only upload definitions when you want to exercise definition ingest itself or override the current seed-backed truth before launch.
-
-Example role upload:
-
-```bash
-cat >/tmp/reviewer.json <<'JSON'
-{
-	  "kind": "role",
-	  "content": {
-	    "id": "reviewer",
-	    "title": "Reviewer",
-	    "description": "Review worker for a real e2e lane.",
-	    "allowed_node_kinds": ["worker"],
-    "instruction": "Review only the current surfaced evidence."
-  }
-}
-JSON
-
-curl -sS \
-  -H "X-AutoClaw-API-Key: $API_KEY" \
-  -H "Content-Type: application/json" \
-  -X POST "$API/definitions" \
-  -d @/tmp/reviewer.json
-```
-
-For workflow or policy uploads, use the current shapes in the [definition and task-compose YAML contract](../api/definition-and-task-compose-yaml-contract.md).
-
-## Start a real lane
-
-The current public task-start route is `POST /tasks/start`.
-
-It reuses the `TaskComposeInput` body and waits for initial runtime effects before returning.
-
-### Bounded
-
-```bash
-cat >/tmp/task-compose-bounded.json <<'JSON'
-{
-  "task": {
-    "key": "settings-loader-cleanup",
-    "title": "Clean up settings loader",
-    "summary": "Make one scoped settings-loader change and publish evidence.",
-    "instruction": "Stay scoped to the settings-loader path and publish patch plus verification evidence."
-  },
-  "workflow": {
-    "key": "bounded-change"
-  }
-}
-JSON
-
-curl -sS \
-  -H "X-AutoClaw-API-Key: $API_KEY" \
-  -H "Content-Type: application/json" \
-  -X POST "$API/tasks/start" \
-  -d @/tmp/task-compose-bounded.json
-```
-
-### Reviewed
-
-Use the same payload and change only the workflow key:
-
-```json
-"workflow": { "key": "reviewed-change-release" }
-```
-
-### Staged
-
-Use the same payload and change only the workflow key:
-
-```json
-"workflow": { "key": "staged-delivery-release" }
-```
-
-## Capture the current task id and manifest path
-
-Save the task-start response and extract the current task id plus manifest path:
-
-```bash
-curl -sS \
-  -H "X-AutoClaw-API-Key: $API_KEY" \
-  -H "Content-Type: application/json" \
-  -X POST "$API/tasks/start" \
-  -d @/tmp/task-compose-bounded.json \
-  >/tmp/task-start.json
-
-TASK_ID="$(jq -r '.task_id' /tmp/task-start.json)"
-MANIFEST_PATH="$(jq -r '.workflow_manifest_ref.path' /tmp/task-start.json)"
-TASK_ROOT="$(dirname "$(dirname "$MANIFEST_PATH")")"
-```
-
-`MANIFEST_PATH` points at:
-
-- `<task_root>/_runtime/workflow-manifest.md`
-
-and `TASK_ROOT` is the root you will use for criteria, artifacts, and observability file rereads.
-
-## Inspect runtime and operator state
-
-Current operator read surfaces are:
-
-- `GET /runtime/tasks/{task_id}`
-- `GET /operator/tasks/{task_id}/snapshot`
-- `GET /operator/tasks/{task_id}/trace`
-
-Recommended first reads:
-
-```bash
-curl -sS -H "X-AutoClaw-API-Key: $API_KEY" \
-  "$API/runtime/tasks/$TASK_ID"
-
-curl -sS -H "X-AutoClaw-API-Key: $API_KEY" \
-  "$API/operator/tasks/$TASK_ID/snapshot"
-
-curl -sS -H "X-AutoClaw-API-Key: $API_KEY" \
-  "$API/operator/tasks/$TASK_ID/trace?scope=whole&sort=occurred_at_asc"
-```
-
-Helpful trace checks:
-
-```bash
-curl -sS -H "X-AutoClaw-API-Key: $API_KEY" \
-  "$API/operator/tasks/$TASK_ID/trace?scope=whole&sort=occurred_at_asc" \
-  | jq -r '.dispatch_history[].node_key'
-```
-
-If you are using `operator MCP` instead of HTTP, follow the same observe-first sequence:
-
-- `get_runtime_task`
-- `get_operator_snapshot`
-- `get_operator_trace`
-- `get_delivery_state_ref` / `get_continuity_state_ref` / `get_watchdog_state_ref` / `get_provider_events_ref` only when deeper support-file inspection is needed
-
-Do not use `continue_task` as a polling or diagnostic command. In current shipped behavior it is a mutating pause-resume control only, and any use should still carry a fresh `expected_active_flow_revision_id` from a current runtime read.
-
-Treat the observability `get_*_ref` lane as support-only reread. It returns file refs/paths rather than parsed status answers, and controller/runtime truth wins if a support reread disagrees with the current runtime state.
-
-Expected node progression for the stock lanes:
-
-- bounded:
-    - `root`
-    - `implement_change`
-- reviewed:
-    - `root`
-    - `change_subtree`
-    - `scope_change`
-    - `implement_change`
-    - `review_change`
-    - `release_closure`
-- staged:
-    - `root`
-    - `discovery`
-    - `gather_evidence`
-    - `delivery_loop`
-    - `plan_delivery`
-    - `implement_change`
-    - `review_change`
-    - `qa_sweep`
-    - `release_closure`
-
-## Follow failure logs and observability refs
-
-Current observability routes return file refs, not assembled truth:
-
-- `GET /observability/tasks/{task_id}/delivery-state`
-- `GET /observability/tasks/{task_id}/continuity-state`
-- `GET /observability/tasks/{task_id}/watchdog-state`
-- `GET /observability/tasks/{task_id}/provider-events`
-
-Read them like this:
-
-```bash
-curl -sS -H "X-AutoClaw-API-Key: $API_KEY" \
-  "$API/observability/tasks/$TASK_ID/delivery-state"
-
-curl -sS -H "X-AutoClaw-API-Key: $API_KEY" \
-  "$API/observability/tasks/$TASK_ID/provider-events"
-```
-
-Then open the returned files under:
-
-- `<task_root>/_runtime/dispatch/<dispatch_id>/delivery-state.json`
-- `<task_root>/_runtime/dispatch/<dispatch_id>/continuity-state.json`
-- `<task_root>/_runtime/dispatch/<dispatch_id>/watchdog-state.json`
-- `<task_root>/_runtime/dispatch/<dispatch_id>/provider-events.ndjson`
-
-Use them this way:
-
-- `delivery-state.json`: transport family, transport state, provider error, and acceptance or terminal timestamps
-- `continuity-state.json`: session-key presence, invalidation reason, and current continuity drift
-- `watchdog-state.json`: stale classification, recovery action, and escalation reason
-- `provider-events.ndjson`: adapter or provider event timeline in order
-
-Also inspect the real service log you started with `tee`:
-
-```bash
-tail -n 200 /tmp/autoclaw-real-e2e/serve.log
-```
-
-## Criteria and success checks
-
-Current criteria are controller-owned files under:
-
-- `<task_root>/context/criteria/`
-
-List them:
-
-```bash
-find "$TASK_ROOT/context/criteria" -maxdepth 1 -type f | sort
-```
-
-Use the criteria files together with:
-
-- the workflow manifest at `$MANIFEST_PATH`
-- operator snapshot current paths
-- operator trace dispatch or checkpoint history
-- produced artifacts under `<task_root>/outputs/artifacts/`
-
-Current decision rule:
-
-- treat criteria files as the acceptance contract
-- treat operator trace and observability refs as the explanation of what actually happened
-- treat artifacts and checkpoints as the concrete evidence that the lane did or did not satisfy the criteria
-
-## Current failure triage shortcut
-
-- launch failed before useful execution: inspect `delivery-state.json`, `continuity-state.json`, and the service log
-- execution stalled: inspect `watchdog-state.json`, operator trace, and current runtime status
-- wrong node or wrong subtree advanced: inspect `trace?scope=whole` and compare node order with the lane expectations above
-- release looked wrong: inspect `context/criteria/`, surfaced artifact refs, and the final root or parent dispatch in operator trace
-
-## Relationship to OpenClaw integration writes
-
-This page gives the operator-side current e2e runbook:
-
-- setup
-- optional definition upload
-- public task start
-- runtime or operator inspection
-- failure triage
-- criteria checks
-
-If your real lane also needs live node-tool or callback writes, continue with:
-
-- [Use the OpenClaw integration](../operator/use-openclaw-integration.md)
-
-That page owns the current callback and mounted node-MCP write surfaces.
+The exact backend test paths live in `scripts/testing/run_api_pytest_groups.sh`. The browser server is owned by `apps/console/playwright.real-backend.config.ts` and `scripts/testing/run_console_real_backend.py`.

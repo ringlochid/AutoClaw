@@ -33,25 +33,18 @@ from autoclaw.runtime.post_commit import (
 )
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.integration.runtime.node_operations.executor_support import (
+from tests.helpers.executor_harness import (
     SessionFactory,
     seeded_executor,
 )
-from tests.integration.runtime_schema_contract.runtime_lineage_fixture import RuntimeIds
+from tests.helpers.lineage_seed import RuntimeIds
 
 
 async def test_exact_yield_source_opens_one_child_dispatch_and_duplicate_loses(
     tmp_path: Path,
 ) -> None:
     start_publisher = CapturedRuntimeEffectPublisher()
-    dependencies = DispatchOpeningDependencies.create(
-        settings=Settings(
-            runtime=RuntimeSettings(default_provider=ProviderKind.CODEX),
-            codex=CodexSettings(enabled=True),
-        ),
-        available_adapter_kinds={ProviderKind.CODEX},
-        post_commit_publisher=start_publisher,
-    )
+    dependencies = _opening_dependencies_with_publisher(start_publisher)
     async with seeded_executor(tmp_path, suffix="boundary-continuation") as (
         executor,
         session_factory,

@@ -11,7 +11,7 @@ from autoclaw.persistence.schema_contract import (
 )
 from autoclaw.persistence.session import DatabaseSchemaMismatchError
 from sqlalchemy import Engine, create_engine
-from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+from tests.helpers.sqlite_runtime import (
     create_runtime_schema_engine,
     rewrite_empty_sqlite_table,
 )

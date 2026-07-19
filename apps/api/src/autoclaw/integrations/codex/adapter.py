@@ -140,7 +140,7 @@ class CodexAdapter:
                 self._executions.pop(dispatch_id, None)
         return ProviderStopOutcome.STOPPED
 
-    async def check(self) -> ProviderCheckResult:
+    async def read_availability(self) -> ProviderCheckResult:
         try:
             account = await (await self._get_codex()).account()
         except Exception:

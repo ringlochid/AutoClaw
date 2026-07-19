@@ -3,10 +3,17 @@ from __future__ import annotations
 from typing import Literal, assert_never, cast
 
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import raiseload
 
 from autoclaw.definitions.contracts import DefinitionKind, DefinitionListQuery
+from autoclaw.definitions.contracts.workflow import NodeKind
+from autoclaw.persistence.models import DispatchPromptRefsModel, FlowNodeModel
+from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
+from autoclaw.runtime.contracts.prompt import RuntimeReadbackRefs
 from autoclaw.runtime.dispatch.authority import NodeOperationAuthority
+from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.node_operations.catalog import (
     list_node_operation_descriptors_for_kind,
 )
@@ -27,6 +34,7 @@ from autoclaw.runtime.node_operations.contracts import (
     ReadFileResponse,
     SearchDefinitionsRequest,
     SlotContextRead,
+    WorkflowNeighborRead,
 )
 from autoclaw.runtime.node_operations.state_legality import (
     read_state_legal_node_operations,
@@ -105,6 +113,8 @@ async def _get_current_context(
     authority: NodeOperationAuthority,
 ) -> GetCurrentContextResponse:
     plan = await read_assignment_work_plan(session, assignment_id=authority.assignment_id)
+    workflow_neighborhood = await _read_workflow_neighborhood(session, authority)
+    readback_refs = await _read_runtime_readback_refs(session, authority)
     capabilities = authority.capabilities
     state_legal_actions = await read_state_legal_node_operations(session, authority)
     allowed_actions = tuple(
@@ -134,6 +144,8 @@ async def _get_current_context(
             "source_dispatch_id": authority.predecessor_dispatch_id,
         },
         plan=plan,
+        workflow_neighborhood=workflow_neighborhood,
+        readback_refs=readback_refs,
         capabilities=EffectiveCapabilitySetRead(
             dispatch_id=authority.dispatch_id,
             provider_native_access=EffectiveValueRead(
@@ -155,6 +167,60 @@ async def _get_current_context(
         allowed_actions=allowed_actions,
         consume_slots=_slot_reads(authority.assignment.consumes_json, default_kind="artifact"),
         produce_slots=_slot_reads(authority.assignment.produces_json, default_kind="artifact"),
+    )
+
+
+async def _read_workflow_neighborhood(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+) -> tuple[WorkflowNeighborRead, ...]:
+    children = tuple(
+        await session.scalars(
+            select(FlowNodeModel)
+            .options(raiseload("*"))
+            .where(
+                FlowNodeModel.flow_id == authority.flow_id,
+                FlowNodeModel.flow_revision_id == authority.flow_revision_id,
+                FlowNodeModel.parent_node_key == authority.node_key,
+            )
+            .order_by(FlowNodeModel.order_index)
+        )
+    )
+    return tuple(
+        WorkflowNeighborRead(
+            node_key=child.node_key,
+            node_kind=NodeKind(child.structural_kind),
+            relationship="direct child",
+            assignment_id=child.current_assignment_id,
+        )
+        for child in children
+    )
+
+
+async def _read_runtime_readback_refs(
+    session: AsyncSession,
+    authority: NodeOperationAuthority,
+) -> RuntimeReadbackRefs:
+    prompt_refs = await session.get(
+        DispatchPromptRefsModel,
+        authority.dispatch_id,
+        populate_existing=True,
+    )
+    expected_root = f"_runtime/dispatch/{authority.dispatch_id}"
+    if (
+        prompt_refs is None
+        or prompt_refs.instructions_logical_path != f"{expected_root}/instructions.md"
+        or prompt_refs.input_logical_path != f"{expected_root}/input.md"
+    ):
+        raise RuntimeOperationError(
+            code=OperationFailureCode.INTERNAL_ERROR,
+            summary="current dispatch is missing its exact request readback refs",
+            is_retryable=False,
+        )
+    return RuntimeReadbackRefs(
+        instructions=prompt_refs.instructions_logical_path,
+        input=prompt_refs.input_logical_path,
+        workflow_manifest="_runtime/workflow-manifest.md",
     )
 
 

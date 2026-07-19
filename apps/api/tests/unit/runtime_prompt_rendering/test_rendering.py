@@ -26,6 +26,14 @@ def test_dynamic_render_discloses_effective_capability_and_source() -> None:
     assert '"effective": "allow"' in rendered
 
 
+def test_dynamic_render_discloses_bounded_readback_refs() -> None:
+    rendered = render_dynamic_input(sample_dynamic_input())
+
+    assert '"instructions": "_runtime/dispatch/dispatch-1/instructions.md"' in rendered
+    assert '"input": "_runtime/dispatch/dispatch-1/input.md"' in rendered
+    assert '"workflow_manifest": "_runtime/workflow-manifest.md"' in rendered
+
+
 def test_render_is_byte_deterministic() -> None:
     dynamic_input = sample_dynamic_input()
 

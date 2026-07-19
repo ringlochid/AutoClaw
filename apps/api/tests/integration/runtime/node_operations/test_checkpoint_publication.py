@@ -23,11 +23,11 @@ from autoclaw.runtime.node_operations import NodeOperationScope, get_node_operat
 from autoclaw.runtime.node_operations.contracts import RecordCheckpointRequest
 from pydantic import ValidationError
 from sqlalchemy import func, select
-from tests.integration.runtime.node_operations.executor_support import (
+from tests.helpers.executor_harness import (
     SessionFactory,
     seeded_executor,
 )
-from tests.integration.runtime_schema_contract.runtime_lineage_fixture import RuntimeIds
+from tests.helpers.lineage_seed import RuntimeIds
 
 
 async def _create_competing_artifact_pointer(

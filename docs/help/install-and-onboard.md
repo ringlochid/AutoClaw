@@ -1,94 +1,39 @@
-# Install and onboard problems
+# Install and setup problems
 
-Use this page when install, first-run setup, or the top-level health checks fail.
-
-## Supported install lanes
-
-The public v1 install story is:
-
-- primary: `pipx install autoclaw`
-- secondary: `uv tool install autoclaw`
-- contributor/dev only: editable repo checkout
-
-The fully supported managed-service lane is Linux with `systemd --user`. Ubuntu, Debian, Fedora, Arch, and similar systemd user-service hosts are the intended lane when Python 3.12 is available. Use `autoclaw serve` as the foreground fallback when service management is not available.
-
-The current shipped agent adapter is OpenClaw Gateway. Prepare OpenClaw before running mutating AutoClaw setup commands.
+The current setup path is `autoclaw init` followed by `autoclaw setup --provider <provider>`.
 
 ## `autoclaw` is not found
 
-Check:
+Confirm the isolated tool installed and its executable directory is on `PATH`. For `uv`, run `uv tool update-shell` and restart the shell if needed.
 
-- confirm the package installed without error
-- confirm the tool executable directory is on `PATH`
-- for `uv`, run `uv tool update-shell` once and restart the shell when needed
+## `init` fails
 
-Fix:
+Check that:
 
-- reinstall with the supported tool lane
-- restart the shell after PATH changes
-- use the repo checkout lane only when developing AutoClaw itself
+- the config and data-directory paths are writable
+- the selected port is valid
+- the database URL is reachable
+- the existing config is not being overwritten unintentionally
 
-Reference: [Install and start AutoClaw locally](../reference/cli/install-and-start-local.md).
+Use `autoclaw init --help` for explicit path and bind options. Do not use `--force` until you understand which existing local state it would replace.
 
-## `autoclaw onboard` fails before writing
+## Provider setup fails
 
-Likely cause:
-
-- OpenClaw support preflight blocked the host shape before local config, DB, wrapper, or service state was changed
-
-Check:
+Read the configured state, then check the exact provider:
 
 ```bash
-autoclaw openclaw check --json
+autoclaw providers status <provider> --json
+autoclaw providers check <provider> --json
 ```
 
-Fix:
+Authenticate through `autoclaw providers login <provider>` or the provider's native supported flow. A configured provider is not automatically reachable or logged in.
 
-- confirm the OpenClaw Gateway base URL is loopback
-- confirm the OpenClaw binary and config path can be resolved
-- use token auth for the clearest first-run path, or another supported auth shape: password auth or explicit no-auth loopback
-- avoid trusted-proxy, non-loopback, ambiguous auth, or unresolved secret-reference shapes for the v1 path
+## No default provider
 
-Continue with [OpenClaw integration problems](openclaw-integration.md) if the support check is blocked.
-
-## `autoclaw doctor` is unhealthy after onboarding
-
-Check:
+The first configured provider normally becomes the default. Set one explicitly when needed:
 
 ```bash
-autoclaw doctor --json
-autoclaw openclaw check --json
-autoclaw config path
+autoclaw providers set-default codex
 ```
 
-Likely causes:
-
-- local config or data dir is not writable
-- packaged resources are missing from the installed package
-- the database URL points at an unavailable database
-- the OpenClaw integration slice is missing or drifted
-
-Fix:
-
-- run `autoclaw doctor --fix` when the support preflight is healthy
-- run `autoclaw configure --section definitions` when packaged definitions need reseeding
-- run `autoclaw configure --section openclaw` when only the OpenClaw integration slice drifted
-- run `autoclaw db upgrade` when the configured database needs schema creation or upgrade
-
-## Non-interactive setup stops or prompts
-
-Use `--non-interactive` for guided commands in scripts or CI-like environments:
-
-```bash
-autoclaw onboard --non-interactive --json
-autoclaw configure --section all --non-interactive --json
-```
-
-If a command needs a missing value in non-interactive mode, pass the value explicitly or run the command interactively once.
-
-## Related pages
-
-- [Getting started](../start/getting-started.md)
-- [Prepare OpenClaw first](../start/prepare-openclaw.md)
-- [CLI surface and config precedence](../reference/cli/cli-surface-and-config-precedence.md)
-- [CLI support checks and self-contained setup](../reference/cli/cli-fast-fail-and-self-contained-report.md)
+AutoClaw will not fall back to another configured provider silently.

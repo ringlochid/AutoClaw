@@ -52,7 +52,7 @@ from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.post_commit import BoundaryAccepted
 from autoclaw.runtime.providers import (
     ProviderResolutionError,
-    apply_provider_capability_ceiling,
+    narrow_provider_capabilities,
     provider_selection_from_kind,
     resolve_provider_route,
 )
@@ -170,7 +170,6 @@ async def continue_paused_boundary(
     resume_event: TaskResumeEventBasis,
 ) -> BoundaryOpeningResult:
     """Directly consume one repaired boundary retained by an exact paused flow."""
-
     try:
         candidate = await _prepare_boundary_successor(
             session,
@@ -353,7 +352,7 @@ async def _read_target_snapshot(
         settings=dependencies.settings,
         available_adapter_kinds=dependencies.available_adapter_kinds,
     )
-    capabilities = apply_provider_capability_ceiling(
+    capabilities = narrow_provider_capabilities(
         route=provider.route,
         capabilities=capabilities,
     )

@@ -19,6 +19,10 @@ from autoclaw.runtime.node_operations import (
 )
 from pydantic import BaseModel
 from sqlalchemy import func, select
+from tests.helpers.executor_harness import (
+    SessionFactory,
+    seeded_executor,
+)
 from tests.integration.mcp.node_server.transport_support import (
     RecordingNodeOperationExecutor,
     call_tool_result,
@@ -29,10 +33,6 @@ from tests.integration.mcp.node_server.transport_support import (
     node_mcp_client_session,
     tool_failure,
     tool_names,
-)
-from tests.integration.runtime.node_operations.executor_support import (
-    SessionFactory,
-    seeded_executor,
 )
 
 _MCP_HEADERS = {

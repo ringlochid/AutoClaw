@@ -4,7 +4,7 @@ This surface owns shipped CLI commands, config precedence, install/start, and lo
 
 ## Start here
 
-- [CLI fast-fail and self-contained report](cli-fast-fail-and-self-contained-report.md)
+- [CLI failure and output contract](cli-fast-fail-and-self-contained-report.md)
 - [CLI surface and config precedence](cli-surface-and-config-precedence.md)
 - [Configuration and settings](../../start/configuration-and-settings.md)
 - [Packaging, CLI, and install baseline](packaging-cli-and-install.md)

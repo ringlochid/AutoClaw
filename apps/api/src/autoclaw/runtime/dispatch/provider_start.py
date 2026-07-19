@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import exists, select, update
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from autoclaw.definitions.contracts.workflow import ProviderKind
@@ -67,12 +68,7 @@ async def accept_provider_start_if_current(
     expected_due_at: datetime,
     accepted_at: datetime,
 ) -> ProviderStartAcceptanceResult:
-    """Move one exact current starting dispatch to open without provider I/O.
-
-    The caller owns the transaction and may publish follow-up scheduling hints only
-    after commit. A zero-row update is an ordinary loser: another controller
-    transition or provider-start generation already won.
-    """
+    """Accept one exact generation; a zero-row update is an ordinary loser."""
 
     accepted_row = (
         await session.execute(
@@ -130,24 +126,15 @@ async def accept_provider_start_if_current(
         ),
     )
     if accepted_row is not None:
-        await append_task_event(
+        await _append_provider_start_accepted_event(
             session,
             task_id=task_id,
-            event_type=TaskEventType.DISPATCH_START_UPDATED,
-            event_source=TaskEventSource.CONTROLLER,
-            occurred_at=accepted_at,
             dispatch_id=dispatch_id,
+            accepted_at=accepted_at,
             attempt_id=accepted_row.attempt_id,
             node_key=accepted_row.node_key,
-            payload={
-                "dispatch_id": dispatch_id,
-                "state": "accepted",
-                "attempt_count": accepted_row.provider_start_attempt_count,
-                "provider_start_revision": expected_provider_start_revision,
-                "next_attempt_at": None,
-                "retry_kind": None,
-                "last_error_code": None,
-            },
+            attempt_count=accepted_row.provider_start_attempt_count,
+            provider_start_revision=expected_provider_start_revision,
         )
     return result
 
@@ -288,31 +275,7 @@ async def read_provider_start_candidate(
         or row.flow_revision_id is None
     ):
         return None
-    try:
-        provider_kind: ProviderKind | None = ProviderKind(row.provider_route_kind)
-    except ValueError:
-        provider_kind = None
-    return ProviderStartCandidate(
-        task_id=row.task_id,
-        flow_id=row.flow_id,
-        flow_revision_id=row.flow_revision_id,
-        flow_control_revision=row.flow_control_revision,
-        assignment_id=row.assignment_id,
-        attempt_id=row.attempt_id,
-        node_key=row.node_key,
-        opened_reason=row.opened_reason,
-        predecessor_dispatch_id=row.predecessor_dispatch_id,
-        provider_kind=provider_kind,
-        model_override=row.model_override,
-        effort_override=row.effort_override,
-        gateway_profile=row.gateway_profile,
-        provider_start_attempt_count=row.provider_start_attempt_count,
-        persisted_due_at=row.persisted_due_at,
-        instructions_logical_path=row.instructions_logical_path,
-        input_logical_path=row.input_logical_path,
-        provider_native_access=row.provider_native_access,
-        network_access=row.network_access,
-    )
+    return _build_provider_start_candidate(row)
 
 
 async def provider_start_is_current(
@@ -414,6 +377,66 @@ async def rotate_provider_start_after_failure(
     )
     await session.commit()
     return True
+
+
+async def _append_provider_start_accepted_event(
+    session: AsyncSession,
+    *,
+    task_id: str,
+    dispatch_id: str,
+    accepted_at: datetime,
+    attempt_id: str,
+    node_key: str,
+    attempt_count: int,
+    provider_start_revision: int,
+) -> None:
+    await append_task_event(
+        session,
+        task_id=task_id,
+        event_type=TaskEventType.DISPATCH_START_UPDATED,
+        event_source=TaskEventSource.CONTROLLER,
+        occurred_at=accepted_at,
+        dispatch_id=dispatch_id,
+        attempt_id=attempt_id,
+        node_key=node_key,
+        payload={
+            "dispatch_id": dispatch_id,
+            "state": "accepted",
+            "attempt_count": attempt_count,
+            "provider_start_revision": provider_start_revision,
+            "next_attempt_at": None,
+            "retry_kind": None,
+            "last_error_code": None,
+        },
+    )
+
+
+def _build_provider_start_candidate(row: RowMapping) -> ProviderStartCandidate:
+    try:
+        provider_kind: ProviderKind | None = ProviderKind(row["provider_route_kind"])
+    except ValueError:
+        provider_kind = None
+    return ProviderStartCandidate(
+        task_id=row["task_id"],
+        flow_id=row["flow_id"],
+        flow_revision_id=row["flow_revision_id"],
+        flow_control_revision=row["flow_control_revision"],
+        assignment_id=row["assignment_id"],
+        attempt_id=row["attempt_id"],
+        node_key=row["node_key"],
+        opened_reason=row["opened_reason"],
+        predecessor_dispatch_id=row["predecessor_dispatch_id"],
+        provider_kind=provider_kind,
+        model_override=row["model_override"],
+        effort_override=row["effort_override"],
+        gateway_profile=row["gateway_profile"],
+        provider_start_attempt_count=row["provider_start_attempt_count"],
+        persisted_due_at=row["persisted_due_at"],
+        instructions_logical_path=row["instructions_logical_path"],
+        input_logical_path=row["input_logical_path"],
+        provider_native_access=row["provider_native_access"],
+        network_access=row["network_access"],
+    )
 
 
 def _as_utc(value: datetime) -> datetime:

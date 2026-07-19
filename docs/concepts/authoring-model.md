@@ -1,84 +1,30 @@
 # Authoring model
 
-AutoClaw authoring separates reusable definitions from one concrete launch. Roles, policies, and workflows are reusable. Task-compose is the launch input for one task.
+AutoClaw keeps reusable definitions separate from one task launch.
 
-## Authoring objects
+| Object | Owns | Does not own |
+| --- | --- | --- |
+| Role | specialist behavior and evidence habits | one task's scope or paths |
+| Policy | node authority, capabilities, and budgets | specialist identity or workflow structure |
+| Workflow | node tree, missions, criteria, inputs, and outputs | live runtime state |
+| Task-compose | one task instruction, workflow key, and optional path bindings | reusable behavior |
 
-| Object | Purpose | Owns | Does not own |
-| --- | --- | --- | --- |
-| Role | reusable performance instructions | behavior posture, evidence-reading habits, output style | one task's paths, secrets, launch details |
-| Policy | authority rules | node kind, budgets, capabilities, guardrails | specialist identity or node tree |
-| Workflow | reusable work structure | node tree, criteria, consumes, produces, routing intent | live runtime state |
-| Task-compose | one launch request | task instruction, selected workflow, optional `roots` path mapping | reusable doctrine |
+## Evidence fields
 
-## Roles
+- `criteria` are hard requirements that can block closure.
+- `consumes` names evidence a node must read.
+- `produces` names durable artifacts a node must publish.
 
-Use roles for durable specialist posture:
+For a fixed workflow, declare the evidence handoff precisely. For a dynamic workflow, keep a few stable artifact and criteria slots while a parent chooses the next child from current evidence.
 
-- what kind of work the node can do
-- what evidence it should read first
-- what it should publish
-- what it should avoid doing
-- how it should surface uncertainty
+## Registry lifecycle
 
-Reviewable role names are specific: `bug-fix-engineer`, `scope-reviewer`, `market-researcher`.
+The definition registry owns current and historical revisions. The authoring workbench stores drafts, validates them, and publishes a new current revision. Preview and validation do not start a task. Task start rereads the current registry and pins the revisions used for that run.
 
-## Policies
+Use the console authoring workbench or `autoclaw definitions import --file ...`. Repo example files are examples and seed inputs, not live registry truth.
 
-Policies describe what a node is allowed to do.
+Next:
 
-Use policies for:
-
-- `applies_to`: `root`, `parent`, or `worker`
-- retry or child-assignment budget posture
-- human request capability
-- command-run capability
-- concrete authority rules and prohibitions
-
-Do not create a policy just because the role changes. A planner, reviewer, researcher, and engineer can all use the same ordinary worker policy when their authority is the same.
-
-## Workflows
-
-Workflows describe the evidence path for a purpose.
-
-Use workflows for:
-
-- root, parent, and worker node tree
-- node-local missions
-- criteria that can block closure
-- consumed artifacts or criteria
-- produced artifacts
-- parent/root routing and release posture
-
-A workflow is not a runtime log. It does not own checkpoints, dispatch state, operator decisions, or live currentness.
-
-## Task-compose
-
-Task-compose names one concrete task, selects a workflow, gives task-specific instruction, and can set a `roots` mapping for named paths such as `workspace` and `context`. If `roots` is omitted, AutoClaw uses task-owned defaults.
-
-Task-compose is intentionally separate from reusable definitions. It is the launch file passed to task start.
-
-## Criteria, consumes, and produces
-
-These three fields make workflows evidence-driven:
-
-- **criteria** describe hard requirements
-- **consumes** declare what a node must read
-- **produces** declare what a node must leave behind
-
-For fixed workflows, make handoffs explicit. For dynamic workflows, keep artifacts broad and stable so parents can route from current evidence.
-
-## Provider skills
-
-Provider skills can add task-specific instructions to the harness loop. Use them when the agent needs specialized local guidance, such as security review, frontend visual verification, PDF reading, browser triage, or release safety.
-
-Skills should support the role and node mission. They should not replace workflow criteria or controller-owned evidence.
-
-## Related pages
-
-- [Core concepts](core-concepts.md)
-- [Policy model](policy-model.md)
-- [Task-compose model](task-compose-model.md)
 - [Design workflows and instructions](../guides/design-workflows-and-instructions.md)
 - [Write a role](../guides/write-a-role.md)
 - [Write a policy](../guides/write-a-policy.md)

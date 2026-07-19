@@ -16,6 +16,7 @@
         "test:watch": "vitest",
         "test:integration": "vitest run --config vitest.integration.config.ts",
         "test:e2e": "playwright test",
+        "test:e2e-real": "playwright test --config playwright.real-backend.config.ts",
         "openapi:generate": "openapi-typescript"
     },
     "dependencies": {

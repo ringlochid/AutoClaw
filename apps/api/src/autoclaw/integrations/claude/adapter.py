@@ -136,7 +136,7 @@ class ClaudeAdapter:
                 self._executions.pop(dispatch_id, None)
         return ProviderStopOutcome.STOPPED
 
-    async def check(self) -> ProviderCheckResult:
+    async def read_availability(self) -> ProviderCheckResult:
         if not self._is_active:
             return ProviderCheckResult(
                 kind=self.kind,

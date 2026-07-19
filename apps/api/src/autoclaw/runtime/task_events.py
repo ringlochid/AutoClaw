@@ -215,6 +215,41 @@ def task_event_record_from_model(row: TaskEventModel) -> TaskEventRecord:
     )
 
 
+def compute_task_event_hash(event: TaskEventRecord) -> str:
+    materialized = event.model_dump(mode="json")
+    materialized.pop("event_hash", None)
+    materialized["occurred_at"] = _task_event_hash_timestamp(event.occurred_at)
+    encoded = json.dumps(materialized, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
+
+
+def encode_task_event_cursor(event_id: str) -> str:
+    payload = json.dumps(
+        {"event_id": event_id, "version": 1}, sort_keys=True, separators=(",", ":")
+    )
+    token = base64.urlsafe_b64encode(payload.encode("utf-8")).decode("ascii").rstrip("=")
+    return f"{_CURSOR_PREFIX}{token}"
+
+
+def decode_task_event_cursor(cursor: str) -> str:
+    if not cursor.startswith(_CURSOR_PREFIX):
+        return cursor
+    token = cursor.removeprefix(_CURSOR_PREFIX)
+    try:
+        padded = token + "=" * (-len(token) % 4)
+        decoded = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
+        payload = json.loads(decoded)
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise TaskEventCursorResetRequiredError(cursor) from exc
+    if not isinstance(payload, dict) or payload.get("version") != 1:
+        raise TaskEventCursorResetRequiredError(cursor)
+    event_id = payload.get("event_id")
+    if not isinstance(event_id, str) or not event_id:
+        raise TaskEventCursorResetRequiredError(cursor)
+    return event_id
+
+
 def _build_task_event_record(
     *,
     event_id: str,
@@ -250,41 +285,6 @@ def _build_task_event_record(
             "event_hash": event_hash,
         }
     )
-
-
-def compute_task_event_hash(event: TaskEventRecord) -> str:
-    materialized = event.model_dump(mode="json")
-    materialized.pop("event_hash", None)
-    materialized["occurred_at"] = _task_event_hash_timestamp(event.occurred_at)
-    encoded = json.dumps(materialized, sort_keys=True, separators=(",", ":"))
-    digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
-    return f"sha256:{digest}"
-
-
-def encode_task_event_cursor(event_id: str) -> str:
-    payload = json.dumps(
-        {"event_id": event_id, "version": 1}, sort_keys=True, separators=(",", ":")
-    )
-    token = base64.urlsafe_b64encode(payload.encode("utf-8")).decode("ascii").rstrip("=")
-    return f"{_CURSOR_PREFIX}{token}"
-
-
-def decode_task_event_cursor(cursor: str) -> str:
-    if not cursor.startswith(_CURSOR_PREFIX):
-        return cursor
-    token = cursor.removeprefix(_CURSOR_PREFIX)
-    try:
-        padded = token + "=" * (-len(token) % 4)
-        decoded = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
-        payload = json.loads(decoded)
-    except (ValueError, json.JSONDecodeError) as exc:
-        raise TaskEventCursorResetRequiredError(cursor) from exc
-    if not isinstance(payload, dict) or payload.get("version") != 1:
-        raise TaskEventCursorResetRequiredError(cursor)
-    event_id = payload.get("event_id")
-    if not isinstance(event_id, str) or not event_id:
-        raise TaskEventCursorResetRequiredError(cursor)
-    return event_id
 
 
 async def _cursor_event_seq(

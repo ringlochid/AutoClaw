@@ -129,12 +129,12 @@ def validate_provider_execution_policy(
         )
 
 
-def apply_provider_capability_ceiling(
+def narrow_provider_capabilities(
     *,
     route: ProviderRoute,
     capabilities: EffectiveCapabilitySet,
 ) -> EffectiveCapabilitySet:
-    """Apply one provider-local hard ceiling before prompt and D2 persistence."""
+    """Narrow effective capabilities to one provider-local hard ceiling."""
 
     if (
         route.kind is ProviderKind.CODEX
@@ -316,7 +316,7 @@ def _validate_openclaw_gateway_url(value: str) -> None:
 __all__ = [
     "ProviderResolutionError",
     "ProviderResolutionErrorCode",
-    "apply_provider_capability_ceiling",
+    "narrow_provider_capabilities",
     "provider_selection_from_kind",
     "resolve_provider_route",
     "validate_provider_execution_policy",

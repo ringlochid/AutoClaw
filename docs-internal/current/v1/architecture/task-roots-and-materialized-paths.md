@@ -1,156 +1,73 @@
-# Current task directories and materialized paths
+# Current task roots and materialized paths
 
 Status: Current
 
-Last verified: 2026-05-13
+Last verified: 2026-07-19
 
-This page defines the current on-host task directory behavior and the current materialized path model.
+A task root holds provider inputs, user files, outputs, and derived readbacks. It is not the runtime database.
 
-## Current task directory owner
+## Layout
 
-Current task directories are explicit launch inputs.
-
-The runtime does not derive a task root from `platformdirs`. Instead, `launch_task_runtime()` receives an explicit `task_root`, and `resolve_task_root_paths()` expands that into the current task-root layout.
-
-`platformdirs` still owns default config, data, state, and cache directories for the CLI, but not the per-task root path.
-
-## Current `roots` path-binding model
-
-Current `TaskComposeInput.roots` can bind:
-
-- `workspace`
-- `context`
-
-Current binding modes are:
-
-- `ensure_task_default`
-- `ensure_host_path`
-- `use_existing_host`
-
-Current binding behavior is:
-
-- `ensure_task_default` -> use `<task_root>/<binding_name>`
-- `ensure_host_path` -> use `host_path` and create it if needed
-- `use_existing_host` -> use `host_path`, but it must already exist
-
-## Current materialized directories
-
-Current code materializes these task-directory paths:
-
-- `workspace/` or the bound workspace host path
-- `context/` or the bound context host path
-- `context/wiki/`
-- `outputs/`
-- `outputs/artifacts/`
-- `tmp/`
-- `tmp/transfers/`
-- `_runtime/`
-- `_runtime/criteria/`
-- `_runtime/attempts/`
-- `_runtime/dispatch/`
-
-Current task-root layout is represented by `TaskRootPaths`.
-
-## Current resource-binding model
-
-Current runtime persists task resource bindings for:
-
-- `workspace`
-- `context`
-- `criteria`
-- `wiki`
-- `outputs`
-- `artifacts`
-- `tmp`
-- `transfers`
-- `runtime`
-- `attempts`
-- `dispatch`
-
-Those binding paths are written into `TaskResourceBindingModel` rows during bootstrap persistence.
-
-## Current materialized files
-
-Current materialization writes files such as:
-
-- `_runtime/workflow-manifest.json`
-- `_runtime/workflow-manifest.md`
-- `_runtime/criteria/<slot>.vNN.md` plus compatibility `<slot>.md`
-- `_runtime/attempts/<attempt_id>/assignment.{json,md}`
-- `_runtime/attempts/<attempt_id>/latest-checkpoint.{json,md}` when present
-- `_runtime/attempts/<attempt_id>/artifact-index.json`
-- `_runtime/attempts/<attempt_id>/transient-index.json`
-- `_runtime/dispatch/<dispatch_id>/prompt.md`
-- `_runtime/dispatch/<dispatch_id>/prompt-request.json`
-- `_runtime/dispatch/<dispatch_id>/delivery-state.json`
-- `_runtime/dispatch/<dispatch_id>/continuity-state.json`
-- `_runtime/dispatch/<dispatch_id>/watchdog-state.json`
-- `_runtime/dispatch/<dispatch_id>/provider-events.ndjson`
-- `outputs/artifacts/<owner_node_key>/<slot>/current.json`
-
-Current `_runtime/workflow-manifest.*` carries the live whole-workflow payload, including:
-
-- `manifest_version`
-- current filesystem path bindings
-- `current_context.latest_checkpoint_path`
-- `current_context.latest_relevant_checkpoint_path`
-- top-level `structural_edit_palette`
-- per-node `policy` when present
-
-The markdown manifest may omit a rendered `Structural Edit Palette` section when both palette lists are empty, even though the machine payload still keeps the palette object. The stable manifest, attempt, and dispatch writers are synchronous post-commit helpers in the current shipped tree, so the taught task-root reread surfaces refresh before route success.
-
-## Current workspace-lease rule
-
-Current bootstrap persists a live workspace-path lease for a custom workspace host path.
-
-That means:
-
-- a live task can hold an `ensure_host_path` workspace path
-- a second live task cannot reuse that same normalized workspace host path
-- terminal flow closure releases the live lease
-
-## Current dependency model
-
-Current durable dependency sharing happens through:
-
-- criteria files
-- artifact publications and current-pointer rows
-- surfaced exact current child artifact refs resolved from those current-pointer rows when a parent/root turn depends on child durable evidence
-- controller-staged descendant checkpoint and artifact refs for release rereads when the relevant evidence reaches beyond the current direct-child set
-- checkpoint refs
-- assignment consumed refs
-- manifest `current_relevant_paths`
-
-Current code also keeps `latest_relevant_checkpoint_path` as a separate manifest field instead of asking readers to infer the parent/root handoff from `current_relevant_paths` ordering alone.
-
-Current code does not ship the older manifest-root-only or context-item-only teaching model as the canonical dependency path.
-
-## Minimal example
+The maintained shape is:
 
 ```text
-<task_root>/
+<task-root>/
   workspace/
-  context/
-    wiki/
   outputs/
     artifacts/
   tmp/
     transfers/
+      localized/
   _runtime/
-    criteria/
     workflow-manifest.md
+    criteria/
     attempts/
     dispatch/
+      <dispatch-id>/
+        instructions.md
+        input.md
 ```
+
+The exact contents depend on the workflow and completed work. Missing support projections do not erase controller truth.
+
+## Dispatch request pair
+
+Each dispatch has two immutable provider inputs:
+
+- `instructions.md` teaches the role, runtime rules, available tools, and completion contract
+- `input.md` carries the assignment and current dispatch context
+
+The pair is written before the successor dispatch becomes current. A dispatch is not opened if the required pair cannot be published. Providers receive these files; there is no separate prompt file that can become another source of truth.
+
+The rendered input and `get_current_context` both name the pair's task-relative paths for bounded readback. They also name `_runtime/workflow-manifest.md`, but that manifest remains a support projection. Current context reads the direct-child neighborhood from controller rows instead of treating the manifest as live authority.
+
+## Projections
+
+Workflow manifests, criteria, attempt readbacks, and artifact indexes are derived from committed database rows. A dedicated asynchronous projection owner writes them after commit.
+
+Projection signals name the exact source to materialize. Replays are safe because each projection rereads current controller truth and writes the same derived result.
+
+## Workspace and file access
+
+A task may bind an external workspace. Multiple tasks may use the same workspace; AutoClaw does not lease it or block another task from using it.
+
+Node tools accept task-relative paths. The controller checks containment and symbolic-link traversal before reading or writing. Capability and role policy decide which file tools a dispatch receives.
+
+Workers receive only the tools they need. Parent assignment and release tools are not exposed to ordinary worker dispatches.
+
+## Artifacts and cleanup
+
+Published artifacts live under `outputs/artifacts/` and are represented by controller records. Temporary localized inputs live under `tmp/transfers/localized/`.
+
+Transient cleanup and dispatch cleanup are asynchronous support effects. They may remove controller-owned temporary files and revoke a managed MCP binding, but they do not delete an external workspace.
+
+A database reset deletes controller task roots only when they are inside the configured data boundary. It never deletes an external workspace.
 
 ## Evidence
 
-- inspected code in `apps/api/src/autoclaw/runtime/task_root/paths.py`
-- inspected code in `apps/api/src/autoclaw/runtime/task_root/reads.py`
-- inspected code in `apps/api/src/autoclaw/runtime/task_root/writes.py`
-- inspected code in `apps/api/src/autoclaw/runtime/launch/bootstrap/projection.py`
-- inspected code in `apps/api/src/autoclaw/runtime/launch/bootstrap/rows.py`
-- inspected code in `apps/api/src/autoclaw/paths.py`
-- inspected tests in `apps/api/tests/integration/bootstrap/test_bootstrap.py`
-- inspected tests in `apps/api/tests/integration/bootstrap/test_attempt_files.py`
-- inspected tests in `apps/api/tests/e2e/workflows/bounded/test_bounded_change_lane.py`
+- `apps/api/src/autoclaw/runtime/task_root/`
+- `apps/api/src/autoclaw/runtime/dispatch/request_pair.py`
+- `apps/api/src/autoclaw/runtime/projection/`
+- `apps/api/src/autoclaw/runtime/node_operations/`
+- `apps/api/src/autoclaw/persistence/models/runtime/assignment/artifacts.py`
+- `apps/api/tests/integration/runtime/`

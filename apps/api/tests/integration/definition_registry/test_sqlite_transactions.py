@@ -27,14 +27,14 @@ from sqlalchemy import Engine, event, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, sessionmaker
+from tests.helpers.sqlite_runtime import (
+    SyncSessionAdapter,
+    create_runtime_schema_engine,
+)
 from tests.integration.definition_registry.concurrency_support import (
     DefinitionConcurrencyFixture,
     DefinitionInput,
     build_concurrency_fixture,
-)
-from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
-    SyncSessionAdapter,
-    create_runtime_schema_engine,
 )
 
 type SyncSessionFactory = sessionmaker[Session]

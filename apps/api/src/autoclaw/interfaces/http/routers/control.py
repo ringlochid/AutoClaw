@@ -331,7 +331,7 @@ async def stream_control_task_events(
                 resume_cursor=resume_cursor,
             )
         return StreamingResponse(
-            _stream_task_event_records(task_id=task_id, cursor=stream_cursor),
+            stream_task_event_records(task_id=task_id, cursor=stream_cursor),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -340,6 +340,26 @@ async def stream_control_task_events(
         )
     except Exception as exc:  # pragma: no cover - thin HTTP wrapper
         raise_runtime_exception(exc)
+
+
+async def stream_task_event_records(
+    *,
+    task_id: str,
+    cursor: str | None,
+) -> AsyncIterator[str]:
+    current_cursor = cursor
+    while True:
+        async with get_session_factory()() as session:
+            event_page = await list_task_events(
+                session,
+                task_id=task_id,
+                cursor=current_cursor,
+                limit=_TASK_EVENT_STREAM_PAGE_SIZE,
+            )
+        for event in event_page.items:
+            yield _render_task_event_sse(event)
+            current_cursor = event.event_id
+        await asyncio.sleep(_TASK_EVENT_STREAM_POLL_SECONDS)
 
 
 def _resolve_task_event_stream_cursor(
@@ -375,26 +395,6 @@ async def _validated_task_event_stream_cursor(
     if head is None:
         return None
     return head.event_id
-
-
-async def _stream_task_event_records(
-    *,
-    task_id: str,
-    cursor: str | None,
-) -> AsyncIterator[str]:
-    current_cursor = cursor
-    while True:
-        async with get_session_factory()() as session:
-            event_page = await list_task_events(
-                session,
-                task_id=task_id,
-                cursor=current_cursor,
-                limit=_TASK_EVENT_STREAM_PAGE_SIZE,
-            )
-        for event in event_page.items:
-            yield _render_task_event_sse(event)
-            current_cursor = event.event_id
-        await asyncio.sleep(_TASK_EVENT_STREAM_POLL_SECONDS)
 
 
 def _render_task_event_sse(event: TaskEventRecord) -> str:

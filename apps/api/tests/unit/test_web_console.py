@@ -65,6 +65,28 @@ async def test_packaged_web_console_serves_runtime_config() -> None:
     assert "internal" not in response.text
 
 
+async def test_packaged_web_console_excludes_development_only_routes_and_assets() -> None:
+    assets_root = get_packaged_web_console_assets_root()
+    packaged_paths = {
+        path.relative_to(assets_root).as_posix()
+        for path in assets_root.rglob("*")
+        if path.is_file()
+    }
+    app = create_app(should_enable_mcp_mounts=False)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://127.0.0.1:18125",
+    ) as client:
+        fixture_response = await client.get("/fixtures")
+        worker_response = await client.get("/mockServiceWorker.js")
+
+    assert fixture_response.status_code == 404
+    assert worker_response.status_code == 404
+    assert "mockServiceWorker.js" not in packaged_paths
+    assert not any(path.endswith(".map") for path in packaged_paths)
+
+
 def _first_asset_with_suffix(directory: Path, suffix: str) -> Path:
     for path in sorted(directory.iterdir()):
         if path.suffix == suffix:

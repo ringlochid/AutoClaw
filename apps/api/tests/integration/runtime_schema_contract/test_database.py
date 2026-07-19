@@ -4,11 +4,11 @@ from pathlib import Path
 
 from autoclaw.persistence import RuntimeBase
 from sqlalchemy import CheckConstraint, ForeignKeyConstraint, UniqueConstraint, func, select
-from tests.integration.runtime_schema_contract.catalog_fixture import seed_catalog
-from tests.integration.runtime_schema_contract.runtime_lineage_fixture import (
+from tests.helpers.catalog_seed import seed_catalog
+from tests.helpers.lineage_seed import (
     seed_runtime_scope,
 )
-from tests.integration.runtime_schema_contract.sqlite_schema_fixture import (
+from tests.helpers.sqlite_runtime import (
     create_runtime_schema_engine,
 )
 

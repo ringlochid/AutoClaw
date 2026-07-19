@@ -53,7 +53,7 @@ def configure_provider(
         nonlocal default_changed
         provider_section = dict(payload.get(request.provider.value, {}))
         provider_section["enabled"] = True
-        apply_provider_route_updates(provider_section, request)
+        update_provider_route_section(provider_section, request)
         payload[request.provider.value] = provider_section
 
         runtime_section = dict(payload.get("runtime", {}))
@@ -66,11 +66,13 @@ def configure_provider(
 
     sections = persist_config_mutation(config_path, build_candidate)
     default_provider = ProviderKind(sections["runtime"]["default_provider"])
-    return ProviderConfigurationSnapshot(
-        provider=request.provider,
-        default_provider=default_provider,
-        default_changed=default_changed,
-        product_status=product_status_for(request.provider),
+    return ProviderConfigurationSnapshot.model_validate(
+        {
+            "provider": request.provider,
+            "default_provider": default_provider,
+            "default_changed": default_changed,
+            "product_status": product_status_for(request.provider),
+        }
     )
 
 
@@ -91,15 +93,17 @@ def set_default_provider(
         return payload
 
     persist_config_mutation(config_path, build_candidate)
-    return ProviderConfigurationSnapshot(
-        provider=provider,
-        default_provider=provider,
-        default_changed=previous_default != provider,
-        product_status=product_status_for(provider),
+    return ProviderConfigurationSnapshot.model_validate(
+        {
+            "provider": provider,
+            "default_provider": provider,
+            "default_changed": previous_default != provider,
+            "product_status": product_status_for(provider),
+        }
     )
 
 
-def apply_provider_route_updates(
+def update_provider_route_section(
     section: dict[str, object],
     request: ProviderConfigurationRequest,
 ) -> None:
@@ -156,10 +160,10 @@ def product_status_for(provider: ProviderKind) -> ProviderProductStatus:
 
 __all__ = [
     "ProviderConfigurationRequest",
-    "apply_provider_route_updates",
     "configure_provider",
     "product_status_for",
     "set_default_provider",
     "settings_from_config_sections",
+    "update_provider_route_section",
     "validate_provider_config",
 ]

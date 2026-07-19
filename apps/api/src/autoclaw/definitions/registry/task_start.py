@@ -33,7 +33,7 @@ from autoclaw.runtime.node_operations.follow_on import SupportProjectionPublishe
 from autoclaw.runtime.post_commit import FlowStartCommitted, RuntimeEffectPublisher
 from autoclaw.runtime.providers import (
     ProviderResolutionError,
-    apply_provider_capability_ceiling,
+    narrow_provider_capabilities,
     resolve_provider_route,
     validate_provider_execution_policy,
 )
@@ -89,7 +89,7 @@ async def preview_task_compose(
                 available_adapter_kinds=available_adapter_kinds,
             )
             capabilities = resolve_effective_capabilities_from_policy_content(policy.definition)
-            capabilities = apply_provider_capability_ceiling(
+            capabilities = narrow_provider_capabilities(
                 route=provider.route,
                 capabilities=capabilities,
             )
@@ -127,24 +127,6 @@ async def preview_task_compose(
     )
 
 
-def _invalid_preview(
-    exc: Exception,
-    *,
-    kind: Literal["schema", "cross_reference", "provider", "path"],
-    code: str,
-) -> TaskComposePreviewResponse:
-    return TaskComposePreviewResponse(
-        status="invalid",
-        errors=(
-            TaskComposePreviewIssue(
-                code=code,
-                message=str(exc),
-                kind=kind,
-            ),
-        ),
-    )
-
-
 async def start_task_from_definition(
     request: TaskStartRequest,
     *,
@@ -170,6 +152,24 @@ async def start_task_from_definition(
             runtime_effect_publisher=runtime_effect_publisher,
             support_projection_publisher=support_projection_publisher,
         )
+
+
+def _invalid_preview(
+    exc: Exception,
+    *,
+    kind: Literal["schema", "cross_reference", "provider", "path"],
+    code: str,
+) -> TaskComposePreviewResponse:
+    return TaskComposePreviewResponse(
+        status="invalid",
+        errors=(
+            TaskComposePreviewIssue(
+                code=code,
+                message=str(exc),
+                kind=kind,
+            ),
+        ),
+    )
 
 
 async def _start_task_from_definition(

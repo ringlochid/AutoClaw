@@ -35,7 +35,7 @@ from autoclaw.runtime.dispatch.prompt_snapshot import (
     RootPromptChildSnapshot,
 )
 from autoclaw.runtime.providers import (
-    apply_provider_capability_ceiling,
+    narrow_provider_capabilities,
     provider_selection_from_kind,
     resolve_provider_route,
 )
@@ -121,7 +121,7 @@ async def read_ordinary_dispatch_snapshot(
         settings=dependencies.settings,
         available_adapter_kinds=dependencies.available_adapter_kinds,
     )
-    capabilities = apply_provider_capability_ceiling(
+    capabilities = narrow_provider_capabilities(
         route=provider.route,
         capabilities=capabilities,
     )
@@ -226,116 +226,6 @@ def ordinary_context_is_current(snapshot: OrdinaryDispatchSnapshot) -> ColumnEle
     )
 
 
-async def _read_ordinary_runtime_context(
-    session: AsyncSession,
-    *,
-    basis: OrdinaryContinuationBasis,
-    expected_flow_status: OrdinaryExpectedFlowStatus,
-    expected_control_revision: int | None,
-) -> OrdinaryRuntimeContext | None:
-    statement = (
-        select(
-            TaskModel,
-            WorkspaceBindingModel,
-            FlowModel,
-            CompiledPlanModel,
-            DispatchTurnModel,
-            FlowNodeModel,
-            NodePlanRevisionModel,
-            AssignmentModel,
-            AttemptModel,
-        )
-        .options(raiseload("*"))
-        .select_from(AssignmentModel)
-        .join(TaskModel, TaskModel.task_id == AssignmentModel.task_id)
-        .join(WorkspaceBindingModel, WorkspaceBindingModel.task_id == TaskModel.task_id)
-        .join(FlowModel, FlowModel.flow_id == AssignmentModel.flow_id)
-        .join(CompiledPlanModel, CompiledPlanModel.compiled_plan_id == FlowModel.compiled_plan_id)
-        .join(
-            DispatchTurnModel,
-            DispatchTurnModel.dispatch_id == basis.source_dispatch_id,
-        )
-        .join(
-            FlowNodeModel,
-            (FlowNodeModel.flow_id == AssignmentModel.flow_id)
-            & (FlowNodeModel.flow_revision_id == AssignmentModel.flow_revision_id)
-            & (FlowNodeModel.flow_node_id == AssignmentModel.flow_node_id),
-        )
-        .join(
-            NodePlanRevisionModel,
-            (NodePlanRevisionModel.flow_id == FlowNodeModel.flow_id)
-            & (NodePlanRevisionModel.flow_revision_id == FlowNodeModel.flow_revision_id)
-            & (NodePlanRevisionModel.flow_node_id == FlowNodeModel.flow_node_id),
-        )
-        .join(
-            AttemptModel,
-            (AttemptModel.assignment_id == AssignmentModel.assignment_id)
-            & (AttemptModel.attempt_id == basis.attempt_id),
-        )
-        .where(
-            AssignmentModel.assignment_id == basis.assignment_id,
-            AssignmentModel.task_id == basis.task_id,
-            AssignmentModel.flow_id == basis.flow_id,
-            FlowModel.status == expected_flow_status,
-            FlowModel.active_flow_revision_id == AssignmentModel.flow_revision_id,
-            FlowModel.current_dispatch_id.is_(None),
-            FlowModel.waiting_cause == "none",
-        )
-    )
-    if expected_control_revision is not None:
-        statement = statement.where(FlowModel.control_revision == expected_control_revision)
-    row = (await session.execute(statement)).one_or_none()
-    return OrdinaryRuntimeContext(*row) if row is not None else None
-
-
-def _validate_ordinary_runtime_context(
-    context: OrdinaryRuntimeContext,
-    *,
-    basis: OrdinaryContinuationBasis,
-) -> None:
-    node = context.node
-    node_plan = context.node_plan
-    assignment = context.assignment
-    attempt = context.attempt
-    source_dispatch = context.source_dispatch
-    if (
-        source_dispatch.task_id != basis.task_id
-        or source_dispatch.flow_id != basis.flow_id
-        or source_dispatch.assignment_id != basis.assignment_id
-        or source_dispatch.attempt_id != basis.attempt_id
-        or source_dispatch.status != "closed"
-        or source_dispatch.closed_reason != basis.source_dispatch_closed_reason
-        or node.state != "running"
-        or node.current_assignment_id != assignment.assignment_id
-        or assignment.current_attempt_id != attempt.attempt_id
-        or assignment.superseded_at is not None
-        or attempt.status != "running"
-        or node_plan.role_key != node.role_key
-        or node_plan.role_revision_no != node.role_revision_no
-        or node_plan.policy_key != node.policy_key
-        or node_plan.policy_revision_no != node.policy_revision_no
-        or node_plan.provider_kind != node.provider_kind
-    ):
-        raise ValueError("ordinary continuation has inconsistent exact runtime context")
-
-
-async def _has_active_external_wait(session: AsyncSession, *, flow_id: str) -> bool:
-    active_wait = await session.scalar(
-        select(
-            exists().where(FlowWaitModel.flow_id == flow_id)
-            | exists().where(
-                HumanRequestModel.flow_id == flow_id,
-                HumanRequestModel.status == "open",
-            )
-            | exists().where(
-                CommandRunModel.flow_id == flow_id,
-                CommandRunModel.state.not_in(COMMAND_RUN_TERMINAL_STATE_VALUES),
-            )
-        )
-    )
-    return bool(active_wait)
-
-
 async def read_pinned_workflow_revision(
     session: AsyncSession,
     compiled_plan: CompiledPlanModel,
@@ -435,6 +325,113 @@ def build_ordinary_prompt_snapshot(
         predecessor_dispatch_id=basis.source_dispatch_id,
         trigger=basis.trigger,
     )
+
+
+async def _read_ordinary_runtime_context(
+    session: AsyncSession,
+    *,
+    basis: OrdinaryContinuationBasis,
+    expected_flow_status: OrdinaryExpectedFlowStatus,
+    expected_control_revision: int | None,
+) -> OrdinaryRuntimeContext | None:
+    statement = (
+        select(
+            TaskModel,
+            WorkspaceBindingModel,
+            FlowModel,
+            CompiledPlanModel,
+            DispatchTurnModel,
+            FlowNodeModel,
+            NodePlanRevisionModel,
+            AssignmentModel,
+            AttemptModel,
+        )
+        .options(raiseload("*"))
+        .select_from(AssignmentModel)
+        .join(TaskModel, TaskModel.task_id == AssignmentModel.task_id)
+        .join(WorkspaceBindingModel, WorkspaceBindingModel.task_id == TaskModel.task_id)
+        .join(FlowModel, FlowModel.flow_id == AssignmentModel.flow_id)
+        .join(CompiledPlanModel, CompiledPlanModel.compiled_plan_id == FlowModel.compiled_plan_id)
+        .join(DispatchTurnModel, DispatchTurnModel.dispatch_id == basis.source_dispatch_id)
+        .join(
+            FlowNodeModel,
+            (FlowNodeModel.flow_id == AssignmentModel.flow_id)
+            & (FlowNodeModel.flow_revision_id == AssignmentModel.flow_revision_id)
+            & (FlowNodeModel.flow_node_id == AssignmentModel.flow_node_id),
+        )
+        .join(
+            NodePlanRevisionModel,
+            (NodePlanRevisionModel.flow_id == FlowNodeModel.flow_id)
+            & (NodePlanRevisionModel.flow_revision_id == FlowNodeModel.flow_revision_id)
+            & (NodePlanRevisionModel.flow_node_id == FlowNodeModel.flow_node_id),
+        )
+        .join(
+            AttemptModel,
+            (AttemptModel.assignment_id == AssignmentModel.assignment_id)
+            & (AttemptModel.attempt_id == basis.attempt_id),
+        )
+        .where(
+            AssignmentModel.assignment_id == basis.assignment_id,
+            AssignmentModel.task_id == basis.task_id,
+            AssignmentModel.flow_id == basis.flow_id,
+            FlowModel.status == expected_flow_status,
+            FlowModel.active_flow_revision_id == AssignmentModel.flow_revision_id,
+            FlowModel.current_dispatch_id.is_(None),
+            FlowModel.waiting_cause == "none",
+        )
+    )
+    if expected_control_revision is not None:
+        statement = statement.where(FlowModel.control_revision == expected_control_revision)
+    row = (await session.execute(statement)).one_or_none()
+    return OrdinaryRuntimeContext(*row) if row is not None else None
+
+
+def _validate_ordinary_runtime_context(
+    context: OrdinaryRuntimeContext,
+    *,
+    basis: OrdinaryContinuationBasis,
+) -> None:
+    node = context.node
+    node_plan = context.node_plan
+    assignment = context.assignment
+    attempt = context.attempt
+    source_dispatch = context.source_dispatch
+    if (
+        source_dispatch.task_id != basis.task_id
+        or source_dispatch.flow_id != basis.flow_id
+        or source_dispatch.assignment_id != basis.assignment_id
+        or source_dispatch.attempt_id != basis.attempt_id
+        or source_dispatch.status != "closed"
+        or source_dispatch.closed_reason != basis.source_dispatch_closed_reason
+        or node.state != "running"
+        or node.current_assignment_id != assignment.assignment_id
+        or assignment.current_attempt_id != attempt.attempt_id
+        or assignment.superseded_at is not None
+        or attempt.status != "running"
+        or node_plan.role_key != node.role_key
+        or node_plan.role_revision_no != node.role_revision_no
+        or node_plan.policy_key != node.policy_key
+        or node_plan.policy_revision_no != node.policy_revision_no
+        or node_plan.provider_kind != node.provider_kind
+    ):
+        raise ValueError("ordinary continuation has inconsistent exact runtime context")
+
+
+async def _has_active_external_wait(session: AsyncSession, *, flow_id: str) -> bool:
+    active_wait = await session.scalar(
+        select(
+            exists().where(FlowWaitModel.flow_id == flow_id)
+            | exists().where(
+                HumanRequestModel.flow_id == flow_id,
+                HumanRequestModel.status == "open",
+            )
+            | exists().where(
+                CommandRunModel.flow_id == flow_id,
+                CommandRunModel.state.not_in(COMMAND_RUN_TERMINAL_STATE_VALUES),
+            )
+        )
+    )
+    return bool(active_wait)
 
 
 __all__ = [

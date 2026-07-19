@@ -3,6 +3,7 @@ from __future__ import annotations
 import tomllib
 from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
+from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
@@ -99,6 +100,19 @@ _RUNTIME_STARTUP_ROUTED_SIGNAL_TYPES = (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class _ApplicationRuntime:
+    binding_registry: DispatchMcpBindingRegistry
+    provider_adapter_registry: ProviderAdapterRegistry
+    runtime_effect_router: RuntimeEffectRouter
+    deadline_scheduler: DeadlineScheduler
+    dispatch_opening_dependencies: DispatchOpeningDependencies
+    command_process_owner: CommandProcessOwner
+    support_projection_owner: SupportProjectionOwner
+    node_operation_executor: NodeOperationExecutor
+    dispatch_starter: DispatchStarter
+
+
 def _package_version() -> str:
     try:
         return version("autoclaw")
@@ -134,6 +148,29 @@ def create_app(
         redoc_url="/redoc" if docs_enabled else None,
         openapi_url="/openapi.json" if docs_enabled else None,
     )
+    runtime = _build_application_runtime(settings)
+    _register_runtime_effect_routes(
+        router=runtime.runtime_effect_router,
+        scheduler=runtime.deadline_scheduler,
+        command_process_owner=runtime.command_process_owner,
+        support_projection_owner=runtime.support_projection_owner,
+        dispatch_starter=runtime.dispatch_starter,
+        provider_adapter_registry=runtime.provider_adapter_registry,
+        binding_registry=runtime.binding_registry,
+        dependencies=runtime.dispatch_opening_dependencies,
+        settings=settings,
+    )
+    _store_application_runtime(app, runtime)
+    add_local_control_plane_middleware(app, settings)
+    _register_exception_handlers(app)
+    app.include_router(api_router)
+    mount_packaged_web_console(app)
+    if should_enable_mcp_mounts:
+        _mount_mcp_apps(app, settings=settings, runtime=runtime)
+    return app
+
+
+def _build_application_runtime(settings: Settings) -> _ApplicationRuntime:
     binding_registry = DispatchMcpBindingRegistry()
     provider_adapter_registry = build_provider_adapter_registry(settings)
     runtime_effect_router = RuntimeEffectRouter(session_factory=_runtime_session_context)
@@ -175,31 +212,35 @@ def create_app(
         managed_node_mcp_url=_node_mcp_url(settings, path="/_internal/node/mcp"),
         compatibility_node_mcp_url=_node_mcp_url(settings, path="/node/mcp"),
     )
-    _register_runtime_effect_routes(
-        router=runtime_effect_router,
-        scheduler=deadline_scheduler,
+    return _ApplicationRuntime(
+        binding_registry=binding_registry,
+        provider_adapter_registry=provider_adapter_registry,
+        runtime_effect_router=runtime_effect_router,
+        deadline_scheduler=deadline_scheduler,
+        dispatch_opening_dependencies=dispatch_opening_dependencies,
         command_process_owner=command_process_owner,
         support_projection_owner=support_projection_owner,
+        node_operation_executor=node_operation_executor,
         dispatch_starter=dispatch_starter,
-        provider_adapter_registry=provider_adapter_registry,
-        binding_registry=binding_registry,
-        dependencies=dispatch_opening_dependencies,
-        settings=settings,
     )
-    app.state.runtime_effect_router = runtime_effect_router
-    app.state.runtime_effect_publisher = runtime_effect_router
-    app.state.deadline_scheduler = deadline_scheduler
-    app.state.command_process_owner = command_process_owner
-    app.state.dispatch_opening_dependencies = dispatch_opening_dependencies
-    app.state.support_projection_owner = support_projection_owner
-    app.state.support_projection_publisher = support_projection_owner
-    app.state.dispatch_mcp_binding_registry = binding_registry
-    app.state.provider_adapter_registry = provider_adapter_registry
-    app.state.node_operation_executor = node_operation_executor
-    app.state.dispatch_starter = dispatch_starter
-    app.state.mcp_lifespan_apps = ()
-    add_local_control_plane_middleware(app, settings)
 
+
+def _store_application_runtime(app: FastAPI, runtime: _ApplicationRuntime) -> None:
+    app.state.runtime_effect_router = runtime.runtime_effect_router
+    app.state.runtime_effect_publisher = runtime.runtime_effect_router
+    app.state.deadline_scheduler = runtime.deadline_scheduler
+    app.state.command_process_owner = runtime.command_process_owner
+    app.state.dispatch_opening_dependencies = runtime.dispatch_opening_dependencies
+    app.state.support_projection_owner = runtime.support_projection_owner
+    app.state.support_projection_publisher = runtime.support_projection_owner
+    app.state.dispatch_mcp_binding_registry = runtime.binding_registry
+    app.state.provider_adapter_registry = runtime.provider_adapter_registry
+    app.state.node_operation_executor = runtime.node_operation_executor
+    app.state.dispatch_starter = runtime.dispatch_starter
+    app.state.mcp_lifespan_apps = ()
+
+
+def _register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(HTTPException)
     async def _http_exception_handler(
         _request: object,
@@ -224,37 +265,40 @@ def create_app(
             content=failure.model_dump(mode="json"),
         )
 
-    app.include_router(api_router)
-    mount_packaged_web_console(app)
-    if should_enable_mcp_mounts:
-        operator_mcp_app = create_operator_mcp_app(
+
+def _mount_mcp_apps(
+    app: FastAPI,
+    *,
+    settings: Settings,
+    runtime: _ApplicationRuntime,
+) -> None:
+    operator_mcp_app = create_operator_mcp_app(
+        host=settings.api_host,
+        port=settings.api_port,
+        allowed_origins=tuple(settings.console_origins),
+        effect_publishers=OperatorEffectPublishers(
+            runtime_effect_publisher=runtime.runtime_effect_router,
+            support_projection_publisher=runtime.support_projection_owner,
+            dispatch_opening_dependencies=runtime.dispatch_opening_dependencies,
+        ),
+    )
+    node_mcp_apps = create_node_mcp_apps(
+        binding_registry=runtime.binding_registry,
+        operation_executor=runtime.node_operation_executor,
+        transport_policy=node_mcp_transport_policy(
             host=settings.api_host,
             port=settings.api_port,
-            allowed_origins=tuple(settings.console_origins),
-            effect_publishers=OperatorEffectPublishers(
-                runtime_effect_publisher=runtime_effect_router,
-                support_projection_publisher=support_projection_owner,
-                dispatch_opening_dependencies=dispatch_opening_dependencies,
-            ),
-        )
-        node_mcp_apps = create_node_mcp_apps(
-            binding_registry=binding_registry,
-            operation_executor=node_operation_executor,
-            transport_policy=node_mcp_transport_policy(
-                host=settings.api_host,
-                port=settings.api_port,
-                allowed_origins=settings.console_origins,
-            ),
-        )
-        app.state.mcp_lifespan_apps = (
-            operator_mcp_app,
-            node_mcp_apps.managed,
-            node_mcp_apps.compatibility,
-        )
-        app.mount("/operator", operator_mcp_app)
-        app.mount("/_internal/node", node_mcp_apps.managed)
-        app.mount("/node", node_mcp_apps.compatibility)
-    return app
+            allowed_origins=settings.console_origins,
+        ),
+    )
+    app.state.mcp_lifespan_apps = (
+        operator_mcp_app,
+        node_mcp_apps.managed,
+        node_mcp_apps.compatibility,
+    )
+    app.mount("/operator", operator_mcp_app)
+    app.mount("/_internal/node", node_mcp_apps.managed)
+    app.mount("/node", node_mcp_apps.compatibility)
 
 
 @asynccontextmanager
@@ -360,17 +404,17 @@ def _register_runtime_effect_routes(
         create_human_request_due_handler(runtime_effect_publisher=router),
     )
     router.register(HumanRequestTerminal, handle_human_terminal)
-    router.register(CommandRunPending, command_process_owner.handle_pending)
-    router.register(CommandRunDue, command_process_owner.handle_due)
+    router.register(CommandRunPending, command_process_owner.launch_pending_command)
+    router.register(CommandRunDue, command_process_owner.enforce_command_deadline)
     router.register(
         CommandRunCancellationRequested,
-        command_process_owner.handle_cancellation_requested,
+        command_process_owner.terminate_cancelled_command,
     )
     router.register(CommandRunTerminal, handle_command_terminal)
-    router.register(CommandProcessExited, command_process_owner.handle_process_exited)
+    router.register(CommandProcessExited, command_process_owner.record_command_process_exit)
     router.register(DispatchCleanupRequested, handle_dispatch_cleanup)
     router.register(TransientCleanupRequested, handle_transient_cleanup)
-    router.register(DispatchStartDue, dispatch_starter.handle)
+    router.register(DispatchStartDue, dispatch_starter.schedule_or_start_dispatch)
     router.register(
         WatchdogDeadlineChanged,
         create_watchdog_deadline_changed_handler(

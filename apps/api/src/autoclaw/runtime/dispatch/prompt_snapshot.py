@@ -27,6 +27,7 @@ from autoclaw.runtime.contracts.prompt import (
     PromptSlot,
     PromptWorkflowNeighbor,
     RootStartTrigger,
+    RuntimeReadbackRefs,
     SemanticRetryTrigger,
     WatchdogRecoveryTrigger,
     prompt_family_for_node_kind,
@@ -158,6 +159,7 @@ def build_root_dispatch_request(
                     )
                     for child in snapshot.children
                 ),
+                readback_refs=_runtime_readback_refs(snapshot.dispatch_id),
                 refs=refs,
                 constraints=(
                     "Treat controller-owned MCP state as runtime truth.",
@@ -256,6 +258,7 @@ def _build_continuation_dispatch_request(
                     )
                     for child in snapshot.children
                 ),
+                readback_refs=_runtime_readback_refs(snapshot.dispatch_id),
                 refs=refs,
                 constraints=(
                     "Treat controller-owned MCP state as runtime truth.",
@@ -298,6 +301,15 @@ def _criteria(rows: tuple[dict[str, object], ...]) -> tuple[PromptCriterion, ...
             )
         )
     return tuple(criteria)
+
+
+def _runtime_readback_refs(dispatch_id: str) -> RuntimeReadbackRefs:
+    dispatch_root = f"_runtime/dispatch/{dispatch_id}"
+    return RuntimeReadbackRefs(
+        instructions=f"{dispatch_root}/instructions.md",
+        input=f"{dispatch_root}/input.md",
+        workflow_manifest="_runtime/workflow-manifest.md",
+    )
 
 
 def _consume_slots(

@@ -30,11 +30,11 @@ from autoclaw.runtime.node_operations.contracts import NodeOperationName
 from autoclaw.runtime.node_operations.domain_handlers import execute_controller_node_operation
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from tests.integration.runtime.node_operations.executor_support import (
+from tests.helpers.executor_harness import (
     seeded_executor,
     synchronized_transition_claims,
 )
-from tests.integration.runtime_schema_contract.runtime_lineage_fixture import RuntimeIds
+from tests.helpers.lineage_seed import RuntimeIds
 
 
 async def test_concurrent_terminal_checkpoints_have_one_stable_loser(

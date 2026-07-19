@@ -87,7 +87,6 @@ Task-compose owns one concrete launch:
 - task.instruction
 - workflow.key
 - roots.workspace
-- roots.context
 
 Keep reusable doctrine in definitions, not task-compose. Put target paths, concrete constraints, accepted deferrals, and task-specific success conditions in task-compose.
 
@@ -99,7 +98,7 @@ Use current docs for exact `roots` binding modes. Use `ensure_task_default` for 
 
 Before asking the user, check docs, registry truth, shipped examples, task context, and obvious constraints.
 
-Ask only when the answer changes workflow shape, `roots` path binding, approval boundary, definition upload, or task start. Ask at most three concrete questions, with recommended options first.
+Ask only when the answer changes workflow shape, the workspace binding, approval boundary, definition upload, or task start. Ask at most three concrete questions, with recommended options first.
 
 Good decision points:
 

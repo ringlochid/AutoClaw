@@ -15,6 +15,4 @@ roots:
     workspace:
         mode: ensure_host_path
         host_path: /home/ubuntu/workspaces/autoclaw-host-bound
-    context:
-        mode: ensure_task_default
 ```

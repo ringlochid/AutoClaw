@@ -1,100 +1,34 @@
 # OpenClaw integration boundary
 
-This page captures the shipped OpenClaw integration boundary that worker clients and operator tooling must honor.
+OpenClaw is an experimental, user-managed compatibility provider. It is installed and supervised outside AutoClaw, remains explicitly selectable, and may be configured as the default.
 
-The current repo-owned contract is controller-side dispatch, prompt rendering, callback HTTP, mounted node MCP, mounted operator MCP, and runtime readbacks.
+## AutoClaw owns
 
-OpenClaw Gateway is the shipped adapter for this contract. Other harnesses may map to the same logical node/operator MCP surfaces later, but they are not current package support unless a provider-specific support page says so.
+- strict provider selection and the committed dispatch route
+- the exact `instructions.md` and `input.md` request pair
+- a bounded Gateway `agent` acceptance call and best-effort abort
+- controller state, Node operation legality, checkpoints, boundaries, waits, and task events
+- the loopback compatibility Node MCP endpoint at `/node/mcp`
 
-## Keywords
+AutoClaw does not wait for `agent.wait`, provider output, final text, or Gateway process completion.
 
-- OpenClaw integration boundary
-- dispatch session binding
-- callback lane
-- node MCP mount
-- operator MCP mount
-- explicit-argument node-tool boundary
+## The user owns
 
-## Transport boundary
+- installing, authenticating, and running OpenClaw and its Gateway
+- `openclaw.json`
+- the compatibility MCP server entry and OpenClaw tool policy
+- choosing an OpenClaw profile that can use the required Node tools
 
-Current shipped facts:
+AutoClaw never edits OpenClaw configuration or silently selects OpenClaw as a fallback.
 
-- the controller prepares and accepts dispatch turns before callback or node-tool writes are legal
-- callback HTTP writes use the task-scoped path plus explicit `session_key`
-- static `node MCP` writes use explicit `session_key` + `task_id` tool arguments
-- callback HTTP and static `node MCP` both validate the same presented `session_key` plus `task_id` against live `NodeSession`, current dispatch, current assignment, and current attempt truth
-- prompt bundles and persisted transport-request artifacts are materialized under `_runtime/dispatch/<dispatch_id>/`
-- dispatch, node-session, delivery-state, continuity-state, watchdog-state, and provider-event rows remain controller truth; prompt files are derived projections
+## Compatibility Node MCP
 
-## Callback and node MCP baseline
+The compatibility server exposes the same logical Node operation catalog as the managed server. Every call includes full `task_id` and `dispatch_id` selectors because static OpenClaw configuration cannot carry a dispatch-scoped private binding.
 
-Repo-visible callback HTTP surfaces are:
+Those IDs are not credentials. The server rereads the current dispatch, role, capability set, and legal state for every call. A stale dispatch ID loses the race and cannot change controller truth.
 
-- `POST /callback/tasks/{task_id}/checkpoint`
-- `POST /callback/tasks/{task_id}/boundary`
-- `POST /callback/tasks/{task_id}/tools/{tool_name}`
+Unlike managed Codex and Claude bindings, the OpenClaw tool list is not filtered dynamically per dispatch. OpenClaw policy should make the whole compatibility catalog available; the controller rejects operations that the current node may not use.
 
-These callback writes require explicit `session_key` input on the request. The current shipped tree does not use a separate callback-binding authority row or hidden callback-only binding secret as the write contract.
+## Known experimental boundary
 
-Repo-visible static `node MCP` surfaces are mounted under `/node/mcp` when the main app enables MCP mounts and expose:
-
-- `search_definitions(session_key, task_id, ...)`
-- `get_definition(session_key, task_id, ...)`
-- `record_checkpoint(session_key, task_id, checkpoint)`
-- `return_boundary(session_key, task_id, boundary)`
-- `open_human_request(session_key, task_id, request)`
-- `start_command_run(session_key, task_id, request)`
-- `assign_child(session_key, task_id, payload, expected_structural_revision_id?)`
-- `add_child(session_key, task_id, payload, expected_structural_revision_id?)`
-- `update_child(session_key, task_id, payload, expected_structural_revision_id?)`
-- `remove_child(session_key, task_id, payload, expected_structural_revision_id?)`
-- `release_green(session_key, task_id, expected_structural_revision_id?)`
-- `release_blocked(session_key, task_id, expected_structural_revision_id?)`
-
-Current shipped helper note:
-
-- local wrapper bootstrap can derive dispatch-local `task_id` and `session_key` for convenience
-- that helper path does not replace the explicit-argument callback or `node MCP` boundary
-- `x-session-key` and other hidden-binding paths are not the supported v1 `node MCP` interface taught by this tree
-
-Current shipped wrapper facts:
-
-- the mounted node-MCP wrapper surface preserves the strict typed request and result shapes the runtime expects
-- `assign_child`, `add_child`, `update_child`, and `remove_child` each keep their own typed `payload` contract, while `release_green` and `release_blocked` stay payload-free
-- `open_human_request` and `start_command_run` each take a typed `request` body and create their external wait directly when the current dispatch authority and node capability allow it
-- node-operation success is surfaced through typed `CheckpointRead`, `BoundaryRead`, `HumanRequestOpenResponse`, `CommandRunStartResponse`, `AssignChildSuccess`, `AddChildSuccess`, `UpdateChildSuccess`, `RemoveChildSuccess`, `ReleaseGreenSuccess`, and `ReleaseBlockedSuccess` wrapper contracts
-
-That means the current tree locally proves:
-
-- worker, parent, and root writes are session-rooted
-- callback HTTP and static `node MCP` share one server-side authority path
-- prompt and session continuity are dispatch-bound
-- manifest and checkpoint lineage remain controller-owned prompt and runtime truth, not caller-authored write-envelope fields
-- human-request waits and command-run waits are separate capability-driven node operations
-- worker node authority and operator authority stay separate; a node does not become an operator by writing generated task files
-
-## Current prompt-source rule
-
-The current runtime no longer ships one monolithic integration prompt string.
-
-Repo-owned prompt truth is split across:
-
-- exact static blocks in `apps/api/src/autoclaw/runtime/prompt/assets/blocks/*.md`
-- the asset catalog in `apps/api/src/autoclaw/runtime/prompt/assets/catalog.json`
-- dynamic prompt assembly in `apps/api/src/autoclaw/runtime/prompt/instructions.py` and `apps/api/src/autoclaw/runtime/prompt/sections/rendering.py`
-- persisted dispatch artifacts under `_runtime/dispatch/<dispatch_id>/`
-
-## Documentation guardrails
-
-This page must not imply that:
-
-- prompt files or dispatch observability files outrank controller-owned dispatch, node-session, or manifest rows
-- a separate callback-binding table owns callback authority in the shipped tree
-- local wrapper bootstrap owns controller transport authority
-- human-request capability and command-run capability are one bundled capability
-
-## Related pages
-
-- [Use the OpenClaw integration](use-openclaw-integration.md)
-- [Runtime read models and operator surfaces](runtime-read-models-and-operator-surfaces.md)
-- [API trust lanes](../api/api-trust-lanes.md)
+Gateway acceptance and cancellation support depend on the installed OpenClaw version. Ambiguous acceptance can cause overlapping physical provider work when cancellation is not reliable. Exact-current controller checks still prevent stale work from committing Node operations.
