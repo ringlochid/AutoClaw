@@ -100,14 +100,16 @@ test("renders the API-backed Task Detail control room at desktop width", async (
     await expect(
         dialog.getByRole("heading", { level: 2, name: "Runtime page contract" }),
     ).toBeVisible();
-    await expect(dialog.getByText("Approve the last copy trim")).toBeVisible();
+    await expect(dialog.getByText("Approval is needed for the last copy trim.")).toBeVisible();
     await expect(dialog.getByText("Verify command-run runner behavior.")).toBeVisible();
     await page.screenshot({
         fullPage: true,
         path: `${SCREENSHOT_DIR}/task-detail-modal-desktop.png`,
     });
     await dialog.getByRole("tab", { name: "Trace" }).click();
-    await expect(dialog.getByLabel("Trace")).toContainText("checkpoint_recorded");
+    await expect(dialog.getByRole("figure", { name: "Trace" }).getByLabel("Trace")).toContainText(
+        "checkpoint_recorded",
+    );
 
     await page.screenshot({
         fullPage: true,

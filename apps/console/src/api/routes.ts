@@ -61,15 +61,9 @@ export function controlTaskEventsRoute(taskId: string, query?: ControlTaskEvents
 export function controlTaskActionRoute(
     taskId: string,
     action: "cancel" | "continue" | "pause",
-    activeFlowRevisionId: string,
-    controlRevision: number,
 ): ApiRoute {
     return {
         path: `/control/tasks/${encodeURIComponent(taskId)}/${action}`,
-        query: buildQueryParams({
-            expected_active_flow_revision_id: activeFlowRevisionId,
-            expected_control_revision: controlRevision,
-        }),
     };
 }
 
@@ -171,6 +165,12 @@ export function definitionDraftReplaceCurrentRoute(kind: string, key: string): A
 export function taskStartRoute(): ApiRoute {
     return {
         path: "/tasks/start",
+    };
+}
+
+export function taskComposePreviewRoute(): ApiRoute {
+    return {
+        path: "/authoring/task-compose/preview",
     };
 }
 

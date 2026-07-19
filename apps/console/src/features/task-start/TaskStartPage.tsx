@@ -1,12 +1,12 @@
 import { PageFrame } from "../../components/layout";
 import {
-    PreviewPanel,
     ResultPanel,
     RootsSection,
     TaskStartSection,
     TaskIdentitySection,
     TaskStartActions,
 } from "./task-start-form-sections";
+import { PreviewPanel } from "./task-start-preview-panel";
 import { WorkflowSection } from "./task-start-workflow-section";
 import { useTaskStartController } from "./task-start-controller";
 
@@ -35,16 +35,7 @@ export function TaskStartPage() {
                         <TaskStartActions controller={controller} />
                     </TaskStartSection>
                 </div>
-                {controller.previewOpen && controller.preview !== null ? (
-                    <PreviewPanel
-                        onClose={() => {
-                            controller.setPreviewOpen(false);
-                        }}
-                        onStart={controller.start}
-                        preview={controller.preview}
-                        startDisabled={controller.submitState.isSubmitting}
-                    />
-                ) : null}
+                {controller.previewOpen ? <PreviewPanel controller={controller} /> : null}
                 <ResultPanel controller={controller} />
             </div>
         </PageFrame>

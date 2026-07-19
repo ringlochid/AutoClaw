@@ -12,7 +12,6 @@ from autoclaw.runtime.contracts.capabilities import (
 from autoclaw.runtime.contracts.common import RuntimeSchemaText
 from autoclaw.runtime.contracts.primitives import (
     CommandRunState,
-    FlowStatus,
     HumanRequestKind,
     HumanRequestStatus,
 )
@@ -168,10 +167,11 @@ class RuntimeFlowSummary(BaseModel):
     task_title: RuntimeSchemaText
     task_summary: RuntimeSchemaText
     workflow_key: RuntimeSchemaText | None = None
-    status: FlowStatus
+    status: RuntimeLifecycleStatus
     active_flow_revision_id: RuntimeSchemaText
     workflow_manifest_ref: WorkflowManifestRef
     current_node_key: RuntimeSchemaText | None = None
+    active_assignment_id: RuntimeSchemaText | None = None
     active_attempt_id: RuntimeSchemaText | None = None
     updated_at: datetime
 
@@ -189,7 +189,7 @@ class RuntimeFlowPauseResponse(BaseModel):
     flow: RuntimeFlowRead
 
 
-class RuntimeFlowControlQuery(BaseModel):
+class RuntimeFlowControlRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     expected_active_flow_revision_id: RuntimeSchemaText
@@ -212,9 +212,8 @@ class RuntimeTaskListQuery(BaseModel):
         "any",
         "pending",
         "running",
-        "blocked",
         "paused",
-        "succeeded",
+        "completed",
         "cancelled",
     ] = "any"
 
@@ -228,7 +227,7 @@ __all__ = [
     "HumanRequestSummary",
     "ProviderStartReadback",
     "ProviderStartRetryKind",
-    "RuntimeFlowControlQuery",
+    "RuntimeFlowControlRequest",
     "RuntimeFlowPauseReason",
     "RuntimeFlowPauseResponse",
     "RuntimeFlowRead",

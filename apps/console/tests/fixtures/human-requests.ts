@@ -246,6 +246,9 @@ export function createHumanRequestRead(
                 due_at: "2026-06-29T17:00:00Z",
             },
             ...overrides,
+            assignment_id: overrides.assignment_id ?? `assignment-${requestId}`,
+            attempt_id: overrides.attempt_id ?? `attempt-${requestId}`,
+            flow_id: overrides.flow_id ?? "flow-human-requests",
         },
         resolution,
     };

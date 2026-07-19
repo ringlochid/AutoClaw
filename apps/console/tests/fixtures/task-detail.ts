@@ -206,9 +206,43 @@ export function createTaskDetailMockScenario(
     const streamEvents =
         options.streamEvents ?? (streamHeadIndex === -1 ? events : events.slice(streamHeadIndex));
     const taskRead = createRuntimeFlowRead({
+        active_assignment_id: "assignment-task-detail-build",
         active_attempt_id: "attempt-task-detail-build",
         active_flow_revision_id: "flow-revision-task-detail-1",
+        current_dispatch: {
+            adapter_started_at: TASK_DETAIL_UPDATED_AT,
+            assignment_id: "assignment-task-detail-build",
+            attempt_id: "attempt-task-detail-build",
+            dispatch_id: "dispatch-task-detail-build-current",
+            effective_capabilities: {
+                network_access: { effective: "allow", source: "task_policy" },
+                provider_native_access: { effective: "restricted", source: "policy_definition" },
+            },
+            last_node_activity_at: TASK_DETAIL_UPDATED_AT,
+            node_activity_revision: 4,
+            opened_reason: "boundary",
+            predecessor_dispatch_id: "dispatch-task-detail-build-previous",
+            provider_start: null,
+            requested_provider: "openclaw",
+            resolved_provider: "openclaw",
+            selection_basis: "explicit",
+            status: "open",
+            watchdog_due_at: "2026-06-29T14:15:00Z",
+        },
         current_node_key: "task_detail_build",
+        current_plan: {
+            assignment_id: "assignment-task-detail-build",
+            authored_by_dispatch_id: "dispatch-task-detail-build-current",
+            explanation: "Keep runtime truth explicit while converging the console.",
+            revision: 2,
+            steps: [
+                { status: "completed", step: "Read the accepted runtime contracts." },
+                { status: "in_progress", step: "Render exact controller runtime truth." },
+                { status: "pending", step: "Run focused console proof." },
+            ],
+            updated_at: TASK_DETAIL_UPDATED_AT,
+        },
+        latest_dispatch_id: "dispatch-task-detail-build-current",
         status: options.status ?? "running",
         task_id: TASK_DETAIL_TASK_ID,
         task_summary: "Replace retired runtime labels without widening the task hub.",

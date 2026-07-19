@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal, Self, cast
+from typing import Literal, NotRequired, Self
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    SerializerFunctionWrapHandler,
     StrictInt,
     field_validator,
     model_serializer,
     model_validator,
 )
+from typing_extensions import TypedDict
 
 from autoclaw.definitions.contracts.workflow import (
     NodeKind,
@@ -126,6 +126,13 @@ class HumanRequestCapabilityInput(BaseModel):
         return self
 
 
+class PolicyCapabilitiesOutput(TypedDict):
+    provider_native_access: NotRequired[ProviderNativeAccess]
+    network_access: NotRequired[NetworkAccess]
+    human_request: HumanRequestCapabilityInput
+    command_run: CapabilityDecision
+
+
 class PolicyCapabilitiesInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -134,16 +141,16 @@ class PolicyCapabilitiesInput(BaseModel):
     human_request: HumanRequestCapabilityInput = Field(default_factory=HumanRequestCapabilityInput)
     command_run: CapabilityDecision = CapabilityDecision.DENY
 
-    @model_serializer(mode="wrap")
-    def serialize_explicit_axis_inputs(
-        self,
-        handler: SerializerFunctionWrapHandler,
-    ) -> dict[str, object]:
-        serialized = cast(dict[str, object], handler(self))
-        if "provider_native_access" not in self.model_fields_set:
-            serialized.pop("provider_native_access", None)
-        if "network_access" not in self.model_fields_set:
-            serialized.pop("network_access", None)
+    @model_serializer
+    def serialize_explicit_axis_inputs(self) -> PolicyCapabilitiesOutput:
+        serialized: PolicyCapabilitiesOutput = {
+            "human_request": self.human_request,
+            "command_run": self.command_run,
+        }
+        if "provider_native_access" in self.model_fields_set:
+            serialized["provider_native_access"] = self.provider_native_access
+        if "network_access" in self.model_fields_set:
+            serialized["network_access"] = self.network_access
         return serialized
 
 
@@ -365,6 +372,7 @@ __all__ = [
     "HumanRequestKind",
     "NetworkAccess",
     "PolicyCapabilitiesInput",
+    "PolicyCapabilitiesOutput",
     "PolicyDefinitionFile",
     "PolicyDefinitionInput",
     "ProviderNativeAccess",

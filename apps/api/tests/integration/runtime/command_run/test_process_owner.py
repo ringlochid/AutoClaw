@@ -140,6 +140,16 @@ async def test_process_owner_drains_both_pipes_and_terminalizes_once(
             assert source.stdout_logical_path == (f"_runtime/command-runs/{run_id}/stdout.log")
             assert source.stderr_logical_path == (f"_runtime/command-runs/{run_id}/stderr.log")
             assert record.state.value == "succeeded"
+            assert record.stdout_log_ref == source.stdout_logical_path
+            assert record.stderr_log_ref == source.stderr_logical_path
+            assert record.successor_dispatch_id is None
+            assert record.terminal_result is not None
+            assert record.terminal_result.state.value == "succeeded"
+            assert record.terminal_result.started_at == record.started_at
+            assert record.terminal_result.ended_at == record.ended_at
+            assert record.terminal_result.stdout_log_ref == source.stdout_logical_path
+            assert record.terminal_result.stderr_log_ref == source.stderr_logical_path
+            assert record.terminal_result.terminal_event_source.value == "process_owner"
             assert listed.items[0].run_id == run_id
             assert log.log_ref == source.stdout_logical_path
             assert log.content == "o" * 4096

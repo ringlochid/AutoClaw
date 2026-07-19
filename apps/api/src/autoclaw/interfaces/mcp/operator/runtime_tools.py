@@ -25,7 +25,7 @@ from autoclaw.runtime.contracts import (
     OperatorFlowSnapshotResponse,
     OperatorFlowTraceQuery,
     OperatorFlowTraceResponse,
-    RuntimeFlowControlQuery,
+    RuntimeFlowControlRequest,
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,
     RuntimeFlowSummaryListResponse,
@@ -217,9 +217,8 @@ def register_runtime_task_tools(server: FastMCP) -> None:
             "any",
             "pending",
             "running",
-            "blocked",
             "paused",
-            "succeeded",
+            "completed",
             "cancelled",
         ] = "any",
     ) -> RuntimeFlowSummaryListResponse:
@@ -334,7 +333,7 @@ def register_runtime_control_tools(
         expected_active_flow_revision_id: str,
         expected_control_revision: int,
     ) -> RuntimeFlowPauseResponse:
-        query = RuntimeFlowControlQuery(
+        query = RuntimeFlowControlRequest(
             expected_active_flow_revision_id=expected_active_flow_revision_id,
             expected_control_revision=expected_control_revision,
         )
@@ -360,7 +359,7 @@ def register_runtime_control_tools(
         expected_active_flow_revision_id: str,
         expected_control_revision: int,
     ) -> RuntimeFlowRead:
-        query = RuntimeFlowControlQuery(
+        query = RuntimeFlowControlRequest(
             expected_active_flow_revision_id=expected_active_flow_revision_id,
             expected_control_revision=expected_control_revision,
         )
@@ -387,7 +386,7 @@ def register_runtime_control_tools(
         expected_active_flow_revision_id: str,
         expected_control_revision: int,
     ) -> RuntimeFlowRead:
-        query = RuntimeFlowControlQuery(
+        query = RuntimeFlowControlRequest(
             expected_active_flow_revision_id=expected_active_flow_revision_id,
             expected_control_revision=expected_control_revision,
         )

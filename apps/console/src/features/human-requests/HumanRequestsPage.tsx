@@ -20,7 +20,12 @@ type HumanRequestStatus = components["schemas"]["HumanRequestStatus"];
 
 export function HumanRequestsPage() {
     const { taskId } = useParams();
-    const controller = useHumanRequestsController(taskId ?? null);
+
+    return <HumanRequestsTaskPage key={taskId ?? "missing-task"} taskId={taskId ?? null} />;
+}
+
+function HumanRequestsTaskPage({ taskId }: { readonly taskId: string | null }) {
+    const controller = useHumanRequestsController(taskId);
     const pageTitle = controller.taskTitle ?? controller.taskId ?? "Selected task";
     const hasRequestReads = controller.requestReads.length > 0;
     useShellTaskTitle(controller.taskId, controller.taskTitle);
@@ -102,9 +107,24 @@ function HumanRequestsState({ controller }: { readonly controller: HumanRequests
     }
 
     return (
-        <div className="grid min-w-0 gap-0 lg:min-h-[720px] lg:grid-cols-[19rem_minmax(0,1fr)]">
-            <HumanRequestQueue controller={controller} />
-            <SelectedHumanRequest controller={controller} />
+        <div>
+            {controller.taskStatus === "paused" ? (
+                <div className="border-b border-outline-soft p-4 sm:px-5">
+                    <StatePanel
+                        summary={
+                            controller.taskWaitingCause === "human_request"
+                                ? "The request remains open while the task is paused. A terminal answer or timeout is retained without opening a successor dispatch."
+                                : "This request result is retained while the task is paused. Continue remains a separate task action."
+                        }
+                        title={`Task paused${controller.taskPauseReason === null ? "" : ` · ${controller.taskPauseReason}`}`}
+                        tone="stale"
+                    />
+                </div>
+            ) : null}
+            <div className="grid min-w-0 gap-0 lg:min-h-[720px] lg:grid-cols-[19rem_minmax(0,1fr)]">
+                <HumanRequestQueue controller={controller} />
+                <SelectedHumanRequest controller={controller} />
+            </div>
         </div>
     );
 }
@@ -409,9 +429,15 @@ function MobileRequestQueueSummary({
 
 function RequestMetadata({ read }: { readonly read: HumanRequestRead }) {
     return (
-        <dl className="grid min-w-0 overflow-hidden rounded-card border border-outline-soft bg-surface-low md:grid-cols-3">
+        <dl className="grid min-w-0 overflow-hidden rounded-card border border-outline-soft bg-surface-low md:grid-cols-2 xl:grid-cols-5">
             <RequestMetadataItem label="Source dispatch">
                 <IdRefText value={read.request.source_dispatch_id} />
+            </RequestMetadataItem>
+            <RequestMetadataItem label="Assignment">
+                <IdRefText value={read.request.assignment_id} />
+            </RequestMetadataItem>
+            <RequestMetadataItem label="Attempt">
+                <IdRefText value={read.request.attempt_id} />
             </RequestMetadataItem>
             <RequestMetadataItem label="Opened">
                 <time dateTime={new Date(read.request.opened_at).toISOString()}>

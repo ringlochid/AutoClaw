@@ -1,5 +1,5 @@
 import type { components } from "../../src/api/generated/openapi";
-import { TEST_UPDATED_AT, createCommandRunListItem, createCommandRunRecord } from "./console-api";
+import { TEST_UPDATED_AT, createCommandRunListItem } from "./console-api";
 
 export const COMMAND_RUN_TASK_ID = "task-runtime-copy-refresh";
 export const COMMAND_RUN_LOG_CONTENT =
@@ -94,6 +94,7 @@ export function createCommandRunPageList(
                 run_id: run.runId,
                 state: run.state,
                 summary: run.summary,
+                workdir: "apps/api",
             }),
         ),
         next_cursor: "cursor-command-runs-page-2",
@@ -116,41 +117,63 @@ export function createCommandRunDetail(
         base.state === "timed_out" ||
         base.state === "cancelled" ||
         base.state === "abandoned";
-    const logRef =
-        base.state === "pending_start" || base.runId === "run-cancelled"
-            ? null
-            : `outputs/command-runs/${base.runId}.log`;
+    const hasLogs = base.state === "pending_start" || base.runId === "run-cancelled" ? false : true;
+    const stdoutLogRef = hasLogs ? `outputs/command-runs/${base.runId}.stdout.log` : null;
+    const stderrLogRef = hasLogs ? `outputs/command-runs/${base.runId}.stderr.log` : null;
 
-    return createCommandRunRecord({
-        attempt_id: base.runId === "run-queued" ? null : `attempt-${base.runId}`,
+    return {
+        assignment_id: `assignment-${base.runId}`,
+        attempt_id: `attempt-${base.runId}`,
         cancellation_requested_at:
             base.state === "cancellation_requested" ? "2026-06-29T14:18:00Z" : null,
         cancellation_requested_by_actor_ref:
             base.state === "cancellation_requested" ? "local_operator" : null,
-        command: base.command,
-        description: base.description,
-        dispatch_id: `dispatch-${base.runId}`,
+        created_at: TEST_UPDATED_AT,
+        due_at: isTerminal ? null : "2026-06-29T14:30:00Z",
         ended_at: isTerminal ? "2026-06-29T14:26:00Z" : null,
-        latest_log_ref: logRef,
-        latest_update: base.summary,
+        flow_id: "flow-command-runs",
+        ownership_revision: base.state === "pending_start" ? 0 : 1,
+        request: {
+            command: { command: base.command, kind: "shell" },
+            cwd: "apps/api",
+            environment: [],
+            expected_outputs:
+                base.runId === "run-failed"
+                    ? [
+                          {
+                              description: "Focused prompt-rendering test report.",
+                              path: "tmp/pytest-command-run.txt",
+                          },
+                      ]
+                    : [],
+            summary: base.description,
+            timeout_seconds: 120,
+        },
         run_id: base.runId,
+        source_dispatch_id: `dispatch-${base.runId}`,
         started_at: base.state === "pending_start" ? null : TEST_UPDATED_AT,
         state: base.state,
+        stderr_log_ref: stderrLogRef,
+        stdout_log_ref: stdoutLogRef,
+        successor_dispatch_id:
+            base.state === "succeeded" ? `dispatch-successor-${base.runId}` : null,
         task_id: COMMAND_RUN_TASK_ID,
-        terminal_actor_ref: null,
-        terminal_event_source: isTerminal ? "process_owner" : null,
         terminal_result: isTerminal
             ? {
+                  ended_at: "2026-06-29T14:26:00Z",
                   exit_code: base.state === "failed" ? 1 : base.state === "succeeded" ? 0 : null,
                   failure_code: base.state === "abandoned" ? "command_ownership_lost" : null,
-                  log_ref: logRef,
-                  signal: base.state === "timed_out" ? "SIGTERM" : null,
+                  started_at: TEST_UPDATED_AT,
+                  state: base.state,
+                  stderr_log_ref: stderrLogRef,
+                  stdout_log_ref: stdoutLogRef,
                   summary: base.summary,
+                  terminal_actor_ref: null,
+                  terminal_event_source: "process_owner",
               }
             : null,
-        workdir: "/home/ubuntu/leo/projects/autoclaw",
         ...overrides,
-    });
+    };
 }
 
 export function createCommandRunDetailMap(): Readonly<
@@ -167,7 +190,10 @@ export function createCommandRunLogRead(
 ): components["schemas"]["CommandRunLogReadResponse"] {
     return {
         content,
-        log_ref: `outputs/command-runs/${runId}.log`,
+        log_ref:
+            runId === "run-failed" || runId === "run-timed-out"
+                ? `outputs/command-runs/${runId}.stderr.log`
+                : `outputs/command-runs/${runId}.stdout.log`,
         run_id: runId,
         task_id: COMMAND_RUN_TASK_ID,
     };
@@ -183,6 +209,7 @@ export function createCommandRunSecondPage(): components["schemas"]["CommandRunL
                 run_id: "run-openapi",
                 state: "succeeded",
                 summary: "OpenAPI generated types are current.",
+                workdir: "apps/console",
             }),
         ],
         next_cursor: null,

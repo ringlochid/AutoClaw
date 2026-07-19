@@ -5,7 +5,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
     AutoClawApiError,
     buildQueryParams,
-    expectedFlowRevisionQuery,
     getNextCursor,
     isCursorResetError,
     requestJson,
@@ -31,6 +30,7 @@ import {
     humanRequestsRoute,
     resolveHumanRequestRoute,
     runtimeTasksRoute,
+    taskComposePreviewRoute,
     taskStartRoute,
 } from "../../src/api/routes";
 import {
@@ -39,6 +39,7 @@ import {
     parseServerSentEventFrame,
     readTaskEventStream,
     reconnectTaskEventStream,
+    superviseTaskEventStream,
     taskEventStreamUrl,
 } from "../../src/api/sse";
 import {
@@ -112,9 +113,6 @@ describe("console API client foundation", () => {
         expect(requestUrl.searchParams.get("limit")).toBe("25");
         expect(requestUrl.searchParams.get("status")).toBe("running");
         expect(getNextCursor(response)).toBe("next-cursor");
-        expect(expectedFlowRevisionQuery("flow-1").toString()).toBe(
-            "expected_active_flow_revision_id=flow-1",
-        );
         expect(buildQueryParams({ empty: null, keep: false, multi: ["a", "b"] }).toString()).toBe(
             "keep=false&multi=a&multi=b",
         );
@@ -179,6 +177,10 @@ describe("console API client foundation", () => {
                 ),
             ),
             http.get("*/non-json", () => HttpResponse.text("not json", { status: 500 })),
+            http.get("*/malformed-success", () => HttpResponse.text("not json")),
+            http.get("*/html-error", () =>
+                HttpResponse.html("<pre>secret-token\nprivate stack trace</pre>", { status: 500 }),
+            ),
             http.get("*/empty-error", () => new HttpResponse(null, { status: 502 })),
             http.get("*/network", () => HttpResponse.error()),
         );
@@ -214,9 +216,19 @@ describe("console API client foundation", () => {
         const cursorResetFailure = await expectApiError("/cursor-reset");
         expect(isCursorResetError(cursorResetFailure.errorView)).toBe(true);
 
-        expect((await expectApiError("/non-json")).errorView.summary).toBe("not json");
+        expect((await expectApiError("/non-json")).errorView.summary).toBe(
+            "The AutoClaw API returned an unexpected error response.",
+        );
+        expect((await expectApiError("/html-error")).errorView.summary).not.toContain("secret");
+        const malformedSuccess = await expectApiError("/malformed-success");
+        expect(malformedSuccess.errorView.code).toBe("invalid_json_response");
+        expect(malformedSuccess.errorView.summary).not.toContain("not json");
         expect((await expectApiError("/empty-error")).errorView.code).toBe("http_502");
-        expect((await expectApiError("/network")).errorView.source).toBe("network");
+        const networkFailure = await expectApiError("/network");
+        expect(networkFailure.errorView.source).toBe("network");
+        expect(networkFailure.errorView.summary).toBe(
+            "The console could not reach the AutoClaw API.",
+        );
 
         const abortController = new AbortController();
         abortController.abort();
@@ -249,17 +261,15 @@ describe("console API client foundation", () => {
             path: traceRoute.path,
             query: traceRoute.query,
         });
-        const pauseRoute = controlTaskActionRoute(
-            TEST_TASK_ID,
-            "pause",
-            taskRead.active_flow_revision_id,
-            taskRead.control_revision,
-        );
+        const pauseRoute = controlTaskActionRoute(TEST_TASK_ID, "pause");
         const pauseResponse = await requestJson<components["schemas"]["RuntimeFlowPauseResponse"]>({
+            body: {
+                expected_active_flow_revision_id: taskRead.active_flow_revision_id,
+                expected_control_revision: taskRead.control_revision,
+            } satisfies components["schemas"]["RuntimeFlowControlRequest"],
             config,
             method: "POST",
             path: pauseRoute.path,
-            query: pauseRoute.query,
         });
         const eventsRoute = controlTaskEventsRoute(TEST_TASK_ID, { through_event_id: "evt-001" });
         const events = await requestJson<components["schemas"]["TaskEventListResponse"]>({
@@ -413,6 +423,8 @@ describe("console API client foundation", () => {
         expect(draftPublish.published_revision?.revision_no).toBe(3);
         expect(draftDelete).toBeUndefined();
         expect(mapTaskStartResult(taskStart).flowStatus).toBe("running");
+        expect(pauseRoute.query).toBeUndefined();
+        expect(taskComposePreviewRoute()).toEqual({ path: "/authoring/task-compose/preview" });
     });
 });
 
@@ -495,6 +507,76 @@ describe("fetch-based task event stream", () => {
         expect(result.events.map((event) => event.event_id)).toEqual(["evt-001"]);
     });
 
+    it("rejects cross-task, unknown, and malformed task-event records", async () => {
+        const cases = [
+            createTaskEventRecord({ task_id: "task-other" }),
+            {
+                ...createTaskEventRecord(),
+                event_source: "provider",
+            },
+            {
+                ...createTaskEventRecord(),
+                event_type: "provider_completed",
+            },
+            {
+                ...createTaskEventRecord(),
+                payload: { workflow_key: "missing-required-fields" },
+            },
+        ];
+
+        for (const event of cases) {
+            server.use(
+                http.get("*/control/tasks/:taskId/events/stream", () =>
+                    taskEventStreamResponse(event),
+                ),
+            );
+
+            const failure = await expectStreamError();
+            expect(failure.errorView.source).toBe("stream");
+            server.resetHandlers();
+        }
+    });
+
+    it("reconnects a bounded number of times from the last accepted event", async () => {
+        const firstEvent = createTaskEventRecord({ event_id: "evt-001", event_seq: 1 });
+        const secondEvent = createTaskEventRecord({ event_id: "evt-002", event_seq: 2 });
+        const seenCursors: (string | null)[] = [];
+        const deliveredEventIds: string[] = [];
+        let readCount = 0;
+        server.use(
+            http.get("*/control/tasks/:taskId/events/stream", ({ request }) => {
+                seenCursors.push(new URL(request.url).searchParams.get("cursor"));
+                readCount += 1;
+                if (readCount === 1) {
+                    return taskEventStreamResponse(firstEvent);
+                }
+                if (readCount === 2) {
+                    return taskEventStreamResponse(firstEvent, secondEvent);
+                }
+                return taskEventStreamResponse();
+            }),
+        );
+
+        const result = await superviseTaskEventStream({
+            config,
+            cursor: "evt-000",
+            maxReconnectAttempts: 2,
+            onEvent: (event) => {
+                deliveredEventIds.push(event.event_id);
+            },
+            reconnectDelayMs: 0,
+            resetAfterCursorReset: () => null,
+            taskId: TEST_TASK_ID,
+        });
+
+        expect(seenCursors).toEqual(["evt-000", "evt-001", "evt-002"]);
+        expect(deliveredEventIds).toEqual(["evt-001", "evt-002"]);
+        expect(result.events.map((event) => event.event_id)).toEqual(["evt-001", "evt-002"]);
+        expect(result.lastEventId).toBe("evt-002");
+        expect(result.reconnectAttempts).toBe(2);
+        expect(result.reconnectExhausted).toBe(true);
+    });
+
     it("signals cursor_reset_required and reconnects after the caller resets REST state", async () => {
         const resetEvent = createTaskEventRecord({ event_id: "evt-reset", event_seq: 10 });
         const refreshedStreamHead = "evt-reset-anchor";
@@ -559,4 +641,32 @@ async function expectApiError(
     }
 
     throw new Error(`Expected ${path} to fail`);
+}
+
+async function expectStreamError(): Promise<AutoClawApiError> {
+    try {
+        await readTaskEventStream({ config, taskId: TEST_TASK_ID });
+    } catch (error) {
+        if (error instanceof AutoClawApiError) {
+            return error;
+        }
+        throw error;
+    }
+
+    throw new Error("Expected the task event stream to fail");
+}
+
+function taskEventStreamResponse(...events: readonly unknown[]): Response {
+    const content = events
+        .map((event) => {
+            const record = event as { readonly event_id?: unknown; readonly event_type?: unknown };
+            const id = typeof record.event_id === "string" ? record.event_id : "invalid-event";
+            const eventType =
+                typeof record.event_type === "string" ? record.event_type : "invalid_event";
+            return `id: ${id}\nevent: ${eventType}\ndata: ${JSON.stringify(event)}\n\n`;
+        })
+        .join("");
+    return new HttpResponse(content, {
+        headers: { "Content-Type": "text/event-stream" },
+    });
 }

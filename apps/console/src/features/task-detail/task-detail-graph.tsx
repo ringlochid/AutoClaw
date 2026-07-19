@@ -1274,16 +1274,7 @@ function measureNodeWidth(node: TaskGraphNode | undefined): number {
 }
 
 function graphLabel(node: TaskGraphNode): string {
-    const designLabels: Readonly<Record<string, string>> = {
-        command_runs_page: "command_runs",
-        human_request_page: "human_requests",
-        source_contract: "source_truth",
-        task_control_suite: "runtime_pages",
-        task_detail_page: "task_detail",
-        task_detail_source_contract: "task_detail_contract",
-        tasks_page: "tasks",
-    };
-    return designLabels[node.nodeKey] ?? node.nodeKey;
+    return node.nodeKey;
 }
 
 function clamp(value: number, min: number, max: number): number {

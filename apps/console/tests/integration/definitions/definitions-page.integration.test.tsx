@@ -100,6 +100,8 @@ describe("DefinitionsPage", () => {
         );
         expect(versionsList.getByText("Revision 4")).toBeVisible();
         expect(versionsList.getByText("Revision 3")).toBeVisible();
+        expect(versionsDialog.getByText("Current registry pointer: revision 4.")).toBeVisible();
+        expect(versionsList.getByText("Current")).toBeVisible();
         expect(versionsDialog.queryByText(/Recorded by:/)).not.toBeInTheDocument();
         await user.click(versionsDialog.getByRole("button", { name: "Close versions" }));
 
@@ -113,10 +115,15 @@ describe("DefinitionsPage", () => {
         expect(screen.queryByLabelText("Allowed node kind")).not.toBeInTheDocument();
         expect(screen.getByText("Budget")).toBeVisible();
         expect(screen.getByText("No controller budget limit")).toBeVisible();
+        expect(screen.getByText("Policy capability values")).toBeVisible();
+        expect(screen.getByText("restricted")).toBeVisible();
+        expect(screen.getAllByText("deny").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("· authored").length).toBeGreaterThan(0);
         expect(screen.queryByText(/not reported/)).not.toBeInTheDocument();
 
         await user.click(policyRows.getByRole("button", { name: /^standard-parent-planning\b/ }));
         expect(screen.getByText("4 child assignments")).toBeVisible();
+        expect(screen.getAllByText("· omitted default").length).toBeGreaterThan(0);
         expect(screen.queryByText(/not reported/)).not.toBeInTheDocument();
 
         await user.click(policyRows.getByRole("button", { name: /^standard-worker\b/ }));
@@ -142,6 +149,7 @@ describe("DefinitionsPage", () => {
         expect(await screen.findByText("Structure")).toBeVisible();
         expect(await screen.findByText("First-level nodes")).toBeVisible();
         expect(await screen.findByText("implementation_loop")).toBeVisible();
+        expect(screen.getAllByText("Provider: machine default").length).toBeGreaterThan(0);
         expect(screen.queryByText("Stored root role")).not.toBeInTheDocument();
         expect(screen.queryByText("Root tree")).not.toBeInTheDocument();
         expect(screen.queryByRole("link", { name: "Create/update draft" })).not.toBeInTheDocument();
@@ -149,6 +157,11 @@ describe("DefinitionsPage", () => {
             "href",
             "/definitions/editor?key=staged-delivery-release&kind=workflow",
         );
+        const workflowRows = within(screen.getByRole("list", { name: "Definition rows" }));
+        await user.click(workflowRows.getByRole("button", { name: /^bounded-change\b/ }));
+        expect(await screen.findByText("Provider: OpenClaw (explicit)")).toBeVisible();
+        expect(screen.getByText("experimental")).toBeVisible();
+        expect(screen.getByText("Provider: Codex (explicit)")).toBeVisible();
         const taskStartLinks = screen.getAllByRole("link", { name: "Task Start" });
         expect(taskStartLinks[taskStartLinks.length - 1]).toHaveAttribute("href", "/task-start");
     });
@@ -255,6 +268,7 @@ describe("DefinitionsPage", () => {
             screen.getByRole("list", { name: "Definition versions" }),
         );
         expect(singleRevisionVersions.getByText("Revision 3")).toBeVisible();
+        expect(singleRevisionVersions.getByText("Current")).toBeVisible();
     });
 });
 

@@ -55,7 +55,29 @@ test("keeps the shell keyboard path visible", async ({ page }) => {
     await page.goto("/tasks");
 
     await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "Tasks" })).toBeFocused();
+    const skipLink = page.getByRole("link", { name: "Skip to main content" });
+    await expect(skipLink).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("main", { name: "AutoClaw Console" })).toBeFocused();
+
+    await page.keyboard.press("Tab");
+    await expect(page.getByLabel("Search")).toBeFocused();
+});
+
+test("honors the reduced-motion preference in the shared shell", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/tasks");
+
+    const motionDurations = await page.getByRole("link", { name: "Tasks" }).evaluate((element) => {
+        const style = window.getComputedStyle(element);
+        return {
+            animation: Number.parseFloat(style.animationDuration),
+            transition: Number.parseFloat(style.transitionDuration),
+        };
+    });
+
+    expect(motionDurations.animation).toBeLessThanOrEqual(0.001);
+    expect(motionDurations.transition).toBeLessThanOrEqual(0.001);
 });
 
 test("avoids document-level horizontal overflow on narrow shell routes", async ({ page }) => {

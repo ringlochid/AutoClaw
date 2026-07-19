@@ -2,10 +2,10 @@ import type { components } from "../../api/generated/openapi";
 import { mapCommandRunRow, mapHumanRequestQueueItem } from "../../api/view-models";
 import type { TaskEventType } from "../../api/view-models";
 import type { TaskDetailBootstrap } from "./task-detail-data";
+import { buildTaskActionMode, mapTaskRuntimeView } from "./task-detail-runtime-model";
 import { taskEventTone } from "./task-detail-tones";
 import type {
     DetailRow,
-    TaskActionMode,
     TaskDetailRef,
     TaskDetailView,
     TaskEventRow,
@@ -34,9 +34,12 @@ export type {
     TaskGraphEdge,
     TaskGraphNode,
     TaskHeaderView,
+    TaskRuntimeDispatchView,
+    TaskRuntimeView,
     TaskSelectedContext,
     TaskSnapshotSummary,
     TaskTraceSummary,
+    TaskWorkPlanView,
 } from "./task-detail-types";
 
 type BoundaryHistoryEntry = components["schemas"]["BoundaryHistoryEntry"];
@@ -52,10 +55,10 @@ export function buildTaskDetailView({
 }): TaskDetailView {
     const eventRows = events.map(mapTaskEventRow);
     const graphNodes = buildGraphNodes(bootstrap, eventRows);
-    const graphEdges = buildGraphEdges(bootstrap, eventRows, graphNodes);
+    const graphEdges = buildGraphEdges(bootstrap, graphNodes);
 
     return {
-        actionMode: buildActionMode(bootstrap.task.status),
+        actionMode: buildTaskActionMode(bootstrap.task),
         artifactRefs: collectArtifactRefs(bootstrap, eventRows),
         commandRuns: bootstrap.commandRuns.items.map((run) => {
             const row = mapCommandRunRow(run);
@@ -80,6 +83,7 @@ export function buildTaskDetailView({
                 title: row.title,
             };
         }),
+        runtime: mapTaskRuntimeView(bootstrap.task),
         snapshot: {
             streamHeadEventId: bootstrap.snapshot.stream_head_event_id ?? null,
             topActionableItems: bootstrap.snapshot.top_actionable_items,
@@ -179,38 +183,11 @@ function buildGraphNodes(
     bootstrap: TaskDetailBootstrap,
     eventRows: readonly TaskEventRow[],
 ): readonly TaskGraphNode[] {
-    const nodeKeys = new Set<string>();
     const currentNodeKey = bootstrap.task.current_node_key ?? null;
     const graphNodeEntries = readTraceGraphNodes(bootstrap.trace);
-    const traceGraphNodeByKey = new Map(
-        graphNodeEntries.map((graphNode) => [graphNode.node_key, graphNode]),
-    );
 
-    if (graphNodeEntries.length > 0) {
-        for (const graphNode of graphNodeEntries) {
-            nodeKeys.add(graphNode.node_key);
-        }
-    } else {
-        for (const dispatch of bootstrap.trace.dispatch_history) {
-            nodeKeys.add(dispatch.node_key);
-        }
-        for (const event of eventRows) {
-            if (event.nodeKey !== null) {
-                nodeKeys.add(event.nodeKey);
-            }
-            collectPayloadNodeKeys(event.eventType, event.record.payload).forEach((nodeKey) =>
-                nodeKeys.add(nodeKey),
-            );
-        }
-    }
-    if (currentNodeKey !== null) {
-        nodeKeys.add(currentNodeKey);
-    }
-    if (nodeKeys.size === 0) {
-        nodeKeys.add("task");
-    }
-
-    return [...nodeKeys].map((nodeKey, index) => {
+    return graphNodeEntries.map((graphNode) => {
+        const nodeKey = graphNode.node_key;
         const dispatch = [...bootstrap.trace.dispatch_history]
             .reverse()
             .find((candidate) => candidate.node_key === nodeKey);
@@ -218,7 +195,6 @@ function buildGraphNodes(
             .reverse()
             .find((candidate) => candidate.attempt_id === dispatch?.attempt_id);
         const eventsForNode = eventRows.filter((event) => event.nodeKey === nodeKey);
-        const graphNode = traceGraphNodeByKey.get(nodeKey);
         const isCurrent = nodeKey === currentNodeKey;
 
         return {
@@ -228,23 +204,15 @@ function buildGraphNodes(
             isActive: isCurrent,
             isCurrent,
             nodeKey,
-            order: graphNode?.order_index ?? index + graphNodeEntries.length,
+            order: graphNode.order_index,
             status: resolveNodeStatus(isCurrent, dispatch, checkpoint),
-            summary:
-                checkpoint?.summary ??
-                graphNode?.description ??
-                (dispatch === undefined
-                    ? undefined
-                    : `Dispatch ${dispatch.status} via ${dispatch.resolved_provider}.`) ??
-                eventsForNode.at(-1)?.payloadSummary ??
-                "Controller-backed task context.",
+            summary: graphNode.description,
         };
     });
 }
 
 function buildGraphEdges(
     bootstrap: TaskDetailBootstrap,
-    eventRows: readonly TaskEventRow[],
     nodes: readonly TaskGraphNode[],
 ): readonly TaskGraphEdge[] {
     const nodeKeys = new Set(nodes.map((node) => node.nodeKey));
@@ -271,33 +239,8 @@ function buildGraphEdges(
         edges.push({ fromNodeKey, kind, toNodeKey });
     };
 
-    if (graphNodeEntries.length > 0) {
-        for (const graphNode of graphNodeEntries) {
-            addEdge(graphNode.parent_node_key ?? null, graphNode.node_key, "structural");
-        }
-        return edges;
-    }
-
-    for (const event of eventRows) {
-        const payload = event.record.payload;
-        if (
-            event.eventType === "child_assignment_committed" ||
-            event.eventType === "child_assignment_staged"
-        ) {
-            const parentAssignmentId = readString(payload, "parent_assignment_id");
-            const parentNodeKey = bootstrap.trace.dispatch_history.find(
-                (dispatch) => dispatch.assignment_id === parentAssignmentId,
-            )?.node_key;
-            addEdge(parentNodeKey ?? null, readString(payload, "child_node_key"), "staged");
-        }
-    }
-
-    for (const node of nodes) {
-        addEdge(
-            inferParentNodeKey(node.nodeKey, nodeKeys),
-            node.nodeKey,
-            inferredEdgeKind(node.nodeKey),
-        );
+    for (const graphNode of graphNodeEntries) {
+        addEdge(graphNode.parent_node_key ?? null, graphNode.node_key, "structural");
     }
 
     return edges;
@@ -315,45 +258,12 @@ function readTraceDependencyEdges(
     return Array.isArray(trace.dependency_edges) ? trace.dependency_edges : [];
 }
 
-function inferParentNodeKey(nodeKey: string, nodeKeys: ReadonlySet<string>): string | null {
-    if (nodeKey === "source_contract" && nodeKeys.has("root")) {
-        return "root";
-    }
-    if (nodeKey === "task_control_suite" && nodeKeys.has("root")) {
-        return "root";
-    }
-    if (
-        (nodeKey === "tasks_page" ||
-            nodeKey === "task_detail_page" ||
-            nodeKey === "human_request_page" ||
-            nodeKey === "command_runs_page") &&
-        nodeKeys.has("task_control_suite")
-    ) {
-        return "task_control_suite";
-    }
-    if (
-        (nodeKey === "task_detail_source_contract" ||
-            nodeKey === "task_detail_build" ||
-            nodeKey === "task_detail_review") &&
-        nodeKeys.has("task_detail_page")
-    ) {
-        return "task_detail_page";
-    }
-    return null;
-}
-
-function inferredEdgeKind(nodeKey: string): TaskGraphEdge["kind"] {
-    return nodeKey === "task_detail_review" ? "staged" : "structural";
-}
-
 function collectArtifactRefs(
     bootstrap: TaskDetailBootstrap,
     eventRows: readonly TaskEventRow[],
 ): readonly TaskDetailRef[] {
     const refs = [
         refFromWorkflowManifest(bootstrap.task.workflow_manifest_ref),
-        ...bootstrap.snapshot.current_paths.map(refFromSupportSurface),
-        ...bootstrap.trace.current_paths.map(refFromSupportSurface),
         ...eventRows.flatMap((event) =>
             collectRefsFromPayload(event.record.payload, event.eventType),
         ),
@@ -551,33 +461,6 @@ function findBoundaryEntry(
     return undefined;
 }
 
-function buildActionMode(status: components["schemas"]["RuntimeLifecycleStatus"]): TaskActionMode {
-    if (status === "completed" || status === "cancelled") {
-        return {
-            canCancel: false,
-            canContinue: false,
-            canPause: false,
-            note: "Terminal tasks have no task-level controls.",
-        };
-    }
-
-    if (status === "paused") {
-        return {
-            canCancel: true,
-            canContinue: true,
-            canPause: false,
-            note: "Continue is pause-resume only and uses current task revision truth.",
-        };
-    }
-
-    return {
-        canCancel: true,
-        canContinue: false,
-        canPause: true,
-        note: "Pause and cancel use current task revision truth.",
-    };
-}
-
 function resolveNodeStatus(
     isCurrent: boolean,
     dispatch: components["schemas"]["DispatchHistoryEntry"] | undefined,
@@ -611,32 +494,6 @@ function summarizePayload(eventType: TaskEventType, payload: unknown): string {
     );
 }
 
-function collectPayloadNodeKeys(eventType: TaskEventType, payload: unknown): readonly string[] {
-    if (!isRecord(payload)) {
-        return [];
-    }
-
-    const nodeKeys = [
-        readString(payload, "initial_node_key"),
-        readString(payload, "node_key"),
-        readString(payload, "child_node_key"),
-    ].filter((value): value is string => value !== null);
-
-    if (
-        eventType === "child_assignment_committed" ||
-        eventType === "child_assignment_staged" ||
-        eventType === "structural_revision_adopted"
-    ) {
-        const targetNodeKey = readString(payload, "target_node_key");
-        if (targetNodeKey !== null) {
-            nodeKeys.push(targetNodeKey);
-        }
-    }
-
-    nodeKeys.push(...readStringArray(payload, "affected_node_keys"));
-    return nodeKeys;
-}
-
 function refFromPath(path: string, label: string, description: string): TaskDetailRef {
     return {
         description,
@@ -654,18 +511,6 @@ function refFromWorkflowManifest(ref: components["schemas"]["WorkflowManifestRef
         label: "workflow_manifest_ref",
         path: ref.path,
         slot: null,
-    };
-}
-
-function refFromSupportSurface(
-    ref: components["schemas"]["OperatorSupportSurfaceRef"],
-): TaskDetailRef {
-    return {
-        description: ref.description,
-        kind: ref.kind,
-        label: ref.slot ?? ref.kind,
-        path: ref.path,
-        slot: ref.slot ?? null,
     };
 }
 
@@ -725,14 +570,6 @@ function readRecordArray(value: unknown, key: string): readonly Record<string, u
     }
 
     return value[key].filter((item): item is Record<string, unknown> => isRecord(item));
-}
-
-function readStringArray(value: unknown, key: string): readonly string[] {
-    if (!isRecord(value) || !Array.isArray(value[key])) {
-        return [];
-    }
-
-    return value[key].filter((item): item is string => typeof item === "string");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

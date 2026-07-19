@@ -1,4 +1,4 @@
-import { AutoClawApiError, requestJson, type ConsoleErrorView } from "../../api/client";
+import { mapUnknownApiError, requestJson, type ConsoleErrorView } from "../../api/client";
 import type { components } from "../../api/generated/openapi";
 import {
     definitionDraftPublishRoute,
@@ -134,20 +134,7 @@ export async function replaceDraftWithCurrent({
 }
 
 export function toErrorView(error: unknown): ConsoleErrorView {
-    if (error instanceof AutoClawApiError) {
-        return error.errorView;
-    }
-
-    return {
-        code: "unknown_error",
-        fieldErrors: [],
-        isRetryable: false,
-        source: "http",
-        status: null,
-        suggestedNextStep: null,
-        summary: error instanceof Error ? error.message : "The definition draft request failed.",
-        title: "Unknown Error",
-    };
+    return mapUnknownApiError(error);
 }
 
 export function isAuthError(error: ConsoleErrorView): boolean {

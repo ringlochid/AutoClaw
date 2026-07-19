@@ -112,6 +112,9 @@ class PendingHumanRequest(BaseModel):
 
     request_id: RuntimeSchemaText
     task_id: TaskIdentifier
+    flow_id: RuntimeSchemaText
+    assignment_id: RuntimeSchemaText
+    attempt_id: RuntimeSchemaText
     summary: RuntimeSchemaText
     kind: HumanRequestKind
     source_dispatch_id: RuntimeSchemaText
@@ -121,6 +124,7 @@ class PendingHumanRequest(BaseModel):
     suggested_human_instruction: RuntimeSchemaText | None = None
     opened_at: datetime
     status: HumanRequestStatus
+    successor_dispatch_id: RuntimeSchemaText | None = None
 
 
 class HumanRequestResolution(BaseModel):

@@ -29,7 +29,12 @@ import {
 
 export function CommandRunsPage() {
     const { taskId } = useParams();
-    const controller = useCommandRunsController(taskId ?? null);
+
+    return <CommandRunsTaskPage key={taskId ?? "missing-task"} taskId={taskId ?? null} />;
+}
+
+function CommandRunsTaskPage({ taskId }: { readonly taskId: string | null }) {
+    const controller = useCommandRunsController(taskId);
     const pageTitle = controller.taskTitle ?? controller.taskId ?? "Selected task";
     useShellTaskTitle(controller.taskId, controller.taskTitle);
 
@@ -83,6 +88,17 @@ function CommandRunsState({ controller }: { readonly controller: CommandRunsCont
 
     return (
         <div className="space-y-4">
+            {controller.taskStatus === "paused" ? (
+                <StatePanel
+                    summary={
+                        controller.taskWaitingCause === "command_run"
+                            ? "The command run remains controller-owned while the task is paused. Terminal or abandoned readback is retained without opening a successor dispatch."
+                            : "Command-run readback is retained while the task is paused. Continue remains a separate task action."
+                    }
+                    title={`Task paused${controller.taskPauseReason === null ? "" : ` · ${controller.taskPauseReason}`}`}
+                    tone="stale"
+                />
+            ) : null}
             <ol aria-label="Command run rows" className="space-y-3">
                 {controller.rows.map((row) => (
                     <li key={row.runId}>
@@ -157,7 +173,9 @@ function CommandRunRow({
                     ) : null}
                 </div>
             </div>
-            {cancelError === null ? null : <CommandRunActionError error={cancelError} />}
+            {cancelError === null ? null : (
+                <CommandRunActionError error={cancelError} onRefresh={controller.refresh} />
+            )}
             {isExpanded ? <CommandRunExpandedDetail controller={controller} row={row} /> : null}
         </article>
     );
@@ -243,6 +261,20 @@ function CommandRunCommandSection({ detail }: { readonly detail: CommandRunDetai
                     />
                 </div>
             </div>
+            {detail.expectedOutputs.length === 0 ? null : (
+                <div className="mt-4 border-t border-outline-soft pt-3">
+                    <p className="font-mono text-label font-medium uppercase text-muted">
+                        Expected outputs
+                    </p>
+                    <ul className="mt-2 space-y-2">
+                        {detail.expectedOutputs.map((output) => (
+                            <li className="min-w-0 text-compact text-muted" key={output.path}>
+                                <IdRefText value={output.path} /> · {output.description}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </section>
     );
 }
@@ -259,22 +291,21 @@ function CommandRunResultSection({ detail }: { readonly detail: CommandRunDetail
             items={[
                 {
                     label: "Summary",
-                    value: terminalResult.summary,
+                    value:
+                        detail.state === "abandoned"
+                            ? `${terminalResult.summary} AutoClaw lost exact process ownership; this does not prove the operating-system process exited.`
+                            : terminalResult.summary,
                 },
+                { label: "Terminal state", value: terminalResult.state },
+                ...(detail.failureCode === null
+                    ? []
+                    : [{ label: "Failure code", value: detail.failureCode }]),
                 ...(terminalResult.exit_code === null || terminalResult.exit_code === undefined
                     ? []
                     : [
                           {
                               label: "Exit code",
                               value: <span className="font-mono">{terminalResult.exit_code}</span>,
-                          },
-                      ]),
-                ...(terminalResult.signal === null || terminalResult.signal === undefined
-                    ? []
-                    : [
-                          {
-                              label: "Signal",
-                              value: <span className="font-mono">{terminalResult.signal}</span>,
                           },
                       ]),
             ]}
@@ -291,6 +322,9 @@ function CommandRunTimingSection({ detail }: { readonly detail: CommandRunDetail
                 ...(detail.startedAt === null
                     ? []
                     : [{ label: "Started", value: <TimestampText value={detail.startedAt} /> }]),
+                ...(detail.dueAt === null
+                    ? []
+                    : [{ label: "Due", value: <TimestampText value={detail.dueAt} /> }]),
                 ...(detail.endedAt === null
                     ? []
                     : [{ label: "Ended", value: <TimestampText value={detail.endedAt} /> }]),
@@ -321,8 +355,19 @@ function CommandRunProvenanceSection({ detail }: { readonly detail: CommandRunDe
         <CommandRunDetailPanel
             items={[
                 { label: "Run id", value: <IdRefText value={detail.runId} /> },
-                { label: "Dispatch", value: <IdRefText value={detail.dispatchId} /> },
-                { label: "Attempt", value: renderOptionalId(detail.attemptId) },
+                { label: "Source dispatch", value: <IdRefText value={detail.sourceDispatchId} /> },
+                { label: "Assignment", value: <IdRefText value={detail.assignmentId} /> },
+                { label: "Attempt", value: <IdRefText value={detail.attemptId} /> },
+                { label: "Flow", value: <IdRefText value={detail.flowId} /> },
+                { label: "Ownership revision", value: String(detail.ownershipRevision) },
+                ...(detail.successorDispatchId === null
+                    ? []
+                    : [
+                          {
+                              label: "Successor dispatch",
+                              value: <IdRefText value={detail.successorDispatchId} />,
+                          },
+                      ]),
                 ...(detail.terminalEventSource === null
                     ? []
                     : [
@@ -395,7 +440,7 @@ function CommandRunLogSection({
     readonly logState: CommandRunLogState | null;
     readonly onToggleLogs: () => void;
 }) {
-    const logRef = detail.logRef;
+    const logRef = detail.preferredLogRef;
 
     return (
         <section className="min-w-0 rounded-card border border-outline-soft bg-surface px-4 py-3">
@@ -404,12 +449,29 @@ function CommandRunLogSection({
                     <p className="font-mono text-label font-medium uppercase text-muted">
                         Log access
                     </p>
-                    {logRef === null ? (
+                    {detail.stdoutLogRef === null && detail.stderrLogRef === null ? (
                         <p className="mt-1 text-compact text-muted">
                             This run does not expose a log ref.
                         </p>
                     ) : (
-                        <IdRefText className="mt-1 block" value={logRef} />
+                        <dl className="mt-2 grid gap-2">
+                            {detail.stdoutLogRef === null ? null : (
+                                <div>
+                                    <dt className="font-mono text-label text-muted">Stdout</dt>
+                                    <dd>
+                                        <IdRefText value={detail.stdoutLogRef} />
+                                    </dd>
+                                </div>
+                            )}
+                            {detail.stderrLogRef === null ? null : (
+                                <div>
+                                    <dt className="font-mono text-label text-muted">Stderr</dt>
+                                    <dd>
+                                        <IdRefText value={detail.stderrLogRef} />
+                                    </dd>
+                                </div>
+                            )}
+                        </dl>
                     )}
                 </div>
                 {logRef === null ? null : (
@@ -449,17 +511,20 @@ function CommandRunLogSection({
 
 function CommandRunActionError({
     error,
+    onRefresh,
 }: {
     readonly error: {
         readonly code: string;
         readonly suggestedNextStep: string | null;
         readonly summary: string;
     };
+    readonly onRefresh: () => void;
 }) {
     const isStale = isStaleActionError(error.code);
     return (
         <div className="border-t border-outline-soft px-4 pb-4">
             <StatePanel
+                action={isStale ? <Button onClick={onRefresh}>Reread current truth</Button> : null}
                 summary={
                     <span>
                         {error.summary}
@@ -507,10 +572,6 @@ function OpenTaskDetailLink({ taskId }: { readonly taskId: string | null }) {
             <span>Open task detail</span>
         </Link>
     );
-}
-
-function renderOptionalId(value: string | null) {
-    return value === null ? "Not reported" : <IdRefText value={value} />;
 }
 
 function commandRunStateDotClass(state: CommandRunState): string {

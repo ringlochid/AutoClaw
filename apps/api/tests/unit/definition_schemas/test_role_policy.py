@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import pytest
@@ -248,16 +249,21 @@ def test_policy_serialization_preserves_omitted_axis_provenance() -> None:
         }
     )
 
-    omitted_capabilities = omitted.model_dump(mode="json")["capabilities"]
-    explicit_capabilities = explicit.model_dump(mode="json")["capabilities"]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        omitted_dump = omitted.model_dump(mode="json")
+        explicit_dump = explicit.model_dump(mode="json")
+
+    omitted_capabilities = omitted_dump["capabilities"]
+    explicit_capabilities = explicit_dump["capabilities"]
 
     assert "provider_native_access" not in omitted_capabilities
     assert "network_access" not in omitted_capabilities
     assert explicit_capabilities["provider_native_access"] == "full"
     assert explicit_capabilities["network_access"] == "allow"
 
-    persisted_omitted = PolicyDefinitionInput.model_validate(omitted.model_dump(mode="json"))
-    persisted_explicit = PolicyDefinitionInput.model_validate(explicit.model_dump(mode="json"))
+    persisted_omitted = PolicyDefinitionInput.model_validate(omitted_dump)
+    persisted_explicit = PolicyDefinitionInput.model_validate(explicit_dump)
 
     assert "provider_native_access" not in persisted_omitted.capabilities.model_fields_set
     assert "network_access" not in persisted_omitted.capabilities.model_fields_set

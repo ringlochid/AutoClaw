@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import cast
+from typing import Protocol, cast
 
 import pytest
 from autoclaw.config import RuntimeSettings
@@ -105,6 +105,22 @@ class _CommitThenRaiseSession(SyncSessionAdapter):
     async def commit(self) -> None:
         await super().commit()
         raise RuntimeError("simulated lost commit acknowledgement")
+
+
+class _DispatchRow(Protocol):
+    status: str
+    closed_reason: str | None
+    provider_start_revision: int
+    provider_start_attempt_count: int
+    provider_start_retry_kind: str | None
+    provider_start_last_error_code: str | None
+
+
+class _FlowRow(Protocol):
+    status: str
+    current_dispatch_id: str | None
+    pause_reason: str | None
+    pause_details: Mapping[str, object]
 
 
 async def test_accepted_start_opens_once_retains_binding_and_publishes_watchdog(
@@ -540,17 +556,23 @@ def _write_request_pair(database: StartingDispatchDatabase, tmp_path: Path) -> N
         )
 
 
-def _dispatch_row(database: StartingDispatchDatabase) -> object:
+def _dispatch_row(database: StartingDispatchDatabase) -> _DispatchRow:
     dispatches = RuntimeBase.metadata.tables["dispatch_turns"]
     with database.engine.connect() as connection:
-        return connection.execute(
-            select(dispatches).where(dispatches.c.dispatch_id == database.ids.current_dispatch_id)
-        ).one()
+        return cast(
+            _DispatchRow,
+            connection.execute(
+                select(dispatches).where(
+                    dispatches.c.dispatch_id == database.ids.current_dispatch_id
+                )
+            ).one(),
+        )
 
 
-def _flow_row(database: StartingDispatchDatabase) -> object:
+def _flow_row(database: StartingDispatchDatabase) -> _FlowRow:
     flows = RuntimeBase.metadata.tables["flows"]
     with database.engine.connect() as connection:
-        return connection.execute(
-            select(flows).where(flows.c.flow_id == database.ids.flow_id)
-        ).one()
+        return cast(
+            _FlowRow,
+            connection.execute(select(flows).where(flows.c.flow_id == database.ids.flow_id)).one(),
+        )

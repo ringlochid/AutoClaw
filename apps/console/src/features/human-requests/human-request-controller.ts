@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { AutoClawApiError, requestJson, type ConsoleErrorView } from "../../api/client";
+import { isApiAbortError, mapUnknownApiError, type ConsoleErrorView } from "../../api/client";
 import type { components } from "../../api/generated/openapi";
-import { controlTaskRoute, humanRequestsRoute, resolveHumanRequestRoute } from "../../api/routes";
+import {
+    readHumanRequestsPageData,
+    resolveHumanRequest,
+    streamHumanRequestEvents,
+    type HumanRequestsPageData,
+} from "./human-request-data";
 import {
     buildResolveRequest,
     createDraftForRequest,
@@ -36,7 +41,10 @@ export interface HumanRequestsController {
     readonly selectRequest: (requestId: string) => void;
     readonly statusSummary: string;
     readonly taskId: string | null;
+    readonly taskPauseReason: components["schemas"]["RuntimeFlowPauseReason"] | null;
+    readonly taskStatus: components["schemas"]["RuntimeLifecycleStatus"] | null;
     readonly taskTitle: string | null;
+    readonly taskWaitingCause: components["schemas"]["RuntimeFlowWaitingCause"] | null;
     readonly updateSelectedItemDraft: (patch: Partial<HumanRequestItemDraft>) => void;
     readonly validationErrors: readonly HumanRequestValidationError[];
 }
@@ -70,6 +78,7 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
     const [refreshToken, setRefreshToken] = useState(0);
     const [settledTaskId, setSettledTaskId] = useState<string | null>(null);
     const [taskTitle, setTaskTitle] = useState<string | null>(null);
+    const [taskRead, setTaskRead] = useState<components["schemas"]["RuntimeFlowRead"] | null>(null);
     const readGenerationRef = useRef(0);
 
     useEffect(() => {
@@ -78,32 +87,72 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
         }
 
         const abortController = new AbortController();
+        let sourceRefreshTimer: ReturnType<typeof setTimeout> | null = null;
         const readGeneration = readGenerationRef.current + 1;
         readGenerationRef.current = readGeneration;
 
+        const applyPageData = (response: HumanRequestsPageData) => {
+            if (readGenerationRef.current !== readGeneration) {
+                return;
+            }
+
+            setRequestReads(response.requestList.items);
+            setSelectedRequestId((currentRequestId) =>
+                selectCurrentRequestId(response.requestList.items, currentRequestId),
+            );
+            setDrafts((currentDrafts) => ensureDrafts(response.requestList.items, currentDrafts));
+            setItemIndexByRequest((currentIndexes) =>
+                ensureItemIndexes(response.requestList.items, currentIndexes),
+            );
+            setSettledTaskId(taskId);
+            setTaskRead(response.task);
+            setTaskTitle(response.task.task_title);
+            setError(null);
+            setValidationErrors([]);
+            setIsLoading(false);
+            setIsRefreshing(false);
+        };
+
+        const refreshCommittedSource = async (): Promise<HumanRequestsPageData | null> => {
+            try {
+                const response = await readHumanRequestsPageData(taskId, abortController.signal);
+                applyPageData(response);
+                return response;
+            } catch (readError) {
+                if (!isAbortError(readError) && readGenerationRef.current === readGeneration) {
+                    setError(toErrorView(readError));
+                    setIsLoading(false);
+                    setIsRefreshing(false);
+                }
+                return null;
+            }
+        };
+
+        const scheduleCommittedSourceRefresh = () => {
+            if (sourceRefreshTimer !== null) {
+                clearTimeout(sourceRefreshTimer);
+            }
+            sourceRefreshTimer = setTimeout(() => {
+                sourceRefreshTimer = null;
+                void refreshCommittedSource();
+            }, 25);
+        };
+
         void readHumanRequestsPageData(taskId, abortController.signal)
             .then((response) => {
-                if (readGenerationRef.current !== readGeneration) {
-                    return;
-                }
-
-                setRequestReads(response.requestList.items);
-                setSelectedRequestId((currentRequestId) =>
-                    selectCurrentRequestId(response.requestList.items, currentRequestId),
-                );
-                setDrafts((currentDrafts) =>
-                    ensureDrafts(response.requestList.items, currentDrafts),
-                );
-                setItemIndexByRequest((currentIndexes) =>
-                    ensureItemIndexes(response.requestList.items, currentIndexes),
-                );
-                setSettledTaskId(taskId);
-                setTaskTitle(response.taskTitle);
-                setError(null);
-                setActionError(null);
-                setValidationErrors([]);
-                setIsLoading(false);
-                setIsRefreshing(false);
+                applyPageData(response);
+                void streamHumanRequestEvents({
+                    cursor: response.streamHeadEventId,
+                    onSourceEvent: scheduleCommittedSourceRefresh,
+                    resetAfterCursorReset: async () => {
+                        const refreshedResponse = await refreshCommittedSource();
+                        return refreshedResponse?.streamHeadEventId ?? null;
+                    },
+                    signal: abortController.signal,
+                    taskId,
+                }).catch(() => {
+                    // The stream is only a refresh hint. Preserve committed REST truth.
+                });
             })
             .catch((readError: unknown) => {
                 if (isAbortError(readError) || readGenerationRef.current !== readGeneration) {
@@ -111,6 +160,7 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
                 }
 
                 setSettledTaskId(taskId);
+                setTaskRead(null);
                 setTaskTitle(null);
                 setError(toErrorView(readError));
                 setIsLoading(false);
@@ -118,6 +168,9 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
             });
 
         return () => {
+            if (sourceRefreshTimer !== null) {
+                clearTimeout(sourceRefreshTimer);
+            }
             abortController.abort();
         };
     }, [refreshToken, taskId]);
@@ -218,12 +271,7 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
         setIsResolving(true);
         setActionError(null);
         setValidationErrors([]);
-        const route = resolveHumanRequestRoute(taskId, requestId);
-        void requestJson<HumanRequestResolveResponse>({
-            body: buildResult.request,
-            method: "POST",
-            path: route.path,
-        })
+        void resolveHumanRequest(taskId, requestId, buildResult.request)
             .then((response) => {
                 setRequestReads((currentReads) =>
                     currentReads.map((requestRead) =>
@@ -238,7 +286,12 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
                     return;
                 }
 
-                setActionError(toErrorView(resolveError));
+                const errorView = toErrorView(resolveError);
+                setActionError(errorView);
+                if (isStaleActionError(errorView.code)) {
+                    setIsRefreshing(true);
+                    setRefreshToken((value) => value + 1);
+                }
             })
             .finally(() => {
                 setIsResolving(false);
@@ -288,53 +341,13 @@ export function useHumanRequestsController(taskId: string | null): HumanRequests
             requestReads: visibleRequestReads,
         }),
         taskId,
+        taskPauseReason: taskRead?.pause_reason ?? null,
+        taskStatus: taskRead?.status ?? null,
         taskTitle,
+        taskWaitingCause: taskRead?.waiting_cause ?? null,
         updateSelectedItemDraft,
         validationErrors,
     };
-}
-
-async function readHumanRequestsPageData(
-    taskId: string,
-    signal: AbortSignal,
-): Promise<{
-    readonly requestList: components["schemas"]["HumanRequestListResponse"];
-    readonly taskTitle: string | null;
-}> {
-    const [requestList, taskTitle] = await Promise.all([
-        readHumanRequestList(taskId, signal),
-        readTaskTitle(taskId, signal),
-    ]);
-
-    return { requestList, taskTitle };
-}
-
-async function readHumanRequestList(
-    taskId: string,
-    signal: AbortSignal,
-): Promise<components["schemas"]["HumanRequestListResponse"]> {
-    const route = humanRequestsRoute(taskId);
-    return requestJson<components["schemas"]["HumanRequestListResponse"]>({
-        path: route.path,
-        signal,
-    });
-}
-
-async function readTaskTitle(taskId: string, signal: AbortSignal): Promise<string | null> {
-    const route = controlTaskRoute(taskId);
-    try {
-        const task = await requestJson<components["schemas"]["RuntimeFlowRead"]>({
-            path: route.path,
-            signal,
-        });
-        return task.task_title;
-    } catch (error) {
-        if (isAbortError(error)) {
-            throw error;
-        }
-
-        return null;
-    }
 }
 
 function selectCurrentRequestId(
@@ -462,27 +475,17 @@ export function isAuthError(error: ConsoleErrorView | null): boolean {
 
 export function isStaleActionError(code: string): boolean {
     return (
-        code.startsWith("stale_") || code === "illegal_state" || code === "conflicting_continuation"
+        code.startsWith("stale_") ||
+        code === "illegal_state" ||
+        code === "conflict" ||
+        code === "conflicting_continuation"
     );
 }
 
 function toErrorView(error: unknown): ConsoleErrorView {
-    if (error instanceof AutoClawApiError) {
-        return error.errorView;
-    }
-
-    return {
-        code: "unknown_error",
-        fieldErrors: [],
-        isRetryable: false,
-        source: "network",
-        status: null,
-        suggestedNextStep: null,
-        summary: error instanceof Error ? error.message : "An unknown console error occurred.",
-        title: "Unknown Error",
-    };
+    return mapUnknownApiError(error);
 }
 
 function isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === "AbortError";
+    return isApiAbortError(error);
 }

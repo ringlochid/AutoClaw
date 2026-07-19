@@ -7,6 +7,7 @@ export interface TabOption<Value extends string> {
     readonly disabled?: boolean;
     readonly label: string;
     readonly panelId?: string;
+    readonly tabId?: string;
     readonly value: Value;
 }
 
@@ -64,6 +65,9 @@ export function Tabs<Value extends string>({ label, onChange, tabs, value }: Tab
         <div aria-label={label} className="flex min-w-0 flex-wrap gap-2" role="tablist">
             {tabs.map((tab) => {
                 const isSelected = tab.value === value;
+                const tabId =
+                    tab.tabId ??
+                    (tab.panelId === undefined ? undefined : tabIdForPanel(tab.panelId));
 
                 return (
                     <button
@@ -76,6 +80,7 @@ export function Tabs<Value extends string>({ label, onChange, tabs, value }: Tab
                                 : "border-transparent bg-surface-muted text-muted hover:bg-surface-high hover:text-foreground",
                         )}
                         disabled={tab.disabled}
+                        id={tabId}
                         key={tab.value}
                         onClick={() => {
                             onChange(tab.value);
@@ -101,4 +106,8 @@ export function Tabs<Value extends string>({ label, onChange, tabs, value }: Tab
             })}
         </div>
     );
+}
+
+function tabIdForPanel(panelId: string): string {
+    return `${panelId}-tab`;
 }

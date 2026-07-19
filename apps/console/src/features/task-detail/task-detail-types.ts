@@ -18,9 +18,51 @@ export interface TaskDetailView {
     readonly graphEdges: readonly TaskGraphEdge[];
     readonly graphNodes: readonly TaskGraphNode[];
     readonly humanRequests: readonly HumanRequestPreview[];
+    readonly runtime: TaskRuntimeView;
     readonly snapshot: TaskSnapshotSummary;
     readonly task: TaskHeaderView;
     readonly trace: TaskTraceSummary;
+}
+
+export interface TaskRuntimeView {
+    readonly activeAssignmentId: string | null;
+    readonly controlRevision: number;
+    readonly currentCommandRun: components["schemas"]["CommandRunSummary"] | null;
+    readonly currentDispatch: TaskRuntimeDispatchView | null;
+    readonly currentHumanRequest: components["schemas"]["HumanRequestSummary"] | null;
+    readonly currentPlan: TaskWorkPlanView | null;
+    readonly latestDispatchId: string | null;
+    readonly pauseReason: components["schemas"]["RuntimeFlowPauseReason"] | null;
+    readonly waitingCause: components["schemas"]["RuntimeFlowWaitingCause"] | null;
+    readonly watchdogRecoveryCount: number;
+}
+
+export interface TaskRuntimeDispatchView {
+    readonly adapterStartedAt: string | null;
+    readonly assignmentId: string;
+    readonly attemptId: string;
+    readonly dispatchId: string;
+    readonly effectiveCapabilities: components["schemas"]["EffectiveCapabilityReadback"];
+    readonly isExperimentalProvider: boolean;
+    readonly lastNodeActivityAt: string | null;
+    readonly nodeActivityRevision: number;
+    readonly openedReason: components["schemas"]["DispatchOpenedReason"];
+    readonly predecessorDispatchId: string | null;
+    readonly providerStart: components["schemas"]["ProviderStartReadback"] | null;
+    readonly requestedProvider: components["schemas"]["ProviderKind"];
+    readonly resolvedProvider: components["schemas"]["ProviderKind"];
+    readonly selectionBasis: components["schemas"]["ProviderSelectionBasis"];
+    readonly status: components["schemas"]["DispatchRuntimeStatus"];
+    readonly watchdogDueAt: string | null;
+}
+
+export interface TaskWorkPlanView {
+    readonly assignmentId: string;
+    readonly authoredByDispatchId: string;
+    readonly explanation: string | null;
+    readonly revision: number;
+    readonly steps: readonly components["schemas"]["WorkPlanStepRead"][];
+    readonly updatedAt: string;
 }
 
 export interface TaskHeaderView {

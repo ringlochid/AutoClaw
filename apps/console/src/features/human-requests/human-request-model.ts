@@ -9,7 +9,10 @@ type PendingHumanRequest = components["schemas"]["PendingHumanRequest"];
 export type StructuredFieldType = "boolean" | "integer" | "number" | "string";
 
 export interface HumanRequestQueueItem {
+    readonly assignmentId: string;
+    readonly attemptId: string;
     readonly dueAt: string | null;
+    readonly flowId: string;
     readonly itemCount: number;
     readonly kind: components["schemas"]["HumanRequestKind"];
     readonly openedAt: string;
@@ -54,7 +57,10 @@ export interface HumanRequestResolveBuildResult {
 export function mapHumanRequestQueueItem(read: HumanRequestRead): HumanRequestQueueItem {
     const { request } = read;
     return {
+        assignmentId: request.assignment_id,
+        attemptId: request.attempt_id,
         dueAt: request.timeout?.due_at ?? null,
+        flowId: request.flow_id,
         itemCount: request.items.length,
         kind: request.kind,
         openedAt: request.opened_at,

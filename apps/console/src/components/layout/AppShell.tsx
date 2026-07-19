@@ -17,9 +17,10 @@ interface ShellBreadcrumb {
 
 interface ShellContext {
     readonly breadcrumbs: readonly ShellBreadcrumb[];
-    readonly section: string;
-    readonly status: string;
-    readonly statusTone: "active" | "neutral" | "success";
+    readonly status: {
+        readonly label: string;
+        readonly tone: "active" | "neutral" | "success";
+    } | null;
     readonly taskPath: string | null;
 }
 
@@ -62,6 +63,12 @@ export function AppShell() {
 
     return (
         <ShellTaskTitleContext.Provider value={shellTaskTitleContext}>
+            <a
+                className="fixed left-4 top-3 z-50 -translate-y-24 rounded-control bg-primary px-4 py-2 font-semibold text-primary-contrast shadow-popover transition-transform focus:translate-y-0"
+                href="#autoclaw-main-content"
+            >
+                Skip to main content
+            </a>
             <div className="min-h-screen bg-background text-foreground lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
                 <aside className="hidden border-r border-outline-soft bg-surface lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:p-3">
                     <ShellBrand />
@@ -134,26 +141,30 @@ export function AppShell() {
                                     </ol>
                                 </nav>
                             </div>
-                            <div
-                                aria-label="Shell state"
-                                className={classNames(
-                                    "inline-flex h-7 min-w-0 items-center gap-2 text-utility text-muted",
-                                    shellContext.statusTone === "active" &&
-                                        "text-primary-foreground",
-                                    shellContext.statusTone === "success" && "text-success",
-                                )}
-                            >
-                                <span
-                                    aria-hidden="true"
-                                    className="size-1.5 shrink-0 rounded-full bg-current"
-                                />
-                                <span className="truncate">{shellContext.status}</span>
-                            </div>
+                            {shellContext.status === null ? null : (
+                                <div
+                                    aria-label="Shell state"
+                                    className={classNames(
+                                        "inline-flex h-7 min-w-0 items-center gap-2 text-utility text-muted",
+                                        shellContext.status.tone === "active" &&
+                                            "text-primary-foreground",
+                                        shellContext.status.tone === "success" && "text-success",
+                                    )}
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        className="size-1.5 shrink-0 rounded-full bg-current"
+                                    />
+                                    <span className="truncate">{shellContext.status.label}</span>
+                                </div>
+                            )}
                         </div>
                     </header>
                     <main
                         aria-label="AutoClaw Console"
                         className="min-w-0 px-4 py-4 sm:px-page-inline sm:py-page-block"
+                        id="autoclaw-main-content"
+                        tabIndex={-1}
                     >
                         <Outlet />
                     </main>
@@ -251,7 +262,7 @@ function PrimaryNavLink({
                     variant === "mobile" &&
                         "!h-[38px] min-h-[38px] w-full border border-transparent px-3",
                     isActive
-                        ? "border-indigo-300/25 bg-active text-active-foreground"
+                        ? "border-primary/25 bg-active text-active-foreground"
                         : "border-transparent text-muted",
                 )
             }
@@ -264,9 +275,7 @@ function PrimaryNavLink({
                         aria-hidden="true"
                         className={classNames(
                             "size-2 shrink-0 rounded-full",
-                            isActive
-                                ? "bg-primary shadow-[0_0_6px_rgba(59,130,246,0.4)]"
-                                : "bg-outline-soft",
+                            isActive ? "bg-primary shadow-active-indicator" : "bg-outline-soft",
                         )}
                     />
                     <span className="truncate">{item.label}</span>
@@ -344,9 +353,7 @@ function getShellContext(pathname: string): ShellContext {
                 { label: taskId, to: taskPath ?? undefined },
                 { label: "Human Requests" },
             ],
-            section: "Runtime",
-            status: "Live",
-            statusTone: "active",
+            status: null,
             taskPath,
         };
     }
@@ -358,9 +365,7 @@ function getShellContext(pathname: string): ShellContext {
                 { label: taskId, to: taskPath ?? undefined },
                 { label: "Command Runs" },
             ],
-            section: "Runtime",
-            status: "Live",
-            statusTone: "active",
+            status: null,
             taskPath,
         };
     }
@@ -368,9 +373,7 @@ function getShellContext(pathname: string): ShellContext {
     if (segments[0] === "tasks" && segments.length > 1) {
         return {
             breadcrumbs: [{ label: "Tasks", to: "/tasks" }, { label: taskId }],
-            section: "Runtime",
-            status: "Live",
-            statusTone: "active",
+            status: null,
             taskPath,
         };
     }
@@ -381,9 +384,7 @@ function getShellContext(pathname: string): ShellContext {
                 { label: "Definitions", to: "/definitions" },
                 { label: "Definition Editor" },
             ],
-            section: "Authoring",
-            status: "Draft editing",
-            statusTone: "active",
+            status: { label: "Draft editing", tone: "active" },
             taskPath: null,
         };
     }
@@ -391,9 +392,7 @@ function getShellContext(pathname: string): ShellContext {
     if (segments[0] === "definitions") {
         return {
             breadcrumbs: [{ label: "Definitions" }],
-            section: "Authoring",
-            status: "Stored registry",
-            statusTone: "active",
+            status: { label: "Stored registry", tone: "active" },
             taskPath: null,
         };
     }
@@ -401,9 +400,7 @@ function getShellContext(pathname: string): ShellContext {
     if (segments[0] === "task-start") {
         return {
             breadcrumbs: [{ label: "Definitions", to: "/definitions" }, { label: "Task Start" }],
-            section: "Authoring",
-            status: "Workflow launch",
-            statusTone: "neutral",
+            status: { label: "Workflow launch", tone: "neutral" },
             taskPath: null,
         };
     }
@@ -411,18 +408,14 @@ function getShellContext(pathname: string): ShellContext {
     if (segments[0] === "fixtures") {
         return {
             breadcrumbs: [{ label: "Fixtures" }],
-            section: "Internal",
-            status: "Internal",
-            statusTone: "success",
+            status: { label: "Internal", tone: "success" },
             taskPath: null,
         };
     }
 
     return {
         breadcrumbs: [{ label: "Tasks" }],
-        section: "Runtime",
-        status: "Live",
-        statusTone: "active",
+        status: null,
         taskPath: null,
     };
 }

@@ -34,7 +34,7 @@ from autoclaw.runtime.contracts import (
     OperatorFlowSnapshotResponse,
     OperatorFlowTraceQuery,
     OperatorFlowTraceResponse,
-    RuntimeFlowControlQuery,
+    RuntimeFlowControlRequest,
     RuntimeFlowPauseResponse,
     RuntimeFlowRead,
     TaskEventListQuery,
@@ -71,7 +71,6 @@ type DispatchOpeningDependenciesDep = Annotated[
 ]
 type OperatorTraceParams = Annotated[OperatorFlowTraceQuery, Query()]
 type TaskEventListParams = Annotated[TaskEventListQuery, Query()]
-type RuntimeFlowControlParams = Annotated[RuntimeFlowControlQuery, Query()]
 type CommandRunCursor = Annotated[str | None, Query(min_length=1)]
 type CommandRunLimit = Annotated[int, Query(ge=1, le=200)]
 type TaskEventStreamCursor = Annotated[str | None, Query(min_length=1)]
@@ -95,8 +94,8 @@ async def get_control_task(
 @router.post("/tasks/{task_id}/pause", response_model=RuntimeFlowPauseResponse)
 async def pause_control_task(
     task_id: str,
+    request: RuntimeFlowControlRequest,
     session: DBSession,
-    query: RuntimeFlowControlParams,
     actor_ref: ControlActorRefDep,
     runtime_effect_publisher: RuntimeEffectPublisherDep,
 ) -> RuntimeFlowPauseResponse:
@@ -104,8 +103,8 @@ async def pause_control_task(
         return await pause_runtime_flow(
             session,
             task_id,
-            expected_active_flow_revision_id=query.expected_active_flow_revision_id,
-            expected_control_revision=query.expected_control_revision,
+            expected_active_flow_revision_id=request.expected_active_flow_revision_id,
+            expected_control_revision=request.expected_control_revision,
             actor_ref=actor_ref,
             runtime_effect_publisher=runtime_effect_publisher,
         )
@@ -116,8 +115,8 @@ async def pause_control_task(
 @router.post("/tasks/{task_id}/continue", response_model=RuntimeFlowRead)
 async def continue_control_task(
     task_id: str,
+    request: RuntimeFlowControlRequest,
     session: DBSession,
-    query: RuntimeFlowControlParams,
     actor_ref: ControlActorRefDep,
     dependencies: DispatchOpeningDependenciesDep,
 ) -> RuntimeFlowRead:
@@ -125,8 +124,8 @@ async def continue_control_task(
         return await continue_runtime_flow(
             session,
             task_id,
-            expected_active_flow_revision_id=query.expected_active_flow_revision_id,
-            expected_control_revision=query.expected_control_revision,
+            expected_active_flow_revision_id=request.expected_active_flow_revision_id,
+            expected_control_revision=request.expected_control_revision,
             dependencies=dependencies,
             actor_ref=actor_ref,
         )
@@ -137,8 +136,8 @@ async def continue_control_task(
 @router.post("/tasks/{task_id}/cancel", response_model=RuntimeFlowRead)
 async def cancel_control_task(
     task_id: str,
+    request: RuntimeFlowControlRequest,
     session: DBSession,
-    query: RuntimeFlowControlParams,
     actor_ref: ControlActorRefDep,
     runtime_effect_publisher: RuntimeEffectPublisherDep,
 ) -> RuntimeFlowRead:
@@ -146,8 +145,8 @@ async def cancel_control_task(
         return await cancel_runtime_flow(
             session,
             task_id,
-            expected_active_flow_revision_id=query.expected_active_flow_revision_id,
-            expected_control_revision=query.expected_control_revision,
+            expected_active_flow_revision_id=request.expected_active_flow_revision_id,
+            expected_control_revision=request.expected_control_revision,
             actor_ref=actor_ref,
             runtime_effect_publisher=runtime_effect_publisher,
         )

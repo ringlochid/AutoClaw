@@ -28,17 +28,30 @@ beforeAll(() => {
 beforeEach(() => {
     vi.stubEnv("VITE_AUTOCLAW_API_BASE_URL", TEST_API_BASE_URL);
     installTestConsoleConfig();
-    server.use(
-        http.get("*/control/tasks/:taskId", () =>
-            HttpResponse.json(
-                createRuntimeFlowRead({
-                    task_id: HUMAN_REQUEST_TASK_ID,
-                    task_title: "Refresh runtime route copy",
-                }),
-            ),
-        ),
-    );
+    server.use(...humanRequestTaskHandlers());
 });
+
+function humanRequestTaskHandlers() {
+    const task = createRuntimeFlowRead({
+        task_id: HUMAN_REQUEST_TASK_ID,
+        task_title: "Refresh runtime route copy",
+    });
+    return [
+        http.get("*/control/tasks/:taskId/snapshot", () =>
+            HttpResponse.json({
+                current_paths: [],
+                flow: task,
+                stream_head_event_id: "evt-human-request-bootstrap",
+                top_actionable_items: [],
+            } satisfies components["schemas"]["OperatorFlowSnapshotResponse"]),
+        ),
+        http.get("*/control/tasks/:taskId", () => HttpResponse.json(task)),
+        http.get(
+            "*/control/tasks/:taskId/events/stream",
+            () => new HttpResponse("", { headers: { "Content-Type": "text/event-stream" } }),
+        ),
+    ];
+}
 
 afterEach(() => {
     cleanup();
@@ -166,7 +179,7 @@ describe("HumanRequestsPage", () => {
             readLog,
             resolveStatus: 409,
             resolveBody: createOperationFailureBody({
-                code: "stale_flow_revision",
+                code: "conflict",
                 retryable: true,
                 summary: "The request was already resolved by another operator.",
                 suggested_next_step: "Reread current human-request truth before retrying.",
@@ -186,14 +199,57 @@ describe("HumanRequestsPage", () => {
         expect(
             screen.getByText("Reread current human-request truth before retrying."),
         ).toBeVisible();
-        expect(screen.getByLabelText(/Reject for now/)).toBeChecked();
-
-        await user.click(screen.getByRole("button", { name: "Reread current truth" }));
 
         await waitFor(() => {
             expect(readLog).toHaveLength(2);
         });
         expect(screen.getByLabelText(/Reject for now/)).toBeChecked();
+    });
+
+    it("anchors source reads to the snapshot head before supervising stream refresh hints", async () => {
+        const readOrder: string[] = [];
+        const streamRequests: URL[] = [];
+        const task = createRuntimeFlowRead({
+            task_id: HUMAN_REQUEST_TASK_ID,
+            task_title: "Refresh runtime route copy",
+        });
+        const requestList = createHumanRequestPageList();
+        server.use(
+            http.get("*/control/tasks/:taskId/snapshot", () => {
+                readOrder.push("snapshot");
+                return HttpResponse.json({
+                    current_paths: [],
+                    flow: task,
+                    stream_head_event_id: "evt-human-request-anchor",
+                    top_actionable_items: [],
+                } satisfies components["schemas"]["OperatorFlowSnapshotResponse"]);
+            }),
+            http.get("*/control/tasks/:taskId/human-requests", () => {
+                readOrder.push("human-requests");
+                return HttpResponse.json(requestList);
+            }),
+            http.get("*/control/tasks/:taskId", () => {
+                readOrder.push("task");
+                return HttpResponse.json(task);
+            }),
+            http.get("*/control/tasks/:taskId/events/stream", ({ request }) => {
+                streamRequests.push(new URL(request.url));
+                return new HttpResponse("", { headers: { "Content-Type": "text/event-stream" } });
+            }),
+        );
+
+        renderHumanRequestsPage();
+
+        expect(
+            await screen.findByRole("heading", { name: "Refresh runtime route copy" }),
+        ).toBeVisible();
+        expect(readOrder[0]).toBe("snapshot");
+        expect(readOrder).toEqual(expect.arrayContaining(["human-requests", "task"]));
+        await waitFor(() => {
+            expect(streamRequests.length).toBeGreaterThanOrEqual(2);
+        });
+        expect(streamRequests[0]?.searchParams.get("cursor")).toBe("evt-human-request-anchor");
+        expect(streamRequests[1]?.searchParams.get("cursor")).toBe("evt-human-request-anchor");
     });
 
     it("renders empty, auth, and task-detail navigation states", async () => {
@@ -217,6 +273,7 @@ describe("HumanRequestsPage", () => {
         cleanup();
         server.resetHandlers();
         server.use(
+            ...humanRequestTaskHandlers(),
             http.get("*/control/tasks/:taskId/human-requests", () =>
                 HttpResponse.json(
                     createOperationFailureBody({

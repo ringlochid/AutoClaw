@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import pytest
 from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
@@ -46,7 +47,7 @@ def test_dispatch_start_request_requires_provider_projection() -> None:
             task_id="task-1",
             dispatch_id="dispatch-1",
             provider_start_revision=0,
-            working_directory="/tmp/workspace",
+            working_directory=Path("/tmp/workspace"),
             instructions=b"instructions",
             input=b"input",
             provider_route=CodexProviderRoute(kind=ProviderKind.CODEX),
@@ -61,7 +62,7 @@ def test_dispatch_start_request_requires_provider_projection() -> None:
         task_id="task-1",
         dispatch_id="dispatch-1",
         provider_start_revision=0,
-        working_directory="/tmp/workspace",
+        working_directory=Path("/tmp/workspace"),
         instructions=b"instructions",
         input=b"input",
         provider_route=OpenClawProviderRoute(
@@ -81,10 +82,12 @@ class _RegistryAdapter:
         self.kind = kind
         self.events = events
 
-    async def start(self, _request: DispatchStartRequest) -> ProviderStartAccepted:
+    async def start(self, request: DispatchStartRequest) -> ProviderStartAccepted:
+        del request
         return ProviderStartAccepted()
 
-    async def stop(self, _dispatch_id: str) -> ProviderStopOutcome:
+    async def stop(self, dispatch_id: str) -> ProviderStopOutcome:
+        del dispatch_id
         return ProviderStopOutcome.NOT_RUNNING
 
     async def check(self) -> ProviderCheckResult:

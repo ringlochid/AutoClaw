@@ -12,6 +12,64 @@ export const TASK_START_SCREENSHOT_DIR =
 export const TASK_START_WORKFLOW_KEY = "reviewed-change-release";
 export const SECOND_TASK_START_WORKFLOW_KEY = WORKFLOW_KEY;
 
+export function createTaskStartPreview(
+    status: components["schemas"]["TaskComposePreviewResponse"]["status"] = "ready",
+): components["schemas"]["TaskComposePreviewResponse"] {
+    if (status === "invalid") {
+        return {
+            errors: [
+                {
+                    code: "provider_route_unavailable",
+                    kind: "provider",
+                    message: "The selected provider route is not configured on this machine.",
+                    path: "workflow.root.provider.kind",
+                },
+            ],
+            nodes: [],
+            status,
+            warnings: [],
+        };
+    }
+
+    return {
+        errors: [],
+        nodes: [
+            {
+                network_access: { effective: "deny", source: "policy_definition" },
+                node_key: "root",
+                provider_native_access: {
+                    effective: "restricted",
+                    source: "policy_definition",
+                },
+                provider_resolution: {
+                    requested_provider: "openclaw",
+                    resolved_provider: "openclaw",
+                    selection_basis: "explicit",
+                },
+            },
+            {
+                network_access: { effective: "allow", source: "default" },
+                node_key: "implementation",
+                provider_native_access: { effective: "full", source: "default" },
+                provider_resolution: {
+                    requested_provider: "codex",
+                    resolved_provider: "codex",
+                    selection_basis: "default",
+                },
+            },
+        ],
+        status,
+        warnings: [
+            {
+                code: "experimental_provider",
+                kind: "provider",
+                message: "OpenClaw remains an experimental provider lane.",
+                path: "workflow.root.provider.kind",
+            },
+        ],
+    };
+}
+
 const TASK_START_WORKFLOW_OVERRIDES = new Map<
     string,
     { readonly description: string; readonly updated_at: string }

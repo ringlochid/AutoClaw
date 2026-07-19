@@ -122,7 +122,12 @@ export function TaskDetailModal({
                             />
                         </div>
                     </header>
-                    <div className="px-5 py-4" id={`task-detail-${tab}`} role="tabpanel">
+                    <div
+                        aria-labelledby={`task-detail-${tab}-tab`}
+                        className="px-5 py-4"
+                        id={`task-detail-${tab}`}
+                        role="tabpanel"
+                    >
                         <TaskDetailTabPanel
                             context={context}
                             tab={tab}

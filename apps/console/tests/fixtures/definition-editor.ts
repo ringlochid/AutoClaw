@@ -6,8 +6,11 @@ export const DEFINITION_EDITOR_SCREENSHOT_DIR =
 export const DEFINITION_EDITOR_WORKFLOW_KEY = "definition-editor-page";
 export const DEFINITION_EDITOR_ROLE_KEY = "definition-editor-review";
 export const DEFINITION_EDITOR_NEW_DRAFT_KEY = "definition-editor-new-role";
-export const DEFINITION_EDITOR_UPDATED_BODY =
-    "kind: workflow\nid: definition-editor-page\ndescription: Saved clean draft body.\n";
+export const DEFINITION_EDITOR_UPDATED_BODY = bodyForKind(
+    "workflow",
+    DEFINITION_EDITOR_WORKFLOW_KEY,
+    "Saved clean draft body.",
+);
 
 const UPDATED_AT = "2026-06-29T20:15:00Z";
 
@@ -194,15 +197,18 @@ export function bodyForKind(
         return [
             "kind: policy",
             `id: ${key}`,
+            `title: ${description}`,
             `description: ${description}`,
             "instruction: Guard launch from incomplete draft state.",
             "applies_to:",
-            "  - worker",
+            "    - worker",
             "capabilities:",
-            "  command_run: deny",
-            "  human_request:",
-            "    mode: deny",
-            "    allowed_kinds: []",
+            "    provider_native_access: full",
+            "    network_access: allow",
+            "    command_run: deny",
+            "    human_request:",
+            "        mode: deny",
+            "        allowed_kinds: []",
             "",
         ].join("\n");
     }
@@ -211,12 +217,15 @@ export function bodyForKind(
         return [
             "kind: workflow",
             `id: ${key}`,
-            "description: Deliver the Definition Editor authoring surface.",
+            `description: ${description}`,
             "root:",
-            "  id: root",
-            "  role: root_planning_lead",
-            "  policy: standard-root",
-            "  description: Coordinate the authoring workbench.",
+            "    node_key: root",
+            "    kind: root",
+            "    role_id: root_planning_lead",
+            "    policy_id: standard-root",
+            "    provider:",
+            "        kind: openclaw",
+            "    description: Coordinate the authoring workbench.",
             "",
         ].join("\n");
     }
@@ -224,17 +233,19 @@ export function bodyForKind(
     return [
         "kind: role",
         `id: ${key}`,
+        `title: ${description}`,
         `description: ${description}`,
         "instruction: Verify the selected definition draft.",
         "allowed_node_kinds:",
-        "  - worker",
+        "    - worker",
         "",
     ].join("\n");
 }
 
 function storedBodyForKind(kind: components["schemas"]["DefinitionKind"], key: string): string {
-    return bodyForKind(kind, key).replace(
-        "Deliver the Definition Editor authoring surface.",
+    return bodyForKind(
+        kind,
+        key,
         "Captured stored baseline for the Definition Editor authoring surface.",
     );
 }

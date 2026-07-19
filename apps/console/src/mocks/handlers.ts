@@ -69,6 +69,7 @@ export interface ConsoleMockScenario {
         Record<string, components["schemas"]["RuntimeFlowSummaryListResponse"]>
     >;
     readonly taskRead: components["schemas"]["RuntimeFlowRead"];
+    readonly taskComposePreview: components["schemas"]["TaskComposePreviewResponse"];
     readonly taskStart: components["schemas"]["TaskStartResponse"];
     readonly trace: components["schemas"]["OperatorFlowTraceResponse"];
 }
@@ -80,6 +81,9 @@ export function createConsoleApiHandlers(scenario: ConsoleMockScenario): readonl
         ...createCommandRunHandlers(scenario),
         ...createDefinitionHandlers(scenario),
         ...createDraftAuthoringHandlers(scenario),
+        http.post("*/authoring/task-compose/preview", ({ request }) =>
+            guardedJson(request, scenario, scenario.taskComposePreview),
+        ),
         http.post("*/tasks/start", ({ request }) =>
             guardedJson(request, scenario, scenario.taskStart),
         ),

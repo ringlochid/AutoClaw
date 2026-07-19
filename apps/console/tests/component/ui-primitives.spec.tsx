@@ -120,10 +120,10 @@ describe("ui primitives", () => {
             />,
         );
 
-        expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute(
-            "aria-selected",
-            "true",
-        );
+        const overviewTab = screen.getByRole("tab", { name: "Overview" });
+        expect(overviewTab).toHaveAttribute("aria-selected", "true");
+        expect(overviewTab).toHaveAttribute("aria-controls", "overview-panel");
+        expect(overviewTab).toHaveAttribute("id", "overview-panel-tab");
         await user.click(screen.getByRole("tab", { name: "Trace" }));
         expect(selected).toEqual(["trace"]);
     });

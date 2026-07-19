@@ -9,6 +9,7 @@ import {
     type ConsoleErrorView,
 } from "./client";
 import type { components } from "./generated/openapi";
+import { isTaskEventRecord, type TaskEventRecord } from "./task-event-validation";
 
 export interface ServerSentEventFrame {
     readonly data: string;
@@ -43,6 +44,17 @@ export interface TaskEventStreamReconnectOptions extends TaskEventStreamOptions 
     readonly resetAfterCursorReset: (
         staleCursor: string | null,
     ) => Promise<string | null> | string | null;
+}
+
+export interface TaskEventStreamSupervisionOptions extends TaskEventStreamReconnectOptions {
+    readonly maxReconnectAttempts?: number;
+    readonly onReconnect?: (attempt: number, cursor: string | null) => void;
+    readonly reconnectDelayMs?: number;
+}
+
+export interface TaskEventStreamSupervisionResult extends TaskEventStreamReadResult {
+    readonly reconnectAttempts: number;
+    readonly reconnectExhausted: boolean;
 }
 
 export function taskEventStreamUrl(
@@ -125,7 +137,7 @@ export async function readTaskEventStream({
     const events: components["schemas"]["TaskEventRecord"][] = [];
 
     for await (const frame of readServerSentEventFrames(response.body, signal)) {
-        const event = readTaskEventFromFrame(frame);
+        const event = readTaskEventFromFrame(frame, taskId);
         if (event === null || seenEventIds.has(event.event_id)) {
             continue;
         }
@@ -167,6 +179,82 @@ export async function reconnectTaskEventStream(
         didResetCursor: true,
         staleCursor: firstResult.staleCursor,
     };
+}
+
+export async function superviseTaskEventStream({
+    maxReconnectAttempts = 3,
+    onEvent,
+    onReconnect,
+    reconnectDelayMs = 1_000,
+    ...options
+}: TaskEventStreamSupervisionOptions): Promise<TaskEventStreamSupervisionResult> {
+    const reconnectLimit = Math.max(0, Math.floor(maxReconnectAttempts));
+    const seenEventIds = new Set<string>();
+    let allEvents: readonly TaskEventRecord[] = [];
+    let currentCursor = options.cursor ?? null;
+    let didResetCursor = false;
+    let staleCursor: string | null = null;
+
+    for (let reconnectAttempts = 0; reconnectAttempts <= reconnectLimit; reconnectAttempts += 1) {
+        let refreshedCursor = currentCursor;
+        try {
+            const result = await reconnectTaskEventStream({
+                ...options,
+                cursor: currentCursor,
+                onEvent: (event) => {
+                    if (seenEventIds.has(event.event_id)) {
+                        return;
+                    }
+                    seenEventIds.add(event.event_id);
+                    onEvent?.(event);
+                },
+                resetAfterCursorReset: async (resetCursor) => {
+                    refreshedCursor = await options.resetAfterCursorReset(resetCursor);
+                    return refreshedCursor;
+                },
+            });
+            allEvents = mergeTaskEvents(allEvents, result.events);
+            for (const event of result.events) {
+                seenEventIds.add(event.event_id);
+            }
+            currentCursor = result.lastEventId ?? refreshedCursor;
+            didResetCursor = didResetCursor || result.didResetCursor;
+            staleCursor = result.staleCursor ?? staleCursor;
+
+            if (options.signal?.aborted === true) {
+                return {
+                    ...result,
+                    didResetCursor,
+                    events: allEvents,
+                    lastEventId: lastTaskEventCursor(allEvents),
+                    reconnectAttempts,
+                    reconnectExhausted: false,
+                    staleCursor,
+                };
+            }
+
+            if (reconnectAttempts >= reconnectLimit) {
+                return {
+                    ...result,
+                    didResetCursor,
+                    events: allEvents,
+                    lastEventId: lastTaskEventCursor(allEvents),
+                    reconnectAttempts,
+                    reconnectExhausted: true,
+                    staleCursor,
+                };
+            }
+        } catch (error) {
+            if (!isRetryableStreamError(error) || reconnectAttempts >= reconnectLimit) {
+                throw error;
+            }
+        }
+
+        onReconnect?.(reconnectAttempts + 1, currentCursor);
+        await waitForReconnectDelay(reconnectDelayMs, options.signal);
+    }
+
+    throw new Error("Task event stream supervision exceeded its reconnect bound");
 }
 
 export async function* readServerSentEventFrames(
@@ -265,6 +353,7 @@ export function lastTaskEventCursor(
 
 function readTaskEventFromFrame(
     frame: ServerSentEventFrame,
+    expectedTaskId: string,
 ): components["schemas"]["TaskEventRecord"] | null {
     if (frame.data.trim() === "") {
         return null;
@@ -281,8 +370,16 @@ function readTaskEventFromFrame(
             isRetryable: true,
             suggestedNextStep: "Reconnect to the task event stream.",
             fieldErrors: [],
-            source: "network",
+            source: "stream",
         });
+    }
+
+    if (parsedData.task_id !== expectedTaskId) {
+        throw taskEventStreamError(
+            "cross_task_sse_event",
+            "Cross-task SSE Event",
+            "The task event stream returned an event for a different task.",
+        );
     }
 
     if (frame.id !== null && frame.id !== parsedData.event_id) {
@@ -294,7 +391,7 @@ function readTaskEventFromFrame(
             isRetryable: true,
             suggestedNextStep: "Reconnect to the task event stream.",
             fieldErrors: [],
-            source: "network",
+            source: "stream",
         });
     }
 
@@ -307,7 +404,7 @@ function readTaskEventFromFrame(
             isRetryable: true,
             suggestedNextStep: "Reconnect to the task event stream.",
             fieldErrors: [],
-            source: "network",
+            source: "stream",
         });
     }
 
@@ -322,20 +419,46 @@ function parseJsonFrameData(data: string): unknown {
     }
 }
 
-function isTaskEventRecord(value: unknown): value is components["schemas"]["TaskEventRecord"] {
-    if (!isRecord(value)) {
-        return false;
+function taskEventStreamError(code: string, title: string, summary: string): AutoClawApiError {
+    return new AutoClawApiError({
+        code,
+        title,
+        summary,
+        status: null,
+        isRetryable: true,
+        suggestedNextStep: "Reconnect to the task event stream.",
+        fieldErrors: [],
+        source: "stream",
+    });
+}
+
+function isRetryableStreamError(error: unknown): boolean {
+    return (
+        error instanceof AutoClawApiError &&
+        error.errorView.source !== "abort" &&
+        error.errorView.isRetryable
+    );
+}
+
+async function waitForReconnectDelay(delayMs: number, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted === true) {
+        throw createApiTransportError(new DOMException("Aborted", "AbortError"));
+    }
+    if (delayMs <= 0) {
+        return;
     }
 
-    return (
-        typeof value.event_id === "string" &&
-        typeof value.event_seq === "number" &&
-        typeof value.task_id === "string" &&
-        typeof value.event_type === "string" &&
-        typeof value.event_source === "string" &&
-        typeof value.occurred_at === "string" &&
-        typeof value.event_hash === "string"
-    );
+    await new Promise<void>((resolve, reject) => {
+        const timeoutId = window.setTimeout(() => {
+            signal?.removeEventListener("abort", handleAbort);
+            resolve();
+        }, delayMs);
+        const handleAbort = () => {
+            window.clearTimeout(timeoutId);
+            reject(createApiTransportError(new DOMException("Aborted", "AbortError")));
+        };
+        signal?.addEventListener("abort", handleAbort, { once: true });
+    });
 }
 
 function findFrameBoundary(
@@ -357,8 +480,4 @@ function findFrameBoundary(
     }
 
     return { index: carriageBoundary, length: 4 };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
 }

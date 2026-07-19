@@ -110,6 +110,19 @@ async function mockCommandRuns(
             return;
         }
 
+        if (request.method() === "GET" && path.endsWith(`/${COMMAND_RUN_TASK_ID}/snapshot`)) {
+            await fulfillJson(route, {
+                current_paths: [],
+                flow: createRuntimeFlowRead({
+                    task_id: COMMAND_RUN_TASK_ID,
+                    task_title: "Refresh runtime route copy",
+                }),
+                stream_head_event_id: null,
+                top_actionable_items: [],
+            } satisfies components["schemas"]["OperatorFlowSnapshotResponse"]);
+            return;
+        }
+
         if (request.method() === "GET" && path.endsWith(`/control/tasks/${COMMAND_RUN_TASK_ID}`)) {
             await fulfillJson(
                 route,

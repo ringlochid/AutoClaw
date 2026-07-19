@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator, Callable
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -51,7 +52,7 @@ def _request() -> DispatchStartRequest:
         task_id="task-1",
         dispatch_id="dispatch-1",
         provider_start_revision=0,
-        working_directory="/tmp/workspace",
+        working_directory=Path("/tmp/workspace"),
         instructions=b"exact instructions",
         input=b"exact input",
         provider_route=ClaudeProviderRoute(
@@ -104,8 +105,9 @@ async def test_claude_start_uses_disposable_scoped_client_and_returns_before_out
         assert sandbox["failIfUnavailable"] is True
         assert sandbox["allowUnsandboxedCommands"] is False
         assert "mcp__autoclaw_node__record_checkpoint" in client.options.allowed_tools
-        mcp_config = client.options.mcp_servers["autoclaw_node"]
-        assert mcp_config["headers"] == {"Authorization": "Bearer binding-secret"}
+        mcp_servers = cast(dict[str, object], client.options.mcp_servers)
+        mcp_config = cast(dict[str, object], mcp_servers["autoclaw_node"])
+        assert mcp_config.get("headers") == {"Authorization": "Bearer binding-secret"}
 
         assert await adapter.stop("dispatch-1") is ProviderStopOutcome.STOPPED
         assert client.was_interrupted is True

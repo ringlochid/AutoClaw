@@ -1,14 +1,21 @@
-import { AutoClawApiError, requestJson, type ConsoleErrorView } from "../../api/client";
+import {
+    isApiAbortError,
+    mapUnknownApiError,
+    requestJson,
+    type ConsoleErrorView,
+} from "../../api/client";
 import type { components } from "../../api/generated/openapi";
 import {
     definitionRoute,
     definitionsRoute,
     definitionVersionsRoute,
+    taskComposePreviewRoute,
     taskStartRoute,
     type DefinitionListQuery,
 } from "../../api/routes";
 import type {
     DefinitionRevisionDetailResponse,
+    TaskComposePreviewResponse,
     TaskStartRequest,
     TaskStartResponse,
 } from "./task-start-model";
@@ -87,25 +94,23 @@ export async function startTask(request: TaskStartRequest): Promise<TaskStartRes
     });
 }
 
-export function toErrorView(error: unknown): ConsoleErrorView {
-    if (error instanceof AutoClawApiError) {
-        return error.errorView;
-    }
+export async function previewTaskStart(
+    request: TaskStartRequest,
+): Promise<TaskComposePreviewResponse> {
+    const route = taskComposePreviewRoute();
+    return requestJson<TaskComposePreviewResponse>({
+        body: request,
+        method: "POST",
+        path: route.path,
+    });
+}
 
-    return {
-        code: "unknown_error",
-        fieldErrors: [],
-        isRetryable: false,
-        source: "network",
-        status: null,
-        suggestedNextStep: null,
-        summary: error instanceof Error ? error.message : "An unknown console error occurred.",
-        title: "Unknown Error",
-    };
+export function toErrorView(error: unknown): ConsoleErrorView {
+    return mapUnknownApiError(error);
 }
 
 export function isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === "AbortError";
+    return isApiAbortError(error);
 }
 
 export function isAuthError(error: ConsoleErrorView): boolean {

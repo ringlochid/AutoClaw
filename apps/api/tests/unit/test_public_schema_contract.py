@@ -12,11 +12,19 @@ from autoclaw.definitions.contracts import (
     DefinitionRevisionHistoryQuery,
     DefinitionSummaryListResponse,
     DefinitionUploadRequest,
+    PolicyCapabilitiesInput,
     RoleDefinitionInput,
     WorkflowDefinitionInput,
 )
 from autoclaw.runtime import FlowStatus
-from autoclaw.runtime.contracts import TaskStartRequest, TaskStartResponse, WorkflowManifestRef
+from autoclaw.runtime.contracts import (
+    RuntimeFlowSummary,
+    RuntimeLifecycleStatus,
+    RuntimeTaskListQuery,
+    TaskStartRequest,
+    TaskStartResponse,
+    WorkflowManifestRef,
+)
 from pydantic import ValidationError
 
 from tests.unit.definition_schemas.support import bounded_workflow_payload
@@ -192,6 +200,43 @@ def test_definition_revision_detail_response_requires_key_to_match_content_id() 
                 "updated_at": timestamp,
             }
         )
+
+
+def test_policy_capabilities_have_a_typed_serialization_schema() -> None:
+    schema = PolicyCapabilitiesInput.model_json_schema(mode="serialization")
+    output_schema = schema["$defs"]["PolicyCapabilitiesOutput"]
+
+    assert output_schema.get("additionalProperties") is not True
+    assert set(output_schema["properties"]) == {
+        "provider_native_access",
+        "network_access",
+        "human_request",
+        "command_run",
+    }
+    assert set(output_schema["required"]) == {"human_request", "command_run"}
+
+
+def test_runtime_task_list_uses_v2_lifecycle_statuses() -> None:
+    query = RuntimeTaskListQuery(status="completed")
+    summary = RuntimeFlowSummary(
+        task_id="task.completed",
+        task_title="Completed task",
+        task_summary="Use the V2 lifecycle status vocabulary.",
+        status=RuntimeLifecycleStatus.COMPLETED,
+        active_flow_revision_id="flow-revision.completed.1",
+        workflow_manifest_ref=WorkflowManifestRef(
+            path=Path("_runtime/workflow-manifest.md"),
+            description="Whole-workflow visible contract for the current task.",
+        ),
+        active_assignment_id="assignment.completed",
+        active_attempt_id="attempt.completed",
+        updated_at=datetime.now(UTC),
+    )
+
+    assert query.status == "completed"
+    assert summary.status == RuntimeLifecycleStatus.COMPLETED
+    with pytest.raises(ValidationError):
+        RuntimeTaskListQuery.model_validate({"status": "succeeded"})
 
 
 def test_definition_revision_history_query_uses_canonical_defaults() -> None:

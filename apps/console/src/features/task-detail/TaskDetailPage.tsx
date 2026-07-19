@@ -9,13 +9,19 @@ import { useTaskDetailController, type TaskDetailController } from "./task-detai
 import { TaskEventLane } from "./task-detail-event-lane";
 import { TaskGraph } from "./task-detail-graph";
 import { TaskDetailModal } from "./task-detail-modal";
+import { TaskRuntimeSummary } from "./task-detail-runtime-summary";
 import { TaskActionControls, TaskDetailEyebrow, TaskSummaryHeader } from "./task-detail-summary";
 
 const TASK_DETAIL_SKELETON_EVENT_ROWS = [0, 1, 2, 3] as const;
 
 export function TaskDetailPage() {
     const { taskId } = useParams();
-    const controller = useTaskDetailController(taskId ?? null);
+
+    return <TaskDetailTaskPage key={taskId ?? "missing-task"} taskId={taskId ?? null} />;
+}
+
+function TaskDetailTaskPage({ taskId }: { readonly taskId: string | null }) {
+    const controller = useTaskDetailController(taskId);
 
     useTaskDetailModalEscape(controller);
 
@@ -149,6 +155,7 @@ function TaskDetailLoadedState({ controller }: { readonly controller: TaskDetail
             title={view.task.title}
         >
             <div className="space-y-4">
+                <TaskRuntimeSummary view={view} />
                 {controller.actionError === null ? null : (
                     <StatePanel
                         summary={controller.actionError.summary}
@@ -163,10 +170,17 @@ function TaskDetailLoadedState({ controller }: { readonly controller: TaskDetail
                 {controller.streamError === null ? null : (
                     <StatePanel
                         summary={controller.streamError.summary}
-                        title="Live event stream stopped"
+                        title="Event stream stopped"
                         tone="error"
                     />
                 )}
+                {controller.streamStatus === "closed" && controller.streamError === null ? (
+                    <StatePanel
+                        summary="The bounded event-stream connection ended. Current REST source reads remain authoritative; refresh to connect again."
+                        title="Event stream disconnected"
+                        tone="stale"
+                    />
+                ) : null}
                 {controller.streamStatus === "reset" ||
                 controller.streamResetStaleCursor !== null ? (
                     <StatePanel
@@ -176,13 +190,21 @@ function TaskDetailLoadedState({ controller }: { readonly controller: TaskDetail
                     />
                 ) : null}
                 <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_348px] xl:grid-cols-[minmax(0,1fr)_392px]">
-                    <TaskGraph
-                        edges={view.graphEdges}
-                        nodes={view.graphNodes}
-                        onOpenDetail={handleOpenDetail}
-                        onSelectNode={controller.selectNode}
-                        selectedNodeKey={controller.selectedNodeKey}
-                    />
+                    {view.graphNodes.length === 0 ? (
+                        <StatePanel
+                            summary="The controller trace did not return structural graph rows. The console will not reconstruct them from events or dispatch history."
+                            title="Execution graph unavailable"
+                            tone="error"
+                        />
+                    ) : (
+                        <TaskGraph
+                            edges={view.graphEdges}
+                            nodes={view.graphNodes}
+                            onOpenDetail={handleOpenDetail}
+                            onSelectNode={controller.selectNode}
+                            selectedNodeKey={controller.selectedNodeKey}
+                        />
+                    )}
                     <div className="grid min-w-0 gap-4">
                         <TaskEventLane
                             events={view.eventRows}
@@ -242,10 +264,10 @@ function isAuthError(
 }
 
 function isStaleActionError(code: string): boolean {
-    return code.startsWith("stale_") || code === "illegal_state";
+    return code.startsWith("stale_") || code === "illegal_state" || code === "conflict";
 }
 
 function streamResetSummary(staleCursor: string | null): string {
     const cursorText = staleCursor === null ? "the stale cursor" : `stale cursor ${staleCursor}`;
-    return `The event stream rejected ${cursorText}; current task truth was reread and the live stream reconnected without that cursor.`;
+    return `The event stream rejected ${cursorText}; current task truth was reread and streaming resumed from the refreshed source head.`;
 }

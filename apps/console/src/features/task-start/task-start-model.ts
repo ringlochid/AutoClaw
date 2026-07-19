@@ -5,6 +5,7 @@ import type { StatusTone } from "../../components/ui";
 export type TaskRootMode = components["schemas"]["TaskRootMode"];
 export type TaskStartRequest = components["schemas"]["TaskStartRequest"];
 export type TaskStartResponse = components["schemas"]["TaskStartResponse"];
+export type TaskComposePreviewResponse = components["schemas"]["TaskComposePreviewResponse"];
 export type DefinitionSummaryRead = components["schemas"]["DefinitionSummaryRead"];
 export type DefinitionRevisionDetailResponse =
     components["schemas"]["DefinitionRevisionDetailResponse"];
@@ -54,14 +55,36 @@ export interface TaskStartVersionRow {
 }
 
 export interface TaskStartPreview {
+    readonly errors: readonly TaskStartPreviewIssue[];
     readonly instructionSummary: string;
+    readonly nodes: readonly TaskStartPreviewNode[];
+    readonly status: TaskComposePreviewResponse["status"];
     readonly summary: string;
     readonly taskKey: string;
     readonly title: string;
+    readonly warnings: readonly TaskStartPreviewIssue[];
     readonly workflowDescription: string;
     readonly workflowKey: string;
+    readonly workspaceHostPath: string | null;
     readonly workspaceModeLabel: string;
     readonly workspaceSummary: string;
+}
+
+export interface TaskStartPreviewIssue {
+    readonly code: string;
+    readonly kind: components["schemas"]["TaskComposePreviewIssue"]["kind"];
+    readonly message: string;
+    readonly path: string | null;
+}
+
+export interface TaskStartPreviewNode {
+    readonly isExperimentalProvider: boolean;
+    readonly networkAccess: components["schemas"]["EffectiveNetworkAccess"];
+    readonly nodeKey: string;
+    readonly providerNativeAccess: components["schemas"]["EffectiveProviderNativeAccess"];
+    readonly requestedProvider: components["schemas"]["ProviderKind"];
+    readonly resolvedProvider: components["schemas"]["ProviderKind"];
+    readonly selectionBasis: components["schemas"]["ProviderSelectionBasis"];
 }
 
 export interface TaskStartResultView {
@@ -71,6 +94,7 @@ export interface TaskStartResultView {
     readonly flowStatusLabel: string;
     readonly flowStatusTone: StatusTone;
     readonly manifestDescription: string;
+    readonly manifestPath: string;
     readonly taskId: string;
 }
 
@@ -186,25 +210,43 @@ export function buildTaskStartRequest(
 export function buildTaskStartPreview({
     detail,
     form,
+    response,
     workflow,
 }: {
     readonly detail: TaskStartWorkflowDetail | null;
     readonly form: TaskStartFormState;
+    readonly response: TaskComposePreviewResponse;
     readonly workflow: TaskStartWorkflowChoice;
 }): TaskStartPreview {
     return {
+        errors: response.errors.map(mapTaskStartPreviewIssue),
         instructionSummary:
             form.instruction.trim().length === 0
                 ? "No additional instruction provided."
                 : form.instruction.trim(),
+        nodes: response.nodes.map((node) => ({
+            isExperimentalProvider:
+                node.provider_resolution.requested_provider === "openclaw" ||
+                node.provider_resolution.resolved_provider === "openclaw",
+            networkAccess: node.network_access,
+            nodeKey: node.node_key,
+            providerNativeAccess: node.provider_native_access,
+            requestedProvider: node.provider_resolution.requested_provider,
+            resolvedProvider: node.provider_resolution.resolved_provider,
+            selectionBasis: node.provider_resolution.selection_basis,
+        })),
+        status: response.status,
         summary: form.summary.trim(),
         taskKey: form.taskKey.trim(),
         title: form.title.trim(),
         workflowDescription:
             detail?.description ?? workflow.description ?? "No workflow description reported.",
         workflowKey: workflow.key,
+        workspaceHostPath:
+            form.workspaceMode === "ensure_task_default" ? null : form.workspaceHostPath.trim(),
         workspaceModeLabel: rootModeLabel(form.workspaceMode),
         workspaceSummary: rootModeSummary(form.workspaceMode),
+        warnings: response.warnings.map(mapTaskStartPreviewIssue),
     };
 }
 
@@ -216,6 +258,7 @@ export function mapTaskStartResult(response: TaskStartResponse): TaskStartResult
         flowStatusLabel: flowStatusLabel(response.flow_status),
         flowStatusTone: flowStatusTone(response.flow_status),
         manifestDescription: response.workflow_manifest_ref.description,
+        manifestPath: response.workflow_manifest_ref.path,
         taskId: response.task_id,
     };
 }
@@ -257,6 +300,17 @@ function buildRootBinding(
     return {
         host_path: hostPath.trim(),
         mode,
+    };
+}
+
+function mapTaskStartPreviewIssue(
+    issue: components["schemas"]["TaskComposePreviewIssue"],
+): TaskStartPreviewIssue {
+    return {
+        code: issue.code,
+        kind: issue.kind,
+        message: issue.message,
+        path: issue.path ?? null,
     };
 }
 

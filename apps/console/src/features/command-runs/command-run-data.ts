@@ -1,4 +1,9 @@
-import { AutoClawApiError, requestJson, type ConsoleErrorView } from "../../api/client";
+import {
+    isApiAbortError,
+    mapUnknownApiError,
+    requestJson,
+    type ConsoleErrorView,
+} from "../../api/client";
 import type { components } from "../../api/generated/openapi";
 import {
     cancelCommandRunRoute,
@@ -6,7 +11,9 @@ import {
     commandRunRoute,
     commandRunsRoute,
     controlTaskRoute,
+    controlTaskSnapshotRoute,
 } from "../../api/routes";
+import { superviseTaskEventStream, type TaskEventStreamSupervisionResult } from "../../api/sse";
 import { mapCommandRunDetailView, type CommandRunDetailView } from "./command-run-model";
 
 const COMMAND_RUN_PAGE_SIZE = 25;
@@ -20,14 +27,28 @@ export async function readCommandRunsPageData(
     signal: AbortSignal,
 ): Promise<{
     readonly commandRunList: CommandRunListResponse;
-    readonly taskTitle: string | null;
+    readonly streamHeadEventId: string | null;
+    readonly task: components["schemas"]["RuntimeFlowRead"];
 }> {
-    const [commandRunList, taskTitle] = await Promise.all([
+    const taskRoute = controlTaskRoute(taskId);
+    const snapshotRoute = controlTaskSnapshotRoute(taskId);
+    const snapshot = await requestJson<components["schemas"]["OperatorFlowSnapshotResponse"]>({
+        path: snapshotRoute.path,
+        signal,
+    });
+    const [commandRunList, task] = await Promise.all([
         readCommandRunPage({ cursor: null, signal, taskId }),
-        readCommandRunTaskTitle(taskId, signal),
+        requestJson<components["schemas"]["RuntimeFlowRead"]>({
+            path: taskRoute.path,
+            signal,
+        }),
     ]);
 
-    return { commandRunList, taskTitle };
+    return {
+        commandRunList,
+        streamHeadEventId: snapshot.stream_head_event_id ?? null,
+        task,
+    };
 }
 
 export async function readCommandRunPage({
@@ -53,10 +74,12 @@ export async function readCommandRunPage({
 export async function readCommandRunDetail(
     taskId: string,
     runId: string,
+    signal?: AbortSignal,
 ): Promise<CommandRunDetailView> {
     const route = commandRunRoute(taskId, runId);
     const record = await requestJson<components["schemas"]["CommandRunRecord"]>({
         path: route.path,
+        signal,
     });
     return mapCommandRunDetailView(record);
 }
@@ -71,26 +94,6 @@ export async function readCommandRunLog(
     });
 }
 
-async function readCommandRunTaskTitle(
-    taskId: string,
-    signal: AbortSignal,
-): Promise<string | null> {
-    const route = controlTaskRoute(taskId);
-    try {
-        const task = await requestJson<components["schemas"]["RuntimeFlowRead"]>({
-            path: route.path,
-            signal,
-        });
-        return task.task_title;
-    } catch (error) {
-        if (isAbortError(error)) {
-            throw error;
-        }
-
-        return null;
-    }
-}
-
 export async function cancelCommandRun(
     taskId: string,
     runId: string,
@@ -103,22 +106,48 @@ export async function cancelCommandRun(
 }
 
 export function toErrorView(error: unknown): ConsoleErrorView {
-    if (error instanceof AutoClawApiError) {
-        return error.errorView;
-    }
-
-    return {
-        code: "unknown_error",
-        fieldErrors: [],
-        isRetryable: false,
-        source: "network",
-        status: null,
-        suggestedNextStep: null,
-        summary: error instanceof Error ? error.message : "An unknown console error occurred.",
-        title: "Unknown Error",
-    };
+    return mapUnknownApiError(error);
 }
 
 export function isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === "AbortError";
+    return isApiAbortError(error);
+}
+
+export async function streamCommandRunEvents({
+    cursor,
+    onSourceEvent,
+    resetAfterCursorReset,
+    signal,
+    taskId,
+}: {
+    readonly cursor: string | null;
+    readonly onSourceEvent: () => void;
+    readonly resetAfterCursorReset: () => Promise<string | null>;
+    readonly signal: AbortSignal;
+    readonly taskId: string;
+}): Promise<TaskEventStreamSupervisionResult> {
+    return superviseTaskEventStream({
+        cursor,
+        maxReconnectAttempts: 2,
+        onEvent: (event) => {
+            if (isCommandRunSourceEvent(event.event_type)) {
+                onSourceEvent();
+            }
+        },
+        reconnectDelayMs: 100,
+        resetAfterCursorReset,
+        signal,
+        taskId,
+    });
+}
+
+function isCommandRunSourceEvent(
+    eventType: components["schemas"]["TaskEventRecord"]["event_type"],
+): boolean {
+    return (
+        eventType.startsWith("command_run_") ||
+        eventType === "task_paused" ||
+        eventType === "task_resumed" ||
+        eventType === "task_cancelled"
+    );
 }

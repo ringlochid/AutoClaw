@@ -47,14 +47,6 @@ COMMAND_RUN_TERMINAL_EVENT_TYPES = {
 }
 
 
-def _validate_abandoned_failure_code(
-    state: CommandRunState,
-    failure_code: str | None,
-) -> None:
-    if state == CommandRunState.ABANDONED and failure_code != "command_ownership_lost":
-        raise ValueError("abandoned command runs require command_ownership_lost")
-
-
 type CommandEnvironmentRef = Annotated[
     str,
     StringConstraints(
@@ -138,11 +130,21 @@ class CommandRunStartResponse(BaseModel):
 class CommandRunTerminalResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
 
+    state: CommandRunTerminalState
     summary: RuntimeSchemaText
     exit_code: int | None = None
-    signal: RuntimeSchemaText | None = None
-    log_ref: RuntimeSchemaText | None = None
+    started_at: datetime | None = None
+    ended_at: datetime
+    stdout_log_ref: RuntimeSchemaText | None = None
+    stderr_log_ref: RuntimeSchemaText | None = None
     failure_code: RuntimeSchemaText | None = None
+    terminal_event_source: CommandRunTerminalSource
+    terminal_actor_ref: RuntimeSchemaText | None = None
+
+    @model_validator(mode="after")
+    def validate_abandoned_failure(self) -> CommandRunTerminalResult:
+        _validate_abandoned_failure_code(self.state, self.failure_code)
+        return self
 
 
 class CommandRunRecord(BaseModel):
@@ -150,23 +152,23 @@ class CommandRunRecord(BaseModel):
 
     run_id: RuntimeSchemaText
     task_id: TaskIdentifier
-    dispatch_id: RuntimeSchemaText
-    attempt_id: RuntimeSchemaText | None = None
-    command: RuntimeSchemaText
-    description: RuntimeSchemaText
-    workdir: RuntimeSchemaText | None = None
+    flow_id: RuntimeSchemaText
+    assignment_id: RuntimeSchemaText
+    attempt_id: RuntimeSchemaText
+    source_dispatch_id: RuntimeSchemaText
+    request: CommandRunStartRequest
     state: CommandRunState
+    ownership_revision: int = Field(ge=0)
     created_at: datetime
     started_at: datetime | None = None
+    due_at: datetime | None = None
     ended_at: datetime | None = None
-    timeout_seconds: int | None = Field(default=None, ge=1)
-    latest_update: RuntimeSchemaText | None = None
-    latest_log_ref: RuntimeSchemaText | None = None
+    stdout_log_ref: RuntimeSchemaText | None = None
+    stderr_log_ref: RuntimeSchemaText | None = None
     cancellation_requested_at: datetime | None = None
     cancellation_requested_by_actor_ref: RuntimeSchemaText | None = None
     terminal_result: CommandRunTerminalResult | None = None
-    terminal_event_source: CommandRunTerminalSource | None = None
-    terminal_actor_ref: RuntimeSchemaText | None = None
+    successor_dispatch_id: RuntimeSchemaText | None = None
 
     @model_validator(mode="after")
     def validate_terminal_result(self) -> CommandRunRecord:
@@ -175,17 +177,23 @@ class CommandRunRecord(BaseModel):
                 raise ValueError("terminal command run states require terminal_result")
             if self.ended_at is None:
                 raise ValueError("terminal command run states require ended_at")
-            if self.terminal_event_source is None:
-                raise ValueError("terminal command run states require terminal_event_source")
-            _validate_abandoned_failure_code(
-                self.state,
-                self.terminal_result.failure_code,
-            )
+            if self.terminal_result.state != self.state:
+                raise ValueError("command run state must match terminal_result.state")
+            if self.terminal_result.started_at != self.started_at:
+                raise ValueError("command run started_at must match terminal_result.started_at")
+            if self.terminal_result.ended_at != self.ended_at:
+                raise ValueError("command run ended_at must match terminal_result.ended_at")
+            if self.terminal_result.stdout_log_ref != self.stdout_log_ref:
+                raise ValueError(
+                    "command run stdout_log_ref must match terminal_result.stdout_log_ref"
+                )
+            if self.terminal_result.stderr_log_ref != self.stderr_log_ref:
+                raise ValueError(
+                    "command run stderr_log_ref must match terminal_result.stderr_log_ref"
+                )
             return self
         if self.terminal_result is not None:
             raise ValueError("non-terminal command run states must not set terminal_result")
-        if self.terminal_event_source is not None:
-            raise ValueError("non-terminal command run states must not set terminal_event_source")
         return self
 
 
@@ -197,24 +205,6 @@ class CommandRunProgressUpdate(BaseModel):
     log_ref: RuntimeSchemaText | None = None
     owned_process_pid: int | None = Field(default=None, ge=1)
     occurred_at: datetime
-
-
-class CommandRunTerminalResultRead(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, from_attributes=True)
-
-    run_id: RuntimeSchemaText
-    state: CommandRunTerminalState
-    summary: RuntimeSchemaText
-    exit_code: int | None = None
-    signal: RuntimeSchemaText | None = None
-    log_ref: RuntimeSchemaText | None = None
-    failure_code: RuntimeSchemaText | None = None
-    ended_at: datetime
-
-    @model_validator(mode="after")
-    def validate_abandoned_failure(self) -> CommandRunTerminalResultRead:
-        _validate_abandoned_failure_code(self.state, self.failure_code)
-        return self
 
 
 class CommandRunListItem(BaseModel):
@@ -265,6 +255,14 @@ class CommandRunLogReadResponse(BaseModel):
     content: str
 
 
+def _validate_abandoned_failure_code(
+    state: CommandRunState,
+    failure_code: str | None,
+) -> None:
+    if state == CommandRunState.ABANDONED and failure_code != "command_ownership_lost":
+        raise ValueError("abandoned command runs require command_ownership_lost")
+
+
 for _command_run_contract in (
     CommandArgvSpec,
     CommandShellSpec,
@@ -274,7 +272,6 @@ for _command_run_contract in (
     CommandRunTerminalResult,
     CommandRunRecord,
     CommandRunProgressUpdate,
-    CommandRunTerminalResultRead,
     CommandRunListItem,
     CommandRunListResponse,
     CommandRunCancelResponse,
@@ -298,7 +295,6 @@ __all__ = [
     "CommandRunStartRequest",
     "CommandRunStartResponse",
     "CommandRunTerminalResult",
-    "CommandRunTerminalResultRead",
     "CommandRunTerminalState",
     "CommandShellSpec",
     "CommandSpec",

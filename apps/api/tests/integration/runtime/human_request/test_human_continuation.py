@@ -24,7 +24,7 @@ from autoclaw.runtime.dispatch.request_pair import DispatchRequestPairRefs
 from autoclaw.runtime.errors import RuntimeOperationError
 from autoclaw.runtime.flow.service import runtime_flow_read
 from autoclaw.runtime.human_request.continuation import open_human_request_successor
-from autoclaw.runtime.human_request.service import resolve_human_request
+from autoclaw.runtime.human_request.service import list_human_requests, resolve_human_request
 from autoclaw.runtime.node_operations import NodeOperationExecutor, NodeOperationScope
 from autoclaw.runtime.post_commit import (
     CapturedRuntimeEffectPublisher,
@@ -75,6 +75,10 @@ async def test_terminal_human_source_opens_one_same_attempt_successor(
                 dependencies=dependencies,
             )
             source = await session.get(HumanRequestModel, request_id)
+            request_page = await list_human_requests(
+                cast(AsyncSession, session),
+                task_id=ids.task_id,
+            )
             flow = await session.get(FlowModel, ids.flow_id)
             successor = await session.get(DispatchTurnModel, first.dispatch_id)
             refs = await session.get(DispatchPromptRefsModel, first.dispatch_id)
@@ -90,6 +94,7 @@ async def test_terminal_human_source_opens_one_same_attempt_successor(
     assert duplicate.outcome == "skipped"
     assert first.dispatch_id is not None
     assert source is not None and source.successor_dispatch_id == first.dispatch_id
+    assert request_page.items[0].request.successor_dispatch_id == first.dispatch_id
     assert flow is not None and flow.current_dispatch_id == first.dispatch_id
     assert successor is not None and successor.opened_reason == "human_result"
     assert successor.assignment_id == ids.root_assignment_id

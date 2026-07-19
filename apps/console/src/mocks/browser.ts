@@ -42,6 +42,9 @@ import {
 let isStarted = false;
 
 export async function enableMockApi(): Promise<void> {
+    if (!import.meta.env.DEV) {
+        throw new Error("The browser mock API is available only in development builds");
+    }
     if (isStarted) {
         return;
     }
@@ -70,10 +73,7 @@ function createDevMockScenario() {
             active_attempt_id: taskDetailScenario.taskRead.active_attempt_id,
             active_flow_revision_id: taskDetailScenario.taskRead.active_flow_revision_id,
             current_node_key: "copy_update",
-            status:
-                taskDetailScenario.taskRead.status === "completed"
-                    ? "succeeded"
-                    : taskDetailScenario.taskRead.status,
+            status: taskDetailScenario.taskRead.status,
             task_id: TASK_DETAIL_TASK_ID,
             task_summary: "Update the current task-control labels.",
             task_title: taskDetailScenario.taskRead.task_title,

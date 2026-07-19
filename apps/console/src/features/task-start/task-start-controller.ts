@@ -11,6 +11,7 @@ import { getNextCursor, type ConsoleErrorView } from "../../api/client";
 import {
     isAbortError,
     isAuthError,
+    previewTaskStart,
     readWorkflowChoices,
     readWorkflowDetail,
     startTask,
@@ -61,6 +62,12 @@ interface TaskStartSubmitState {
     readonly result: TaskStartResultView | null;
 }
 
+interface TaskStartPreviewState {
+    readonly error: ConsoleErrorView | null;
+    readonly isLoading: boolean;
+    readonly preview: TaskStartPreview | null;
+}
+
 export interface TaskStartController {
     readonly clearWorkflow: () => void;
     readonly detailState: WorkflowDetailState;
@@ -69,8 +76,8 @@ export interface TaskStartController {
     readonly isSelectedWorkflowInRows: boolean;
     readonly listState: WorkflowListState;
     readonly loadMoreWorkflows: () => void;
-    readonly preview: TaskStartPreview | null;
     readonly previewOpen: boolean;
+    readonly previewState: TaskStartPreviewState;
     readonly resultOpen: boolean;
     readonly refresh: () => void;
     readonly selectWorkflow: (key: string) => void;
@@ -117,6 +124,12 @@ const initialSubmitState: TaskStartSubmitState = {
     result: null,
 };
 
+const initialPreviewState: TaskStartPreviewState = {
+    error: null,
+    isLoading: false,
+    preview: null,
+};
+
 export function useTaskStartController(): TaskStartController {
     const [workflowQuery, setWorkflowQuery] = useState("");
     const [sort] = useState<DefinitionListSort>(initialSort);
@@ -127,11 +140,12 @@ export function useTaskStartController(): TaskStartController {
     const [listState, setListState] = useState<WorkflowListState>(initialListState);
     const [detailState, setDetailState] = useState<WorkflowDetailState>(initialDetailState);
     const [submitState, setSubmitState] = useState<TaskStartSubmitState>(initialSubmitState);
-    const [preview, setPreview] = useState<TaskStartPreview | null>(null);
+    const [previewState, setPreviewState] = useState<TaskStartPreviewState>(initialPreviewState);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [resultOpen, setResultOpen] = useState(false);
     const hasPrimedWorkflowQueryRef = useRef(false);
     const listGenerationRef = useRef(0);
+    const previewGenerationRef = useRef(0);
     const trimmedWorkflowQuery = workflowQuery.trim();
     const criteriaKey = buildWorkflowCriteriaKey(trimmedWorkflowQuery, sort);
     const selectedWorkflow =
@@ -141,6 +155,12 @@ export function useTaskStartController(): TaskStartController {
     const isSelectedWorkflowInRows =
         selectedWorkflowKey !== null &&
         listState.rows.some((row) => row.key === selectedWorkflowKey);
+
+    const invalidatePreview = useCallback(() => {
+        previewGenerationRef.current += 1;
+        setPreviewOpen(false);
+        setPreviewState(initialPreviewState);
+    }, []);
 
     useEffect(() => {
         const abortController = new AbortController();
@@ -225,24 +245,34 @@ export function useTaskStartController(): TaskStartController {
         };
     }, [selectedWorkflowKey]);
 
-    const setField = useCallback((field: keyof TaskStartFormState, value: string) => {
-        setForm((currentForm) => ({ ...currentForm, [field]: value }));
-        setFormErrors((currentErrors) => ({ ...currentErrors, [field]: undefined }));
-    }, []);
+    const setField = useCallback(
+        (field: keyof TaskStartFormState, value: string) => {
+            setForm((currentForm) => ({ ...currentForm, [field]: value }));
+            setFormErrors((currentErrors) => ({ ...currentErrors, [field]: undefined }));
+            invalidatePreview();
+        },
+        [invalidatePreview],
+    );
 
-    const setWorkspaceMode = useCallback((mode: TaskRootMode) => {
-        setForm((currentForm) => {
-            return {
-                ...currentForm,
-                workspaceHostPath: shouldShowHostPath(mode) ? currentForm.workspaceHostPath : "",
-                workspaceMode: mode,
-            };
-        });
-        setFormErrors((currentErrors) => ({
-            ...currentErrors,
-            workspaceHostPath: undefined,
-        }));
-    }, []);
+    const setWorkspaceMode = useCallback(
+        (mode: TaskRootMode) => {
+            setForm((currentForm) => {
+                return {
+                    ...currentForm,
+                    workspaceHostPath: shouldShowHostPath(mode)
+                        ? currentForm.workspaceHostPath
+                        : "",
+                    workspaceMode: mode,
+                };
+            });
+            setFormErrors((currentErrors) => ({
+                ...currentErrors,
+                workspaceHostPath: undefined,
+            }));
+            invalidatePreview();
+        },
+        [invalidatePreview],
+    );
 
     const validateCurrentForm = useCallback((): TaskStartFormErrors => {
         const errors = validateTaskStartForm(form, selectedWorkflowKey);
@@ -266,14 +296,38 @@ export function useTaskStartController(): TaskStartController {
             setPreviewOpen(false);
             return;
         }
-        setPreview(
-            buildTaskStartPreview({
-                detail: detailState.detail,
-                form,
-                workflow: selectedWorkflow,
-            }),
-        );
+
+        const generation = previewGenerationRef.current + 1;
+        previewGenerationRef.current = generation;
+        const request = buildTaskStartRequest(form, selectedWorkflowKey);
+        setPreviewState({ error: null, isLoading: true, preview: null });
         setPreviewOpen(true);
+        void previewTaskStart(request)
+            .then((response) => {
+                if (previewGenerationRef.current !== generation) {
+                    return;
+                }
+                setPreviewState({
+                    error: null,
+                    isLoading: false,
+                    preview: buildTaskStartPreview({
+                        detail: detailState.detail,
+                        form,
+                        response,
+                        workflow: selectedWorkflow,
+                    }),
+                });
+            })
+            .catch((error: unknown) => {
+                if (isAbortError(error) || previewGenerationRef.current !== generation) {
+                    return;
+                }
+                setPreviewState({
+                    error: toErrorView(error),
+                    isLoading: false,
+                    preview: null,
+                });
+            });
     }, [detailState.detail, form, selectedWorkflow, selectedWorkflowKey, validateCurrentForm]);
 
     const start = useCallback(() => {
@@ -316,6 +370,7 @@ export function useTaskStartController(): TaskStartController {
                 ...currentErrors,
                 workflow: "Workflow selection is required.",
             }));
+            invalidatePreview();
         },
         detailState,
         form,
@@ -331,12 +386,12 @@ export function useTaskStartController(): TaskStartController {
                 trimmedWorkflowQuery,
             });
         },
-        preview,
         previewOpen,
+        previewState,
         resultOpen,
         refresh: () => {
             setSubmitState(initialSubmitState);
-            setPreviewOpen(false);
+            invalidatePreview();
             setResultOpen(false);
             setRefreshToken((value) => value + 1);
         },
@@ -345,6 +400,7 @@ export function useTaskStartController(): TaskStartController {
             hasPrimedWorkflowQueryRef.current = true;
             setWorkflowQuery(key);
             setFormErrors((currentErrors) => ({ ...currentErrors, workflow: undefined }));
+            invalidatePreview();
         },
         selectedWorkflow,
         selectedWorkflowKey,

@@ -13,8 +13,9 @@ import { Link } from "react-router-dom";
 import { PageFrame } from "../../components/layout";
 import { Button, StatusChip, type StatusTone } from "../../components/ui";
 import {
-    AutoClawApiError,
     getNextCursor,
+    isApiAbortError,
+    mapUnknownApiError,
     requestJson,
     type ConsoleErrorView,
 } from "../../api/client";
@@ -67,9 +68,8 @@ const STATUS_FILTERS: readonly { readonly label: string; readonly value: TaskSta
     { label: "All statuses", value: "any" },
     { label: "Pending", value: "pending" },
     { label: "Running", value: "running" },
-    { label: "Blocked", value: "blocked" },
     { label: "Paused", value: "paused" },
-    { label: "Succeeded", value: "succeeded" },
+    { label: "Completed", value: "completed" },
     { label: "Cancelled", value: "cancelled" },
 ];
 
@@ -510,8 +510,8 @@ function TaskRowItem({ row }: { readonly row: TaskRow }) {
             >
                 <article className="min-w-0 space-y-4 px-4 py-4 sm:px-6 md:grid md:grid-cols-[minmax(0,1fr)_120px_120px_96px] md:items-center md:gap-4 md:space-y-0">
                     <div className="min-w-0">
-                        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-                            <h2 className="min-w-0 break-words font-display text-[18px] font-semibold leading-6 text-foreground">
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 md:flex-nowrap">
+                            <h2 className="min-w-0 break-words font-display text-[18px] font-semibold leading-6 text-foreground md:shrink-0">
                                 {row.title}
                             </h2>
                             <TaskRowMetadata row={row} />
@@ -545,19 +545,23 @@ function TaskRowItem({ row }: { readonly row: TaskRow }) {
 }
 
 function TaskRowMetadata({ row }: { readonly row: TaskRow }) {
-    const items = [row.workflowKey, row.currentNodeKey].filter(
-        (item): item is string => item !== null,
-    );
+    const items = [
+        row.workflowKey,
+        row.currentNodeKey,
+        row.activeAssignmentId === null ? null : `Assignment ${row.activeAssignmentId}`,
+        row.activeAttemptId === null ? null : `Attempt ${row.activeAttemptId}`,
+    ].filter((item): item is string => item !== null);
 
     return (
         <div
-            className="flex min-w-0 flex-wrap gap-2 font-mono text-[11px] leading-4"
+            className="flex min-w-0 flex-wrap gap-2 font-mono text-[11px] leading-4 md:flex-nowrap md:overflow-hidden"
             data-task-meta
         >
             {items.map((item, index) => (
                 <span
                     className="inline-flex min-w-0 max-w-full items-center rounded-full border border-outline-soft bg-surface-muted px-2.5 py-1"
                     key={`${item}-${index.toString()}`}
+                    title={item}
                 >
                     <span className="block min-w-0 max-w-80 truncate text-muted">{item}</span>
                 </span>
@@ -589,7 +593,11 @@ function TaskUpdatedTime({ value }: { readonly value: string }) {
     );
 }
 
-function TaskStatusChip({ status }: { readonly status: components["schemas"]["FlowStatus"] }) {
+function TaskStatusChip({
+    status,
+}: {
+    readonly status: components["schemas"]["RuntimeLifecycleStatus"];
+}) {
     return (
         <StatusChip className="rounded-full px-3" tone={statusTone(status)}>
             {statusLabel(status)}
@@ -597,14 +605,12 @@ function TaskStatusChip({ status }: { readonly status: components["schemas"]["Fl
     );
 }
 
-function statusTone(status: components["schemas"]["FlowStatus"]): StatusTone {
+function statusTone(status: components["schemas"]["RuntimeLifecycleStatus"]): StatusTone {
     switch (status) {
         case "running":
             return "active";
-        case "succeeded":
+        case "completed":
             return "success";
-        case "blocked":
-            return "danger";
         case "pending":
         case "cancelled":
             return "neutral";
@@ -613,7 +619,7 @@ function statusTone(status: components["schemas"]["FlowStatus"]): StatusTone {
     }
 }
 
-function statusLabel(status: components["schemas"]["FlowStatus"]): string {
+function statusLabel(status: components["schemas"]["RuntimeLifecycleStatus"]): string {
     return status.replace(/_/g, " ");
 }
 
@@ -842,24 +848,11 @@ function taskDetailPath(taskId: string): string {
 }
 
 function isAbortError(error: unknown): boolean {
-    return error instanceof AutoClawApiError && error.errorView.source === "abort";
+    return isApiAbortError(error);
 }
 
 function toErrorView(error: unknown): ConsoleErrorView {
-    if (error instanceof AutoClawApiError) {
-        return error.errorView;
-    }
-
-    return {
-        code: "unknown_error",
-        fieldErrors: [],
-        isRetryable: true,
-        source: "http",
-        status: null,
-        suggestedNextStep: "Retry the task list read.",
-        summary: error instanceof Error ? error.message : "The task list could not be read.",
-        title: "Unknown Error",
-    };
+    return mapUnknownApiError(error);
 }
 
 function isAuthError(error: ConsoleErrorView): boolean {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getNextCursor, type ConsoleErrorView } from "../../api/client";
+import type { components } from "../../api/generated/openapi";
 import { mapCommandRunRow, type CommandRunRow } from "../../api/view-models";
 import {
     cancelCommandRun,
@@ -9,6 +10,7 @@ import {
     readCommandRunLog,
     readCommandRunPage,
     readCommandRunsPageData,
+    streamCommandRunEvents,
     toErrorView,
     type CommandRunListResponse,
 } from "./command-run-data";
@@ -48,7 +50,10 @@ export interface CommandRunsController {
     readonly rows: readonly CommandRunRowView[];
     readonly statusSummary: string;
     readonly taskId: string | null;
+    readonly taskPauseReason: components["schemas"]["RuntimeFlowPauseReason"] | null;
+    readonly taskStatus: components["schemas"]["RuntimeLifecycleStatus"] | null;
     readonly taskTitle: string | null;
+    readonly taskWaitingCause: components["schemas"]["RuntimeFlowWaitingCause"] | null;
     readonly toggleExpandedRun: (runId: string) => void;
     readonly toggleLogs: (runId: string) => void;
 }
@@ -63,7 +68,7 @@ interface CommandRunsPageState {
     readonly nextCursor: string | null;
     readonly rows: readonly CommandRunRowView[];
     readonly settledTaskId: string | null;
-    readonly taskTitle: string | null;
+    readonly task: components["schemas"]["RuntimeFlowRead"] | null;
 }
 
 const initialPageState: CommandRunsPageState = {
@@ -76,7 +81,7 @@ const initialPageState: CommandRunsPageState = {
     nextCursor: null,
     rows: EMPTY_ROWS,
     settledTaskId: null,
-    taskTitle: null,
+    task: null,
 };
 
 const missingTaskIdError: ConsoleErrorView = {
@@ -88,6 +93,17 @@ const missingTaskIdError: ConsoleErrorView = {
     suggestedNextStep: "Open Command Runs from a selected task.",
     summary: "The route did not include a task id.",
     title: "Missing Task Id",
+};
+
+const commandLogMismatchError: ConsoleErrorView = {
+    code: "stale_command_log_read",
+    fieldErrors: [],
+    isRetryable: true,
+    source: "unknown",
+    status: null,
+    suggestedNextStep: "Retry the log read from the current command-run detail.",
+    summary: "The command log changed while it was loading.",
+    title: "Command Log Changed",
 };
 
 export function useCommandRunsController(taskId: string | null): CommandRunsController {
@@ -109,6 +125,43 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
     const [isCancellingRunId, setIsCancellingRunId] = useState<string | null>(null);
     const [refreshToken, setRefreshToken] = useState(0);
     const listGenerationRef = useRef(0);
+    const expandedRunIdRef = useRef<string | null>(null);
+    const detailRequestGenerationsRef = useRef(new Map<string, number>());
+    const logRequestGenerationsRef = useRef(new Map<string, number>());
+    expandedRunIdRef.current = expandedRunId;
+
+    const commitDetailView = useCallback(
+        (runId: string, requestGeneration: number, detail: CommandRunDetailView) => {
+            if (detailRequestGenerationsRef.current.get(runId) !== requestGeneration) {
+                return;
+            }
+
+            setDetailViewsByRunId((currentDetails) => ({
+                ...currentDetails,
+                [runId]: detail,
+            }));
+            setDetailErrorsByRunId((currentErrors) => ({
+                ...currentErrors,
+                [runId]: undefined,
+            }));
+            setIsDetailLoadingRunId((currentRunId) =>
+                currentRunId === runId ? null : currentRunId,
+            );
+            setLogStatesByRunId((currentStates) => {
+                const currentLogState = currentStates[runId];
+                if (
+                    currentLogState === undefined ||
+                    currentLogState.logRef === detail.preferredLogRef
+                ) {
+                    return currentStates;
+                }
+
+                nextRequestGeneration(logRequestGenerationsRef.current, runId);
+                return { ...currentStates, [runId]: undefined };
+            });
+        },
+        [],
+    );
 
     useEffect(() => {
         if (taskId === null) {
@@ -116,17 +169,94 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
         }
 
         const abortController = new AbortController();
+        let sourceRefreshTimer: ReturnType<typeof setTimeout> | null = null;
         const listGeneration = listGenerationRef.current + 1;
         listGenerationRef.current = listGeneration;
         beginCommandRunListRead(setPageState, taskId, listGeneration);
+
+        const applyPageData = ({
+            commandRunList,
+            task,
+        }: Awaited<ReturnType<typeof readCommandRunsPageData>>) => {
+            applyCommandRunListPage({
+                listGeneration,
+                page: commandRunList,
+                setPageState,
+                task,
+                taskId,
+            });
+        };
+
+        const refreshExpandedDetail = async () => {
+            const runId = expandedRunIdRef.current;
+            if (runId === null) {
+                return;
+            }
+
+            const requestGeneration = nextRequestGeneration(
+                detailRequestGenerationsRef.current,
+                runId,
+            );
+            try {
+                const detail = await readCommandRunDetail(taskId, runId, abortController.signal);
+                if (
+                    listGenerationRef.current !== listGeneration ||
+                    expandedRunIdRef.current !== runId
+                ) {
+                    return;
+                }
+                commitDetailView(runId, requestGeneration, detail);
+            } catch (error) {
+                if (
+                    isAbortError(error) ||
+                    listGenerationRef.current !== listGeneration ||
+                    detailRequestGenerationsRef.current.get(runId) !== requestGeneration
+                ) {
+                    return;
+                }
+                setDetailErrorsByRunId((currentErrors) => ({
+                    ...currentErrors,
+                    [runId]: toErrorView(error),
+                }));
+            }
+        };
+
+        const refreshCommittedSource = async () => {
+            try {
+                const response = await readCommandRunsPageData(taskId, abortController.signal);
+                applyPageData(response);
+                await refreshExpandedDetail();
+                return response;
+            } catch (error) {
+                applyCommandRunListError({ error, listGeneration, setPageState, taskId });
+                return null;
+            }
+        };
+
+        const scheduleCommittedSourceRefresh = () => {
+            if (sourceRefreshTimer !== null) {
+                clearTimeout(sourceRefreshTimer);
+            }
+            sourceRefreshTimer = setTimeout(() => {
+                sourceRefreshTimer = null;
+                void refreshCommittedSource();
+            }, 25);
+        };
+
         void readCommandRunsPageData(taskId, abortController.signal)
-            .then(({ commandRunList, taskTitle }) => {
-                applyCommandRunListPage({
-                    listGeneration,
-                    page: commandRunList,
-                    setPageState,
+            .then((response) => {
+                applyPageData(response);
+                void streamCommandRunEvents({
+                    cursor: response.streamHeadEventId,
+                    onSourceEvent: scheduleCommittedSourceRefresh,
+                    resetAfterCursorReset: async () => {
+                        const refreshedResponse = await refreshCommittedSource();
+                        return refreshedResponse?.streamHeadEventId ?? null;
+                    },
+                    signal: abortController.signal,
                     taskId,
-                    taskTitle,
+                }).catch(() => {
+                    // The stream is only a refresh hint. Preserve committed REST truth.
                 });
             })
             .catch((error: unknown) => {
@@ -134,9 +264,12 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
             });
 
         return () => {
+            if (sourceRefreshTimer !== null) {
+                clearTimeout(sourceRefreshTimer);
+            }
             abortController.abort();
         };
-    }, [refreshToken, taskId]);
+    }, [commitDetailView, refreshToken, taskId]);
 
     const visibleRows =
         taskId !== null && pageState.settledTaskId === taskId ? pageState.rows : EMPTY_ROWS;
@@ -166,21 +299,21 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
                 return;
             }
 
+            const requestGeneration = nextRequestGeneration(
+                detailRequestGenerationsRef.current,
+                runId,
+            );
             setIsDetailLoadingRunId(runId);
             setDetailErrorsByRunId((currentErrors) => ({ ...currentErrors, [runId]: undefined }));
             void readCommandRunDetail(taskId, runId)
                 .then((detail) => {
-                    setDetailViewsByRunId((currentDetails) => ({
-                        ...currentDetails,
-                        [runId]: detail,
-                    }));
-                    setDetailErrorsByRunId((currentErrors) => ({
-                        ...currentErrors,
-                        [runId]: undefined,
-                    }));
+                    commitDetailView(runId, requestGeneration, detail);
                 })
                 .catch((error: unknown) => {
-                    if (isAbortError(error)) {
+                    if (
+                        isAbortError(error) ||
+                        detailRequestGenerationsRef.current.get(runId) !== requestGeneration
+                    ) {
                         return;
                     }
                     setDetailErrorsByRunId((currentErrors) => ({
@@ -189,12 +322,15 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
                     }));
                 })
                 .finally(() => {
+                    if (detailRequestGenerationsRef.current.get(runId) !== requestGeneration) {
+                        return;
+                    }
                     setIsDetailLoadingRunId((currentRunId) =>
                         currentRunId === runId ? null : currentRunId,
                     );
                 });
         },
-        [taskId],
+        [commitDetailView, taskId],
     );
 
     const toggleExpandedRun = useCallback(
@@ -210,7 +346,7 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
     const toggleLogs = useCallback(
         (runId: string) => {
             const detail = detailViewsByRunId[runId];
-            const logRef = detail?.logRef ?? null;
+            const logRef = detail?.preferredLogRef ?? null;
             if (taskId === null || logRef === null) {
                 return;
             }
@@ -219,19 +355,32 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
             if (currentLogState?.isVisible === true) {
                 setLogStatesByRunId((currentStates) => ({
                     ...currentStates,
-                    [runId]: { ...currentLogState, isVisible: false },
+                    [runId]:
+                        currentStates[runId] === undefined
+                            ? undefined
+                            : { ...currentStates[runId], isVisible: false },
                 }));
                 return;
             }
 
-            if (currentLogState?.content !== null && currentLogState?.content !== undefined) {
-                setLogStatesByRunId((currentStates) => ({
-                    ...currentStates,
-                    [runId]: { ...currentLogState, error: null, isVisible: true },
-                }));
+            if (currentLogState?.logRef === logRef && currentLogState.content !== null) {
+                setLogStatesByRunId((currentStates) => {
+                    const latestLogState = currentStates[runId];
+                    if (latestLogState?.logRef !== logRef || latestLogState.content === null) {
+                        return currentStates;
+                    }
+                    return {
+                        ...currentStates,
+                        [runId]: { ...latestLogState, error: null, isVisible: true },
+                    };
+                });
                 return;
             }
 
+            const requestGeneration = nextRequestGeneration(
+                logRequestGenerationsRef.current,
+                runId,
+            );
             setLogStatesByRunId((currentStates) => ({
                 ...currentStates,
                 [runId]: {
@@ -244,31 +393,58 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
             }));
             void readCommandRunLog(taskId, runId)
                 .then((logRead) => {
-                    setLogStatesByRunId((currentStates) => ({
-                        ...currentStates,
-                        [runId]: {
-                            content: logRead.content,
-                            error: null,
-                            isLoading: false,
-                            isVisible: true,
-                            logRef: logRead.log_ref,
-                        },
-                    }));
+                    setLogStatesByRunId((currentStates) => {
+                        const latestLogState = currentStates[runId];
+                        if (
+                            logRequestGenerationsRef.current.get(runId) !== requestGeneration ||
+                            latestLogState?.logRef !== logRef
+                        ) {
+                            return currentStates;
+                        }
+                        if (logRead.run_id !== runId || logRead.log_ref !== logRef) {
+                            return {
+                                ...currentStates,
+                                [runId]: {
+                                    ...latestLogState,
+                                    content: null,
+                                    error: commandLogMismatchError,
+                                    isLoading: false,
+                                },
+                            };
+                        }
+                        return {
+                            ...currentStates,
+                            [runId]: {
+                                ...latestLogState,
+                                content: logRead.content,
+                                error: null,
+                                isLoading: false,
+                            },
+                        };
+                    });
                 })
                 .catch((error: unknown) => {
                     if (isAbortError(error)) {
                         return;
                     }
-                    setLogStatesByRunId((currentStates) => ({
-                        ...currentStates,
-                        [runId]: {
-                            content: null,
-                            error: toErrorView(error),
-                            isLoading: false,
-                            isVisible: true,
-                            logRef,
-                        },
-                    }));
+                    setLogStatesByRunId((currentStates) => {
+                        const latestLogState = currentStates[runId];
+                        if (
+                            logRequestGenerationsRef.current.get(runId) !== requestGeneration ||
+                            latestLogState?.logRef !== logRef
+                        ) {
+                            return currentStates;
+                        }
+                        return {
+                            ...currentStates,
+                            [runId]: {
+                                ...latestLogState,
+                                content: null,
+                                error: toErrorView(error),
+                                isLoading: false,
+                            },
+                        };
+                    });
                 });
         },
         [detailViewsByRunId, logStatesByRunId, taskId],
@@ -309,6 +485,9 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
                         ...currentErrors,
                         [runId]: toErrorView(error),
                     }));
+                    if (isStaleActionError(toErrorView(error).code)) {
+                        setRefreshToken((value) => value + 1);
+                    }
                 })
                 .finally(() => {
                     setIsCancellingRunId((currentRunId) =>
@@ -413,7 +592,12 @@ export function useCommandRunsController(taskId: string | null): CommandRunsCont
         rows: visibleRows,
         statusSummary,
         taskId,
-        taskTitle: pageState.settledTaskId === taskId ? pageState.taskTitle : null,
+        taskPauseReason:
+            pageState.settledTaskId === taskId ? (pageState.task?.pause_reason ?? null) : null,
+        taskStatus: pageState.settledTaskId === taskId ? (pageState.task?.status ?? null) : null,
+        taskTitle: pageState.settledTaskId === taskId ? (pageState.task?.task_title ?? null) : null,
+        taskWaitingCause:
+            pageState.settledTaskId === taskId ? (pageState.task?.waiting_cause ?? null) : null,
         toggleExpandedRun,
         toggleLogs,
     };
@@ -439,14 +623,14 @@ function applyCommandRunListPage({
     listGeneration,
     page,
     setPageState,
+    task,
     taskId,
-    taskTitle,
 }: {
     readonly listGeneration: number;
     readonly page: CommandRunListResponse;
     readonly setPageState: React.Dispatch<React.SetStateAction<CommandRunsPageState>>;
+    readonly task: components["schemas"]["RuntimeFlowRead"];
     readonly taskId: string;
-    readonly taskTitle: string | null;
 }): void {
     setPageState((currentState) => {
         if (currentState.listGeneration !== listGeneration) {
@@ -463,7 +647,7 @@ function applyCommandRunListPage({
             nextCursor: getNextCursor(page),
             rows: page.items.map(mapCommandRunRow).map(mapCommandRunRowView),
             settledTaskId: taskId,
-            taskTitle,
+            task,
         };
     });
 }
@@ -497,7 +681,7 @@ function applyCommandRunListError({
             isRefreshing: false,
             rows: currentState.hasLoaded ? currentState.rows : EMPTY_ROWS,
             settledTaskId: taskId,
-            taskTitle: null,
+            task: null,
         };
     });
 }
@@ -551,6 +735,15 @@ export function isAuthError(error: ConsoleErrorView | null): boolean {
 
 export function isStaleActionError(code: string): boolean {
     return (
-        code.startsWith("stale_") || code === "illegal_state" || code === "conflicting_continuation"
+        code.startsWith("stale_") ||
+        code === "illegal_state" ||
+        code === "conflict" ||
+        code === "conflicting_continuation"
     );
+}
+
+function nextRequestGeneration(generations: Map<string, number>, key: string): number {
+    const generation = (generations.get(key) ?? 0) + 1;
+    generations.set(key, generation);
+    return generation;
 }

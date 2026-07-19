@@ -146,6 +146,9 @@ def all_trigger_samples() -> tuple[PromptTrigger, ...]:
             request=PendingHumanRequest(
                 request_id="human-request-1",
                 task_id="task-1",
+                flow_id="flow-1",
+                assignment_id="assignment-1",
+                attempt_id="attempt-1",
                 summary="Approve the bounded action.",
                 kind=HumanRequestKind.APPROVAL,
                 source_dispatch_id="dispatch-0",

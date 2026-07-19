@@ -35,7 +35,8 @@ class _StopRecordingAdapter:
     def __init__(self) -> None:
         self.stop_calls: list[str] = []
 
-    async def start(self, _request: DispatchStartRequest) -> ProviderStartAccepted:
+    async def start(self, request: DispatchStartRequest) -> ProviderStartAccepted:
+        del request
         raise AssertionError("cleanup must not start a provider")
 
     async def stop(self, dispatch_id: str) -> ProviderStopOutcome:

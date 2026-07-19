@@ -20,7 +20,6 @@ from autoclaw.runtime.contracts import (
     EffectiveCapabilityReadback,
     EffectiveNetworkAccess,
     EffectiveProviderNativeAccess,
-    FlowStatus,
     ProviderStartReadback,
     RuntimeFlowPauseReason,
     RuntimeFlowRead,
@@ -51,7 +50,7 @@ RUNTIME_FLOW_LIST_SORTS = frozenset(
     }
 )
 RUNTIME_FLOW_LIST_STATUSES = frozenset(
-    {"any", "pending", "running", "blocked", "paused", "succeeded", "cancelled"}
+    {"any", "pending", "running", "paused", "completed", "cancelled"}
 )
 
 
@@ -221,17 +220,27 @@ async def list_runtime_flow_summaries(
     for task, flow, dispatch in page:
         if flow.active_flow_revision_id is None:
             raise illegal_state_error(f"task '{task.task_id}' has no active flow revision")
+        if dispatch is not None:
+            current_node_key = dispatch.node_key
+            active_assignment_id = dispatch.assignment_id
+            active_attempt_id = dispatch.attempt_id
+        else:
+            target = (await read_runtime_flow_current_sources(session, flow)).target
+            current_node_key = target.node_key if target is not None else None
+            active_assignment_id = target.assignment_id if target is not None else None
+            active_attempt_id = target.attempt_id if target is not None else None
         summaries.append(
             RuntimeFlowSummary(
                 task_id=task.task_id,
                 task_title=task.title,
                 task_summary=task.summary,
                 workflow_key=task.workflow_key,
-                status=public_flow_status(flow),
+                status=RuntimeLifecycleStatus(flow.status),
                 active_flow_revision_id=flow.active_flow_revision_id,
                 workflow_manifest_ref=workflow_manifest_ref(),
-                current_node_key=dispatch.node_key if dispatch is not None else None,
-                active_attempt_id=dispatch.attempt_id if dispatch is not None else None,
+                current_node_key=current_node_key,
+                active_assignment_id=active_assignment_id,
+                active_attempt_id=active_attempt_id,
                 updated_at=coerce_datetime_to_utc(flow.updated_at),
             )
         )
@@ -270,7 +279,7 @@ def runtime_flow_summary_statement(
                 func.lower(func.coalesce(TaskModel.workflow_key, "")).like(pattern),
             )
         )
-    statement = apply_runtime_flow_status_filter(statement, status)
+    statement = _filter_runtime_flow_status(statement, status)
     if sort == "updated_at_asc":
         return statement.order_by(FlowModel.updated_at.asc(), TaskModel.task_id.asc())
     if sort == "task_title_asc":
@@ -280,7 +289,7 @@ def runtime_flow_summary_statement(
     return statement.order_by(FlowModel.updated_at.desc(), TaskModel.task_id.desc())
 
 
-def apply_runtime_flow_status_filter(
+def _filter_runtime_flow_status(
     statement: Select[tuple[TaskModel, FlowModel, DispatchTurnModel]],
     status: str,
 ) -> Select[tuple[TaskModel, FlowModel, DispatchTurnModel]]:
@@ -288,16 +297,6 @@ def apply_runtime_flow_status_filter(
         return statement
     if status == "pending":
         return statement.where(false())
-    if status == "succeeded":
-        return statement.where(
-            FlowModel.status == "completed",
-            FlowModel.terminal_outcome == "green",
-        )
-    if status == "blocked":
-        return statement.where(
-            FlowModel.status == "completed",
-            FlowModel.terminal_outcome == "blocked",
-        )
     return statement.where(FlowModel.status == status)
 
 
@@ -320,12 +319,6 @@ async def read_latest_dispatch_id(
             .limit(1)
         ),
     )
-
-
-def public_flow_status(flow: FlowModel) -> FlowStatus:
-    if flow.status == "completed":
-        return FlowStatus.SUCCEEDED if flow.terminal_outcome == "green" else FlowStatus.BLOCKED
-    return FlowStatus(flow.status)
 
 
 def normalized_pause_reason(

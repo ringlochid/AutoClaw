@@ -1,5 +1,6 @@
 import type { ConsoleMockScenario, TaskEventStreamFixture } from "../../src/mocks/handlers";
 import type { components } from "../../src/api/generated/openapi";
+import { createTaskStartPreview } from "./task-start";
 
 export const TEST_API_BASE_URL = "http://127.0.0.1:18125";
 export const TEST_TASK_ID = "task-console-fixture";
@@ -41,7 +42,14 @@ function createTaskScenario(
     firstEvent: components["schemas"]["TaskEventRecord"],
 ): Pick<
     ConsoleMockScenario,
-    "snapshot" | "taskEvents" | "taskEventStream" | "taskList" | "taskRead" | "taskStart" | "trace"
+    | "snapshot"
+    | "taskComposePreview"
+    | "taskEvents"
+    | "taskEventStream"
+    | "taskList"
+    | "taskRead"
+    | "taskStart"
+    | "trace"
 > {
     return {
         snapshot: {
@@ -62,6 +70,7 @@ function createTaskScenario(
             next_cursor: "cursor-next",
         },
         taskRead,
+        taskComposePreview: createTaskStartPreview(),
         taskStart: createTaskStartResponse(),
         trace: {
             boundary_history: [],
@@ -121,7 +130,7 @@ export function createMixedRuntimeTaskRows(): readonly components["schemas"]["Ru
         createRuntimeFlowSummary({
             active_attempt_id: "attempt-blocked-001",
             current_node_key: "navigation_copy_patch",
-            status: "blocked",
+            status: "paused",
             task_id: "task-stale-navigation-labels",
             task_summary: "Replace retired runtime names.",
             task_title: "Fix stale navigation labels",
@@ -141,7 +150,7 @@ export function createMixedRuntimeTaskRows(): readonly components["schemas"]["Ru
         createRuntimeFlowSummary({
             active_attempt_id: "attempt-succeeded-001",
             current_node_key: "release_closure",
-            status: "succeeded",
+            status: "completed",
             task_id: "task-release-note",
             task_summary: "Archive accepted evidence.",
             task_title: "Close frontend planning note",
@@ -293,6 +302,7 @@ export function createRuntimeFlowSummary(
     overrides: Partial<components["schemas"]["RuntimeFlowSummary"]> = {},
 ): components["schemas"]["RuntimeFlowSummary"] {
     return {
+        active_assignment_id: "assignment-001",
         active_attempt_id: "attempt-001",
         active_flow_revision_id: "flow-revision-001",
         current_node_key: "implement_frontend_scope",
@@ -417,7 +427,10 @@ export function createHumanRequestRead(
     const kind = overrides.kind ?? "direction";
     return {
         request: {
+            assignment_id: overrides.assignment_id ?? "assignment-001",
+            attempt_id: overrides.attempt_id ?? "attempt-001",
             context_refs: [],
+            flow_id: overrides.flow_id ?? "flow-001",
             items: [
                 {
                     id: "request-item-1",
@@ -474,7 +487,7 @@ export function createCommandRunListItem(
         state: "running",
         summary: "Integration tests are running.",
         timeout_seconds: 120,
-        workdir: "/home/ubuntu/leo/projects/autoclaw",
+        workdir: "apps/console",
         ...overrides,
     };
 }
@@ -483,25 +496,32 @@ export function createCommandRunRecord(
     overrides: Partial<components["schemas"]["CommandRunRecord"]> = {},
 ): components["schemas"]["CommandRunRecord"] {
     return {
+        assignment_id: "assignment-001",
         attempt_id: "attempt-001",
         cancellation_requested_at: null,
         cancellation_requested_by_actor_ref: null,
-        command: "make console-test-integration",
         created_at: TEST_UPDATED_AT,
-        description: "Run console integration tests.",
-        dispatch_id: "dispatch-001",
+        due_at: "2026-06-29T14:02:00Z",
         ended_at: null,
-        latest_log_ref: "tmp/command-runs/run-001.log",
-        latest_update: "Started integration lane.",
+        flow_id: "flow-001",
+        ownership_revision: 1,
+        request: {
+            command: { command: "make console-test-integration", kind: "shell" },
+            cwd: "apps/console",
+            environment: [],
+            expected_outputs: [],
+            summary: "Run console integration tests.",
+            timeout_seconds: 120,
+        },
         run_id: "run-001",
+        source_dispatch_id: "dispatch-001",
         started_at: TEST_UPDATED_AT,
         state: "running",
+        stderr_log_ref: "tmp/command-runs/run-001.stderr.log",
+        stdout_log_ref: "tmp/command-runs/run-001.stdout.log",
+        successor_dispatch_id: null,
         task_id: TEST_TASK_ID,
-        terminal_actor_ref: null,
-        terminal_event_source: null,
         terminal_result: null,
-        timeout_seconds: 120,
-        workdir: "/home/ubuntu/leo/projects/autoclaw",
         ...overrides,
     };
 }

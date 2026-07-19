@@ -11,8 +11,8 @@ import {
 } from "../../api/routes";
 import {
     mergeTaskEvents,
-    reconnectTaskEventStream,
-    type TaskEventStreamReadResult,
+    superviseTaskEventStream,
+    type TaskEventStreamSupervisionResult,
 } from "../../api/sse";
 
 export type TaskControlAction = "cancel" | "continue" | "pause";
@@ -29,6 +29,7 @@ export interface TaskDetailBootstrap {
 export interface TaskDetailStreamOptions {
     readonly cursor: string | null;
     readonly onEvent: (event: components["schemas"]["TaskEventRecord"]) => void;
+    readonly onReconnect: () => void;
     readonly resetAfterCursorReset: (staleCursor: string | null) => Promise<string | null>;
     readonly signal: AbortSignal;
     readonly taskId: string;
@@ -52,13 +53,13 @@ export async function readTaskDetailBootstrap(
     const humanRequests = humanRequestsRoute(taskId);
     const commandRuns = commandRunsRoute(taskId, { limit: SIBLING_PREVIEW_PAGE_SIZE });
 
-    const [task, snapshot, trace, humanRequestList, commandRunList] = await Promise.all([
+    const snapshot = await requestJson<components["schemas"]["OperatorFlowSnapshotResponse"]>({
+        path: snapshotRoute.path,
+        signal,
+    });
+    const [task, trace, humanRequestList, commandRunList, events] = await Promise.all([
         requestJson<components["schemas"]["RuntimeFlowRead"]>({
             path: taskRoute.path,
-            signal,
-        }),
-        requestJson<components["schemas"]["OperatorFlowSnapshotResponse"]>({
-            path: snapshotRoute.path,
             signal,
         }),
         requestJson<components["schemas"]["OperatorFlowTraceResponse"]>({
@@ -75,13 +76,8 @@ export async function readTaskDetailBootstrap(
             query: commandRuns.query,
             signal,
         }),
+        readTaskEventBackfill(taskId, snapshot.stream_head_event_id ?? null, signal),
     ]);
-
-    const events = await readTaskEventBackfill(
-        taskId,
-        snapshot.stream_head_event_id ?? null,
-        signal,
-    );
 
     return {
         commandRuns: commandRunList,
@@ -127,13 +123,17 @@ export async function readTaskEventBackfill(
 export async function streamTaskDetailEvents({
     cursor,
     onEvent,
+    onReconnect,
     resetAfterCursorReset,
     signal,
     taskId,
-}: TaskDetailStreamOptions): Promise<TaskEventStreamReadResult> {
-    return reconnectTaskEventStream({
+}: TaskDetailStreamOptions): Promise<TaskEventStreamSupervisionResult> {
+    return superviseTaskEventStream({
         cursor,
+        maxReconnectAttempts: 2,
         onEvent,
+        onReconnect,
+        reconnectDelayMs: 100,
         resetAfterCursorReset,
         signal,
         taskId,
@@ -153,13 +153,16 @@ export async function writeTaskControlAction({
     readonly signal?: AbortSignal;
     readonly taskId: string;
 }): Promise<components["schemas"]["RuntimeFlowRead"]> {
-    const route = controlTaskActionRoute(taskId, action, activeFlowRevisionId, controlRevision);
+    const route = controlTaskActionRoute(taskId, action);
     const response = await requestJson<
         components["schemas"]["RuntimeFlowPauseResponse"] | components["schemas"]["RuntimeFlowRead"]
     >({
+        body: {
+            expected_active_flow_revision_id: activeFlowRevisionId,
+            expected_control_revision: controlRevision,
+        } satisfies components["schemas"]["RuntimeFlowControlRequest"],
         method: "POST",
         path: route.path,
-        query: route.query,
         signal,
     });
 

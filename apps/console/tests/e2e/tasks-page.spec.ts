@@ -63,8 +63,8 @@ test("renders the API-backed Tasks page at desktop width", async ({ page }, test
     await page.getByLabel("Search").fill("route copy");
     await expect.poll(() => latestQueryValue(seenRequests, "q")).toBe("route copy");
 
-    await page.getByLabel("Status").selectOption("blocked");
-    await expect.poll(() => latestQueryValue(seenRequests, "status")).toBe("blocked");
+    await page.getByLabel("Status").selectOption("paused");
+    await expect.poll(() => latestQueryValue(seenRequests, "status")).toBe("paused");
 
     await page.getByLabel("Sort").selectOption("task_title_asc");
     await expect.poll(() => latestQueryValue(seenRequests, "sort")).toBe("task_title_asc");
@@ -122,7 +122,7 @@ async function mockTaskList(
         options.secondPage ??
         createRuntimeFlowSummaryList([
             createRuntimeFlowSummary({
-                status: "succeeded",
+                status: "completed",
                 task_id: "task-second-page",
                 task_summary: "Second cursor page.",
                 task_title: "Review accepted page",

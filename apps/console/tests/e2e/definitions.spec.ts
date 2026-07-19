@@ -76,6 +76,7 @@ test("renders Definitions browse detail, versions, focus, and accessibility at d
     await expect(page.getByText("Structure")).toBeVisible();
     await expect(page.getByText("First-level nodes")).toBeVisible();
     await expect(page.getByText("implementation_loop")).toBeVisible();
+    await expect(page.getByText("Provider: machine default").first()).toBeVisible();
     await expect(page.getByText("Stored root role")).toHaveCount(0);
     await expect(page.getByText("Root tree")).toHaveCount(0);
     await expect(page.getByLabel("Allowed node kind")).toHaveCount(0);
@@ -93,8 +94,15 @@ test("renders Definitions browse detail, versions, focus, and accessibility at d
     const versionsList = versionsDialog.getByRole("list", { name: "Definition versions" });
     await expect(versionsList.getByText("Revision 5")).toBeVisible();
     await expect(versionsList.getByText("Revision 4")).toBeVisible();
+    await expect(versionsDialog.getByText("Current registry pointer: revision 5.")).toBeVisible();
+    await expect(versionsList.getByText("Current")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(revisionButton).toBeFocused();
+
+    await definitionRow(page, "bounded-change").click();
+    await expect(page.getByText("Provider: OpenClaw (explicit)")).toBeVisible();
+    await expect(page.getByText("experimental")).toBeVisible();
+    await expect(page.getByText("Provider: Codex (explicit)")).toBeVisible();
 
     const editorLink = page.getByRole("link", { name: "Definition Editor" }).first();
     await editorLink.focus();
@@ -122,7 +130,7 @@ test("keeps Definitions kind switch, list, detail, and versions usable at mobile
 
     await page.getByRole("button", { name: "Policies" }).click();
     await expect(definitionRow(page, POLICY_KEY)).toBeVisible();
-    await expect(page.getByText("Budget")).toBeVisible();
+    await expect(page.getByText("Budget", { exact: true })).toBeVisible();
     await expect(page.getByText("No controller budget limit")).toBeVisible();
     await expect(page.getByText(/not reported/)).toHaveCount(0);
     await definitionRow(page, "standard-parent-planning").click();

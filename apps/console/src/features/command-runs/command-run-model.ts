@@ -9,22 +9,29 @@ export type CommandRunRecord = components["schemas"]["CommandRunRecord"];
 export type CommandRunLogReadResponse = components["schemas"]["CommandRunLogReadResponse"];
 
 export interface CommandRunDetailView {
-    readonly attemptId: string | null;
+    readonly assignmentId: string;
+    readonly attemptId: string;
     readonly cancellationRequestedAt: string | null;
     readonly cancellationRequestedByActorRef: string | null;
     readonly command: string;
     readonly createdAt: string;
     readonly description: string;
-    readonly dispatchId: string;
+    readonly dueAt: string | null;
     readonly endedAt: string | null;
-    readonly latestLogRef: string | null;
-    readonly latestUpdate: string | null;
-    readonly logRef: string | null;
+    readonly expectedOutputs: readonly components["schemas"]["CommandExpectedOutput"][];
+    readonly failureCode: string | null;
+    readonly flowId: string;
+    readonly ownershipRevision: number;
+    readonly preferredLogRef: string | null;
     readonly runId: string;
+    readonly sourceDispatchId: string;
     readonly startedAt: string | null;
     readonly state: CommandRunState;
     readonly stateLabel: string;
     readonly stateTone: StatusTone;
+    readonly stderrLogRef: string | null;
+    readonly stdoutLogRef: string | null;
+    readonly successorDispatchId: string | null;
     readonly taskId: string;
     readonly terminalActorRef: string | null;
     readonly terminalEventSource: components["schemas"]["CommandRunTerminalSource"] | null;
@@ -49,33 +56,55 @@ export function mapCommandRunRowView(row: CommandRunRow): CommandRunRowView {
 }
 
 export function mapCommandRunDetailView(record: CommandRunRecord): CommandRunDetailView {
-    const terminalLogRef = record.terminal_result?.log_ref ?? null;
-    const latestLogRef = record.latest_log_ref ?? null;
+    const terminalResult = record.terminal_result ?? null;
+    const stdoutLogRef = record.stdout_log_ref ?? null;
+    const stderrLogRef = record.stderr_log_ref ?? null;
 
     return {
-        attemptId: record.attempt_id ?? null,
+        assignmentId: record.assignment_id,
+        attemptId: record.attempt_id,
         cancellationRequestedAt: record.cancellation_requested_at ?? null,
         cancellationRequestedByActorRef: record.cancellation_requested_by_actor_ref ?? null,
-        command: record.command,
+        command: formatCommandSpec(record.request.command),
         createdAt: record.created_at,
-        description: record.description,
-        dispatchId: record.dispatch_id,
-        endedAt: record.ended_at ?? null,
-        latestLogRef,
-        latestUpdate: record.latest_update ?? null,
-        logRef: terminalLogRef ?? latestLogRef,
+        description: record.request.summary,
+        dueAt: record.due_at ?? null,
+        endedAt: terminalResult?.ended_at ?? record.ended_at ?? null,
+        expectedOutputs: record.request.expected_outputs,
+        failureCode: terminalResult?.failure_code ?? null,
+        flowId: record.flow_id,
+        ownershipRevision: record.ownership_revision,
+        preferredLogRef: preferredCommandLogRef(record.state, stdoutLogRef, stderrLogRef),
         runId: record.run_id,
-        startedAt: record.started_at ?? null,
+        sourceDispatchId: record.source_dispatch_id,
+        startedAt: terminalResult?.started_at ?? record.started_at ?? null,
         state: record.state,
         stateLabel: commandRunStateLabel(record.state),
         stateTone: commandRunStateTone(record.state),
+        stderrLogRef,
+        stdoutLogRef,
+        successorDispatchId: record.successor_dispatch_id ?? null,
         taskId: record.task_id,
-        terminalActorRef: record.terminal_actor_ref ?? null,
-        terminalEventSource: record.terminal_event_source ?? null,
-        terminalResult: record.terminal_result ?? null,
-        timeoutSeconds: record.timeout_seconds ?? null,
-        workdir: record.workdir ?? null,
+        terminalActorRef: terminalResult?.terminal_actor_ref ?? null,
+        terminalEventSource: terminalResult?.terminal_event_source ?? null,
+        terminalResult,
+        timeoutSeconds: record.request.timeout_seconds ?? null,
+        workdir: record.request.cwd ?? null,
     };
+}
+
+function preferredCommandLogRef(
+    state: CommandRunState,
+    stdoutLogRef: string | null,
+    stderrLogRef: string | null,
+): string | null {
+    return state === "failed" || state === "timed_out"
+        ? (stderrLogRef ?? stdoutLogRef)
+        : (stdoutLogRef ?? stderrLogRef);
+}
+
+export function formatCommandSpec(command: components["schemas"]["CommandSpec"]): string {
+    return command.kind === "shell" ? command.command : command.argv.join(" ");
 }
 
 export function isCommandRunCancellable(state: CommandRunState): boolean {
@@ -95,7 +124,7 @@ export function isTerminalCommandRunState(state: CommandRunState): boolean {
 export function commandRunStateLabel(state: CommandRunState): string {
     switch (state) {
         case "pending_start":
-            return "Queued";
+            return "Pending start";
         case "running":
             return "Running";
         case "cancellation_requested":

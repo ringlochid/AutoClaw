@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from types import TracebackType
-from typing import Self
+from typing import Self, cast
 
 import autoclaw.main as main_module
 import pytest
@@ -55,8 +56,10 @@ async def test_lifespan_keeps_publishers_alive_until_runtime_owners_stop(
         return {}
 
     async def audit_runtime(**kwargs: object) -> dict[str, object]:
-        publish = kwargs["publish"]
-        assert callable(publish)
+        publish = cast(
+            Callable[[RuntimeEffectSignal], Awaitable[bool]],
+            kwargs["publish"],
+        )
         assert await publish(DispatchStartDue("dispatch.startup", 1, main_module.utc_now()))
         routed_signal_types = kwargs["routed_signal_types"]
         assert isinstance(routed_signal_types, tuple)

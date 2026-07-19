@@ -197,9 +197,9 @@ async def test_flow_control_routes_inject_current_guards_and_runtime_owners(
     )
     monkeypatch.setattr(control_router_module, "cancel_runtime_flow", fake_cancel_runtime_flow)
 
-    query = {
+    request = {
         "expected_active_flow_revision_id": "flow-revision.http-injection.1",
-        "expected_control_revision": "7",
+        "expected_control_revision": 7,
     }
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
@@ -208,7 +208,7 @@ async def test_flow_control_routes_inject_current_guards_and_runtime_owners(
         responses = [
             await client.post(
                 f"/control/tasks/task.http-injection/{operation}",
-                params=query,
+                json=request,
             )
             for operation in ("pause", "continue", "cancel")
         ]

@@ -5,13 +5,13 @@ import { setupServer } from "msw/node";
 import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { components } from "../../../src/api/generated/openapi";
 import { TasksPage } from "../../../src/features/tasks/TasksPage";
 import { createConsoleApiHandlers } from "../../../src/mocks/handlers";
 import {
     TEST_API_BASE_URL,
     createConsoleMockScenario,
     createLongRuntimeTaskRow,
-    createMixedRuntimeTaskRows,
     createRuntimeFlowSummary,
     createRuntimeFlowSummaryList,
 } from "../../fixtures/console-api";
@@ -44,12 +44,12 @@ describe("TasksPage", () => {
         const user = userEvent.setup();
         const seenRequests: URL[] = [];
         const firstPage = createRuntimeFlowSummaryList(
-            [...createMixedRuntimeTaskRows(), createLongRuntimeTaskRow()],
+            [...createV2RuntimeTaskRows(), createLongRuntimeTaskRow()],
             "cursor-page-2",
         );
         const secondPage = createRuntimeFlowSummaryList([
             createRuntimeFlowSummary({
-                status: "succeeded",
+                status: "completed",
                 task_id: "task-second-page",
                 task_summary: "Second cursor page.",
                 task_title: "Review accepted page",
@@ -74,16 +74,18 @@ describe("TasksPage", () => {
                 "Validate long task title wrapping inside the scan-first Tasks route implementation",
             ),
         ).toBeVisible();
-        expect(screen.getAllByText("blocked").length).toBeGreaterThan(0);
         expect(screen.getAllByText("paused").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("completed").length).toBeGreaterThan(0);
         expect(screen.getAllByText("cancelled").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Assignment assignment-001").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Attempt attempt-001").length).toBeGreaterThan(0);
         expect(seenRequests[0]?.searchParams.get("limit")).toBe("25");
         expect(seenRequests[0]?.searchParams.get("status")).toBe("any");
         expect(seenRequests[0]?.searchParams.get("sort")).toBe("updated_at_desc");
 
-        await user.selectOptions(screen.getByLabelText("Status"), "blocked");
+        await user.selectOptions(screen.getByLabelText("Status"), "paused");
         await waitFor(() => {
-            expect(seenRequests.at(-1)?.searchParams.get("status")).toBe("blocked");
+            expect(seenRequests.at(-1)?.searchParams.get("status")).toBe("paused");
         });
 
         await user.clear(screen.getByLabelText("Search"));
@@ -135,10 +137,7 @@ describe("TasksPage", () => {
         const user = userEvent.setup();
         const seenRequests: URL[] = [];
         const changedCriteriaPageRead = createDeferred();
-        const firstPage = createRuntimeFlowSummaryList(
-            createMixedRuntimeTaskRows(),
-            "cursor-page-2",
-        );
+        const firstPage = createRuntimeFlowSummaryList(createV2RuntimeTaskRows(), "cursor-page-2");
         const changedCriteriaPage = createRuntimeFlowSummaryList([
             createRuntimeFlowSummary({
                 status: "running",
@@ -150,7 +149,7 @@ describe("TasksPage", () => {
         ]);
         const staleCursorPage = createRuntimeFlowSummaryList([
             createRuntimeFlowSummary({
-                status: "blocked",
+                status: "paused",
                 task_id: "task-stale-cursor-row",
                 task_summary: "This row belongs to the previous cursor scope.",
                 task_title: "Stale cursor row",
@@ -213,7 +212,11 @@ describe("TasksPage", () => {
 
         renderTasksPage();
         const readErrorState = await screen.findByRole("alert", { name: "Tasks could not load" });
-        expect(within(readErrorState).getByText("Runtime task read failed.")).toBeVisible();
+        expect(
+            within(readErrorState).getByText(
+                "The AutoClaw API returned an unexpected error response.",
+            ),
+        ).toBeVisible();
         const readErrorRetryButton = within(readErrorState).getByRole("button", {
             name: "Retry",
         });
@@ -222,7 +225,7 @@ describe("TasksPage", () => {
     });
 
     it("opens a task row through the task-detail route", async () => {
-        const rows = createMixedRuntimeTaskRows();
+        const rows = createV2RuntimeTaskRows();
         server.use(
             ...createConsoleApiHandlers(
                 createConsoleMockScenario({
@@ -267,6 +270,35 @@ function hasStaleCursorRequest(requests: readonly URL[]): boolean {
             requestUrl.searchParams.get("cursor") === "cursor-page-2" &&
             requestUrl.searchParams.get("q") === "route copy",
     );
+}
+
+function createV2RuntimeTaskRows(): readonly components["schemas"]["RuntimeFlowSummary"][] {
+    return [
+        createRuntimeFlowSummary({
+            status: "running",
+            task_id: "task-runtime-copy-refresh",
+            task_summary: "Replace retired runtime labels without widening the task hub.",
+            task_title: "Refresh runtime route copy",
+        }),
+        createRuntimeFlowSummary({
+            status: "paused",
+            task_id: "task-command-run-overflow",
+            task_summary: "Check long rows on narrow widths.",
+            task_title: "Verify command-run overflow",
+        }),
+        createRuntimeFlowSummary({
+            status: "completed",
+            task_id: "task-release-note",
+            task_summary: "Archive accepted evidence.",
+            task_title: "Close frontend planning note",
+        }),
+        createRuntimeFlowSummary({
+            status: "cancelled",
+            task_id: "task-old-compose-refresh",
+            task_summary: "Cancelled stale draft refresh after continuation superseded it.",
+            task_title: "Retire old compose refresh",
+        }),
+    ];
 }
 
 function createDeferred(): { readonly promise: Promise<void>; readonly resolve: () => void } {

@@ -18,7 +18,8 @@ export interface ConsoleErrorView {
     readonly isRetryable: boolean;
     readonly suggestedNextStep: string | null;
     readonly fieldErrors: readonly ConsoleFieldError[];
-    readonly source: "operation_failure" | "validation" | "http" | "network" | "abort";
+    readonly source:
+        "operation_failure" | "validation" | "http" | "network" | "stream" | "abort" | "unknown";
 }
 
 export interface ApiRequestOptions {
@@ -61,10 +62,6 @@ export function buildQueryParams(
     return searchParams;
 }
 
-export function expectedFlowRevisionQuery(activeFlowRevisionId: string): URLSearchParams {
-    return buildQueryParams({ expected_active_flow_revision_id: activeFlowRevisionId });
-}
-
 export function getNextCursor(page: { readonly next_cursor?: string | null }): string | null {
     return page.next_cursor ?? null;
 }
@@ -86,10 +83,38 @@ export function isCursorResetError(errorView: ConsoleErrorView): boolean {
     return errorView.code === "cursor_reset_required";
 }
 
+export function isApiAbortError(error: unknown): boolean {
+    if (error instanceof AutoClawApiError) {
+        return error.errorView.source === "abort";
+    }
+
+    return (error instanceof Error || error instanceof DOMException) && error.name === "AbortError";
+}
+
+export function mapUnknownApiError(error: unknown): ConsoleErrorView {
+    if (error instanceof AutoClawApiError) {
+        return error.errorView;
+    }
+    if (isApiAbortError(error)) {
+        return createApiTransportError(error).errorView;
+    }
+
+    return {
+        code: "unexpected_client_error",
+        title: "Unexpected Error",
+        summary: "The console could not complete the requested operation.",
+        status: null,
+        isRetryable: false,
+        suggestedNextStep: null,
+        fieldErrors: [],
+        source: "unknown",
+    };
+}
+
 export async function createApiErrorFromResponse(response: Response): Promise<AutoClawApiError> {
     const bodyText = await response.text();
     const parsedBody = parseJsonBody(bodyText);
-    return new AutoClawApiError(normalizeResponseError(response, bodyText, parsedBody), response);
+    return new AutoClawApiError(normalizeResponseError(response, parsedBody), response);
 }
 
 export async function requestJson<TResponse>({
@@ -129,7 +154,11 @@ export async function requestJson<TResponse>({
         return undefined as TResponse;
     }
 
-    return JSON.parse(responseText) as TResponse;
+    try {
+        return JSON.parse(responseText) as TResponse;
+    } catch {
+        throw createInvalidJsonResponseError(response);
+    }
 }
 
 function appendQueryValue(searchParams: URLSearchParams, key: string, value: QueryValue): void {
@@ -148,15 +177,13 @@ function appendQueryValue(searchParams: URLSearchParams, key: string, value: Que
 }
 
 export function createApiTransportError(error: unknown): AutoClawApiError {
-    const isAbort = isAbortError(error);
+    const isAbort = isApiAbortError(error);
     return new AutoClawApiError({
         code: isAbort ? "request_aborted" : "network_error",
         title: isAbort ? "Request Aborted" : "Network Error",
         summary: isAbort
             ? "The request was aborted before it completed."
-            : error instanceof Error
-              ? error.message
-              : "The console could not reach the AutoClaw API.",
+            : "The console could not reach the AutoClaw API.",
         status: null,
         isRetryable: !isAbort,
         suggestedNextStep: isAbort ? null : "Check the API service and retry the request.",
@@ -165,11 +192,7 @@ export function createApiTransportError(error: unknown): AutoClawApiError {
     });
 }
 
-function normalizeResponseError(
-    response: Response,
-    bodyText: string,
-    parsedBody: unknown,
-): ConsoleErrorView {
+function normalizeResponseError(response: Response, parsedBody: unknown): ConsoleErrorView {
     const operationFailure = readOperationFailure(parsedBody);
     if (operationFailure !== null) {
         const isValidationFailure =
@@ -198,7 +221,7 @@ function normalizeResponseError(
     return {
         code: codeFromHttpStatus(response.status),
         title: titleFromHttpStatus(response.status),
-        summary: fallbackHttpSummary(response, bodyText),
+        summary: fallbackHttpSummary(),
         status: response.status,
         isRetryable: response.status >= 500,
         suggestedNextStep: response.status >= 500 ? "Retry after the API service recovers." : null,
@@ -268,13 +291,24 @@ function codeFromHttpStatus(status: number): string {
     return `http_${String(status)}`;
 }
 
-function fallbackHttpSummary(response: Response, bodyText: string): string {
-    const trimmedBody = bodyText.trim();
-    if (trimmedBody !== "") {
-        return trimmedBody;
-    }
+function fallbackHttpSummary(): string {
+    return "The AutoClaw API returned an unexpected error response.";
+}
 
-    return `AutoClaw API request failed with ${String(response.status)} ${response.statusText}`;
+function createInvalidJsonResponseError(response: Response): AutoClawApiError {
+    return new AutoClawApiError(
+        {
+            code: "invalid_json_response",
+            title: "Invalid API Response",
+            summary: "The AutoClaw API returned a response that the console could not read.",
+            status: response.status,
+            isRetryable: true,
+            suggestedNextStep: "Retry after the API service recovers.",
+            fieldErrors: [],
+            source: "http",
+        },
+        response,
+    );
 }
 
 function titleFromCode(code: string): string {
@@ -299,10 +333,6 @@ function titleFromHttpStatus(status: number): string {
         return "API Error";
     }
     return "Request Failed";
-}
-
-function isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === "AbortError";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

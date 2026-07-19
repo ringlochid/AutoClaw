@@ -5,6 +5,7 @@ export type DefinitionKind = components["schemas"]["DefinitionKind"];
 export type DefinitionListKind = "policies" | "roles" | "workflows";
 export type DefinitionListSort = components["schemas"]["DefinitionListSort"];
 export type NodeKind = components["schemas"]["NodeKind"];
+export type ProviderKind = components["schemas"]["ProviderKind"];
 export type DefinitionSummaryRead = components["schemas"]["DefinitionSummaryRead"];
 export type DefinitionRevisionDetailResponse =
     components["schemas"]["DefinitionRevisionDetailResponse"];
@@ -42,6 +43,7 @@ export interface WorkflowNodeSummary {
     readonly nodeKey: string;
     readonly policyId: string;
     readonly producedSlots: readonly string[];
+    readonly providerKind: ProviderKind | null;
     readonly roleId: string;
     readonly title: string | null;
 }
@@ -70,8 +72,27 @@ export interface RoleDefinitionDetail extends DefinitionDetailBase {
 export interface PolicyDefinitionDetail extends DefinitionDetailBase {
     readonly appliesTo: readonly NodeKind[];
     readonly budgetSpec: BudgetSpec | null;
+    readonly capabilities: PolicyCapabilitySummary;
     readonly instruction: string | null;
     readonly kind: "policy";
+}
+
+export interface PolicyCapabilityValue<TValue extends string> {
+    readonly basis: "authored" | "omitted_default" | null;
+    readonly value: TValue;
+}
+
+export interface PolicyCapabilitySummary {
+    readonly commandRun: PolicyCapabilityValue<components["schemas"]["CapabilityDecision"]>;
+    readonly humanRequest: {
+        readonly allowedKinds: readonly components["schemas"]["HumanRequestKind"][];
+        readonly basis: "authored" | "omitted_default" | null;
+        readonly mode: components["schemas"]["CapabilityDecision"];
+    };
+    readonly networkAccess: PolicyCapabilityValue<components["schemas"]["NetworkAccess"]>;
+    readonly providerNativeAccess: PolicyCapabilityValue<
+        components["schemas"]["ProviderNativeAccess"]
+    >;
 }
 
 export interface WorkflowDefinitionDetail extends DefinitionDetailBase {
@@ -173,6 +194,7 @@ export function mapDefinitionDetail(
         return {
             appliesTo: content.applies_to,
             budgetSpec: content.budget_spec ?? null,
+            capabilities: mapPolicyCapabilities(content.capabilities),
             description: content.description,
             instruction: content.instruction ?? null,
             key: detail.key,
@@ -300,8 +322,35 @@ function summarizeWorkflowNode(
         nodeKey: node.node_key,
         policyId: node.policy_id,
         producedSlots: producedArtifactSlots(node),
+        providerKind: node.provider?.kind ?? null,
         roleId: node.role_id,
         title: node.title ?? null,
+    };
+}
+
+function mapPolicyCapabilities(
+    capabilities: PolicyContent["capabilities"],
+): PolicyCapabilitySummary {
+    const humanRequest = capabilities?.human_request;
+    return {
+        commandRun: {
+            basis: null,
+            value: capabilities?.command_run ?? "deny",
+        },
+        humanRequest: {
+            allowedKinds: humanRequest?.allowed_kinds ?? [],
+            basis: null,
+            mode: humanRequest?.mode ?? "deny",
+        },
+        networkAccess: {
+            basis: capabilities?.network_access === undefined ? "omitted_default" : "authored",
+            value: capabilities?.network_access ?? "allow",
+        },
+        providerNativeAccess: {
+            basis:
+                capabilities?.provider_native_access === undefined ? "omitted_default" : "authored",
+            value: capabilities?.provider_native_access ?? "full",
+        },
     };
 }
 

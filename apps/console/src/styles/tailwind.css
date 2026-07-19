@@ -13,7 +13,9 @@
     --color-outline: var(--ac-outline);
     --color-outline-soft: var(--ac-outline-soft);
     --color-primary: var(--ac-primary);
+    --color-primary-contrast: var(--ac-primary-contrast);
     --color-primary-foreground: var(--ac-primary-foreground);
+    --color-primary-hover: var(--ac-primary-hover);
     --color-primary-soft: var(--ac-primary-soft);
     --color-surface: var(--ac-surface);
     --color-surface-high: var(--ac-surface-high);
@@ -43,6 +45,7 @@
     --radius-sm: var(--ac-radius-sm);
     --radius-xs: var(--ac-radius-xs);
     --shadow-hairline: var(--ac-shadow-hairline);
+    --shadow-active-indicator: var(--ac-shadow-active-indicator);
     --shadow-panel: var(--ac-shadow-panel);
     --shadow-popover: var(--ac-shadow-popover);
     --shadow-shell: var(--ac-shadow-shell);
@@ -82,7 +85,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-    outline: 2px solid rgb(59 130 246 / 0.42);
+    outline: 2px solid var(--ac-focus-ring);
     outline-offset: 2px;
 }
 
@@ -230,6 +233,17 @@ textarea {
     background: var(--ac-primary-soft);
     border-color: rgb(59 130 246 / 0.28);
     color: var(--ac-primary-foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 ::-webkit-scrollbar {

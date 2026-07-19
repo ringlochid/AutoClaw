@@ -19,7 +19,8 @@ describe("app shell", () => {
         expect(breadcrumb.getAllByText("\u203a")).toHaveLength(2);
         expect(breadcrumb.queryByText("/")).not.toBeInTheDocument();
         expect(screen.getAllByText("Runtime").length).toBeGreaterThan(0);
-        expect(screen.getByText("Live")).toBeVisible();
+        expect(screen.queryByText("Live")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Shell state")).not.toBeInTheDocument();
     });
 
     it("keeps authoring breadcrumbs separate from selected task routes", () => {
@@ -61,6 +62,19 @@ describe("app shell", () => {
         renderShell("/tasks/task-123/command-runs");
 
         expect(screen.queryByRole("link", { name: "Fixture gallery" })).not.toBeInTheDocument();
+    });
+
+    it("offers a keyboard bypass link to the main content", () => {
+        renderShell("/tasks");
+
+        expect(screen.getByRole("link", { name: "Skip to main content" })).toHaveAttribute(
+            "href",
+            "#autoclaw-main-content",
+        );
+        expect(screen.getByRole("main", { name: "AutoClaw Console" })).toHaveAttribute(
+            "id",
+            "autoclaw-main-content",
+        );
     });
 });
 

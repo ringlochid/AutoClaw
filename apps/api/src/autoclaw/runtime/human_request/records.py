@@ -62,6 +62,9 @@ def pending_human_request_from_model(row: HumanRequestModel) -> PendingHumanRequ
     return PendingHumanRequest(
         request_id=row.request_id,
         task_id=row.task_id,
+        flow_id=row.flow_id,
+        assignment_id=row.assignment_id,
+        attempt_id=row.attempt_id,
         summary=row.request_summary,
         kind=HumanRequestKind(row.request_kind),
         source_dispatch_id=row.source_dispatch_id,
@@ -76,6 +79,7 @@ def pending_human_request_from_model(row: HumanRequestModel) -> PendingHumanRequ
         suggested_human_instruction=row.suggested_human_instruction,
         opened_at=_coerce_datetime_to_utc(row.opened_at),
         status=HumanRequestStatus(row.status),
+        successor_dispatch_id=row.successor_dispatch_id,
     )
 
 

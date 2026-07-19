@@ -43,16 +43,17 @@ test("renders and resolves the Human Requests page at desktop width", async ({
     expect(accessibilityScanResults.violations).toEqual([]);
 
     await page.getByLabel(/Use due fallback/).check();
-    await page.getByLabel("Notes").fill("Use fallback unless a reviewer objects.");
     await page.getByRole("button", { name: "Next" }).click();
-    await page.getByLabel("Freeform answer").fill("Keep this inside the page slice.");
+    await page.getByLabel(/Current request only/).check();
     await page.getByRole("button", { name: "Next" }).click();
     await page.getByLabel(/Answer only/).check();
     await page.getByRole("button", { name: "Previous" }).click();
     await page.getByRole("button", { name: "Previous" }).click();
 
     await expect(page.getByLabel(/Use due fallback/)).toBeChecked();
-    await expect(page.getByLabel("Notes")).toHaveValue("Use fallback unless a reviewer objects.");
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(page.getByLabel(/Current request only/)).toBeChecked();
+    await page.getByRole("button", { name: "Previous" }).click();
     await page.evaluate(() => {
         window.scrollTo(0, 0);
     });
@@ -81,7 +82,7 @@ test("renders and resolves the Human Requests page at desktop width", async ({
     await page.getByLabel("Constraint").fill("Use controller-owned request data only.");
     await page.getByRole("button", { exact: true, name: "Resolve" }).click();
     await expect.poll(() => requestBodies.length).toBe(2);
-    expect(requestBodies[1]?.item_responses.next_context).toEqual({
+    expect(requestBodies[1]?.item_responses.handoff_payload).toEqual({
         constraint: "Use controller-owned request data only.",
         expected_output: "validated artifact list",
         target_node: "release_gate",
@@ -114,12 +115,10 @@ test("keeps Human Requests responsive at mobile width", async ({ page }, testInf
     await page.getByLabel(/Use due fallback/).check();
     await page.getByRole("button", { name: "Next" }).focus();
     await expect(page.getByRole("button", { name: "Next" })).toBeFocused();
+    const responseOptions = page.getByRole("group", { name: "Response options" });
+    await expectTopAfter(responseOptions, page.getByRole("link", { name: "Open task detail" }));
     await expectTopAfter(
-        page.getByLabel("Notes"),
-        page.getByRole("link", { name: "Open task detail" }),
-    );
-    await expectTopAfter(
-        page.getByLabel("Notes"),
+        responseOptions,
         page.getByRole("button", { exact: true, name: "Resolve" }),
     );
     await expectTopAfter(
@@ -155,6 +154,19 @@ async function mockHumanRequests(page: Page): Promise<HumanRequestResolveRequest
             path.endsWith(`/${HUMAN_REQUEST_TASK_ID}/human-requests`)
         ) {
             await fulfillJson(route, list);
+            return;
+        }
+
+        if (request.method() === "GET" && path.endsWith(`/${HUMAN_REQUEST_TASK_ID}/snapshot`)) {
+            await fulfillJson(route, {
+                current_paths: [],
+                flow: createRuntimeFlowRead({
+                    task_id: HUMAN_REQUEST_TASK_ID,
+                    task_title: "Refresh runtime route copy",
+                }),
+                stream_head_event_id: null,
+                top_actionable_items: [],
+            } satisfies components["schemas"]["OperatorFlowSnapshotResponse"]);
             return;
         }
 

@@ -18,12 +18,14 @@ from autoclaw.runtime.contracts import (
     CommandRunListResponse,
     CommandRunLogReadResponse,
     CommandRunRecord,
+    CommandRunStartRequest,
     CommandRunState,
     CommandRunTerminalResult,
     CommandRunTerminalSource,
     TaskEventSource,
     TaskEventType,
 )
+from autoclaw.runtime.contracts.command_runs import CommandRunTerminalState
 from autoclaw.runtime.contracts.operation_failure import OperationFailureCode
 from autoclaw.runtime.errors import RuntimeOperationError, missing_resource_error
 from autoclaw.runtime.post_commit import (
@@ -231,46 +233,40 @@ async def request_command_run_cancellation(
     return source, True
 
 
-def _current_command_wait_exists(source: CommandRunModel) -> ColumnElement[bool]:
-    return exists().where(
-        FlowModel.flow_id == source.flow_id,
-        FlowModel.task_id == source.task_id,
-        FlowModel.status.in_(("running", "paused")),
-        FlowModel.current_dispatch_id.is_(None),
-        FlowModel.waiting_cause == "command_run",
-        FlowModel.waiting_source_id == source.run_id,
-    ) & exists().where(
-        FlowWaitModel.flow_id == source.flow_id,
-        FlowWaitModel.task_id == source.task_id,
-        FlowWaitModel.command_run_id == source.run_id,
-        FlowWaitModel.source_dispatch_id == source.source_dispatch_id,
-    )
-
-
 def command_run_record_from_model(source: CommandRunModel) -> CommandRunRecord:
     return CommandRunRecord(
         run_id=source.run_id,
         task_id=source.task_id,
-        dispatch_id=source.source_dispatch_id,
+        flow_id=source.flow_id,
+        assignment_id=source.assignment_id,
         attempt_id=source.attempt_id,
-        command=_command_display(source),
-        description=source.summary,
-        workdir=_command_workdir(source),
+        source_dispatch_id=source.source_dispatch_id,
+        request=command_run_request_from_model(source),
         state=CommandRunState(source.state),
+        ownership_revision=source.ownership_revision,
         created_at=source.created_at,
         started_at=source.started_at,
+        due_at=source.due_at,
         ended_at=source.ended_at,
-        timeout_seconds=source.timeout_seconds,
-        latest_log_ref=_preferred_log_ref(source),
+        stdout_log_ref=source.stdout_logical_path,
+        stderr_log_ref=source.stderr_logical_path,
         cancellation_requested_at=source.cancellation_requested_at,
         cancellation_requested_by_actor_ref=source.cancellation_requested_by_actor_ref,
         terminal_result=_terminal_result(source),
-        terminal_event_source=(
-            CommandRunTerminalSource(source.terminal_event_source)
-            if source.terminal_event_source is not None
-            else None
-        ),
-        terminal_actor_ref=source.terminal_actor_ref,
+        successor_dispatch_id=source.successor_dispatch_id,
+    )
+
+
+def command_run_request_from_model(source: CommandRunModel) -> CommandRunStartRequest:
+    return CommandRunStartRequest.model_validate(
+        {
+            "command": source.command_spec_json,
+            "cwd": _command_workdir(source),
+            "environment": source.environment_refs_json or (),
+            "timeout_seconds": source.timeout_seconds,
+            "summary": source.summary,
+            "expected_outputs": source.expected_outputs_json or (),
+        }
     )
 
 
@@ -290,6 +286,22 @@ def command_run_list_item_from_model(source: CommandRunModel) -> CommandRunListI
         signal=_exit_signal(source.terminal_exit_code),
         log_ref=_preferred_log_ref(source),
         failure_code=source.terminal_failure_code,
+    )
+
+
+def _current_command_wait_exists(source: CommandRunModel) -> ColumnElement[bool]:
+    return exists().where(
+        FlowModel.flow_id == source.flow_id,
+        FlowModel.task_id == source.task_id,
+        FlowModel.status.in_(("running", "paused")),
+        FlowModel.current_dispatch_id.is_(None),
+        FlowModel.waiting_cause == "command_run",
+        FlowModel.waiting_source_id == source.run_id,
+    ) & exists().where(
+        FlowWaitModel.flow_id == source.flow_id,
+        FlowWaitModel.task_id == source.task_id,
+        FlowWaitModel.command_run_id == source.run_id,
+        FlowWaitModel.source_dispatch_id == source.source_dispatch_id,
     )
 
 
@@ -347,16 +359,24 @@ def _command_workdir(source: CommandRunModel) -> str | None:
 
 
 def _terminal_result(source: CommandRunModel) -> CommandRunTerminalResult | None:
-    if CommandRunState(source.state) not in TERMINAL_COMMAND_RUN_STATES:
+    state = CommandRunState(source.state)
+    if state not in TERMINAL_COMMAND_RUN_STATES:
         return None
-    if source.terminal_summary is None:
-        raise ValueError("terminal command run is missing its bounded summary")
+    if source.terminal_summary is None or source.ended_at is None:
+        raise ValueError("terminal command run is missing its result")
+    if source.terminal_event_source is None:
+        raise ValueError("terminal command run is missing its event source")
     return CommandRunTerminalResult(
+        state=cast(CommandRunTerminalState, state),
         summary=source.terminal_summary,
         exit_code=source.terminal_exit_code,
-        signal=_exit_signal(source.terminal_exit_code),
-        log_ref=_preferred_log_ref(source),
+        started_at=source.started_at,
+        ended_at=source.ended_at,
+        stdout_log_ref=source.stdout_logical_path,
+        stderr_log_ref=source.stderr_logical_path,
         failure_code=source.terminal_failure_code,
+        terminal_event_source=CommandRunTerminalSource(source.terminal_event_source),
+        terminal_actor_ref=source.terminal_actor_ref,
     )
 
 

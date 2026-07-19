@@ -10,6 +10,7 @@ import { createDefinitionSummaryList } from "../fixtures/definitions";
 import {
     TASK_START_SCREENSHOT_DIR,
     TASK_START_WORKFLOW_KEY,
+    createTaskStartPreview,
     createTaskStartWorkflowDetail,
     createTaskStartWorkflowRows,
     createTaskStartWorkflowVersions,
@@ -71,7 +72,11 @@ test("starts a task from stored workflow truth at desktop width", async ({ page 
         ),
     ).toBeVisible();
     await expect(previewDialog.getByText("Workspace", { exact: true })).toBeVisible();
-    await expect(previewDialog.getByText("Context", { exact: true })).toBeVisible();
+    await expect(previewDialog.getByText(/does not reserve task or dispatch IDs/i)).toBeVisible();
+    await expect(previewDialog.getByText("OpenClaw", { exact: true })).toBeVisible();
+    await expect(previewDialog.getByText("experimental", { exact: true })).toBeVisible();
+    await expect(previewDialog.getByText("Provider-native access").first()).toBeVisible();
+    await expect(previewDialog.getByText("Network access").first()).toBeVisible();
     await expect(previewDialog.getByText(/Revision/)).toHaveCount(0);
     await expect(page.getByText("Task default").first()).toBeVisible();
 
@@ -81,17 +86,17 @@ test("starts a task from stored workflow truth at desktop width", async ({ page 
     expect(accessibilityScanResults.violations).toEqual([]);
 
     await previewDialog.getByRole("button", { name: "Start Task" }).click();
-    await expect(page.getByText("Task start accepted")).toBeVisible();
+    await expect(page.getByText("Task launch committed")).toBeVisible();
+    await expect(page.getByText(/Provider start follows asynchronously/i)).toBeVisible();
     const resultDialog = page.getByRole("dialog", { name: "Result" });
     await expect(resultDialog).toBeVisible();
-    await expect(resultDialog.getByText("Flow status")).toHaveCount(0);
-    await expect(resultDialog.getByText("Handoff")).toHaveCount(0);
-    await expect(resultDialog.getByText("Manifest")).toHaveCount(0);
-    await expect(resultDialog.getByText("Running")).toHaveCount(0);
-    await expect(page.getByText("task-console-fixture")).toHaveCount(0);
-    await expect(page.getByText("compiled-plan-001")).toHaveCount(0);
-    await expect(page.getByText("flow-revision-001")).toHaveCount(0);
-    await expect(page.getByText("_runtime/workflow-manifest.md")).toHaveCount(0);
+    await expect(resultDialog.getByText("Flow status")).toBeVisible();
+    await expect(resultDialog.getByText("Manifest", { exact: true })).toBeVisible();
+    await expect(resultDialog.getByText("Running")).toBeVisible();
+    await expect(resultDialog.getByText("task-console-fixture")).toBeVisible();
+    await expect(resultDialog.getByText("compiled-plan-001")).toBeVisible();
+    await expect(resultDialog.getByText("flow-revision-001")).toBeVisible();
+    await expect(resultDialog.getByText("_runtime/workflow-manifest.md")).toBeVisible();
 
     mkdirSync(TASK_START_SCREENSHOT_DIR, { recursive: true });
     await page.evaluate(() => {
@@ -173,10 +178,6 @@ test("keeps Task Start root modes, validation, and layout usable at mobile width
     await workspaceRoot.getByRole("button", { name: "Create host path" }).click();
     await workspaceRoot.getByLabel("Host path").fill("/tmp/task-start-workspace");
 
-    const contextRoot = page.getByRole("region", { name: "Context root" });
-    await contextRoot.getByRole("button", { name: "Use existing host" }).click();
-    await contextRoot.getByLabel("Host path").fill("/tmp/task-start-context");
-
     await page.getByLabel("Task key").fill("");
     await page.getByRole("button", { name: "Preview" }).click();
     await expect(page.getByText("Task key is required.")).toBeVisible();
@@ -250,6 +251,9 @@ async function mockTaskStart(
         }
 
         await fulfillJson(route, createTaskStartResponse());
+    });
+    await page.route("http://127.0.0.1:18125/authoring/task-compose/preview", async (route) => {
+        await fulfillJson(route, createTaskStartPreview());
     });
 }
 

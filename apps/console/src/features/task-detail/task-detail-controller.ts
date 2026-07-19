@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 
-import { AutoClawApiError, type ConsoleErrorView } from "../../api/client";
+import { isApiAbortError, mapUnknownApiError, type ConsoleErrorView } from "../../api/client";
 import type { components } from "../../api/generated/openapi";
 import { mergeTaskEvents } from "../../api/sse";
 import {
@@ -72,6 +72,7 @@ type TaskDetailAction =
           readonly isRefresh: boolean;
           readonly type: "bootstrap-success";
       }
+    | { readonly bootstrap: TaskDetailBootstrap; readonly type: "cursor-reset-bootstrap" }
     | { readonly isRefresh: boolean; readonly type: "load-start" }
     | { readonly error: ConsoleErrorView; readonly type: "load-error" }
     | { readonly type: "close-detail" }
@@ -110,9 +111,11 @@ const initialState: TaskDetailState = {
 export function useTaskDetailController(taskId: string | null): TaskDetailController {
     const [state, dispatch] = useReducer(taskDetailReducer, initialState);
     const hasBootstrapRef = useRef(false);
-    const lastTaskIdRef = useRef<string | null>(null);
+    const readGenerationRef = useRef(0);
 
     useEffect(() => {
+        const readGeneration = readGenerationRef.current + 1;
+        readGenerationRef.current = readGeneration;
         if (taskId === null) {
             dispatch({
                 error: {
@@ -132,11 +135,58 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
 
         const currentTaskId = taskId;
         const abortController = new AbortController();
-        if (lastTaskIdRef.current !== currentTaskId) {
-            hasBootstrapRef.current = false;
-            lastTaskIdRef.current = currentTaskId;
-        }
+        let sourceRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+        let sourceRefreshInFlight = false;
+        let sourceRefreshQueued = false;
         const isRefresh = hasBootstrapRef.current;
+        const isCurrentRead = () =>
+            readGenerationRef.current === readGeneration && !abortController.signal.aborted;
+
+        async function refreshCommittedSource(): Promise<void> {
+            if (sourceRefreshInFlight) {
+                sourceRefreshQueued = true;
+                return;
+            }
+
+            sourceRefreshInFlight = true;
+            try {
+                const refreshedBootstrap = await readTaskDetailBootstrap(
+                    currentTaskId,
+                    abortController.signal,
+                );
+                if (!isCurrentRead()) {
+                    return;
+                }
+                hasBootstrapRef.current = true;
+                dispatch({
+                    bootstrap: refreshedBootstrap,
+                    isRefresh: true,
+                    type: "bootstrap-success",
+                });
+            } catch (error) {
+                if (isCurrentRead() && !isAbortError(error)) {
+                    dispatch({ error: toErrorView(error), type: "stream-error" });
+                }
+            } finally {
+                sourceRefreshInFlight = false;
+                if (sourceRefreshQueued && isCurrentRead()) {
+                    sourceRefreshQueued = false;
+                    void refreshCommittedSource();
+                }
+            }
+        }
+
+        function scheduleCommittedSourceRefresh(): void {
+            if (sourceRefreshTimer !== null) {
+                clearTimeout(sourceRefreshTimer);
+            }
+            sourceRefreshTimer = setTimeout(() => {
+                sourceRefreshTimer = null;
+                if (isCurrentRead()) {
+                    void refreshCommittedSource();
+                }
+            }, 25);
+        }
 
         async function runTaskDetailRead(): Promise<void> {
             dispatch({ isRefresh, type: "load-start" });
@@ -145,6 +195,9 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
                     currentTaskId,
                     abortController.signal,
                 );
+                if (!isCurrentRead()) {
+                    return;
+                }
                 hasBootstrapRef.current = true;
                 dispatch({ bootstrap, isRefresh, type: "bootstrap-success" });
                 dispatch({ status: "connecting", type: "stream-status" });
@@ -153,19 +206,33 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
                 const streamResult = await streamTaskDetailEvents({
                     cursor: streamCursor,
                     onEvent: (event) => {
+                        if (!isCurrentRead()) {
+                            return;
+                        }
                         dispatch({ event, type: "live-event" });
+                        scheduleCommittedSourceRefresh();
+                    },
+                    onReconnect: () => {
+                        if (isCurrentRead()) {
+                            dispatch({ status: "reconnecting", type: "stream-status" });
+                        }
                     },
                     resetAfterCursorReset: async (staleCursor) => {
+                        if (!isCurrentRead()) {
+                            return null;
+                        }
                         dispatch({ staleCursor, type: "stream-reset" });
                         const resetBootstrap = await readTaskDetailBootstrap(
                             currentTaskId,
                             abortController.signal,
                         );
+                        if (!isCurrentRead()) {
+                            return null;
+                        }
                         hasBootstrapRef.current = true;
                         dispatch({
                             bootstrap: resetBootstrap,
-                            isRefresh: true,
-                            type: "bootstrap-success",
+                            type: "cursor-reset-bootstrap",
                         });
                         dispatch({ status: "reconnecting", type: "stream-status" });
                         return resetBootstrap.snapshot.stream_head_event_id ?? null;
@@ -173,6 +240,9 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
                     signal: abortController.signal,
                     taskId: currentTaskId,
                 });
+                if (!isCurrentRead()) {
+                    return;
+                }
 
                 if (streamResult.events.length > 0) {
                     dispatch({ events: streamResult.events, type: "live-events" });
@@ -182,11 +252,10 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
                         staleCursor: streamResult.staleCursor,
                         type: "stream-reset",
                     });
-                } else {
-                    dispatch({ status: "live", type: "stream-status" });
                 }
+                dispatch({ status: "closed", type: "stream-status" });
             } catch (error) {
-                if (isAbortError(error)) {
+                if (!isCurrentRead() || isAbortError(error)) {
                     return;
                 }
                 if (!hasBootstrapRef.current) {
@@ -200,6 +269,9 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
         void runTaskDetailRead();
 
         return () => {
+            if (sourceRefreshTimer !== null) {
+                clearTimeout(sourceRefreshTimer);
+            }
             abortController.abort();
         };
     }, [state.refreshToken, taskId]);
@@ -243,11 +315,32 @@ export function useTaskDetailController(taskId: string | null): TaskDetailContro
                 .then((task) => {
                     dispatch({ task, type: "action-success" });
                 })
-                .catch((error: unknown) => {
+                .catch(async (error: unknown) => {
                     if (isAbortError(error)) {
                         return;
                     }
-                    dispatch({ error: toErrorView(error), type: "action-error" });
+                    const errorView = toErrorView(error);
+                    dispatch({ error: errorView, type: "action-error" });
+                    if (!isStaleActionError(errorView.code)) {
+                        return;
+                    }
+
+                    try {
+                        const refreshedBootstrap = await readTaskDetailBootstrap(taskId);
+                        hasBootstrapRef.current = true;
+                        dispatch({
+                            bootstrap: refreshedBootstrap,
+                            isRefresh: true,
+                            type: "bootstrap-success",
+                        });
+                    } catch (refreshError) {
+                        if (!isAbortError(refreshError)) {
+                            dispatch({
+                                error: toErrorView(refreshError),
+                                type: "stream-error",
+                            });
+                        }
+                    }
                 });
         },
         [state.bootstrap, taskId],
@@ -303,6 +396,8 @@ function taskDetailReducer(state: TaskDetailState, action: TaskDetailAction): Ta
             };
         case "bootstrap-success":
             return applyBootstrapSuccess(state, action.bootstrap);
+        case "cursor-reset-bootstrap":
+            return applyCursorResetBootstrap(state, action.bootstrap);
         case "load-error":
             return {
                 ...state,
@@ -382,9 +477,10 @@ function applyBootstrapSuccess(
     state: TaskDetailState,
     bootstrap: TaskDetailBootstrap,
 ): TaskDetailState {
+    const events = mergeTaskEvents(state.events, bootstrap.events);
     const view = buildTaskDetailView({
         bootstrap,
-        events: bootstrap.events,
+        events,
     });
     const selectedNodeKey = state.selectedNodeKey ?? getDefaultNodeKey(view);
     const selectedEventId = state.selectedEventId ?? getDefaultEventId(view, selectedNodeKey);
@@ -393,7 +489,33 @@ function applyBootstrapSuccess(
         ...state,
         bootstrap,
         error: null,
-        events: bootstrap.events,
+        events,
+        isLoading: false,
+        isRefreshing: false,
+        selectedEventId,
+        selectedNodeKey,
+        streamError: null,
+    };
+}
+
+function applyCursorResetBootstrap(
+    state: TaskDetailState,
+    bootstrap: TaskDetailBootstrap,
+): TaskDetailState {
+    const events = bootstrap.events;
+    const view = buildTaskDetailView({ bootstrap, events });
+    const selectedNodeKey = view.graphNodes.some((node) => node.nodeKey === state.selectedNodeKey)
+        ? state.selectedNodeKey
+        : getDefaultNodeKey(view);
+    const selectedEventId = events.some((event) => event.event_id === state.selectedEventId)
+        ? state.selectedEventId
+        : getDefaultEventId(view, selectedNodeKey);
+
+    return {
+        ...state,
+        bootstrap,
+        error: null,
+        events,
         isLoading: false,
         isRefreshing: false,
         selectedEventId,
@@ -483,22 +605,13 @@ function applyEventSelection(state: TaskDetailState, eventId: string): TaskDetai
 }
 
 function toErrorView(error: unknown): ConsoleErrorView {
-    if (error instanceof AutoClawApiError) {
-        return error.errorView;
-    }
-
-    return {
-        code: "task_detail_error",
-        fieldErrors: [],
-        isRetryable: true,
-        source: "http",
-        status: null,
-        suggestedNextStep: "Retry the Task Detail read.",
-        summary: error instanceof Error ? error.message : "Task Detail could not load.",
-        title: "Task Detail Error",
-    };
+    return mapUnknownApiError(error);
 }
 
 function isAbortError(error: unknown): boolean {
-    return error instanceof AutoClawApiError && error.errorView.source === "abort";
+    return isApiAbortError(error);
+}
+
+function isStaleActionError(code: string): boolean {
+    return code.startsWith("stale_") || code === "illegal_state" || code === "conflict";
 }

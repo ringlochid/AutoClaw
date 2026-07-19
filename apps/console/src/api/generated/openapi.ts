@@ -657,6 +657,24 @@ export interface components {
              */
             kind: "codex";
         };
+        /** CommandArgvSpec */
+        CommandArgvSpec: {
+            /** Argv */
+            argv: string[];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "argv";
+        };
+        CommandEnvironmentRef: string;
+        /** CommandExpectedOutput */
+        CommandExpectedOutput: {
+            /** Description */
+            description: string;
+            /** Path */
+            path: string;
+        };
         /** CommandRunCancelRequestedEventPayload */
         CommandRunCancelRequestedEventPayload: {
             /** Ownership Revision */
@@ -780,44 +798,64 @@ export interface components {
         };
         /** CommandRunRecord */
         CommandRunRecord: {
+            /** Assignment Id */
+            assignment_id: string;
             /** Attempt Id */
-            attempt_id?: string | null;
+            attempt_id: string;
             /** Cancellation Requested At */
             cancellation_requested_at?: string | null;
             /** Cancellation Requested By Actor Ref */
             cancellation_requested_by_actor_ref?: string | null;
-            /** Command */
-            command: string;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /** Description */
-            description: string;
-            /** Dispatch Id */
-            dispatch_id: string;
+            /** Due At */
+            due_at?: string | null;
             /** Ended At */
             ended_at?: string | null;
-            /** Latest Log Ref */
-            latest_log_ref?: string | null;
-            /** Latest Update */
-            latest_update?: string | null;
+            /** Flow Id */
+            flow_id: string;
+            /** Ownership Revision */
+            ownership_revision: number;
+            request: components["schemas"]["CommandRunStartRequest"];
             /** Run Id */
             run_id: string;
+            /** Source Dispatch Id */
+            source_dispatch_id: string;
             /** Started At */
             started_at?: string | null;
             state: components["schemas"]["CommandRunState"];
+            /** Stderr Log Ref */
+            stderr_log_ref?: string | null;
+            /** Stdout Log Ref */
+            stdout_log_ref?: string | null;
+            /** Successor Dispatch Id */
+            successor_dispatch_id?: string | null;
             /** Task Id */
             task_id: string;
-            /** Terminal Actor Ref */
-            terminal_actor_ref?: string | null;
-            terminal_event_source?: components["schemas"]["CommandRunTerminalSource"] | null;
             terminal_result?: components["schemas"]["CommandRunTerminalResult"] | null;
+        };
+        /** CommandRunStartRequest */
+        CommandRunStartRequest: {
+            command: components["schemas"]["CommandSpec"];
+            /** Cwd */
+            cwd?: string | null;
+            /**
+             * Environment
+             * @default []
+             */
+            environment: components["schemas"]["CommandEnvironmentRef"][];
+            /**
+             * Expected Outputs
+             * @default []
+             */
+            expected_outputs: components["schemas"]["CommandExpectedOutput"][];
+            /** Summary */
+            summary: string;
             /** Timeout Seconds */
             timeout_seconds?: number | null;
-            /** Workdir */
-            workdir?: string | null;
         };
         /** CommandRunStartedEventPayload */
         CommandRunStartedEventPayload: {
@@ -903,22 +941,46 @@ export interface components {
         };
         /** CommandRunTerminalResult */
         CommandRunTerminalResult: {
+            /**
+             * Ended At
+             * Format: date-time
+             */
+            ended_at: string;
             /** Exit Code */
             exit_code?: number | null;
             /** Failure Code */
             failure_code?: string | null;
-            /** Log Ref */
-            log_ref?: string | null;
-            /** Signal */
-            signal?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            state: components["schemas"]["CommandRunTerminalState"];
+            /** Stderr Log Ref */
+            stderr_log_ref?: string | null;
+            /** Stdout Log Ref */
+            stdout_log_ref?: string | null;
             /** Summary */
             summary: string;
+            /** Terminal Actor Ref */
+            terminal_actor_ref?: string | null;
+            terminal_event_source: components["schemas"]["CommandRunTerminalSource"];
         };
         /**
          * CommandRunTerminalSource
          * @enum {string}
          */
         CommandRunTerminalSource: "controller" | "control_api" | "operator_mcp" | "process_owner";
+        /** @enum {string} */
+        CommandRunTerminalState: "succeeded" | "failed" | "timed_out" | "cancelled" | "abandoned";
+        /** CommandShellSpec */
+        CommandShellSpec: {
+            /** Command */
+            command: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "shell";
+        };
+        CommandSpec: components["schemas"]["CommandArgvSpec"] | components["schemas"]["CommandShellSpec"];
         /** ConsumeBuckets */
         ConsumeBuckets: {
             /** Artifacts */
@@ -1699,11 +1761,17 @@ export interface components {
         };
         /** PendingHumanRequest */
         PendingHumanRequest: {
+            /** Assignment Id */
+            assignment_id: string;
+            /** Attempt Id */
+            attempt_id: string;
             /**
              * Context Refs
              * @default []
              */
             context_refs: components["schemas"]["HumanRequestContextRef"][];
+            /** Flow Id */
+            flow_id: string;
             /** Items */
             items: components["schemas"]["HumanRequestItem"][];
             kind: components["schemas"]["HumanRequestKind"];
@@ -1717,6 +1785,8 @@ export interface components {
             /** Source Dispatch Id */
             source_dispatch_id: string;
             status: components["schemas"]["HumanRequestStatus"];
+            /** Successor Dispatch Id */
+            successor_dispatch_id?: string | null;
             /** Suggested Human Instruction */
             suggested_human_instruction?: string | null;
             /** Summary */
@@ -1735,8 +1805,13 @@ export interface components {
             /** @default full */
             provider_native_access: components["schemas"]["ProviderNativeAccess"];
         };
-        "PolicyCapabilitiesInput-Output": {
-            [key: string]: unknown;
+        "PolicyCapabilitiesInput-Output": components["schemas"]["PolicyCapabilitiesOutput"];
+        /** PolicyCapabilitiesOutput */
+        PolicyCapabilitiesOutput: {
+            command_run: components["schemas"]["CapabilityDecision"];
+            human_request: components["schemas"]["HumanRequestCapabilityInput"];
+            network_access?: components["schemas"]["NetworkAccess"];
+            provider_native_access?: components["schemas"]["ProviderNativeAccess"];
         };
         /** PolicyDefinitionInput */
         "PolicyDefinitionInput-Input": {
@@ -1887,6 +1962,13 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** RuntimeFlowControlRequest */
+        RuntimeFlowControlRequest: {
+            /** Expected Active Flow Revision Id */
+            expected_active_flow_revision_id: string;
+            /** Expected Control Revision */
+            expected_control_revision: number;
+        };
         /** @enum {string} */
         RuntimeFlowPauseReason: "paused_by_operator" | "runtime_recovery_exhausted" | "runtime_transition_failed";
         /** RuntimeFlowPauseResponse */
@@ -1933,13 +2015,15 @@ export interface components {
         };
         /** RuntimeFlowSummary */
         RuntimeFlowSummary: {
+            /** Active Assignment Id */
+            active_assignment_id?: string | null;
             /** Active Attempt Id */
             active_attempt_id?: string | null;
             /** Active Flow Revision Id */
             active_flow_revision_id: string;
             /** Current Node Key */
             current_node_key?: string | null;
-            status: components["schemas"]["FlowStatus"];
+            status: components["schemas"]["RuntimeLifecycleStatus"];
             /** Task Id */
             task_id: string;
             /** Task Summary */
@@ -3631,17 +3715,18 @@ export interface operations {
     };
     cancel_control_task_control_tasks__task_id__cancel_post: {
         parameters: {
-            query: {
-                expected_active_flow_revision_id: string;
-                expected_control_revision: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 task_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuntimeFlowControlRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4020,17 +4105,18 @@ export interface operations {
     };
     continue_control_task_control_tasks__task_id__continue_post: {
         parameters: {
-            query: {
-                expected_active_flow_revision_id: string;
-                expected_control_revision: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 task_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuntimeFlowControlRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4434,17 +4520,18 @@ export interface operations {
     };
     pause_control_task_control_tasks__task_id__pause_post: {
         parameters: {
-            query: {
-                expected_active_flow_revision_id: string;
-                expected_control_revision: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 task_id: string;
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuntimeFlowControlRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -5195,7 +5282,7 @@ export interface operations {
                 limit?: number;
                 cursor?: string | null;
                 sort?: "updated_at_desc" | "updated_at_asc" | "task_title_asc" | "task_title_desc";
-                status?: "any" | "pending" | "running" | "blocked" | "paused" | "succeeded" | "cancelled";
+                status?: "any" | "pending" | "running" | "paused" | "completed" | "cancelled";
             };
             header?: never;
             path?: never;

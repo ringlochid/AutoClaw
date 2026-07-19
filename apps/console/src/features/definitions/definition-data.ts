@@ -1,4 +1,9 @@
-import { AutoClawApiError, requestJson, type ConsoleErrorView } from "../../api/client";
+import {
+    isApiAbortError,
+    mapUnknownApiError,
+    requestJson,
+    type ConsoleErrorView,
+} from "../../api/client";
 import type { components } from "../../api/generated/openapi";
 import {
     definitionRoute,
@@ -98,22 +103,9 @@ export async function readDefinitionVersions({
 }
 
 export function toErrorView(error: unknown): ConsoleErrorView {
-    if (error instanceof AutoClawApiError) {
-        return error.errorView;
-    }
-
-    return {
-        code: "unknown_error",
-        fieldErrors: [],
-        isRetryable: false,
-        source: "network",
-        status: null,
-        suggestedNextStep: null,
-        summary: error instanceof Error ? error.message : "An unknown console error occurred.",
-        title: "Unknown Error",
-    };
+    return mapUnknownApiError(error);
 }
 
 export function isAbortError(error: unknown): boolean {
-    return error instanceof Error && error.name === "AbortError";
+    return isApiAbortError(error);
 }

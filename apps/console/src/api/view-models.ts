@@ -1,9 +1,10 @@
 import type { components } from "./generated/openapi";
 
 export interface TaskRow {
+    readonly activeAssignmentId: string | null;
     readonly activeAttemptId: string | null;
     readonly currentNodeKey: string | null;
-    readonly status: components["schemas"]["FlowStatus"];
+    readonly status: components["schemas"]["RuntimeLifecycleStatus"];
     readonly summary: string;
     readonly taskId: string;
     readonly title: string;
@@ -81,6 +82,7 @@ export interface TaskStartResult {
 
 export function mapTaskRow(task: components["schemas"]["RuntimeFlowSummary"]): TaskRow {
     return {
+        activeAssignmentId: task.active_assignment_id ?? null,
         activeAttemptId: task.active_attempt_id ?? null,
         currentNodeKey: task.current_node_key ?? null,
         status: task.status,

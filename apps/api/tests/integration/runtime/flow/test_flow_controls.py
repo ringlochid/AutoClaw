@@ -97,6 +97,7 @@ async def test_pause_closes_exact_current_dispatch_and_rejects_stale_control(
                     expected_control_revision=control_revision,
                 )
             dispatch = await session.get(DispatchTurnModel, ids.current_dispatch_id)
+            page = await list_runtime_flows(cast(AsyncSession, session))
             event = await session.scalar(
                 select(TaskEventModel).where(TaskEventModel.event_type == "task_paused")
             )
@@ -105,6 +106,9 @@ async def test_pause_closes_exact_current_dispatch_and_rejects_stale_control(
     assert response.flow.control_revision == control_revision + 1
     assert response.flow.current_dispatch is None
     assert response.flow.pause_reason == "paused_by_operator"
+    assert page.items[0].current_node_key == "root"
+    assert page.items[0].active_assignment_id == ids.root_assignment_id
+    assert page.items[0].active_attempt_id == ids.root_attempt_id
     assert dispatch is not None and dispatch.status == "closed"
     assert dispatch.closed_reason == "paused"
     assert event is not None and event.actor_ref == "operator.test"
@@ -133,10 +137,14 @@ async def test_pause_retains_open_human_wait(tmp_path: Path) -> None:
             )
             request = await session.get(HumanRequestModel, request_id)
             wait = await session.get(FlowWaitModel, ids.flow_id)
+            page = await list_runtime_flows(cast(AsyncSession, session))
 
     assert response.flow.status.value == "paused"
     assert response.flow.waiting_cause == "human_request"
     assert response.flow.active_attempt_id == ids.root_attempt_id
+    assert page.items[0].current_node_key == "root"
+    assert page.items[0].active_assignment_id == ids.root_assignment_id
+    assert page.items[0].active_attempt_id == ids.root_attempt_id
     assert request is not None and request.status == "open"
     assert wait is not None and wait.human_request_id == request_id
     assert publisher.signals == ()
@@ -329,6 +337,7 @@ async def test_cancel_terminalizes_human_wait_and_requests_command_cancellation(
         async with session_factory() as session:
             flow = await session.get(FlowModel, ids.flow_id)
             assert flow is not None
+            waiting_page = await list_runtime_flows(cast(AsyncSession, session))
             await cancel_runtime_flow(
                 cast(AsyncSession, session),
                 ids.task_id,
@@ -347,6 +356,9 @@ async def test_cancel_terminalizes_human_wait_and_requests_command_cancellation(
 
     assert source is not None and source.state == "cancellation_requested"
     assert wait is None
+    assert waiting_page.items[0].current_node_key == "root"
+    assert waiting_page.items[0].active_assignment_id == ids.root_assignment_id
+    assert waiting_page.items[0].active_attempt_id == ids.root_attempt_id
     assert stale_command_cancel.value.code == OperationFailureCode.CONFLICT
     assert command_publisher.signals == (
         CommandRunCancellationRequested(

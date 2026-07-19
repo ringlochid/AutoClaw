@@ -75,6 +75,14 @@ test("renders flat Definition Editor draft workflow at desktop width", async ({
 
     await page.getByLabel("Draft body").fill("kind: workflow\nid: definition-editor-page\n");
     await expect(page.getByText("local edits")).toBeVisible();
+    await page.getByRole("button", { name: new RegExp(DEFINITION_EDITOR_ROLE_KEY) }).click();
+    const unsavedDialog = page.getByRole("dialog", { name: "Discard local draft edits?" });
+    await expect(unsavedDialog).toBeVisible();
+    await expect(unsavedDialog.getByText(/exist only in this browser tab/i)).toBeVisible();
+    await unsavedDialog.getByRole("button", { name: "Keep editing" }).click();
+    await expect(page.getByLabel("Draft body")).toHaveValue(
+        "kind: workflow\nid: definition-editor-page\n",
+    );
     await page.getByRole("button", { name: "Validate" }).click();
     const validationDialog = page.getByRole("dialog", { name: "Validation valid" });
     await expect(validationDialog).toBeVisible();
@@ -88,6 +96,7 @@ test("renders flat Definition Editor draft workflow at desktop width", async ({
     await expect(
         publishDialog.getByText(/Workflow definition-editor-page revision 14/),
     ).toBeVisible();
+    await expect(publishDialog.getByText(/Reread the published registry/i)).toBeVisible();
     await publishDialog.getByRole("button", { exact: true, name: "Close" }).click();
 
     await expectNoDocumentOverflow(page);

@@ -12,6 +12,7 @@ import {
 } from "../../../src/features/task-start/task-start-model";
 import {
     TASK_START_WORKFLOW_KEY,
+    createTaskStartPreview,
     createTaskStartWorkflowDetail,
     createTaskStartWorkflowRows,
 } from "../../fixtures/task-start";
@@ -83,7 +84,7 @@ describe("task start request mapper", () => {
         expect("revisionLabel" in choice).toBe(false);
     });
 
-    it("keeps preview readback to launch intent fields without workflow revision", () => {
+    it("maps server preview provider and capability provenance without inventing a revision", () => {
         const workflow = mapTaskStartWorkflowChoice(createTaskStartWorkflowRows()[0]);
         const form = {
             ...TASK_START_INITIAL_FORM,
@@ -95,18 +96,35 @@ describe("task start request mapper", () => {
         const preview = buildTaskStartPreview({
             detail: mapTaskStartWorkflowDetail(createTaskStartWorkflowDetail()),
             form,
+            response: createTaskStartPreview(),
             workflow,
         });
 
         expect(preview).toMatchObject({
             instructionSummary:
                 "Keep the work scoped to the current task-start UI and publish focused verification.",
+            status: "ready",
             summary: "Launch one bounded implementation task from stored workflow truth.",
             taskKey: "implement-task-start-launch-form",
             title: "Implement Task Start launch form",
             workflowKey: TASK_START_WORKFLOW_KEY,
             workspaceModeLabel: "Task default",
         });
+        expect(preview.nodes[0]).toMatchObject({
+            isExperimentalProvider: true,
+            networkAccess: { effective: "deny", source: "policy_definition" },
+            nodeKey: "root",
+            providerNativeAccess: {
+                effective: "restricted",
+                source: "policy_definition",
+            },
+            requestedProvider: "openclaw",
+            resolvedProvider: "openclaw",
+            selectionBasis: "explicit",
+        });
+        expect(preview.warnings).toEqual([
+            expect.objectContaining({ code: "experimental_provider", kind: "provider" }),
+        ]);
         expect("workflowRevisionLabel" in preview).toBe(false);
     });
 });

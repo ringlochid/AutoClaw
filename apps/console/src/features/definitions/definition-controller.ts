@@ -54,6 +54,7 @@ interface DefinitionDetailState {
 }
 
 interface DefinitionVersionsState {
+    readonly currentRevisionNo: number | null;
     readonly error: ConsoleErrorView | null;
     readonly isLoading: boolean;
     readonly isLoadingMore: boolean;
@@ -126,6 +127,7 @@ const initialDetailState: DefinitionDetailState = {
 };
 
 const initialVersionsState: DefinitionVersionsState = {
+    currentRevisionNo: null,
     error: null,
     isLoading: false,
     isLoadingMore: false,
@@ -356,6 +358,7 @@ export function useDefinitionsController(): DefinitionsController {
                     }
                     return {
                         ...currentState,
+                        currentRevisionNo: history.current_revision_no,
                         error: null,
                         isLoadingMore: false,
                         nextCursor: getNextCursor(history),
@@ -464,6 +467,7 @@ function startSelectedDefinitionRead({
         selectedKey,
     });
     setVersionsState({
+        currentRevisionNo: null,
         error: null,
         isLoading: true,
         isLoadingMore: false,
@@ -519,6 +523,7 @@ function startSelectedDefinitionRead({
                     return currentState;
                 }
                 return {
+                    currentRevisionNo: history.current_revision_no,
                     error: null,
                     isLoading: false,
                     isLoadingMore: false,

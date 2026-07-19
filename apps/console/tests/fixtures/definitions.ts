@@ -66,9 +66,14 @@ const ROLE_FIXTURES: readonly {
 const POLICY_FIXTURES: readonly {
     readonly appliesTo: readonly NodeKind[];
     readonly childAssignmentLimit: number | null;
+    readonly commandRun: components["schemas"]["CapabilityDecision"];
     readonly description: string;
+    readonly humanRequestKinds: readonly components["schemas"]["HumanRequestKind"][];
+    readonly humanRequestMode: components["schemas"]["CapabilityDecision"];
     readonly instruction: string;
     readonly key: string;
+    readonly networkAccess?: components["schemas"]["NetworkAccess"];
+    readonly providerNativeAccess?: components["schemas"]["ProviderNativeAccess"];
     readonly retryLimit: number | null;
     readonly revisionNo: number;
     readonly title: string;
@@ -77,10 +82,15 @@ const POLICY_FIXTURES: readonly {
     {
         appliesTo: ["root"],
         childAssignmentLimit: null,
+        commandRun: "deny",
         description: "Default root planning and closure behavior.",
         instruction:
             "Root owns final closure.\nCommit release_green only when current whole-flow evidence is sufficient.\nCommit release_blocked only when whole-flow terminal blocked state is explicit and current.",
         key: POLICY_KEY,
+        humanRequestKinds: ["direction", "review"],
+        humanRequestMode: "allow",
+        networkAccess: "deny",
+        providerNativeAccess: "restricted",
         retryLimit: null,
         revisionNo: 3,
         title: "Standard Root Planning",
@@ -89,10 +99,13 @@ const POLICY_FIXTURES: readonly {
     {
         appliesTo: ["parent"],
         childAssignmentLimit: 4,
+        commandRun: "deny",
         description: "Default parent planning behavior.",
         instruction:
             "Dispatch bounded child assignments from accepted criteria.\nDo not widen scope to hide unclear plan or contract debt.",
         key: "standard-parent-planning",
+        humanRequestKinds: [],
+        humanRequestMode: "deny",
         retryLimit: null,
         revisionNo: 4,
         title: "Standard Parent Planning",
@@ -101,10 +114,15 @@ const POLICY_FIXTURES: readonly {
     {
         appliesTo: ["worker"],
         childAssignmentLimit: null,
+        commandRun: "allow",
         description: "Default worker behavior for bounded assignments.",
         instruction:
             "Complete the assigned scope, record evidence, and return a precise boundary result.",
         key: "standard-worker",
+        humanRequestKinds: [],
+        humanRequestMode: "deny",
+        networkAccess: "allow",
+        providerNativeAccess: "full",
         retryLimit: 1,
         revisionNo: 2,
         title: "Standard Worker",
@@ -113,10 +131,15 @@ const POLICY_FIXTURES: readonly {
     {
         appliesTo: ["worker"],
         childAssignmentLimit: null,
+        commandRun: "deny",
         description: "Ordinary review worker behavior.",
         instruction:
             "Review the submitted scope strictly against the accepted criteria and current evidence.",
         key: "standard-review",
+        humanRequestKinds: ["review"],
+        humanRequestMode: "allow",
+        networkAccess: "allow",
+        providerNativeAccess: "restricted",
         retryLimit: null,
         revisionNo: 2,
         title: "Standard Review",
@@ -235,11 +258,17 @@ export function createPolicyDefinitionDetail(key = POLICY_KEY): DefinitionRevisi
             applies_to: [...policy.appliesTo],
             budget_spec: policyBudgetSpec(policy),
             capabilities: {
-                command_run: "deny",
+                command_run: policy.commandRun,
                 human_request: {
-                    allowed_kinds: [],
-                    mode: "deny",
+                    allowed_kinds: [...policy.humanRequestKinds],
+                    mode: policy.humanRequestMode,
                 },
+                ...(policy.networkAccess === undefined
+                    ? {}
+                    : { network_access: policy.networkAccess }),
+                ...(policy.providerNativeAccess === undefined
+                    ? {}
+                    : { provider_native_access: policy.providerNativeAccess }),
             },
             description: policy.description,
             id: policy.key,
@@ -381,6 +410,7 @@ function workflowRootForKey(
                     id: "implement_change",
                     produces: ["change_patch", "verification_report"],
                     role: "planner",
+                    provider: { kind: "codex" },
                 }),
             ],
             criteria: null,
@@ -390,7 +420,7 @@ function workflowRootForKey(
             node_key: "root",
             policy_id: "standard-root-planning",
             produces: null,
-            provider: null,
+            provider: { kind: "openclaw" },
             role_id: ROLE_KEY,
             title: "Root",
         };
@@ -405,6 +435,7 @@ function workflowRootForKey(
                     id: "implementation",
                     produces: ["change_patch", "verification_report"],
                     role: "planner",
+                    provider: { kind: "codex" },
                 }),
                 workflowChild({
                     description: "Review the completed scope.",
@@ -420,7 +451,7 @@ function workflowRootForKey(
             node_key: "root",
             policy_id: "standard-root-planning",
             produces: null,
-            provider: null,
+            provider: { kind: "openclaw" },
             role_id: ROLE_KEY,
             title: "Root",
         };
@@ -512,6 +543,7 @@ function workflowChild({
     id,
     policy = "standard-parent-planning",
     produces,
+    provider = null,
     role,
 }: {
     readonly children?: components["schemas"]["NodeDefinitionInput-Output"][] | null;
@@ -519,6 +551,7 @@ function workflowChild({
     readonly id: string;
     readonly policy?: string;
     readonly produces: readonly string[];
+    readonly provider?: components["schemas"]["ProviderSelection"] | null;
     readonly role: string;
 }): components["schemas"]["NodeDefinitionInput-Output"] {
     return {
@@ -538,7 +571,7 @@ function workflowChild({
                 slot,
             })),
         },
-        provider: null,
+        provider,
         role_id: role,
         title: null,
     };

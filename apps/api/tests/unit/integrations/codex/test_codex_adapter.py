@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -66,7 +67,7 @@ def _request() -> DispatchStartRequest:
         task_id="task-1",
         dispatch_id="dispatch-1",
         provider_start_revision=0,
-        working_directory="/tmp/workspace",
+        working_directory=Path("/tmp/workspace"),
         instructions=b"exact instructions",
         input=b"exact input",
         provider_route=CodexProviderRoute(

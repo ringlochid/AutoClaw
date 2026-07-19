@@ -10,11 +10,13 @@
     --ac-foreground: #1a1a1a;
     --ac-muted: #4b5563;
     --ac-primary: #2563eb;
+    --ac-primary-hover: #1d4ed8;
+    --ac-primary-contrast: #ffffff;
     --ac-primary-soft: #eff6ff;
     --ac-primary-foreground: #1e40af;
     --ac-active: #e0e7ff;
     --ac-active-foreground: #3730a3;
-    --ac-danger: #dc2626;
+    --ac-danger: #b91c1c;
     --ac-danger-soft: #fef2f2;
     --ac-success: #047857;
     --ac-success-soft: #ecfdf5;
@@ -48,4 +50,6 @@
     --ac-shadow-shell: 0 10px 30px rgb(17 24 39 / 0.05);
     --ac-shadow-panel: 0 8px 18px rgb(17 24 39 / 0.06);
     --ac-shadow-popover: 0 16px 40px rgb(17 24 39 / 0.12);
+    --ac-shadow-active-indicator: 0 0 6px color-mix(in srgb, var(--ac-primary) 40%, transparent);
+    --ac-focus-ring: color-mix(in srgb, var(--ac-primary) 42%, transparent);
 }

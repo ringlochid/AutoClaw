@@ -8,6 +8,7 @@ from typing import cast
 import pytest
 from autoclaw.config import OpenClawSettings
 from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
+from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.integrations.openclaw.gateway import OpenClawGatewayAdapter, cli_transport
 from autoclaw.integrations.openclaw.gateway import adapter as adapter_module
 from autoclaw.integrations.openclaw.gateway.cli_transport import (
@@ -41,7 +42,7 @@ def build_start_request(
         instructions=b"Exact system instructions",
         input=b"Exact dispatch input",
         provider_route=OpenClawProviderRoute(
-            kind="openclaw",
+            kind=ProviderKind.OPENCLAW,
             gateway_profile="experimental",
         ),
         provider_native_access=ProviderNativeAccess.FULL,

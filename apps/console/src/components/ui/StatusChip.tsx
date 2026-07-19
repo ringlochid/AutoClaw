@@ -12,10 +12,10 @@ export interface StatusChipProps extends HTMLAttributes<HTMLSpanElement> {
 
 const toneClasses: Record<StatusTone, string> = {
     active: "border-primary/20 bg-primary-soft text-primary-foreground",
-    danger: "border-red-200 bg-danger-soft text-red-700",
+    danger: "border-danger/20 bg-danger-soft text-danger",
     neutral: "border-outline-soft bg-surface-muted text-muted",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    warning: "border-amber-200 bg-amber-50 text-amber-700",
+    success: "border-success/20 bg-success-soft text-success",
+    warning: "border-warning/20 bg-warning-soft text-warning",
 };
 
 export function StatusChip({ children, className, tone = "neutral", ...props }: StatusChipProps) {

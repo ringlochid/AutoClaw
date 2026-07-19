@@ -16,6 +16,7 @@ import {
 import {
     SECOND_TASK_START_WORKFLOW_KEY,
     TASK_START_WORKFLOW_KEY,
+    createTaskStartPreview,
     createTaskStartWorkflowDetail,
     createTaskStartWorkflowRows,
     createTaskStartWorkflowVersions,
@@ -46,16 +47,20 @@ afterAll(() => {
 });
 
 describe("TaskStartPage", () => {
-    it("searches stored workflows, previews locally, and starts with omitted default roots", async () => {
+    it("previews through current controller truth and starts with a fresh exact request", async () => {
         const user = userEvent.setup();
         const seenRequests: URL[] = [];
         let startBody: components["schemas"]["TaskStartRequest"] | null = null;
-        installTaskStartHandlers({
+        let previewBody: components["schemas"]["TaskStartRequest"] | null = null;
+        installTaskComposeHandlers({
             onRequest: (requestUrl) => {
                 seenRequests.push(requestUrl);
             },
             onStart: async (request) => {
                 startBody = (await request.json()) as components["schemas"]["TaskStartRequest"];
+            },
+            onPreview: async (request) => {
+                previewBody = (await request.json()) as components["schemas"]["TaskStartRequest"];
             },
         });
 
@@ -93,6 +98,7 @@ describe("TaskStartPage", () => {
         await user.click(screen.getByRole("button", { name: "Preview" }));
         const previewDialog = screen.getByRole("dialog", { name: "Preview" });
         const preview = within(previewDialog);
+        expect(await preview.findByText("Current controller resolution")).toBeVisible();
         expect(preview.getByText("Workflow")).toBeVisible();
         expect(preview.getByText(TASK_START_WORKFLOW_KEY)).toBeVisible();
         expect(preview.getByText("Task")).toBeVisible();
@@ -111,19 +117,25 @@ describe("TaskStartPage", () => {
         expect(preview.getByText("Workspace")).toBeVisible();
         expect(preview.getByText("Task default")).toBeVisible();
         expect(preview.queryByText(/Revision/)).not.toBeInTheDocument();
+        expect(preview.getByText(/does not reserve task or dispatch IDs/i)).toBeVisible();
+        expect(preview.getByText("OpenClaw")).toBeVisible();
+        expect(preview.getByText("experimental")).toBeVisible();
+        expect(preview.getAllByText("Provider-native access").length).toBeGreaterThan(0);
+        expect(preview.getAllByText("Network access").length).toBeGreaterThan(0);
+        expect(preview.getAllByText("restricted").length).toBeGreaterThan(0);
+        expect(preview.getAllByText(/policy definition/).length).toBeGreaterThan(0);
         expect(startBody).toBeNull();
 
         await user.click(preview.getByRole("button", { name: "Start Task" }));
-        expect(await screen.findByText("Task start accepted")).toBeVisible();
+        expect(await screen.findByText("Task launch committed")).toBeVisible();
+        expect(screen.getByText(/Provider start follows asynchronously/i)).toBeVisible();
         expect(screen.getByRole("dialog", { name: "Result" })).toBeVisible();
-        expect(screen.queryByText("Flow status")).not.toBeInTheDocument();
-        expect(screen.queryByText("Handoff")).not.toBeInTheDocument();
-        expect(screen.queryByText("Manifest")).not.toBeInTheDocument();
-        expect(screen.queryByText("Running")).not.toBeInTheDocument();
-        expect(screen.queryByText(TEST_TASK_ID)).not.toBeInTheDocument();
-        expect(screen.queryByText("compiled-plan-001")).not.toBeInTheDocument();
-        expect(screen.queryByText("flow-revision-001")).not.toBeInTheDocument();
-        expect(screen.queryByText("_runtime/workflow-manifest.md")).not.toBeInTheDocument();
+        expect(screen.getByText("Flow status")).toBeVisible();
+        expect(screen.getByText("Manifest")).toBeVisible();
+        expect(screen.getByText("Running")).toBeVisible();
+        expect(screen.getByText(TEST_TASK_ID)).toBeVisible();
+        expect(screen.getByText("compiled-plan-001")).toBeVisible();
+        expect(screen.getByText("flow-revision-001")).toBeVisible();
         expect(startBody).toEqual({
             task: {
                 instruction:
@@ -136,12 +148,13 @@ describe("TaskStartPage", () => {
                 key: TASK_START_WORKFLOW_KEY,
             },
         });
+        expect(previewBody).toEqual(startBody);
     });
 
     it("validates required fields and the explicit workspace host mode before start", async () => {
         const user = userEvent.setup();
         let startBody: components["schemas"]["TaskStartRequest"] | null = null;
-        installTaskStartHandlers({
+        installTaskComposeHandlers({
             onStart: async (request) => {
                 startBody = (await request.json()) as components["schemas"]["TaskStartRequest"];
             },
@@ -261,7 +274,7 @@ describe("TaskStartPage", () => {
 
         cleanup();
         server.resetHandlers();
-        installTaskStartHandlers({
+        installTaskComposeHandlers({
             startResponse: HttpResponse.json(
                 createOperationFailureBody({
                     code: "invalid_request_shape",
@@ -285,7 +298,7 @@ describe("TaskStartPage", () => {
 
     it("preserves inputs when invalid host path, occupied workspace, or permission failures return from start", async () => {
         const user = userEvent.setup();
-        installTaskStartHandlers({
+        installTaskComposeHandlers({
             startResponse: HttpResponse.json(
                 createOperationFailureBody({
                     code: "invalid_request_shape",
@@ -318,7 +331,7 @@ describe("TaskStartPage", () => {
 
         cleanup();
         server.resetHandlers();
-        installTaskStartHandlers({
+        installTaskComposeHandlers({
             startResponse: HttpResponse.json(
                 createOperationFailureBody({
                     code: "conflicting_continuation",
@@ -338,7 +351,7 @@ describe("TaskStartPage", () => {
 
         cleanup();
         server.resetHandlers();
-        installTaskStartHandlers({
+        installTaskComposeHandlers({
             startResponse: HttpResponse.json(
                 createOperationFailureBody({
                     code: "local_admission_denied",
@@ -363,9 +376,45 @@ describe("TaskStartPage", () => {
         ).toBeVisible();
     });
 
+    it("renders invalid server preview and keeps start-time revalidation independent", async () => {
+        const user = userEvent.setup();
+        installTaskComposeHandlers({
+            previewResponse: HttpResponse.json(createTaskStartPreview("invalid")),
+            startResponse: HttpResponse.json(
+                createOperationFailureBody({
+                    code: "conflict",
+                    retryable: false,
+                    summary: "Provider routing changed before task start.",
+                }),
+                { status: 409 },
+            ),
+        });
+
+        renderTaskStartPage();
+        expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
+        fillRequiredTaskFields();
+        await user.click(screen.getByRole("button", { name: "Preview" }));
+
+        const previewDialog = await screen.findByRole("dialog", { name: "Preview" });
+        expect(
+            await within(previewDialog).findByText(
+                "The selected provider route is not configured on this machine.",
+            ),
+        ).toBeVisible();
+        expect(within(previewDialog).getByText("invalid")).toBeVisible();
+        expect(within(previewDialog).getByRole("button", { name: "Start Task" })).toBeDisabled();
+
+        await user.click(within(previewDialog).getByRole("button", { name: "Back to edit" }));
+        await user.click(screen.getByRole("button", { name: "Start Task" }));
+        expect(
+            await screen.findByText("Provider routing changed before task start."),
+        ).toBeVisible();
+        expect(screen.getByLabelText("Task key")).toHaveValue("implement-task-start-launch-form");
+    });
+
     it("keeps preview and result dialogs focused, closes with Escape, and restores focus", async () => {
         const user = userEvent.setup();
-        installTaskStartHandlers();
+        installTaskComposeHandlers();
 
         renderTaskStartPage();
         expect((await screen.findAllByText(TASK_START_WORKFLOW_KEY)).length).toBeGreaterThan(0);
@@ -430,13 +479,17 @@ async function searchWorkflow(user: ReturnType<typeof userEvent.setup>, value: s
     await user.type(searchInput, value);
 }
 
-function installTaskStartHandlers({
+function installTaskComposeHandlers({
     onRequest,
+    onPreview,
     onStart,
+    previewResponse,
     startResponse,
 }: {
     readonly onRequest?: (requestUrl: URL) => void;
+    readonly onPreview?: (request: Request) => Promise<void>;
     readonly onStart?: (request: Request) => Promise<void>;
+    readonly previewResponse?: Response;
     readonly startResponse?: Response;
 } = {}): void {
     server.use(
@@ -453,6 +506,10 @@ function installTaskStartHandlers({
         http.get("*/definitions/workflow/:key/versions", ({ params }) =>
             HttpResponse.json(createTaskStartWorkflowVersions(String(params.key))),
         ),
+        http.post("*/authoring/task-compose/preview", async ({ request }) => {
+            await onPreview?.(request);
+            return previewResponse ?? HttpResponse.json(createTaskStartPreview());
+        }),
         http.post("*/tasks/start", async ({ request }) => {
             await onStart?.(request);
             return startResponse ?? HttpResponse.json(createTaskStartResponse());
