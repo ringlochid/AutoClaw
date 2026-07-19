@@ -6,7 +6,7 @@ No. Codex, Claude, and OpenClaw are selectable providers. OpenClaw remains an ex
 
 ## Which provider becomes the default?
 
-The first configured provider becomes the default when none exists. Change it with `autoclaw providers set-default <provider>`. AutoClaw does not silently fall back.
+Guided setup asks for the primary/default provider. With direct commands, the first configured provider becomes the default when none exists. Change it with `autoclaw providers set-default <provider>`. AutoClaw does not silently fall back.
 
 ## Does a provider's final response complete the task?
 

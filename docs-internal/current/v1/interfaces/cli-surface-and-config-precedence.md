@@ -4,17 +4,17 @@ Status: Current
 
 Last verified: 2026-07-19
 
-The installed command is `autoclaw`. Commands are non-interactive unless they invoke a provider's own identity flow.
+The installed command is `autoclaw`. On a terminal, `init` and `setup` are guided. `--non-interactive`, non-TTY input, and `--json` use the deterministic command path without prompts. Other commands remain non-interactive unless they invoke a provider's own identity flow.
 
 ## Passive status
 
-`autoclaw` and `autoclaw status` print the same read-only local summary. They read the selected config and provider settings. They do not contact providers, inspect authentication, test reachability, start a service, or change local state. Unchecked facts are reported as `not_checked`.
+`autoclaw` and `autoclaw status` print the same read-only local summary. They read the selected config and provider settings. They do not contact providers, inspect authentication, test reachability, start a service, or change local state. JSON keeps unchecked facts as `not_checked`; human provider status shows one local-only explanation and the exact check command instead of repeating raw unchecked axes.
 
 ## Command groups
 
-- `autoclaw init` writes local config and creates or verifies the exact database schema
+- `autoclaw init` guides local config and creates or verifies the exact database schema
 - `autoclaw serve` runs the loopback API
-- `autoclaw setup` gives setup guidance or configures one selected provider
+- `autoclaw setup` guides primary/default provider selection, provider checking and supported login, and optional additional providers
 - `autoclaw providers list|status|check|configure|set-default|login|logout`
 - `autoclaw config path|show`
 - `autoclaw db upgrade|reset`
@@ -28,9 +28,13 @@ The installed command is `autoclaw`. Commands are non-interactive unless they in
 
 Codex and Claude are managed integrations. OpenClaw is an experimental user-managed compatibility integration and remains selectable, including as the default.
 
-The first configured provider becomes the default when no default exists. Later configuration does not silently replace an existing default; use `providers set-default`.
+The guided setup flow asks for the primary/default provider. It routes that explicit choice through the same configure and set-default operations exposed by the direct provider commands, then asks whether to configure additional providers without replacing the primary default. A direct `providers configure` fills the default only when none exists; later direct configuration preserves it.
 
-`providers status` is passive. `providers check` is the explicit bounded diagnostic and does not run an agent task. Codex login and logout use the SDK-bundled Codex CLI. Claude and OpenClaw report their user-owned identity instructions instead of mutating those products.
+Guided setup checks each selected provider. When Codex reports that authentication is required, it offers the SDK-bundled native Codex login before checking again. Claude and OpenClaw keep their user-owned identity behavior. Each accepted step is committed independently, so cancellation keeps completed selections and rerunning resumes from current config rather than a setup journal.
+
+`providers status` is passive. `providers check` is the explicit bounded diagnostic and does not run an agent task. Human checks render authentication and reachability as confirmed, failed, or not tested; JSON uses the stable enum values. Codex checks directly confirm typed ChatGPT and API-key account state without claiming remote model reachability. Codex login and logout use the SDK-bundled Codex CLI. Claude and OpenClaw report their user-owned identity instructions instead of mutating those products.
+
+Interactive setup, provider status/check, and service status use terminal-aware Rich panels, tables, and semantic colors. Redirected output and `NO_COLOR` use readable plain text. JSON remains undecorated.
 
 OpenClaw users maintain their own `openclaw.json` and point it at the compatibility Node MCP endpoint. AutoClaw does not inject that configuration.
 

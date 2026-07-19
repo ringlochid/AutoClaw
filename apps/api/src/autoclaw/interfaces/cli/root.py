@@ -5,7 +5,6 @@ from typing import Any
 import click
 
 from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL
-from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.interfaces.cli.commands.bootstrap import (
     cmd_db_reset,
     cmd_db_upgrade,
@@ -14,6 +13,11 @@ from autoclaw.interfaces.cli.commands.bootstrap import (
 )
 from autoclaw.interfaces.cli.commands.config_view import cmd_config_path, cmd_config_show
 from autoclaw.interfaces.cli.commands.definitions import cmd_definitions_import
+from autoclaw.interfaces.cli.commands.guided_setup import (
+    guide_local_initialization,
+    guide_provider_setup,
+    should_run_guided_flow,
+)
 from autoclaw.interfaces.cli.commands.providers import (
     cmd_providers_check,
     cmd_providers_configure,
@@ -35,6 +39,7 @@ from autoclaw.interfaces.cli.commands.service import (
 )
 from autoclaw.interfaces.cli.commands.status import cmd_status
 from autoclaw.interfaces.cli.commands.task_compose import cmd_task_compose_start
+from autoclaw.interfaces.cli.providers.inspection import PROVIDER_ORDER
 
 from .context import CliContext
 from .help import ROOT_HELP_EPILOG
@@ -47,7 +52,7 @@ from .root_support import (
     package_version,
 )
 
-PROVIDER_CHOICE = click.Choice([provider.value for provider in ProviderKind])
+PROVIDER_CHOICE = click.Choice([provider.value for provider in PROVIDER_ORDER])
 
 
 @click.group(
@@ -82,11 +87,24 @@ def cli(ctx: click.Context, is_debug: bool) -> int | None:
 @click.option("--log-level", default=DEFAULT_LOG_LEVEL, show_default=True)
 @click.option("--force", is_flag=True)
 @click.option("--skip-db-upgrade", is_flag=True)
+@click.option(
+    "--non-interactive",
+    "is_non_interactive",
+    is_flag=True,
+    help="Disable guided prompts for scripts and automation.",
+)
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
 def init_command(**kwargs: Any) -> int:
-    return invoke_handler_result(
-        cmd_init(build_argument_namespace(**kwargs, json=kwargs["is_json_output"]))
+    args = build_argument_namespace(**kwargs, json=kwargs["is_json_output"])
+    handler = (
+        guide_local_initialization
+        if should_run_guided_flow(
+            is_non_interactive=kwargs["is_non_interactive"],
+            is_json_output=kwargs["is_json_output"],
+        )
+        else cmd_init
     )
+    return invoke_handler_result(handler(args))
 
 
 @cli.command("serve")
@@ -111,11 +129,24 @@ def status_command(config: str, is_json_output: bool) -> int:
 @click.option("--effort")
 @click.option("--gateway-url")
 @click.option("--gateway-profile")
+@click.option(
+    "--non-interactive",
+    "is_non_interactive",
+    is_flag=True,
+    help="Disable guided prompts for scripts and automation.",
+)
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
 def setup_command(**kwargs: Any) -> int:
-    return invoke_handler_result(
-        cmd_setup(build_argument_namespace(**kwargs, json=kwargs["is_json_output"]))
+    args = build_argument_namespace(**kwargs, json=kwargs["is_json_output"])
+    handler = (
+        guide_provider_setup
+        if should_run_guided_flow(
+            is_non_interactive=kwargs["is_non_interactive"],
+            is_json_output=kwargs["is_json_output"],
+        )
+        else cmd_setup
     )
+    return invoke_handler_result(handler(args))
 
 
 @cli.group("providers")

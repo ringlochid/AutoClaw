@@ -48,7 +48,7 @@ class CliContext:
             force_terminal=is_rich,
             no_color=not is_rich,
             theme=build_rich_theme(),
-            soft_wrap=True,
+            soft_wrap=False,
         )
 
 

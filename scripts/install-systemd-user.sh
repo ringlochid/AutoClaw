@@ -108,7 +108,7 @@ if [[ "$INSTALL_MODE" == "editable" ]]; then
 fi
 "$VENV_DIR/bin/pip" "${PIP_ARGS[@]}" "$INSTALL_SPEC"
 
-INIT_ARGS=(init --config "$CONFIG_PATH" --data-dir "$DATA_DIR")
+INIT_ARGS=(init --non-interactive --config "$CONFIG_PATH" --data-dir "$DATA_DIR")
 if [[ -n "$API_PORT" ]]; then
   INIT_ARGS+=(--port "$API_PORT")
 fi

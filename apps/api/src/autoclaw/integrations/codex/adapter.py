@@ -157,10 +157,17 @@ class CodexAdapter:
                 code="codex_authentication_required",
                 authentication=ProviderCheckAxisStatus.FAILED,
             )
+        account_type = getattr(getattr(account.account, "root", None), "type", None)
+        authentication = (
+            ProviderCheckAxisStatus.PASSED
+            if account_type in {"apiKey", "chatgpt"}
+            else ProviderCheckAxisStatus.NOT_CHECKED
+        )
         return ProviderCheckResult(
             kind=self.kind,
             status=ProviderCheckStatus.AVAILABLE,
             code="codex_available",
+            authentication=authentication,
         )
 
     @asynccontextmanager

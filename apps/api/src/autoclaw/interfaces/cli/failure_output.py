@@ -13,11 +13,13 @@ def emit_click_exception(
     exc: click.ClickException,
     argv: tuple[str, ...],
 ) -> None:
-    _emit_failure(context, failure_from_click_exception(exc, argv), exc=exc)
+    _emit_failure(context, failure_from_click_exception(exc, argv))
 
 
 def emit_unexpected_exception(context: CliContext, exc: BaseException) -> None:
-    _emit_failure(context, unexpected_failure(exc), exc=exc)
+    failure = unexpected_failure(exc)
+    debug_exception = None if failure.kind == "configuration_invalid" else exc
+    _emit_failure(context, failure, exc=debug_exception)
 
 
 def _emit_failure(

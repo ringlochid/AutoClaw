@@ -33,14 +33,13 @@ pipx install autoclaw
 autoclaw init
 ```
 
-Configure one provider. The first configured provider becomes the default:
+Run the provider guide. It asks for the primary/default provider, handles supported native login, checks the route, and offers additional providers:
 
 ```bash
-autoclaw setup --provider codex
-autoclaw providers check codex
+autoclaw setup
 ```
 
-Use `claude` or `openclaw` instead of `codex` when appropriate. AutoClaw never silently falls back to another provider.
+Choose Codex, Claude, or OpenClaw. OpenClaw remains experimental and user-managed. AutoClaw never silently falls back to another provider. For scripts, use `--non-interactive` and explicit provider commands; see the [getting-started guide](docs/start/getting-started.md).
 
 Run the local server:
 

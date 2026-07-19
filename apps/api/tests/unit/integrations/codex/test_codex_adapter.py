@@ -108,16 +108,16 @@ def _request() -> DispatchStartRequest:
     ("account", "requires_openai_auth", "expected_status", "expected_authentication"),
     (
         (
-            object(),
+            SimpleNamespace(root=SimpleNamespace(type="chatgpt")),
             False,
             ProviderCheckStatus.AVAILABLE,
-            ProviderCheckAxisStatus.NOT_CHECKED,
+            ProviderCheckAxisStatus.PASSED,
         ),
         (
-            object(),
+            SimpleNamespace(root=SimpleNamespace(type="apiKey")),
             True,
             ProviderCheckStatus.AVAILABLE,
-            ProviderCheckAxisStatus.NOT_CHECKED,
+            ProviderCheckAxisStatus.PASSED,
         ),
         (
             SimpleNamespace(

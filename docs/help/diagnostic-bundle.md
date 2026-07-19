@@ -12,7 +12,16 @@ autoclaw providers status
 autoclaw service status --json
 ```
 
-Add `autoclaw providers check <provider> --json` only when provider reachability is relevant.
+Add `autoclaw providers check <provider> --json` only when a fresh provider diagnostic is relevant. Inspect its separate authentication and reachability axes rather than assuming that one ready result proved both.
+
+For a failed managed service, also collect:
+
+```bash
+systemctl --user status autoclaw.service --no-pager
+journalctl --user -u autoclaw.service -n 50 --no-pager
+```
+
+Review journal output locally before sharing it. A dependency or older AutoClaw release may have logged a rejected configuration value even though the current CLI redacts validation inputs.
 
 ## Server state
 

@@ -246,3 +246,34 @@ async def test_service_stop_and_restart_use_managed_service_surface(
     log_lines = systemctl_log.read_text(encoding="utf-8").splitlines()
     assert any("stop autoclaw.service" in line for line in log_lines)
     assert any("restart autoclaw.service" in line for line in log_lines)
+
+
+def test_service_start_failure_reports_systemd_reason_and_recovery(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    systemctl_bin = tmp_path / "systemctl-failure"
+    systemctl_bin.write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env python3",
+                "import sys",
+                "sys.stderr.write('simulated unit failure\\n')",
+                "sys.exit(1)",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    systemctl_bin.chmod(0o755)
+    monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
+
+    result = cli.main(["service", "start"])
+
+    output = capsys.readouterr().out
+    assert result == 1
+    assert "Managed service start failed" in output
+    assert "simulated unit failure" in output
+    assert "journalctl --user -u autoclaw.service -n 50 --no-pager" in output
+    assert "autoclaw service install" in output
+    assert "Command '['" not in output

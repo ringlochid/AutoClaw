@@ -9,6 +9,7 @@ from pathlib import Path
 from autoclaw.platform.managed_services.resources import get_systemd_service_template
 
 from .contracts import (
+    ManagedServiceCommandError,
     ManagedServiceStatus,
     ServiceInstallRequest,
     ServiceUninstallRequest,
@@ -171,12 +172,20 @@ def execute_systemctl(
     command = (resolve_systemctl_bin(), "--user", *args)
     if command_observer is not None:
         command_observer(command)
-    return subprocess.run(
+    completed = subprocess.run(
         list(command),
-        check=should_check,
+        check=False,
         capture_output=True,
         text=True,
     )
+    if should_check and completed.returncode != 0:
+        detail = _bounded_command_detail(completed.stderr or completed.stdout)
+        raise ManagedServiceCommandError(
+            command=command,
+            return_code=completed.returncode,
+            detail=detail,
+        )
+    return completed
 
 
 def get_linux_user_unit_dir() -> Path:
@@ -193,6 +202,15 @@ def resolve_systemctl_bin() -> str:
 
 def is_systemd_supported() -> bool:
     return os.name != "nt" and sys.platform.startswith("linux")
+
+
+def _bounded_command_detail(value: str, *, limit: int = 600) -> str | None:
+    normalized = " ".join(value.split())
+    if not normalized:
+        return None
+    if len(normalized) <= limit:
+        return normalized
+    return f"{normalized[: limit - 1]}…"
 
 
 __all__ = [

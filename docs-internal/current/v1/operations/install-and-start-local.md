@@ -21,11 +21,13 @@ For a built release, install the wheel into a dedicated virtual environment inst
 
 ```bash
 .venv/bin/autoclaw init
-.venv/bin/autoclaw setup --provider codex
+.venv/bin/autoclaw setup
 .venv/bin/autoclaw providers status
 ```
 
-Choose `claude` or `openclaw` when that is the intended provider. The first configured provider becomes the default. Run `providers check <provider>` only when you want an explicit diagnostic.
+On a terminal, `init` confirms local paths and database settings. `setup` asks for the primary/default provider, checks it, offers supported native login when needed, and asks whether to add providers. OpenClaw remains selectable and default-eligible while its experimental, user-managed setup is disclosed.
+
+For scripts, add `--non-interactive` and provide resolved inputs. Non-interactive provider setup configures the selected route; login and checking remain explicit commands.
 
 ## Start
 
@@ -41,6 +43,8 @@ Or install the Linux user service:
 .venv/bin/autoclaw service install
 .venv/bin/autoclaw service status
 ```
+
+Rerun `service install` after an AutoClaw upgrade to reconcile the generated unit. It preserves the existing service environment file unless `--force` is explicit. If start fails, follow the printed `systemctl status` and `journalctl` commands; validation errors identify obsolete fields without printing their values.
 
 The default API is `http://127.0.0.1:18125`. The packaged console is on the same origin.
 

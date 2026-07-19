@@ -52,7 +52,7 @@ Provider-origin start failure remains an asynchronous same-D2 concern. The curre
 
 `autoclaw providers configure <provider>` and the same operation selected through `autoclaw setup` share one atomic configuration path. After deterministic local validation succeeds, the transaction persists/enables the route and fills `runtime.default_provider` only if it is empty.
 
-Configuring later providers preserves the existing default. `autoclaw providers set-default <provider>` is the only replacement operation and requires an enabled, deterministically valid route. Failed or rolled-back configuration, later check/authentication failure, and runtime start failure never change the default.
+Configuring later providers preserves the existing default. Guided setup routes an explicit primary/default choice through `autoclaw providers set-default <provider>` after configuration; additional-provider choices do not replace it. Set-default remains the only replacement operation and requires an enabled, deterministically valid route. Failed or rolled-back configuration, later check/authentication failure, and runtime start failure never change the default.
 
 OpenClaw is eligible for explicit selection and for the configured default while remaining experimental. Installation or discovery alone never selects it, another provider's failure never falls back to it, and incomplete conformance is support/readiness information rather than a global enablement switch.
 
@@ -136,7 +136,7 @@ Rejected because an effective scalar cannot explain whether the result came from
 
 - Schema tests accept only the three kind-only variants and reject scalar, unknown, and provider-inapplicable fields.
 - Resolution tests distinguish explicit selection from omission, reject a broken/disabled default, and prove no provider fallback.
-- CLI tests prove direct configure and setup share one atomic empty-default compare-and-set, later configuration preserves the default, and only set-default replaces it.
+- CLI tests prove direct configure and setup share one atomic empty-default compare-and-set, guided primary selection delegates replacement to set-default, additional configuration preserves the default, and only set-default replaces it.
 - Failure tests prove configure rollback, check/authentication failure, and provider-start failure never mutate the default.
 - OpenClaw tests prove explicit and configured-default selection remain available while installation and other-route failure never select it; conformance gaps remain readback rather than activation authority.
 - Policy tests prove omission defaults, monotonic narrowing, successor recomputation, and the two independent capability axes.

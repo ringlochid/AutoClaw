@@ -258,8 +258,32 @@ def test_provider_check_runs_bounded_diagnostic_without_mutation(
     assert payload["is_ready"] is True
     assert payload["authentication"] == "not_checked"
     assert payload["reachability"] == "not_checked"
-    assert "authentication: not_checked; reachability: not_checked" in human_result.output
+    assert "Authentication: not tested" in human_result.output
+    assert "Reachability: not tested" in human_result.output
+    assert "not_checked" not in human_result.output
     assert config_path.read_bytes() == previous_bytes
+
+
+def test_provider_status_keeps_passive_diagnostics_out_of_human_output(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "config.toml"
+    configure_provider(
+        config_path,
+        ProviderConfigurationRequest(provider=ProviderKind.CODEX),
+    )
+
+    result = CliRunner().invoke(
+        build_parser(),
+        ["providers", "status", "--config", str(config_path)],
+    )
+
+    assert result.exit_code == 0
+    assert "Provider status" in result.output
+    assert "Codex" in result.output
+    assert "Local configuration only" in result.output
+    assert "autoclaw providers check codex" in result.output
+    assert "not_checked" not in result.output
 
 
 def test_provider_check_maps_authentication_failure(
@@ -362,7 +386,7 @@ def test_setup_uses_the_shared_configuration_operation(
     assert tomllib.loads(config_path.read_text())["runtime"]["default_provider"] == "claude"
 
 
-def test_setup_without_provider_is_a_zero_write_guide(tmp_path: Path) -> None:
+def test_json_setup_without_provider_is_a_zero_write_guide(tmp_path: Path) -> None:
     config_path = tmp_path / "config.toml"
 
     result = CliRunner().invoke(
@@ -409,7 +433,7 @@ def test_setup_without_provider_is_a_zero_write_guide(tmp_path: Path) -> None:
         ),
     ),
 )
-def test_setup_guide_uses_selected_provider_state_without_writes(
+def test_json_setup_guide_uses_selected_provider_state_without_writes(
     tmp_path: Path,
     config_text: str,
     configured: list[str],
@@ -435,7 +459,7 @@ def test_setup_guide_uses_selected_provider_state_without_writes(
     assert config_path.read_bytes() == previous_bytes
 
 
-def test_setup_guide_configures_environment_only_provider_before_default(
+def test_json_setup_guide_configures_environment_only_provider_before_default(
     tmp_path: Path,
 ) -> None:
     config_path = tmp_path / "config.toml"

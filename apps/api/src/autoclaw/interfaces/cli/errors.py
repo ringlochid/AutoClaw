@@ -4,6 +4,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import click
+from pydantic import ValidationError
+
+from autoclaw.platform.managed_services import ManagedServiceCommandError
 
 from .help import help_command_for
 from .prompts import debug_hint
@@ -71,6 +74,10 @@ def failure_from_click_exception(exc: click.ClickException, argv: tuple[str, ...
 
 
 def unexpected_failure(exc: BaseException) -> CliFailure:
+    if isinstance(exc, ManagedServiceCommandError):
+        return _managed_service_failure(exc)
+    if isinstance(exc, ValidationError):
+        return _configuration_validation_failure(exc)
     message = str(exc).strip() or exc.__class__.__name__
     return CliFailure(
         kind="runtime_error",
@@ -79,4 +86,46 @@ def unexpected_failure(exc: BaseException) -> CliFailure:
         exit_code=1,
         hint=debug_hint(),
         details={"error_type": exc.__class__.__name__},
+    )
+
+
+def _managed_service_failure(exc: ManagedServiceCommandError) -> CliFailure:
+    service_name = exc.service_name or "the managed service"
+    detail = f" systemctl reported: {exc.detail}" if exc.detail else ""
+    return CliFailure(
+        kind="managed_service_command_failed",
+        title=f"Managed service {exc.action} failed",
+        message=f"systemd could not {exc.action} {service_name}.{detail}",
+        exit_code=1,
+        hint=(
+            "Inspect the unit:\n"
+            f"  systemctl --user status {service_name} --no-pager\n"
+            f"  journalctl --user -u {service_name} -n 50 --no-pager\n\n"
+            "Reconcile an outdated managed unit:\n"
+            "  autoclaw service install"
+        ),
+        details={
+            "action": exc.action,
+            "service_name": exc.service_name,
+            "return_code": exc.return_code,
+        },
+    )
+
+
+def _configuration_validation_failure(exc: ValidationError) -> CliFailure:
+    findings: list[str] = []
+    for finding in exc.errors(include_input=False, include_url=False):
+        location = ".".join(str(part) for part in finding["loc"])
+        prefix = f"{location}: " if location else ""
+        findings.append(f"{prefix}{finding['msg']}")
+    return CliFailure(
+        kind="configuration_invalid",
+        title="Configuration invalid",
+        message="\n".join(findings) or "AutoClaw configuration could not be validated.",
+        exit_code=1,
+        hint=(
+            "Remove or correct the named setting in the selected config or service "
+            "environment file, then rerun the command."
+        ),
+        details={"finding_count": len(findings)},
     )

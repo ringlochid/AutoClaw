@@ -21,6 +21,10 @@ from autoclaw.interfaces.cli.providers.contracts import (
     ProviderIdentityOutcome,
 )
 from autoclaw.interfaces.cli.providers.inspection import providers_payload
+from autoclaw.interfaces.cli.providers.presentation import (
+    emit_provider_check,
+    emit_provider_status,
+)
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
 
 
@@ -54,17 +58,7 @@ def cmd_providers_status(args: argparse.Namespace) -> int:
     if args.json:
         print_json(payload)
     else:
-        for status in statuses:
-            configured = "configured" if status.is_configured else "not configured"
-            default = "; default" if status.is_default else ""
-            available = "available" if status.is_integration_available else "unavailable"
-            print(
-                f"{status.kind.value}: {configured}{default}; {available}; "
-                f"{status.product_status.value}"
-            )
-            print(f"  identity: {status.service_identity}")
-            print(f"  native home: {status.native_home}")
-            print("  authentication: not_checked; reachability: not_checked")
+        emit_provider_status(statuses)
     return 0
 
 
@@ -78,17 +72,7 @@ def cmd_providers_check(args: argparse.Namespace) -> int:
     if args.json:
         print_json(payload)
     else:
-        print(f"provider check: {provider.value}")
-        print(f"outcome: {snapshot.outcome.value}")
-        print(f"detail: {snapshot.detail}")
-        print(f"identity: {snapshot.service_identity}")
-        print(f"native home: {snapshot.native_home}")
-        print(
-            f"authentication: {snapshot.authentication.value}; "
-            f"reachability: {snapshot.reachability.value}"
-        )
-        for limitation in snapshot.limitations:
-            print(f"limitation: {limitation}")
+        emit_provider_check(snapshot)
     return 1 if snapshot.is_ready is False else 0
 
 

@@ -6,7 +6,7 @@ This page owns the V2 operator CLI for local setup, passive status, provider-nat
 
 ## Product shape
 
-The CLI is a composition of small deterministic commands, not one resumable onboarding or doctor workflow.
+The CLI combines guided terminal entry points with small deterministic commands. The guided flow is orchestration only: it delegates each accepted step to the same local initialization, provider configuration, default-selection, identity, and check operations available as direct commands. It does not introduce a resumable onboarding journal or a second configuration path.
 
 ```text
 autoclaw
@@ -50,7 +50,7 @@ Bare `autoclaw` and `autoclaw status` are passive, read-only summaries. They do 
 - run a compatibility matrix; or
 - start background runtime owners.
 
-Status reports configured and observable local facts with explicit `not_checked` values where freshness is unknown. It never presents an earlier check result as current readiness.
+Status reports configured and observable local facts without presenting an earlier check result as current readiness. Machine output keeps explicit `not_checked` values where freshness is unknown. Human output labels the view as local configuration and points to the exact `providers check` command instead of repeating diagnostic-shaped `not_checked` rows for every provider.
 
 The summary may show:
 
@@ -64,9 +64,15 @@ The summary may show:
 
 ## Init and setup
 
-`autoclaw init` performs deterministic AutoClaw-local initialization only. It may create local config/data directories and initialize controller-owned state through the shipped database path. It does not log in to providers, mutate provider configuration, install OpenClaw, or start an agent turn.
+On an interactive terminal, `autoclaw init` and `autoclaw setup` are guided flows. `--non-interactive` disables prompts, and non-TTY or `--json` invocation never waits for input. Explicit command options remain usable in either mode.
 
-`autoclaw setup` is a guide/orchestrator. It reads current local state, reports the next explicit command, and may invoke only a step the user explicitly selected, including the same provider configuration operation exposed by `autoclaw providers configure <provider>`. It is not one all-or-nothing transaction, does not own a resumable setup journal, and does not silently repair provider or service state.
+Interactive human output uses terminal-aware structure and semantic color for sections, current state, success, warnings, and failures. It remains readable without color and as plain text when output is redirected. JSON output is not decorated.
+
+`autoclaw init` guides AutoClaw-local initialization only. A fresh run shows the recommended config path, data path, database, and loopback API settings, allows the user to review alternatives, and confirms before writing. When config already exists, rerunning offers to keep and verify it, explicitly replace it, or cancel; it never overwrites or resets state merely because the command was rerun. The shipped database path still creates an empty current schema or verifies an exact current schema. Schema replacement remains the separate destructive `autoclaw db reset` operation. `init` does not log in to providers, mutate provider selection, install OpenClaw, or start an agent turn.
+
+`autoclaw setup` guides provider setup. It shows current provider/default state, asks for the primary/default provider when one was not supplied, configures that route, explicitly selects it as the default, performs the bounded provider check, offers the supported provider-native login flow when authentication is required, and asks whether to configure additional providers. Additional providers do not replace the selected primary default. OpenClaw remains selectable, including as the default, while its experimental and user-managed configuration status is disclosed.
+
+Every accepted setup step commits independently through its owning operation. Cancellation therefore preserves completed explicit steps, and rerunning derives the next prompts from current config instead of a setup journal. Setup is not one all-or-nothing transaction and does not silently repair provider, database, or service state.
 
 Guidance distinguishes effective environment overrides from provider enablement persisted in the selected TOML file. It never recommends `set-default` for an environment-only provider because that command can select only a provider enabled in the persisted configuration; it recommends `providers configure` first.
 
@@ -100,6 +106,8 @@ Stable outcome categories distinguish at least `ready`, `not_configured`, `not_i
 
 Authentication and reachability are separate `not_checked | passed | failed` axes. An adapter changes an axis from `not_checked` only when its bounded diagnostic directly proves that fact. A successful overall check therefore does not imply that both axes were inspected.
 
+Human output renders those axes as `confirmed`, `failed`, or `not tested`; machine output retains the stable enum values. A Codex `account/read` response with a typed ChatGPT or API-key account directly confirms authentication. Missing required OpenAI authentication reports failure. Credential sources whose validity is not proved by that response, including managed cloud credentials, remain `not_checked`. The account read does not prove remote model reachability.
+
 ## Login and logout
 
 Provider identity remains provider-owned. `providers login` and `providers logout` may invoke the provider's supported native command or SDK flow, but AutoClaw does not parse, copy, normalize, encrypt, or store the resulting credential.
@@ -127,9 +135,9 @@ Managed Codex/Claude MCP connection material is injected dynamically for one dis
 
 `autoclaw providers configure <provider>` validates and commits AutoClaw-owned enablement plus non-secret route settings. Direct invocation and setup use this same operation; setup does not maintain a second configuration path.
 
-When configuration succeeds, its transaction fills `runtime.default_provider` only when no default exists. Configuring a later provider preserves the existing default. If one setup session configures several providers, the first successful empty-default compare-and-set wins.
+When configuration succeeds, its transaction fills `runtime.default_provider` only when no default exists. Configuring a later provider preserves the existing default. Guided setup routes the user's explicit primary-provider choice through the same default-selection operation exposed by `autoclaw providers set-default <provider>`; additional-provider steps do not replace it.
 
-`autoclaw providers set-default <provider>` is the only operation that replaces an existing default. It requires an enabled, deterministically valid configured route. OpenClaw is eligible while retaining its experimental label.
+`autoclaw providers set-default <provider>` is the owning operation that replaces an existing default, whether invoked directly or by guided setup after an explicit primary-provider choice. It requires an enabled, deterministically valid configured route. OpenClaw is eligible while retaining its experimental label.
 
 A failed or rolled-back configure operation leaves the default unchanged. Later check, authentication, reachability, compatibility, or runtime-start failure also leaves it unchanged and never selects a fallback. A missing, disabled, or broken configured default produces an explicit route error. Disabling or removing the current default must explicitly clear it or select a replacement.
 
@@ -183,7 +191,10 @@ Focused subsystem diagnostics may retain a read-only `check` command. Repair rem
 - bare/status commands perform no provider network or model work and no writes;
 - check creates no task, dispatch, binding, Node MCP call, config change, or credential refresh;
 - setup/status/check/runtime resolve the same service identity and native provider home;
-- direct configure and setup share one provider configuration operation;
+- interactive init preserves existing state by default, confirms replacement, and never resets a mismatched schema;
+- non-TTY, `--non-interactive`, and `--json` invocation never waits for input;
+- guided setup and direct commands share provider configuration, default-selection, identity, and check operations;
+- guided setup offers supported native login when authentication is required and preserves the chosen primary default while adding providers;
 - first successful configuration fills only an empty default, later configuration preserves it, and only set-default replaces it;
 - configure/check/authentication/start failures never mutate the default or trigger fallback;
 - explicit provider routes never fall back;

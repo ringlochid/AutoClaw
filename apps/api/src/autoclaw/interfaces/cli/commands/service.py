@@ -4,22 +4,20 @@ import argparse
 import sys
 from pathlib import Path
 
+from rich.console import Group
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+
 from autoclaw.config import load_settings
 from autoclaw.interfaces.cli.commands.server_config import (
     build_server_bind_check_payload,
     emit_server_bind_check_failure,
     update_server_config_overrides,
 )
+from autoclaw.interfaces.cli.context import CliContext
 from autoclaw.interfaces.cli.progress import CliProgress
 from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
-from autoclaw.interfaces.cli.terminal.theme import (
-    accent,
-    heading,
-    muted,
-    rich_enabled,
-    success,
-    warn,
-)
 from autoclaw.platform.managed_services import (
     ManagedServiceStatus,
     ServiceInstallRequest,
@@ -119,7 +117,7 @@ def cmd_service_status(args: argparse.Namespace) -> int:
     if args.json:
         print_json(snapshot.to_payload())
     else:
-        _print_service_status(snapshot, is_rich=rich_enabled(args))
+        _print_service_status(snapshot)
     return 0
 
 
@@ -150,7 +148,7 @@ def execute_service_lifecycle(
     if args.json:
         print_json(snapshot.to_payload())
     else:
-        _print_service_status(snapshot, is_rich=rich_enabled(args))
+        _print_service_status(snapshot)
     return 0
 
 
@@ -182,23 +180,79 @@ def service_env_file_path(config_path: Path, explicit_env_file: str | None) -> P
     return config_path.parent / "autoclaw.env"
 
 
-def _print_service_status(snapshot: ManagedServiceStatus, *, is_rich: bool) -> None:
-    installed = "installed" if snapshot.is_installed else "not installed"
-    running = "running" if snapshot.is_running else "stopped"
-    running_label = (
-        success(running, is_rich=is_rich) if snapshot.is_running else warn(running, is_rich=is_rich)
-    )
-    print(heading("AutoClaw service", is_rich=is_rich))
-    print(f"status: {running_label} ({muted(installed, is_rich=is_rich)})")
-    print(f"manager: {snapshot.manager}")
-    print(f"unit: {accent(snapshot.service_name, is_rich=is_rich)}")
-    print(f"enabled: {snapshot.is_enabled}")
-    if snapshot.fragment_path:
-        print(f"fragment: {accent(snapshot.fragment_path, is_rich=is_rich)}")
+def _print_service_status(snapshot: ManagedServiceStatus) -> None:
+    context = CliContext()
+    if not context.rich_enabled():
+        _print_plain_service_status(snapshot)
+        return
+
+    label, style, symbol = _service_state(snapshot)
+    summary = Text.assemble((f"{symbol}  ", style), (label, f"bold {style}"))
+    facts = Table.grid(padding=(0, 2))
+    facts.add_column(style="muted", no_wrap=True)
+    facts.add_column(overflow="fold")
+    facts.add_row("Unit", snapshot.service_name)
+    facts.add_row("Manager", snapshot.manager)
+    facts.add_row("Installed", "Yes" if snapshot.is_installed else "No")
+    facts.add_row("Enabled", "Yes" if snapshot.is_enabled else "No")
     if snapshot.active_state is not None:
-        print(f"active state: {snapshot.active_state}")
+        facts.add_row("systemd state", snapshot.active_state)
     if snapshot.sub_state is not None:
-        print(f"sub state: {snapshot.sub_state}")
+        facts.add_row("systemd detail", snapshot.sub_state)
+    if snapshot.fragment_path:
+        facts.add_row("Unit file", snapshot.fragment_path)
+
+    context.console().print(
+        Panel(
+            Group(summary, Text(), facts),
+            title="AutoClaw service",
+            title_align="left",
+            border_style=style,
+            padding=(0, 1),
+        )
+    )
+    next_action = _service_next_action(snapshot)
+    if next_action is not None:
+        context.console().print(Text.assemble(("Next  ", "muted"), (next_action, "accent")))
+
+
+def _print_plain_service_status(snapshot: ManagedServiceStatus) -> None:
+    label, _, _ = _service_state(snapshot)
+    print("AutoClaw service")
+    print(f"Status: {label.casefold()}")
+    print(f"Manager: {snapshot.manager}")
+    print(f"Unit: {snapshot.service_name}")
+    print(f"Installed: {str(snapshot.is_installed).lower()}")
+    print(f"Enabled: {str(snapshot.is_enabled).lower()}")
+    if snapshot.fragment_path:
+        print(f"Unit file: {snapshot.fragment_path}")
+    if snapshot.active_state is not None:
+        print(f"systemd state: {snapshot.active_state}")
+    if snapshot.sub_state is not None:
+        print(f"systemd detail: {snapshot.sub_state}")
+    next_action = _service_next_action(snapshot)
+    if next_action is not None:
+        print(f"Next: {next_action}")
+
+
+def _service_state(snapshot: ManagedServiceStatus) -> tuple[str, str, str]:
+    if snapshot.is_running:
+        return "Running", "success", "✓"
+    if not snapshot.is_installed:
+        return "Not installed", "muted", "○"
+    if snapshot.active_state == "activating":
+        return "Starting or retrying", "warn", "!"
+    if snapshot.active_state == "failed":
+        return "Failed", "error", "!"
+    return "Stopped", "warn", "○"
+
+
+def _service_next_action(snapshot: ManagedServiceStatus) -> str | None:
+    if not snapshot.is_installed:
+        return "autoclaw service install"
+    if not snapshot.is_running:
+        return f"journalctl --user -u {snapshot.service_name} -n 50 --no-pager"
+    return None
 
 
 __all__ = [

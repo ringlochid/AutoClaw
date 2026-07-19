@@ -18,26 +18,38 @@ You can use `uv tool install autoclaw` instead. Install `autoclaw[postgres]` onl
 autoclaw init
 ```
 
-`init` creates the local configuration, prepares the controller database, and installs the packaged definitions. It binds the server to `127.0.0.1:18125` by default.
+On a terminal, `init` shows the recommended local paths, database, and loopback API address before it writes. It creates the local configuration, prepares the controller database, and installs the packaged definitions. It binds the server to `127.0.0.1:18125` by default.
+
+Rerunning `init` keeps and verifies an existing config by default. Replacing config requires an explicit selection and confirmation. It never resets a mismatched database; use `autoclaw db reset` only when destructive replacement is intended.
 
 Use `--data-dir`, `--database-url`, `--host`, or `--port` when the defaults do not fit your machine. Keep the server on loopback for the supported local lane.
 
 ## Configure a provider
 
-Choose one provider:
+Start the provider guide:
 
 ```bash
-autoclaw setup --provider codex
-autoclaw providers check codex
+autoclaw setup
 ```
 
-Replace `codex` with `claude` or `openclaw`. The first provider you configure becomes the default. To change it later, run:
+The guide asks for the primary/default provider, checks it, offers supported provider-native login when needed, and asks whether to add providers. Codex and Claude are managed integrations. OpenClaw is selectable and may be the default, but its experimental compatibility setup remains user-managed.
+
+To change the default directly later, run:
 
 ```bash
 autoclaw providers set-default claude
 ```
 
-`setup` without `--provider` only prints guidance; it does not change configuration. See [configuration and settings](configuration-and-settings.md) for provider behavior and authentication.
+For scripts, use `--non-interactive`. Non-interactive setup configures one selected route; login and checking remain explicit:
+
+```bash
+autoclaw init --non-interactive
+autoclaw setup --provider codex --non-interactive
+autoclaw providers login codex
+autoclaw providers check codex
+```
+
+See [configuration and settings](configuration-and-settings.md) for provider behavior and authentication.
 
 ## Run AutoClaw
 
@@ -64,6 +76,6 @@ autoclaw config show --json
 autoclaw providers status
 ```
 
-These commands read local state. Provider reachability is checked only by `autoclaw providers check <provider>`.
+These commands read local state. Use `autoclaw providers check <provider>` for a fresh bounded diagnostic. A `not tested` axis was not directly verified; the check never starts an agent and does not treat an unknown fact as success or failure.
 
 Next, [start a task](start-a-task.md).

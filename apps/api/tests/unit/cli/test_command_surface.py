@@ -15,14 +15,21 @@ def test_build_parser_supports_baseline_commands() -> None:
     runner = CliRunner()
 
     result = runner.invoke(parser, ["--help"])
+    init_help = runner.invoke(parser, ["init", "--help"])
+    setup_help = runner.invoke(parser, ["setup", "--help"])
     service_install_help = runner.invoke(parser, ["service", "install", "--help"])
 
     assert result.exit_code == 0
+    assert init_help.exit_code == 0
+    assert setup_help.exit_code == 0
     assert service_install_help.exit_code == 0
     assert "onboard" not in parser.commands
     assert "configure" not in parser.commands
     assert "doctor" not in parser.commands
     assert "--port INTEGER" in service_install_help.output
+    assert "--non-interactive" in init_help.output
+    assert "--non-interactive" in setup_help.output
+    assert "--provider [codex|claude|openclaw]" in setup_help.output
     assert "openclaw" not in parser.commands
     assert "status" in parser.commands
     assert "setup" in parser.commands

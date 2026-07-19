@@ -11,7 +11,7 @@ curl -sS http://127.0.0.1:18125/healthz
 curl -sS http://127.0.0.1:18125/readyz
 ```
 
-Run `autoclaw providers check <provider> --json` when provider reachability matters.
+Run `autoclaw providers check <provider> --json` when a fresh provider diagnostic matters. Inspect the separate authentication and reachability axes; a safe check may leave an axis `not_checked` rather than overclaiming proof.
 
 | Symptom | Help page |
 | --- | --- |

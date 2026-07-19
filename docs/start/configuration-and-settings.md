@@ -31,7 +31,7 @@ autoclaw providers configure codex --model <model> --effort <effort>
 
 Provider authentication stays provider-native. Use `autoclaw providers login <provider>` or the provider's own supported login flow, then run `providers check`.
 
-The first configured provider becomes the default. AutoClaw never silently falls back to another provider. Change the default explicitly:
+Guided `autoclaw setup` asks which provider should be the default. With direct commands, the first configured provider fills an empty default and later configuration preserves it. AutoClaw never silently falls back to another provider. Change the default explicitly:
 
 ```bash
 autoclaw providers set-default claude
