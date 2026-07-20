@@ -5,7 +5,7 @@ import sys
 import click
 
 from .context import scan_cli_context
-from .failure_output import emit_click_exception, emit_unexpected_exception
+from .failure_output import emit_abort, emit_click_exception, emit_unexpected_exception
 from .root import cli
 
 
@@ -30,6 +30,7 @@ def main(argv: list[str] | None = None) -> int:
         emit_click_exception(runtime, exc, runtime.argv)
         return int(exc.exit_code)
     except click.exceptions.Abort:
+        emit_abort(runtime)
         return 2
     except BaseException as exc:
         emit_unexpected_exception(runtime, exc)

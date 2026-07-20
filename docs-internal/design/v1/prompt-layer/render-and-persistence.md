@@ -10,7 +10,7 @@ This page defines prompt rendering flow and persistence for the frozen v1 contra
 flowchart TD
     A["Read controller-owned current truth"] --> B["Read stable manifest projection"]
     B --> C["Read current assignment and latest checkpoint projections"]
-    C --> D["Read surfaced durable refs, transient refs, and task-memory hints"]
+    C --> D["Read surfaced durable refs and transient refs"]
     D --> E["Render canonical full prompt markdown"]
     E --> F["Persist dispatch-local prompt artifact and metadata with synchronous task-root writers"]
     F --> G["Derive provider request for the current send mode (`full_prompt` in v1)"]

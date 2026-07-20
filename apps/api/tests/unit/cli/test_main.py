@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from typing import NoReturn
 
 import autoclaw.interfaces.cli as cli
+import click
 import pytest
 from autoclaw.config import Settings
 from pydantic import ValidationError
@@ -89,6 +90,22 @@ def test_main_never_traces_expected_parse_errors(
     assert result == 2
     assert 'AutoClaw does not recognize option "--not-an-option".' in output
     assert "Traceback" not in output
+
+
+def test_main_explains_that_cancelled_setup_keeps_completed_steps(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def abort(_args: Sequence[str]) -> NoReturn:
+        raise click.Abort()
+
+    monkeypatch.setattr("autoclaw.interfaces.cli.root.cmd_setup", abort)
+
+    result = cli.main(["setup"])
+
+    output = capsys.readouterr()
+    assert result == 2
+    assert "Setup cancelled. Completed setup steps were kept." in output.err
 
 
 def test_main_redacts_invalid_configuration_inputs_even_with_debug(

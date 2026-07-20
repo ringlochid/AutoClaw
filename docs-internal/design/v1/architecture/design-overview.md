@@ -60,7 +60,7 @@ Concrete example:
 - `latest-checkpoint.*` tells later nodes what happened and what should happen next.
 - published artifacts and criteria files carry durable evidence and acceptance context.
 - optional transient refs carry bounded non-durable handover.
-- `context/wiki/` and curated docs under `context/` provide task memory.
+- `context/wiki/` and curated docs under `context/` provide reusable reference material.
 
 All surfaced refs are path-only in v1. Runtime localizes external material into the task root before surfacing it.
 

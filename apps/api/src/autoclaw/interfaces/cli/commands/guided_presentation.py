@@ -57,7 +57,7 @@ def emit_provider_choices() -> None:
         print("Available provider routes")
         print("  codex     Managed Codex SDK integration")
         print("  claude    Managed Claude SDK integration")
-        print("  openclaw  Experimental user-managed compatibility integration")
+        print("  openclaw  Experimental client; Gateway and MCP are user-managed")
         return
     table = Table(
         box=box.SIMPLE_HEAD,
@@ -73,7 +73,7 @@ def emit_provider_choices() -> None:
     table.add_row(
         "OpenClaw",
         Text("Experimental", style="warn"),
-        "User-managed compatibility integration",
+        "AutoClaw client; user-managed Gateway/MCP",
     )
     context.console().print(
         Panel(

@@ -117,7 +117,7 @@ async def cmd_db_reset(args: argparse.Namespace) -> int:
 
 def cmd_serve(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
-    with command_env(config_path=config_path):
+    with command_env(config_path=config_path, should_load_provider_secrets=True):
         settings = load_settings()
         uvicorn.run(
             "autoclaw.main:app",

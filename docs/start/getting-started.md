@@ -32,7 +32,7 @@ Start the provider guide:
 autoclaw setup
 ```
 
-The guide asks for the primary/default provider, checks it, offers supported provider-native login when needed, and asks whether to add providers. Codex and Claude are managed integrations. OpenClaw is selectable and may be the default, but its experimental compatibility setup remains user-managed.
+The guide asks for the primary/default provider, checks it, configures authentication when needed, checks again, and asks whether to add providers. Codex and Claude offer subscription login or API key. OpenClaw asks for Gateway URL/profile and token or password; it is selectable and may be the default, but its Gateway and compatibility MCP setup remain experimental and user-managed.
 
 To change the default directly later, run:
 
@@ -40,14 +40,17 @@ To change the default directly later, run:
 autoclaw providers set-default claude
 ```
 
-For scripts, use `--non-interactive`. Non-interactive setup configures one selected route; login and checking remain explicit:
+For scripts, use `--non-interactive`. Non-interactive setup configures one selected route; login and checking remain explicit. Secret login also requires an explicit method and `--secret-stdin`:
 
 ```bash
 autoclaw init --non-interactive
 autoclaw setup --provider codex --non-interactive
-autoclaw providers login codex
+printf '%s\n' "$OPENAI_API_KEY" | \
+  autoclaw providers login codex --method api-key --secret-stdin
 autoclaw providers check codex
 ```
+
+Run `autoclaw providers login codex --method subscription` directly on an interactive terminal when you want the provider-native browser or device login.
 
 See [configuration and settings](configuration-and-settings.md) for provider behavior and authentication.
 
@@ -76,6 +79,6 @@ autoclaw config show --json
 autoclaw providers status
 ```
 
-These commands read local state. Use `autoclaw providers check <provider>` for a fresh bounded diagnostic. A `not tested` axis was not directly verified; the check never starts an agent and does not treat an unknown fact as success or failure.
+These commands read local state. Use `autoclaw providers check <provider>` for a fresh bounded diagnostic. The check must find a supported effective credential source before it reports ready. It never starts an agent, so Codex/Claude model reachability remains deferred until the first task and is shown as `not tested`.
 
 Next, [start a task](start-a-task.md).

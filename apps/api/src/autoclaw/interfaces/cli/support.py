@@ -3,15 +3,39 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Any
 
 from autoclaw.config import CONFIG_ENV_VAR, get_settings
+from autoclaw.platform.provider_environment import (
+    provider_environment_file_path,
+    provider_secret_environment,
+    provider_service_environment,
+    provider_service_identity_environment,
+)
 
 
 def coerce_path(value: str | os.PathLike[str] | Path) -> Path:
     return Path(value).expanduser().resolve()
+
+
+@contextmanager
+def service_provider_check_env(*, config_path: Path) -> Iterator[None]:
+    """Run a provider check with the exact secrets available to the user service."""
+
+    with command_env(config_path=config_path):
+        with provider_service_identity_environment():
+            with provider_service_environment(provider_environment_file_path(config_path)):
+                yield
+
+
+@contextmanager
+def service_provider_identity_env() -> Iterator[None]:
+    """Use the provider-native homes owned by the managed user service."""
+
+    with provider_service_identity_environment():
+        yield
 
 
 @contextmanager
@@ -24,6 +48,7 @@ def command_env(
     api_port: int | None = None,
     log_level: str | None = None,
     env: str | None = None,
+    should_load_provider_secrets: bool = False,
 ) -> Iterator[None]:
     overrides = {
         CONFIG_ENV_VAR: str(config_path),
@@ -35,7 +60,19 @@ def command_env(
         "AUTOCLAW_ENV": env,
     }
     with temporary_env(overrides):
-        yield
+        provider_identity = (
+            provider_service_identity_environment()
+            if should_load_provider_secrets
+            else nullcontext()
+        )
+        provider_environment = (
+            provider_secret_environment(provider_environment_file_path(config_path))
+            if should_load_provider_secrets
+            else nullcontext()
+        )
+        with provider_identity:
+            with provider_environment:
+                yield
 
 
 def print_json(payload: Any) -> None:
@@ -64,4 +101,11 @@ def temporary_env(overrides: dict[str, str | None]) -> Iterator[None]:
         get_settings.cache_clear()
 
 
-__all__ = ["coerce_path", "command_env", "print_json", "temporary_env"]
+__all__ = [
+    "coerce_path",
+    "command_env",
+    "print_json",
+    "service_provider_check_env",
+    "service_provider_identity_env",
+    "temporary_env",
+]

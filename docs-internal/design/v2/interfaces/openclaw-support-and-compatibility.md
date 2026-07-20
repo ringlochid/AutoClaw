@@ -19,17 +19,21 @@ AutoClaw selects one user-authored/tested Gateway profile:
 ```toml
 [openclaw]
 enabled = true
+cli_path = "/absolute/path/to/openclaw"
 gateway_url = "ws://127.0.0.1:18789"
 gateway_profile = "default"
+gateway_auth_mode = "token" # token | password
 ```
 
-The profile identifies the installed-version-specific lawful client identity, handshake, delivery channel, agent/workspace mapping, and expected compatibility MCP configuration without copying secrets into AutoClaw config. AutoClaw does not freeze `webchat`, `backend`, or another upstream mode as a universal product baseline.
+`cli_path` records the resolved non-secret executable used by both bounded checks and runtime calls. The profile identifies the installed-version-specific lawful client identity, handshake, delivery channel, agent/workspace mapping, and expected compatibility MCP configuration without copying secrets into AutoClaw config. `gateway_auth_mode` selects exactly one private service-environment source: `OPENCLAW_GATEWAY_TOKEN` or `OPENCLAW_GATEWAY_PASSWORD`. AutoClaw does not freeze `webchat`, `backend`, or another upstream mode as a universal product baseline.
+
+Guided setup records the currently resolved OpenClaw executable and collects the Gateway URL, profile, authentication mode, and hidden token/password. The secret is stored only in owner-readable `autoclaw.env`; it never enters `config.toml`, controller rows, task files, prompts, command arguments, or readbacks. An explicit shell value for the selected variable takes precedence for foreground execution; setup offers to store a shell-only value before evaluating managed-service readiness. Service installation and reconciliation preserve the file.
 
 AutoClaw never impersonates an upstream reserved internal identity. A configured profile must name a lawful third-party path for the installed version. Exact adapter conformance records what is known, tested, limited, or unsupported, but an incomplete suite is not a global route, default, or selectability gate.
 
 ## User-owned setup
 
-AutoClaw does not install OpenClaw, patch `openclaw.json`, register its MCP endpoint automatically, create an agent profile, or weaken bind/TLS/pairing/authentication/sandbox/tool/exec/approval/deny policy.
+AutoClaw does not install OpenClaw, patch `openclaw.json`, register its MCP endpoint automatically, create an agent profile, or weaken bind/TLS/pairing/authentication/sandbox/tool/exec/approval/deny policy. Collecting the narrow Gateway client credential for AutoClaw's own adapter does not transfer ownership of the Gateway or its configuration.
 
 The user configures the stable AutoClaw compatibility endpoint `/node/mcp` and chooses which OpenClaw worker may use it. AutoClaw documentation/checks may show the required values and validate observable facts, but mutation remains user-owned.
 
@@ -79,7 +83,7 @@ Passive status may report route enablement, experimental label, configured Gatew
 
 Status distinguishes installation, configured selection/default, observed compatibility, and exact-version conformance. It does not collapse those facts into one global enabled/disabled result.
 
-`autoclaw providers check openclaw` may verify a documented non-agent Gateway handshake/reachability path and deterministic compatibility endpoint/config facts. It never edits OpenClaw configuration, runs an agent turn, creates an AutoClaw dispatch/binding, or invokes Node tools.
+`autoclaw providers check openclaw` calls the documented non-agent Gateway health path with the configured CLI and selected private credential. Exit status zero is not sufficient: the bounded response must also contain `ok: true`. A successful authenticated response confirms both authentication and Gateway reachability. The check never edits OpenClaw configuration, runs an agent turn, creates an AutoClaw dispatch/binding, or invokes Node tools.
 
 Exact launch/disconnect/abort/MCP behavior is release-conformance evidence, not an ordinary operator check disguised as a model run.
 
@@ -102,6 +106,8 @@ Exact launch/disconnect/abort/MCP behavior is release-conformance evidence, not 
 - [OpenClaw agent loop](https://docs.openclaw.ai/agent-loop)
 - [OpenClaw Gateway protocol](https://docs.openclaw.ai/gateway/protocol)
 - [OpenClaw trusted proxy authentication](https://docs.openclaw.ai/gateway/trusted-proxy)
+- [OpenClaw remote Gateway credentials](https://docs.openclaw.ai/gateway/remote)
+- [OpenClaw Gateway configuration reference](https://docs.openclaw.ai/gateway/configuration-reference)
 
 ## Related contracts
 

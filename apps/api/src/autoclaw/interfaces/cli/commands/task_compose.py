@@ -9,7 +9,7 @@ from autoclaw.platform.file_entrypoints import task_start_request_from_path
 
 async def cmd_task_compose_start(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
-    with command_env(config_path=config_path):
+    with command_env(config_path=config_path, should_load_provider_secrets=True):
         request = task_start_request_from_path(args.file)
         response = await start_task_from_definition(request)
 

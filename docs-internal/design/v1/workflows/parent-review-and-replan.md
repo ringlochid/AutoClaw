@@ -45,7 +45,7 @@ When a parent/root is dispatched, it starts from:
 - `_runtime/workflow-manifest.*`
 - its current `assignment.*`, including exact current `criteria` refs, exact current `consumes` refs, and requirement-only `produces`
 - the latest relevant child checkpoints
-- any surfaced transient refs or task-memory search hints that still matter
+- any surfaced transient refs that still matter
 
 Parent/root should not rely on:
 
@@ -127,7 +127,7 @@ Parent/root review should proceed in this order:
 
 1. read child checkpoint summaries
 2. inspect referenced artifacts and current criteria
-3. inspect supporting docs or task memory only when surfaced refs still leave a gap
+3. inspect explicitly surfaced supporting docs only when the current refs still leave a gap
 4. inspect raw workspace state only when surfaced evidence still cannot justify the decision
 
 If later agents need to know why a decision was made, parent/root should record that in checkpoint plus referenced files rather than only in tool-ack prose.

@@ -38,7 +38,7 @@ Parent/root uses its open dispatch to:
 
 Workers:
 
-- read only the surfaced assignment, criteria, consumes, optional `transient_refs`, and optional `task_memory_search_hints`
+- read only the surfaced assignment, criteria, consumes, and optional `transient_refs`
 - publish required durable outputs
 - record progress or terminal checkpoints
 - close with `green`, `retry`, or `blocked` only for their own current assignment

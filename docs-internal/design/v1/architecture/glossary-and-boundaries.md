@@ -67,7 +67,7 @@ Use `tool` as the canonical runtime term. Use `plugin` only for adapter-specific
 | ------------------------------------ | ----------------------------------------------------------------------------------------- |
 | `workspace/`                         | Mutable work in progress for the current assignment.                                      |
 | `_runtime/criteria/`                 | Controller-generated explicit criteria projections.                                       |
-| `context/wiki/`                      | Curated task-memory wiki pages and synthesized task memory.                               |
+| `context/wiki/`                      | Curated reference pages and synthesized reusable notes.                                  |
 | other curated files under `context/` | Source or reference material such as docs, PDFs, screenshots, and notes.                  |
 | `outputs/artifacts/`                 | Durable published outputs and evidence.                                                   |
 | `tmp/transfers/`                     | Optional transient carryover.                                                             |

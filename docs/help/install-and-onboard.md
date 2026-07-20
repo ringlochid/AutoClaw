@@ -26,7 +26,7 @@ autoclaw providers status <provider> --json
 autoclaw providers check <provider> --json
 ```
 
-Guided setup offers native Codex login when its check says authentication is required. You can also authenticate through `autoclaw providers login <provider>` or the provider's native supported flow. A configured provider is not automatically reachable or logged in. Human checks show confirmed, failed, or not tested; use `--json` for the stable axis enum values.
+Guided setup always offers the Codex/Claude subscription or API-key choice. If a working method is already detected, it is shown as the method default. Select it, then accept `Existing <Provider> <method> found. Use it? [Y/n]` to reuse it. Answer no to sign in again with the same method, or choose the other method to run that login directly. If a Claude API key or OpenClaw Gateway credential exists only in your current shell, setup offers to store it for the AutoClaw service before checking it again. OpenClaw setup records its resolved CLI path, asks for Gateway URL/profile and token or password, then confirms reuse of a working stored credential or asks for one. You can also use `autoclaw providers login <provider> --method <method>`. Noninteractive secret login also needs `--secret-stdin`; subscription login needs a terminal. Configure the OpenClaw route before saving its Gateway credential. A saved provider route is not automatically ready. Human checks show the effective method, whether a credential was found, and whether reachability was tested; use `--json` for stable values. An unverified credential source returns `local_prerequisites_ready` with a nonzero exit status rather than a false ready result.
 
 ## No default provider
 

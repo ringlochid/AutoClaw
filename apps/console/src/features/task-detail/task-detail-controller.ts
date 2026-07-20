@@ -613,5 +613,5 @@ function isAbortError(error: unknown): boolean {
 }
 
 function isStaleActionError(code: string): boolean {
-    return code.startsWith("stale_") || code === "illegal_state" || code === "conflict";
+    return code.startsWith("stale_") || code === "conflict";
 }

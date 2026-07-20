@@ -9,10 +9,14 @@ import pytest
 from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
 from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.integrations.claude import ClaudeAdapter
+from autoclaw.integrations.claude.native_identity import ClaudeAuthenticationState
 from autoclaw.runtime.contracts.provider_resolution import ClaudeProviderRoute
 from autoclaw.runtime.providers.contracts import (
     DispatchStartRequest,
     ManagedNodeMcpConnection,
+    ProviderAuthenticationMethod,
+    ProviderCheckAxisStatus,
+    ProviderCheckStatus,
     ProviderStopOutcome,
 )
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
@@ -47,6 +51,51 @@ class _FakeClaudeClient:
         self.was_disconnected = True
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "method",
+    (
+        ProviderAuthenticationMethod.SUBSCRIPTION,
+        ProviderAuthenticationMethod.API_KEY,
+    ),
+)
+async def test_claude_check_confirms_supported_native_authentication(
+    method: ProviderAuthenticationMethod,
+) -> None:
+    adapter = ClaudeAdapter(
+        authentication_reader=lambda: ClaudeAuthenticationState(
+            is_authenticated=True,
+            method=method,
+            code="claude_available",
+        )
+    )
+
+    async with adapter.lifespan():
+        result = await adapter.read_availability()
+
+    assert result.status is ProviderCheckStatus.AVAILABLE
+    assert result.authentication is ProviderCheckAxisStatus.PASSED
+    assert result.authentication_method is method
+    assert result.reachability is ProviderCheckAxisStatus.NOT_CHECKED
+
+
+@pytest.mark.asyncio
+async def test_claude_check_rejects_missing_native_authentication() -> None:
+    adapter = ClaudeAdapter(
+        authentication_reader=lambda: ClaudeAuthenticationState(
+            is_authenticated=False,
+            method=None,
+            code="claude_authentication_required",
+        )
+    )
+
+    async with adapter.lifespan():
+        result = await adapter.read_availability()
+
+    assert result.status is ProviderCheckStatus.UNAVAILABLE
+    assert result.authentication is ProviderCheckAxisStatus.FAILED
+
+
 def _request() -> DispatchStartRequest:
     return DispatchStartRequest(
         task_id="task-1",
@@ -71,8 +120,11 @@ def _request() -> DispatchStartRequest:
 
 
 @pytest.mark.asyncio
-async def test_claude_start_uses_disposable_scoped_client_and_returns_before_output() -> None:
+async def test_claude_start_uses_disposable_scoped_client_and_returns_before_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     clients: list[_FakeClaudeClient] = []
+    monkeypatch.setenv("OPENCLAW_GATEWAY_TOKEN", "must-not-reach-claude")
 
     def build_client(options: ClaudeAgentOptions) -> _FakeClaudeClient:
         client = _FakeClaudeClient(options)
@@ -98,6 +150,7 @@ async def test_claude_start_uses_disposable_scoped_client_and_returns_before_out
         assert client.options.permission_mode == "dontAsk"
         assert client.options.strict_mcp_config is True
         assert client.options.setting_sources == ["user", "project", "local"]
+        assert client.options.env["OPENCLAW_GATEWAY_TOKEN"] == ""
         assert "AskUserQuestion" in client.options.disallowed_tools
         assert "WebFetch" in client.options.disallowed_tools
         assert client.options.sandbox is not None

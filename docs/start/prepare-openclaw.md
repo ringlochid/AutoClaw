@@ -7,11 +7,16 @@ OpenClaw remains installed, selectable, and usable as an experimental provider. 
 Run OpenClaw's own setup first, then configure the local Gateway in AutoClaw:
 
 ```bash
-autoclaw providers configure openclaw --gateway-url ws://127.0.0.1:18789
+autoclaw providers configure openclaw \
+  --cli-path /absolute/path/to/openclaw \
+  --gateway-url ws://127.0.0.1:18789 \
+  --gateway-profile default \
+  --gateway-auth-mode token
+autoclaw providers login openclaw --method token
 autoclaw providers check openclaw
 ```
 
-The Gateway must use the supported local loopback shape. You may set OpenClaw as the default:
+The login command prompts for the token without echoing it. Use `--method password` when the Gateway uses password authentication. The Gateway must use the supported local loopback shape. You may set OpenClaw as the default:
 
 ```bash
 autoclaw providers set-default openclaw
@@ -27,7 +32,7 @@ Expose only the tools the OpenClaw worker needs. A worker should not receive par
 
 ## Understand the support boundary
 
-- OpenClaw configuration is user-managed.
+- The Gateway, OpenClaw configuration, compatibility MCP entry, and credential issuance are user-managed. AutoClaw stores only its selected Gateway client credential in its private service environment.
 - The lane is experimental and may have incomplete conformance.
 - Provider output and provider terminal status never become task truth.
 - Node MCP transitions remain the runtime authority.

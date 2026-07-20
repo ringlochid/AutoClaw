@@ -29,7 +29,20 @@ Use `claude` or `openclaw` in place of `codex`. You may also configure a model a
 autoclaw providers configure codex --model <model> --effort <effort>
 ```
 
-Provider authentication stays provider-native. Use `autoclaw providers login <provider>` or the provider's own supported login flow, then run `providers check`.
+Use `autoclaw providers login <provider>` or guided `autoclaw setup`, then run `providers check`. Codex and Claude accept `--method subscription|api-key`; OpenClaw accepts `--method token|password`. Subscription credentials stay in provider-native storage. Subscription login requires an interactive terminal. Noninteractive secret login requires both an explicit method and `--secret-stdin`. AutoClaw stores an entered Claude API key or OpenClaw Gateway credential only in the owner-readable `autoclaw.env` provider-secret file beside the selected config, never in `config.toml` or a readback. Other assignments are rejected.
+
+[Anthropic currently requires](https://code.claude.com/docs/en/legal-and-compliance) third-party Agent SDK products to use API-key or supported cloud-provider authentication unless Claude.ai login has been separately approved. Treat the Claude subscription option as release-conformance-gated until that approval exists.
+
+For OpenClaw, configure the non-secret route explicitly:
+
+```bash
+autoclaw providers configure openclaw \
+  --cli-path /absolute/path/to/openclaw \
+  --gateway-url ws://127.0.0.1:18789 \
+  --gateway-profile default \
+  --gateway-auth-mode token
+autoclaw providers login openclaw --method token
+```
 
 Guided `autoclaw setup` asks which provider should be the default. With direct commands, the first configured provider fills an empty default and later configuration preserves it. AutoClaw never silently falls back to another provider. Change the default explicitly:
 

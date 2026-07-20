@@ -35,17 +35,10 @@ SERVICE_MANAGER = get_managed_service_manager()
 
 def cmd_service_render(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
-    with command_env(config_path=config_path):
-        settings = load_settings()
-
-    data_dir = coerce_path(args.data_dir or settings.data_dir)
-    env_file = service_env_file_path(config_path, args.env_file)
     print(
         render_service_unit(
             python_bin=Path(sys.executable),
             config_path=config_path,
-            data_dir=data_dir,
-            env_file=env_file,
         )
     )
     return 0
@@ -62,21 +55,32 @@ def cmd_service_install(
     with command_env(config_path=config_path):
         initial_settings = load_settings()
     effective_port = requested_port if requested_port is not None else initial_settings.api_port
-    active_progress.step(
-        "server",
-        f"Checking local API bind target {initial_settings.api_host}:{effective_port}",
+    existing_service = (
+        collect_service_status(args.name)
+        if requested_port is None or requested_port == initial_settings.api_port
+        else None
     )
-    server_payload = build_server_bind_check_payload(
-        initial_settings.api_host,
-        effective_port,
-    )
-    if not server_payload["ok"]:
-        return emit_server_bind_check_failure(
-            command_name="AutoClaw service install",
-            args=args,
-            server_payload=server_payload,
-            stopped_before="stopped before managed service install",
+    if existing_service is not None and existing_service.is_running:
+        active_progress.step(
+            "server",
+            "Reusing the bind target owned by the running managed service",
         )
+    else:
+        active_progress.step(
+            "server",
+            f"Checking local API bind target {initial_settings.api_host}:{effective_port}",
+        )
+        server_payload = build_server_bind_check_payload(
+            initial_settings.api_host,
+            effective_port,
+        )
+        if not server_payload["ok"]:
+            return emit_server_bind_check_failure(
+                command_name="AutoClaw service install",
+                args=args,
+                server_payload=server_payload,
+                stopped_before="stopped before managed service install",
+            )
     if requested_port is not None:
         active_progress.step("config", f"Persisting service port override {requested_port}")
         update_server_config_overrides(config_path, port=requested_port)
@@ -85,11 +89,8 @@ def cmd_service_install(
     SERVICE_MANAGER.install(
         ServiceInstallRequest(
             config_path=config_path,
-            data_dir=coerce_path(args.data_dir or initial_settings.data_dir),
-            env_file=service_env_file_path(config_path, args.env_file),
             service_name=args.name,
             unit_dir=coerce_path(args.unit_dir) if args.unit_dir is not None else None,
-            should_force=args.force,
             should_skip_start=args.no_start,
             command_observer=active_progress.command_args,
         )
@@ -103,7 +104,6 @@ def cmd_service_uninstall(args: argparse.Namespace) -> int:
     SERVICE_MANAGER.uninstall(
         ServiceUninstallRequest(
             config_path=config_path,
-            env_file=service_env_file_path(config_path, args.env_file),
             service_name=args.name,
             unit_dir=coerce_path(args.unit_dir) if args.unit_dir is not None else None,
             should_remove_env_file=args.remove_env_file,
@@ -163,21 +163,11 @@ def render_service_unit(
     *,
     python_bin: Path,
     config_path: Path,
-    data_dir: Path,
-    env_file: Path,
 ) -> str:
     return render_systemd_service_unit(
         python_bin=python_bin,
         config_path=config_path,
-        data_dir=data_dir,
-        env_file=env_file,
     )
-
-
-def service_env_file_path(config_path: Path, explicit_env_file: str | None) -> Path:
-    if explicit_env_file is not None:
-        return coerce_path(explicit_env_file)
-    return config_path.parent / "autoclaw.env"
 
 
 def _print_service_status(snapshot: ManagedServiceStatus) -> None:
@@ -195,6 +185,7 @@ def _print_service_status(snapshot: ManagedServiceStatus) -> None:
     facts.add_row("Manager", snapshot.manager)
     facts.add_row("Installed", "Yes" if snapshot.is_installed else "No")
     facts.add_row("Enabled", "Yes" if snapshot.is_enabled else "No")
+    facts.add_row("API health", "Not checked")
     if snapshot.active_state is not None:
         facts.add_row("systemd state", snapshot.active_state)
     if snapshot.sub_state is not None:
@@ -224,6 +215,7 @@ def _print_plain_service_status(snapshot: ManagedServiceStatus) -> None:
     print(f"Unit: {snapshot.service_name}")
     print(f"Installed: {str(snapshot.is_installed).lower()}")
     print(f"Enabled: {str(snapshot.is_enabled).lower()}")
+    print("API health: not checked")
     if snapshot.fragment_path:
         print(f"Unit file: {snapshot.fragment_path}")
     if snapshot.active_state is not None:
@@ -266,5 +258,4 @@ __all__ = [
     "cmd_service_uninstall",
     "collect_service_status",
     "render_service_unit",
-    "service_env_file_path",
 ]

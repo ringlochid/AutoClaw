@@ -13,11 +13,10 @@ Shipped exact prompt blocks are app-owned assets under `apps/api/src/autoclaw/ru
 | controller/runtime rule pack                         | boundary model, `AssignChildPayload` semantics, `record_checkpoint` handoff model, durable-vs-transient rules, filesystem rules                                                                                                                                                       | `operating_model`, `allowed_actions_now`, `publication_rule`                                                                      |
 | `_runtime/workflow-manifest.*`                       | task identity, current node purpose, whole-workflow structure, filesystem path bindings, current surfaced paths                                                                                                                                                                       | `task_identity`, `node_purpose`, `workflow_manifest`, and AutoClaw-owned current-node instruction assembly                        |
 | internal dispatch/session state                      | current bound turn, caller node kind, live controller send mode, closure expectations                                                                                                                                                                                                 | `current_dispatch`, `capabilities_now`, `allowed_actions_now`                                                                     |
-| current semantic assignment handoff                  | `summary`, optional `instruction`, reduced `criteria`, reduced `consumes`, `produces` requirements, explicit `transient_refs`, optional `task_memory_search_hints`                                                                                                                    | `current_assignment`, part of `task_memory`, part of `publication_rule`                                                           |
-| `_runtime/attempts/<attempt_id>/latest-checkpoint.*` | `checkpoint_kind`, `outcome`, `summary`, `next_step`, `blockers`, `risks`, surfaced refs, task-memory hints                                                                                                                                                                           | `latest_checkpoint_context`, `boundary_followup_guidance`                                                                         |
+| current semantic assignment handoff                  | `summary`, optional `instruction`, reduced `criteria`, reduced `consumes`, `produces` requirements, explicit `transient_refs`                                                                                                                                                         | `current_assignment`, part of `publication_rule`                                                                                  |
+| `_runtime/attempts/<attempt_id>/latest-checkpoint.*` | `checkpoint_kind`, `outcome`, `summary`, `next_step`, `blockers`, `risks`, surfaced refs                                                                                                                                                                                              | `latest_checkpoint_context`, `boundary_followup_guidance`                                                                         |
 | runtime-resolved durable refs                        | exact current criteria, checkpoint, artifact, doc, and wiki refs surfaced for this turn                                                                                                                                                                                               | `consumed_durable_refs`                                                                                                           |
 | surfaced transient refs                              | explicit transient carryover paths                                                                                                                                                                                                                                                    | `transient_refs`                                                                                                                  |
-| task-memory hints + curated files                    | `task_memory_search_hints`, `context/wiki/`, other curated docs under `context/`                                                                                                                                                                                                      | `task_memory`                                                                                                                     |
 | surfaced role/policy guidance for structural edits   | current node role/policy descriptions and instructions, plus the compact registry-backed `structural_edit_palette` of currently valid role/policy names for structural edits and optional current-only definition lookup availability when that read-only escalation lane is surfaced | AutoClaw-owned `instructions_text`, `workflow_manifest`, and `allowed_actions_now` when parent/root structural edits are relevant |
 
 ## Section Contracts
@@ -116,7 +115,6 @@ This section must expose the semantic assignment handoff only:
 - `consumes`
 - `produces`
 - `transient_refs`
-- `task_memory_search_hints`
 
 Rules:
 
@@ -129,7 +127,6 @@ Rules:
 - exact `path` or `version` metadata for durable refs does not belong here
 - final published durable ref metadata does not belong here
 - reduced criteria claims still keep `kind: criteria`
-- `task_memory_search_hints` should render as retrieval prompts, not generic topic tags
 
 Render like:
 
@@ -171,9 +168,8 @@ This section must expose the durable handoff published through `record_checkpoin
 - `risks` when present
 - `produced_artifacts` when present
 - `transient_refs` when present
-- `task_memory_search_hints` when present
 
-It must not teach `yield` as a checkpoint outcome. It must not teach or surface `control_effects`. It should keep `task_memory_search_hints` retrieval-oriented so later readers can recover this same defect, rejection, root cause, or artifact thread without rediscovering it from scratch.
+It must not teach `yield` as a checkpoint outcome. It must not teach or surface `control_effects`.
 
 If there is no current relevant checkpoint yet, the section should say so explicitly rather than implying the worker should discover one by directory scan. This section must not silently rewrite the manifest's `latest_checkpoint_path`; current-attempt checkpoint truth and surfaced relevant-checkpoint handoff stay split. If `path` resolves from `latest_relevant_checkpoint_path`, that same checkpoint path should not be repeated in `consumed_durable_refs`. Do not infer `latest_relevant_checkpoint_path` by scanning other surfaced checkpoints in `current_relevant_paths`; that path comes only from controller-selected truth already projected into the manifest.
 
@@ -219,21 +215,6 @@ This section must expose only explicitly surfaced transient carryover for the cu
 
 It must teach that these refs are optional and not durable truth.
 
-### `task_memory`
-
-This section must expose:
-
-- current `task_memory_search_hints`
-- surfaced curated wiki/doc refs when the runtime surfaced them for this turn
-- `context/wiki/` as curated task-memory pages
-- other curated files under `context/` as source/reference material
-- direct file/path search as the v1 retrieval model
-
-Rules:
-
-- `task_memory_search_hints` are retrieval prompts for prior defects, rejected approaches, root causes, or artifact names
-- they are not generic tags and not implicit `consumes`
-
 ### `allowed_actions_now`
 
 This section must expose the bounded next-action surface that is legal now:
@@ -251,7 +232,6 @@ When structural edits are in scope, this section should also teach:
 - research only enough to understand the task, choose the right refs, and tighten the next child brief
 - research is for better delegation quality, not for quietly doing the child task in place
 - child briefs should be specific about objective, boundaries, key refs, what to read or compare before acting, what evidence to return, and what not to touch
-- `task_memory_search_hints` in child briefs should be retrieval prompts, not generic tags
 - reread the current manifest first
 - start with role/policy names from the surfaced `structural_edit_palette` in the current prompt or manifest
 - if the needed current role/policy choice is still not surfaced and current-only definition lookup tools are surfaced for the current dispatch, use that read-only lookup lane before guessing

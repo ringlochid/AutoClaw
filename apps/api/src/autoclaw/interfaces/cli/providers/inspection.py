@@ -1,29 +1,30 @@
 from __future__ import annotations
 
 import asyncio
-import getpass
 import importlib.util
-import os
 import shutil
-import subprocess
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
 from urllib.parse import urlsplit, urlunsplit
 
 from autoclaw.config import Settings
 from autoclaw.definitions.contracts.workflow import ProviderKind
+from autoclaw.integrations.claude.native_identity import bundled_claude_path
 from autoclaw.interfaces.cli.providers.configuration import product_status_for
 from autoclaw.interfaces.cli.providers.contracts import (
     ProviderCheckOutcome,
     ProviderCheckSnapshot,
     ProviderDefinitionSnapshot,
-    ProviderIdentityOutcome,
-    ProviderIdentitySnapshot,
     ProviderStatusSnapshot,
 )
+from autoclaw.interfaces.cli.providers.identity import (
+    bundled_codex_path,
+    provider_native_home,
+    service_identity,
+)
 from autoclaw.runtime.providers import (
+    ProviderAuthenticationMethod,
     ProviderCheckAxisStatus,
     ProviderCheckResult,
     ProviderCheckStatus,
@@ -34,7 +35,6 @@ from autoclaw.runtime.providers import (
 
 PROVIDER_ORDER = (ProviderKind.CODEX, ProviderKind.CLAUDE, ProviderKind.OPENCLAW)
 PROVIDER_CHECK_TIMEOUT_SECONDS = 15.0
-NativeCommandRunner = Callable[..., subprocess.CompletedProcess[str]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +51,7 @@ class _ProviderCheckBasis:
         is_ready: bool | None,
         detail: str,
         authentication: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED,
+        authentication_method: ProviderAuthenticationMethod | None = None,
         reachability: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED,
     ) -> ProviderCheckSnapshot:
         return ProviderCheckSnapshot(
@@ -60,6 +61,7 @@ class _ProviderCheckBasis:
             service_identity=self.service_identity,
             native_home=self.native_home,
             authentication=authentication,
+            authentication_method=authentication_method,
             reachability=reachability,
             detail=detail,
             limitations=self.limitations,
@@ -126,7 +128,7 @@ def collect_provider_definitions() -> tuple[ProviderDefinitionSnapshot, ...]:
                 "integration": integration_name(provider),
                 "product_status": product_status_for(provider),
                 "integration_available": is_provider_integration_available(provider),
-                "setup_owner": "user" if provider == ProviderKind.OPENCLAW else "autoclaw",
+                "setup_owner": ("shared" if provider is ProviderKind.OPENCLAW else "autoclaw"),
             }
         )
         for provider in PROVIDER_ORDER
@@ -150,7 +152,7 @@ def collect_provider_status(
         {
             "kind": provider,
             "product_status": product_status_for(provider),
-            "integration_available": is_provider_integration_available(provider),
+            "integration_available": is_provider_integration_available(provider, settings),
             "configured": configured,
             "is_default": settings.runtime.default_provider == provider,
             "configuration_fields_present": provider_fields_are_present(settings, provider),
@@ -159,63 +161,6 @@ def collect_provider_status(
             "route": provider_route_readback(settings, provider),
             "limitations": provider_limitations(provider),
         }
-    )
-
-
-def invoke_provider_identity_action(
-    provider: ProviderKind,
-    action: str,
-    *,
-    is_json_output: bool,
-    command_runner: NativeCommandRunner | None = None,
-) -> ProviderIdentitySnapshot:
-    normalized_action = identity_action(action)
-    identity = service_identity()
-    native_home = str(provider_native_home(provider))
-    if provider != ProviderKind.CODEX:
-        return ProviderIdentitySnapshot(
-            provider=provider,
-            action=normalized_action,
-            outcome=ProviderIdentityOutcome.USER_MANAGED,
-            service_identity=identity,
-            native_home=native_home,
-            detail=provider_identity_owner_message(provider),
-        )
-
-    try:
-        codex_binary = bundled_codex_path()
-    except FileNotFoundError:
-        return ProviderIdentitySnapshot(
-            provider=provider,
-            action=normalized_action,
-            outcome=ProviderIdentityOutcome.NOT_INSTALLED,
-            service_identity=identity,
-            native_home=native_home,
-            detail="the SDK-bundled Codex CLI is not available",
-        )
-
-    command = [str(codex_binary), normalized_action]
-    completed = invoke_native_identity_command(
-        command,
-        is_json_output=is_json_output,
-        command_runner=command_runner,
-    )
-    outcome = (
-        ProviderIdentityOutcome.SUCCEEDED
-        if completed.returncode == 0
-        else ProviderIdentityOutcome.FAILED
-    )
-    return ProviderIdentitySnapshot(
-        provider=provider,
-        action=normalized_action,
-        outcome=outcome,
-        service_identity=identity,
-        native_home=native_home,
-        detail=(
-            f"native Codex {normalized_action} completed"
-            if completed.returncode == 0
-            else f"native Codex {normalized_action} failed"
-        ),
     )
 
 
@@ -236,25 +181,40 @@ def execute_provider_diagnostic(
     return asyncio.run(run())
 
 
-def bundled_codex_path() -> Path:
-    """Resolve the SDK-bundled CLI without loading it for passive commands."""
-
-    from codex_cli_bin import bundled_codex_path as resolve_path  # type: ignore[import-untyped]
-
-    return Path(resolve_path())
-
-
 def provider_check_snapshot(
     *,
     basis: _ProviderCheckBasis,
     result: ProviderCheckResult,
 ) -> ProviderCheckSnapshot:
-    if result.status in {ProviderCheckStatus.AVAILABLE, ProviderCheckStatus.LIMITED}:
+    if result.authentication is ProviderCheckAxisStatus.FAILED:
+        return basis.snapshot(
+            outcome=ProviderCheckOutcome.AUTHENTICATION_FAILED,
+            is_ready=False,
+            detail=result.code,
+            authentication=result.authentication,
+            authentication_method=result.authentication_method,
+            reachability=result.reachability,
+        )
+    if (
+        result.status in {ProviderCheckStatus.AVAILABLE, ProviderCheckStatus.LIMITED}
+        and result.authentication is ProviderCheckAxisStatus.PASSED
+    ):
         return basis.snapshot(
             outcome=ProviderCheckOutcome.READY,
             is_ready=True,
             detail=result.code,
             authentication=result.authentication,
+            authentication_method=result.authentication_method,
+            reachability=result.reachability,
+        )
+
+    if result.status in {ProviderCheckStatus.AVAILABLE, ProviderCheckStatus.LIMITED}:
+        return basis.snapshot(
+            outcome=ProviderCheckOutcome.LOCAL_PREREQUISITES_READY,
+            is_ready=None,
+            detail=result.code,
+            authentication=result.authentication,
+            authentication_method=result.authentication_method,
             reachability=result.reachability,
         )
 
@@ -272,38 +232,9 @@ def provider_check_snapshot(
         is_ready=False,
         detail=code,
         authentication=result.authentication,
+        authentication_method=result.authentication_method,
         reachability=result.reachability,
     )
-
-
-def identity_action(action: str) -> Literal["login", "logout"]:
-    if action == "login":
-        return "login"
-    if action == "logout":
-        return "logout"
-    raise ValueError(f"unsupported provider identity action: {action}")
-
-
-def invoke_native_identity_command(
-    command: list[str],
-    *,
-    is_json_output: bool,
-    command_runner: NativeCommandRunner | None,
-) -> subprocess.CompletedProcess[str]:
-    process_options: dict[str, object] = {"check": False, "text": True}
-    if is_json_output:
-        process_options.update(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    if command_runner is not None:
-        return command_runner(command, **process_options)
-    if is_json_output:
-        return subprocess.run(
-            command,
-            check=False,
-            text=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    return subprocess.run(command, check=False, text=True)
 
 
 def integration_name(provider: ProviderKind) -> str:
@@ -316,14 +247,30 @@ def integration_name(provider: ProviderKind) -> str:
             return "OpenClaw external Gateway compatibility"
 
 
-def is_provider_integration_available(provider: ProviderKind) -> bool:
+def is_provider_integration_available(
+    provider: ProviderKind,
+    settings: Settings | None = None,
+) -> bool:
     match provider:
         case ProviderKind.CODEX:
-            return module_is_available("openai_codex")
+            return module_is_available("openai_codex") and _bundled_cli_is_available(
+                bundled_codex_path
+            )
         case ProviderKind.CLAUDE:
-            return module_is_available("claude_agent_sdk")
+            return module_is_available("claude_agent_sdk") and _bundled_cli_is_available(
+                bundled_claude_path
+            )
         case ProviderKind.OPENCLAW:
-            return shutil.which("openclaw") is not None
+            command = settings.openclaw.cli_path if settings is not None else "openclaw"
+            return shutil.which(command) is not None
+
+
+def _bundled_cli_is_available(resolver: Callable[[], Path]) -> bool:
+    try:
+        path = resolver()
+    except (FileNotFoundError, ImportError, OSError):
+        return False
+    return path.is_file()
 
 
 def module_is_available(module_name: str) -> bool:
@@ -333,27 +280,6 @@ def module_is_available(module_name: str) -> bool:
         return False
 
 
-def service_identity() -> str:
-    try:
-        import pwd
-
-        return pwd.getpwuid(os.geteuid()).pw_name
-    except (AttributeError, ImportError, KeyError):
-        pass
-    return getpass.getuser()
-
-
-def provider_native_home(provider: ProviderKind) -> Path:
-    user_home = Path.home()
-    match provider:
-        case ProviderKind.CODEX:
-            return Path(os.environ.get("CODEX_HOME", user_home / ".codex")).expanduser()
-        case ProviderKind.CLAUDE:
-            return Path(os.environ.get("CLAUDE_CONFIG_DIR", user_home / ".claude")).expanduser()
-        case ProviderKind.OPENCLAW:
-            return Path(os.environ.get("OPENCLAW_STATE_DIR", user_home / ".openclaw")).expanduser()
-
-
 def provider_fields_are_present(settings: Settings, provider: ProviderKind) -> bool:
     match provider:
         case ProviderKind.CODEX | ProviderKind.CLAUDE:
@@ -361,6 +287,7 @@ def provider_fields_are_present(settings: Settings, provider: ProviderKind) -> b
         case ProviderKind.OPENCLAW:
             return bool(
                 settings.openclaw.enabled
+                and settings.openclaw.cli_path.strip()
                 and settings.openclaw.gateway_url.strip()
                 and settings.openclaw.gateway_profile.strip()
             )
@@ -396,8 +323,10 @@ def provider_route_readback(
         case ProviderKind.OPENCLAW:
             return {
                 "enabled": settings.openclaw.enabled,
+                "cli_path": settings.openclaw.cli_path,
                 "gateway_url": redact_url_userinfo(settings.openclaw.gateway_url),
                 "gateway_profile": settings.openclaw.gateway_profile,
+                "gateway_auth_mode": settings.openclaw.gateway_auth_mode.value,
             }
 
 
@@ -429,18 +358,13 @@ def provider_limitations(provider: ProviderKind) -> tuple[str, ...]:
     if provider == ProviderKind.OPENCLAW:
         return (
             "experimental selectable lane",
-            "OpenClaw configuration and compatibility MCP setup are user-managed",
-            "an explicit native Gateway credential is required when gateway_url is set",
+            "the OpenClaw Gateway process and compatibility MCP setup remain user-managed",
+            "AutoClaw setup stores the selected Gateway credential in its private service "
+            "environment",
             "the ordinary Gateway CLI cannot transmit the dispatch cwd; only its local "
             "subprocess cwd is set",
         )
     return ()
-
-
-def provider_identity_owner_message(provider: ProviderKind) -> str:
-    if provider == ProviderKind.CLAUDE:
-        return "Claude identity is user-managed through supported vendor-native configuration"
-    return "OpenClaw Gateway identity is user-managed outside AutoClaw"
 
 
 def providers_payload(
@@ -459,8 +383,6 @@ __all__ = [
     "collect_provider_statuses",
     "execute_provider_diagnostic",
     "integration_name",
-    "invoke_native_identity_command",
-    "invoke_provider_identity_action",
     "is_provider_integration_available",
     "module_is_available",
     "provider_native_home",

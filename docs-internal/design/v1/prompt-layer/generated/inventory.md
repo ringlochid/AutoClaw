@@ -17,9 +17,8 @@ This page inventories the current generated prompt contract surfaces. Static exa
 9. `boundary_followup_guidance`
 10. `consumed_durable_refs`
 11. `transient_refs`
-12. `task_memory`
-13. `allowed_actions_now`
-14. `publication_rule`
+12. `allowed_actions_now`
+13. `publication_rule`
 
 ## Static Continuation Sections
 
@@ -132,11 +131,6 @@ This page inventories the current generated prompt contract surfaces. Static exa
   - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/artifact_render_rule_v1.md`
   - mirror doc: `prompt-pack/runtime-rule-blocks.md`
   - role: `artifact_render_rule`
-  - consumption: `live_instruction_block`
-- `task_memory_rule_v1`
-  - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/task_memory_rule_v1.md`
-  - mirror doc: `prompt-pack/runtime-rule-blocks.md`
-  - role: `task_memory_rule`
   - consumption: `live_instruction_block`
 - `monitoring_not_task_truth_v1`
   - asset: `apps/api/src/autoclaw/runtime/prompt/assets/blocks/monitoring_not_task_truth_v1.md`

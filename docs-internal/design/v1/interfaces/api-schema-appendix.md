@@ -280,7 +280,7 @@ Rules:
 
 - this field is semantic slot-based durable context sharing only
 - callers do not submit final durable `path`, `version`, `description`, or currentness claims here
-- callers must not pass a child its own produced artifact slot through `artifact_slots`; use `transient_surfaces` or task memory for previous same-node context
+- callers must not pass a child its own produced artifact slot through `artifact_slots`; use explicit `transient_surfaces` for previous same-node material
 
 ### `assignment_produce_requirement`
 
@@ -296,7 +296,6 @@ Rules:
 - `consumes` as `[assignment_consume_ref, ...]`
 - `produces` as `[assignment_produce_requirement, ...]`
 - `transient_refs` as `[assignment_transient_ref, ...] | optional`
-- `task_memory_search_hints` as `[string, ...] | optional`
 
 Rules:
 
@@ -333,7 +332,6 @@ Rules:
 - `handoff` as `checkpoint_handoff`
 - `produced_artifacts` as `[produced_artifact_claim, ...] | optional`
 - `transient_surfaces` as `[transient_surface_write, ...] | optional`
-- `task_memory_search_hints` as `[string, ...] | optional`
 
 Rules:
 
@@ -351,7 +349,6 @@ Rules:
 - `assignment_intent`
 - `supplemental_durable_context` as `supplemental_durable_context | optional`
 - `transient_surfaces` as `[transient_surface_write, ...] | optional`
-- `task_memory_search_hints` as `[string, ...] | optional`
 
 Rules:
 

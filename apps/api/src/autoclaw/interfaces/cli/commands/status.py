@@ -4,16 +4,29 @@ import argparse
 
 from autoclaw.config import load_settings
 from autoclaw.interfaces.cli.commands.config_view import redact_database_url
+from autoclaw.interfaces.cli.commands.guided_presentation import emit_key_value_panel
 from autoclaw.interfaces.cli.providers import collect_provider_statuses
 from autoclaw.interfaces.cli.providers.inspection import providers_payload
-from autoclaw.interfaces.cli.support import coerce_path, command_env, print_json
+from autoclaw.interfaces.cli.providers.presentation import emit_provider_status
+from autoclaw.interfaces.cli.support import (
+    coerce_path,
+    command_env,
+    print_json,
+    service_provider_identity_env,
+)
 
 
 def cmd_status(args: argparse.Namespace) -> int:
     config_path = coerce_path(args.config)
     with command_env(config_path=config_path):
         settings = load_settings()
-    providers = collect_provider_statuses(settings)
+        with service_provider_identity_env():
+            providers = collect_provider_statuses(settings)
+    default_provider = (
+        settings.runtime.default_provider.value
+        if settings.runtime.default_provider is not None
+        else None
+    )
     payload = {
         "ok": True,
         "config": {
@@ -26,29 +39,26 @@ def cmd_status(args: argparse.Namespace) -> int:
             "schema": "not_checked",
         },
         "service": {"status": "not_checked"},
-        "default_provider": (
-            settings.runtime.default_provider.value
-            if settings.runtime.default_provider is not None
-            else None
-        ),
+        "default_provider": default_provider,
         "providers": providers_payload(providers),
     }
     if args.json:
         print_json(payload)
     else:
-        print("AutoClaw status")
-        print(f"config: {config_path} ({'present' if config_path.is_file() else 'missing'})")
-        print(f"data: {settings.data_dir}")
-        default = payload["default_provider"] or "not configured"
-        print(f"default provider: {default}")
-        print("database schema: not_checked")
-        print("service: not_checked")
-        for provider in providers:
-            configured = "configured" if provider.is_configured else "not configured"
-            print(
-                f"provider {provider.kind.value}: {configured}; "
-                "authentication not_checked; reachability not_checked"
-            )
+        emit_key_value_panel(
+            "AutoClaw status",
+            (
+                (
+                    "Config",
+                    f"{config_path} ({'present' if config_path.is_file() else 'missing'})",
+                ),
+                ("Data", str(settings.data_dir)),
+                ("Default provider", default_provider or "Not configured"),
+                ("Database", "Not inspected by passive status"),
+                ("Service", "Run autoclaw service status"),
+            ),
+        )
+        emit_provider_status(providers)
     return 0
 
 

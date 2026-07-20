@@ -59,7 +59,7 @@ Trusted OpenClaw session-binding proof lives outside ordinary worker-readable ta
 | -------------------- | ------------------------------------------------------------------------------ |
 | `workspace/`         | mutable work in progress for the current assignment                            |
 | `context/`           | durable supporting material and curated source/reference material for the task |
-| `context/wiki/`      | curated task-memory wiki pages and synthesized reusable task memory            |
+| `context/wiki/`      | curated reference pages and synthesized reusable notes                         |
 | `outputs/artifacts/` | durable published outputs and evidence                                         |
 | `tmp/transfers/`     | optional transient carryover                                                   |
 | `_runtime/`          | controller-generated runtime projections and monitoring                        |
@@ -203,7 +203,7 @@ Runtime must localize any external resource into the task root before surfacing 
 Normal work should follow this split:
 
 - read broader durable task support material from `context/`
-- use `context/wiki/` for curated task-memory pages
+- use `context/wiki/` for curated reusable reference pages
 - read explicit criteria from `_runtime/criteria/`
 - perform mutable in-progress work in `workspace/`
 - use `tmp/transfers/` only for optional explicit transient carryover

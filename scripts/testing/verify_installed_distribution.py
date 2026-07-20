@@ -685,7 +685,6 @@ def verify_user_service_installer(
         {
             "AUTOCLAW_CONFIG": str(config_path),
             "AUTOCLAW_DATA_DIR": str(data_home / "autoclaw"),
-            "AUTOCLAW_ENV_FILE": str(env_file),
             "AUTOCLAW_PYTHON_BIN": sys.executable,
             "AUTOCLAW_SYSTEMCTL_BIN": str(fake_systemctl),
             "AUTOCLAW_SYSTEMCTL_LOG": str(systemctl_log),
@@ -730,7 +729,7 @@ def verify_user_service_installer(
     lifecycle_payloads = {
         verb: run_json_command(
             installed_executable,
-            ("service", verb, "--config", str(config_path), "--json"),
+            ("service", verb, "--json"),
             cwd=install_root,
             env=env,
         )
@@ -743,7 +742,7 @@ def verify_user_service_installer(
     for verb in ("start", "status", "restart"):
         if (
             lifecycle_payloads[verb].get("running") is not True
-            or lifecycle_payloads[verb].get("healthy") is not True
+            or lifecycle_payloads[verb].get("healthy") is not None
         ):
             raise AssertionError(
                 f"installed service {verb} did not report the active fake service: "
@@ -751,7 +750,7 @@ def verify_user_service_installer(
             )
     if (
         lifecycle_payloads["stop"].get("running") is not False
-        or lifecycle_payloads["stop"].get("healthy") is not False
+        or lifecycle_payloads["stop"].get("healthy") is not None
     ):
         raise AssertionError(
             "installed service stop did not report the inactive fake service: "
@@ -765,8 +764,6 @@ def verify_user_service_installer(
             "uninstall",
             "--config",
             str(config_path),
-            "--env-file",
-            str(env_file),
             "--unit-dir",
             str(unit_dir),
             "--remove-env-file",

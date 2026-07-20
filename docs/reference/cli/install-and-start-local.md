@@ -12,14 +12,14 @@ python3.12 -m venv .venv
 .venv/bin/autoclaw serve
 ```
 
-The terminal flow confirms local settings, asks for the primary/default provider, handles supported provider-native login, checks the route, and offers additional providers. Choose `claude` or `openclaw` in the prompt when that is the intended primary. OpenClaw remains experimental and user-managed.
+The terminal flow confirms local settings, asks for the primary/default provider, handles Codex/Claude subscription or API-key authentication or OpenClaw token/password authentication, checks the route, and offers additional providers. OpenClaw remains experimental; its Gateway and compatibility MCP configuration remain user-managed.
 
 For automation, use `--non-interactive` and pass the provider explicitly:
 
 ```bash
 .venv/bin/autoclaw init --non-interactive
 .venv/bin/autoclaw setup --provider codex --non-interactive
-.venv/bin/autoclaw providers login codex
+.venv/bin/autoclaw providers login codex --method subscription
 .venv/bin/autoclaw providers check codex
 ```
 
@@ -33,7 +33,7 @@ scripts/install-systemd-user.sh --wheel dist/autoclaw-*.whl
 
 Use `--no-start` when installation proof must not start the service. The installer initializes config and data, installs the unit, and reports the exact paths it used.
 
-Rerun `autoclaw service install` after upgrading to reconcile an older generated unit. The normal command preserves the existing service environment file; `--force` replaces it. A failed lifecycle command prints the relevant systemd detail and exact status, journal, and reconciliation commands.
+Rerun `autoclaw service install` after upgrading to reconcile an older generated unit. It preserves the canonical config-relative provider-secret environment and restores owner-only permissions. A failed lifecycle command prints the relevant systemd detail and exact status, journal, and reconciliation commands.
 
 ## Verify
 

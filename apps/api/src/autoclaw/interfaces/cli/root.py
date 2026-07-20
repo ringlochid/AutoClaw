@@ -127,8 +127,10 @@ def status_command(config: str, is_json_output: bool) -> int:
 @click.option("--provider", type=PROVIDER_CHOICE)
 @click.option("--model")
 @click.option("--effort")
+@click.option("--cli-path", help="OpenClaw CLI command or absolute executable path.")
 @click.option("--gateway-url")
 @click.option("--gateway-profile")
+@click.option("--gateway-auth-mode", type=click.Choice(("token", "password")))
 @click.option(
     "--non-interactive",
     "is_non_interactive",
@@ -201,8 +203,10 @@ def providers_check_command(config: str, provider: str, is_json_output: bool) ->
 @click.argument("provider", type=PROVIDER_CHOICE)
 @click.option("--model")
 @click.option("--effort")
+@click.option("--cli-path", help="OpenClaw CLI command or absolute executable path.")
 @click.option("--gateway-url")
 @click.option("--gateway-profile")
+@click.option("--gateway-auth-mode", type=click.Choice(("token", "password")))
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
 def providers_configure_command(**kwargs: Any) -> int:
     return invoke_handler_result(
@@ -231,24 +235,36 @@ def providers_set_default_command(
 
 
 @providers_group.command("login")
+@config_option
 @click.argument("provider", type=PROVIDER_CHOICE)
+@click.option(
+    "--method",
+    type=click.Choice(("subscription", "api-key", "token", "password")),
+    help="Codex/Claude: subscription or api-key. OpenClaw: token or password.",
+)
+@click.option(
+    "--secret-stdin",
+    is_flag=True,
+    help="Read an API key, Gateway token, or Gateway password from standard input.",
+)
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
-def providers_login_command(provider: str, is_json_output: bool) -> int:
+def providers_login_command(**kwargs: Any) -> int:
     return invoke_handler_result(
         cmd_providers_identity(
-            build_argument_namespace(provider=provider, json=is_json_output),
+            build_argument_namespace(**kwargs, json=kwargs["is_json_output"]),
             "login",
         )
     )
 
 
 @providers_group.command("logout")
+@config_option
 @click.argument("provider", type=PROVIDER_CHOICE)
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
-def providers_logout_command(provider: str, is_json_output: bool) -> int:
+def providers_logout_command(config: str, provider: str, is_json_output: bool) -> int:
     return invoke_handler_result(
         cmd_providers_identity(
-            build_argument_namespace(provider=provider, json=is_json_output),
+            build_argument_namespace(config=config, provider=provider, json=is_json_output),
             "logout",
         )
     )
@@ -359,8 +375,6 @@ def service_group() -> None:
 
 @service_group.command("render")
 @config_option
-@click.option("--data-dir")
-@click.option("--env-file")
 @click.option("--name", default=DEFAULT_SERVICE_NAME, show_default=True)
 def service_render_command(**kwargs: Any) -> int:
     return invoke_handler_result(cmd_service_render(build_argument_namespace(**kwargs)))
@@ -368,12 +382,9 @@ def service_render_command(**kwargs: Any) -> int:
 
 @service_group.command("install")
 @config_option
-@click.option("--data-dir")
-@click.option("--env-file")
 @click.option("--name", default=DEFAULT_SERVICE_NAME, show_default=True)
 @click.option("--unit-dir")
 @click.option("--port", type=int)
-@click.option("--force", is_flag=True)
 @click.option("--no-start", is_flag=True)
 @click.option("--verbose", is_flag=True, help="Show nested command output when available.")
 @click.option("--no-color", is_flag=True, help="Disable ANSI color output.")
@@ -384,7 +395,6 @@ def service_install_command(**kwargs: Any) -> int:
 
 @service_group.command("uninstall")
 @config_option
-@click.option("--env-file")
 @click.option("--name", default=DEFAULT_SERVICE_NAME, show_default=True)
 @click.option("--unit-dir")
 @click.option("--remove-env-file", is_flag=True)
@@ -393,40 +403,36 @@ def service_uninstall_command(**kwargs: Any) -> int:
 
 
 @service_group.command("start")
-@config_option
 @click.option("--name", default=DEFAULT_SERVICE_NAME, show_default=True)
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
-def service_start_command(config: str, name: str, is_json_output: bool) -> int:
+def service_start_command(name: str, is_json_output: bool) -> int:
     return invoke_handler_result(
-        cmd_service_start(build_argument_namespace(config=config, name=name, json=is_json_output))
+        cmd_service_start(build_argument_namespace(name=name, json=is_json_output))
     )
 
 
 @service_group.command("stop")
-@config_option
 @click.option("--name", default=DEFAULT_SERVICE_NAME, show_default=True)
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
-def service_stop_command(config: str, name: str, is_json_output: bool) -> int:
+def service_stop_command(name: str, is_json_output: bool) -> int:
     return invoke_handler_result(
-        cmd_service_stop(build_argument_namespace(config=config, name=name, json=is_json_output))
+        cmd_service_stop(build_argument_namespace(name=name, json=is_json_output))
     )
 
 
 @service_group.command("restart")
-@config_option
 @click.option("--name", default=DEFAULT_SERVICE_NAME, show_default=True)
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
-def service_restart_command(config: str, name: str, is_json_output: bool) -> int:
+def service_restart_command(name: str, is_json_output: bool) -> int:
     return invoke_handler_result(
-        cmd_service_restart(build_argument_namespace(config=config, name=name, json=is_json_output))
+        cmd_service_restart(build_argument_namespace(name=name, json=is_json_output))
     )
 
 
 @service_group.command("status")
-@config_option
 @click.option("--name", default=DEFAULT_SERVICE_NAME, show_default=True)
 @click.option("--json", "is_json_output", is_flag=True, help="Emit JSON output only.")
-def service_status_command(config: str, name: str, is_json_output: bool) -> int:
+def service_status_command(name: str, is_json_output: bool) -> int:
     return invoke_handler_result(
-        cmd_service_status(build_argument_namespace(config=config, name=name, json=is_json_output))
+        cmd_service_status(build_argument_namespace(name=name, json=is_json_output))
     )

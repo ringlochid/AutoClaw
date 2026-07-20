@@ -264,7 +264,7 @@ function isAuthError(
 }
 
 function isStaleActionError(code: string): boolean {
-    return code.startsWith("stale_") || code === "illegal_state" || code === "conflict";
+    return code.startsWith("stale_") || code === "conflict";
 }
 
 function streamResetSummary(staleCursor: string | null): string {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -7,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from autoclaw.config import (
     ClaudeSettings,
     CodexSettings,
+    OpenClawGatewayAuthMode,
     OpenClawSettings,
     RuntimeSettings,
     Settings,
@@ -29,8 +31,10 @@ class ProviderConfigurationRequest(BaseModel):
     provider: ProviderKind
     model: str | None = None
     effort: str | None = None
+    cli_path: str | None = None
     gateway_url: str | None = None
     gateway_profile: str | None = None
+    gateway_auth_mode: OpenClawGatewayAuthMode | None = None
 
     @model_validator(mode="after")
     def validate_provider_fields(self) -> ProviderConfigurationRequest:
@@ -38,7 +42,12 @@ class ProviderConfigurationRequest(BaseModel):
             if self.model is not None or self.effort is not None:
                 raise ValueError("OpenClaw configuration does not accept model or effort")
             return self
-        if self.gateway_url is not None or self.gateway_profile is not None:
+        if (
+            self.cli_path is not None
+            or self.gateway_url is not None
+            or self.gateway_profile is not None
+            or self.gateway_auth_mode is not None
+        ):
             raise ValueError(f"{self.provider.value} configuration does not accept Gateway fields")
         return self
 
@@ -103,6 +112,20 @@ def set_default_provider(
     )
 
 
+def set_openclaw_gateway_auth_mode(
+    config_path: Path,
+    mode: OpenClawGatewayAuthMode,
+) -> None:
+    def build_candidate(payload: ConfigSections) -> ConfigSections:
+        provider_section = dict(payload.get(ProviderKind.OPENCLAW.value, {}))
+        provider_section["gateway_auth_mode"] = mode.value
+        payload[ProviderKind.OPENCLAW.value] = provider_section
+        validate_provider_config(payload, requested_provider=ProviderKind.OPENCLAW)
+        return payload
+
+    persist_config_mutation(config_path, build_candidate)
+
+
 def update_provider_route_section(
     section: dict[str, object],
     request: ProviderConfigurationRequest,
@@ -114,12 +137,24 @@ def update_provider_route_section(
             section["effort"] = request.effort
         return
 
+    if request.cli_path is not None:
+        section["cli_path"] = _resolved_executable(request.cli_path)
+    elif "cli_path" not in section:
+        section["cli_path"] = _resolved_executable(OpenClawSettings().cli_path)
     if request.gateway_url is not None:
         section["gateway_url"] = request.gateway_url
     section.setdefault("gateway_url", OpenClawSettings().gateway_url)
     if request.gateway_profile is not None:
         section["gateway_profile"] = request.gateway_profile
     section.setdefault("gateway_profile", OpenClawSettings().gateway_profile)
+    if request.gateway_auth_mode is not None:
+        section["gateway_auth_mode"] = request.gateway_auth_mode.value
+    section.setdefault("gateway_auth_mode", OpenClawSettings().gateway_auth_mode.value)
+
+
+def _resolved_executable(value: str) -> str:
+    resolved = shutil.which(value)
+    return str(Path(resolved).resolve()) if resolved is not None else value
 
 
 def validate_provider_config(
@@ -163,6 +198,7 @@ __all__ = [
     "configure_provider",
     "product_status_for",
     "set_default_provider",
+    "set_openclaw_gateway_auth_mode",
     "settings_from_config_sections",
     "update_provider_route_section",
     "validate_provider_config",

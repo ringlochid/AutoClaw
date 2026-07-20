@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from autoclaw.definitions.contracts.workflow import ProviderKind
-from autoclaw.runtime.providers import ProviderCheckAxisStatus
+from autoclaw.runtime.providers import ProviderAuthenticationMethod, ProviderCheckAxisStatus
 
 
 class ProviderProductStatus(StrEnum):
@@ -28,8 +28,8 @@ class ProviderCheckOutcome(StrEnum):
 
 class ProviderIdentityOutcome(StrEnum):
     SUCCEEDED = "succeeded"
+    PARTIAL = "partial"
     NOT_INSTALLED = "not_installed"
-    USER_MANAGED = "user_managed"
     FAILED = "failed"
 
 
@@ -45,7 +45,7 @@ class ProviderDefinitionSnapshot(BaseModel):
     integration: str
     product_status: ProviderProductStatus
     is_integration_available: bool = Field(alias="integration_available")
-    setup_owner: Literal["autoclaw", "user"]
+    setup_owner: Literal["autoclaw", "shared", "user"]
 
 
 class ProviderStatusSnapshot(BaseModel):
@@ -79,6 +79,7 @@ class ProviderCheckSnapshot(BaseModel):
     service_identity: str
     native_home: str
     authentication: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED
+    authentication_method: ProviderAuthenticationMethod | None = None
     reachability: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED
     detail: str
     limitations: tuple[str, ...] = ()
@@ -107,6 +108,7 @@ class ProviderIdentitySnapshot(BaseModel):
     outcome: ProviderIdentityOutcome
     service_identity: str
     native_home: str
+    authentication_method: ProviderAuthenticationMethod | None = None
     detail: str
 
 

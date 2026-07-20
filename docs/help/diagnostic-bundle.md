@@ -12,7 +12,7 @@ autoclaw providers status
 autoclaw service status --json
 ```
 
-Add `autoclaw providers check <provider> --json` only when a fresh provider diagnostic is relevant. Inspect its separate authentication and reachability axes rather than assuming that one ready result proved both.
+Add `autoclaw providers check <provider> --json` only when a fresh provider diagnostic is relevant. Inspect its separate authentication and reachability axes rather than assuming that a found credential source also proves model reachability.
 
 For a failed managed service, also collect:
 

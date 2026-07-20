@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from uuid import uuid4
 
-from autoclaw.config import OpenClawSettings, Settings, get_settings
+from autoclaw.config import OpenClawGatewayAuthMode, OpenClawSettings, Settings, get_settings
 from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.integrations.openclaw.gateway.cli_transport import (
     OpenClawGatewayCliError,
@@ -16,6 +16,7 @@ from autoclaw.integrations.openclaw.gateway.cli_transport import (
 from autoclaw.runtime.contracts.provider_resolution import OpenClawProviderRoute
 from autoclaw.runtime.providers.contracts import (
     DispatchStartRequest,
+    ProviderAuthenticationMethod,
     ProviderCheckAxisStatus,
     ProviderCheckResult,
     ProviderCheckStatus,
@@ -81,8 +82,10 @@ class OpenClawGatewayAdapter:
         )
         try:
             response = await call_openclaw_gateway(
+                executable=self.config.cli_path,
                 profile=route.gateway_profile,
                 gateway_url=self.config.gateway_url,
+                gateway_auth_mode=self.config.gateway_auth_mode,
                 method="agent",
                 params={
                     "sessionKey": session_key,
@@ -115,8 +118,10 @@ class OpenClawGatewayAdapter:
             return ProviderStopOutcome.NOT_RUNNING
         try:
             response = await call_openclaw_gateway(
+                executable=self.config.cli_path,
                 profile=run_handle.gateway_profile,
                 gateway_url=self.config.gateway_url,
+                gateway_auth_mode=self.config.gateway_auth_mode,
                 method="sessions.abort",
                 params={
                     "key": run_handle.session_key,
@@ -135,10 +140,17 @@ class OpenClawGatewayAdapter:
         return ProviderStopOutcome.FAILED
 
     async def read_availability(self) -> ProviderCheckResult:
+        authentication_method = (
+            ProviderAuthenticationMethod.TOKEN
+            if self.config.gateway_auth_mode is OpenClawGatewayAuthMode.TOKEN
+            else ProviderAuthenticationMethod.PASSWORD
+        )
         try:
-            await call_openclaw_gateway(
+            response = await call_openclaw_gateway(
+                executable=self.config.cli_path,
                 profile=self.config.gateway_profile,
                 gateway_url=self.config.gateway_url,
+                gateway_auth_mode=self.config.gateway_auth_mode,
                 method="health",
                 params={},
             )
@@ -157,12 +169,24 @@ class OpenClawGatewayAdapter:
                 status=ProviderCheckStatus.UNAVAILABLE,
                 code=exc.code.value,
                 authentication=authentication,
+                authentication_method=authentication_method,
                 reachability=reachability,
+            )
+        if response.get("ok") is not True:
+            return ProviderCheckResult(
+                kind=self.kind,
+                status=ProviderCheckStatus.UNAVAILABLE,
+                code=OpenClawGatewayFailureCode.REJECTED.value,
+                authentication=ProviderCheckAxisStatus.PASSED,
+                authentication_method=authentication_method,
+                reachability=ProviderCheckAxisStatus.PASSED,
             )
         return ProviderCheckResult(
             kind=self.kind,
             status=ProviderCheckStatus.LIMITED,
             code="openclaw_experimental",
+            authentication=ProviderCheckAxisStatus.PASSED,
+            authentication_method=authentication_method,
             reachability=ProviderCheckAxisStatus.PASSED,
         )
 

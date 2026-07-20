@@ -62,7 +62,7 @@ Trusted OpenClaw session-binding proof is not part of the task root. Callback au
 | -------------------- | ---------------------------------------------------------------------- |
 | `workspace/`         | mutable work in progress for the current assignment                    |
 | `context/`           | durable task supporting material and curated source/reference material |
-| `context/wiki/`      | curated task-memory pages                                              |
+| `context/wiki/`      | curated reusable reference pages                                      |
 | `outputs/artifacts/` | durable published outputs and evidence                                 |
 | `tmp/transfers/`     | optional transient carryover                                           |
 | `_runtime/`          | controller-generated runtime projections and monitoring                |
@@ -70,11 +70,11 @@ Trusted OpenClaw session-binding proof is not part of the task root. Callback au
 
 ## Context distinction
 
-- `context/wiki/` is the curated task-memory surface for synthesized task pages and reusable notes.
+- `context/wiki/` holds curated synthesized task pages and reusable notes.
 - Other curated files under `context/` are source/reference material such as user docs, PDFs, screenshots, and notes.
 - `_runtime/criteria/` holds the controller-generated explicit criteria projections agents cite during execution.
 
-Nodes may search `context/wiki/` and other curated files under `context/` directly in v1. Task memory is guided by assignment or checkpoint `task_memory_search_hints`; it is not automatically a must-read consume.
+Nodes may search `context/wiki/` and other curated files under `context/` directly in v1 only when an explicit surfaced ref identifies the material; those directories are not automatically must-read consumes.
 
 ## Common placement examples
 
@@ -82,7 +82,7 @@ Nodes may search `context/wiki/` and other curated files under `context/` direct
 | ----------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------- |
 | a draft code change or scratch script for the current assignment  | `workspace/`                                 | mutable work in progress                                               |
 | explicit acceptance rules for a node                              | `_runtime/criteria/`                         | controller-generated criteria the assignment or parent review may cite |
-| a reusable task-memory page summarizing earlier discoveries       | `context/wiki/`                              | curated synthesized memory, searchable later                           |
+| a reusable reference page summarizing earlier discoveries         | `context/wiki/`                              | curated synthesized notes, searchable later                            |
 | a user PDF, screenshot, or note the task may need later           | `context/`                                   | durable source/reference material                                      |
 | a durable final report or produced evidence file                  | `outputs/artifacts/<owner_node_key>/<slot>/` | immutable published output with current pointer                        |
 | an optional carryover note that should not become durable truth   | `tmp/transfers/`                             | bounded transient handoff                                              |

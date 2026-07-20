@@ -24,6 +24,7 @@ from autoclaw.persistence.models import (
     WorkspaceBindingModel,
 )
 from autoclaw.persistence.models.runtime.common import COMMAND_RUN_TERMINAL_STATE_VALUES
+from autoclaw.runtime.assignment import read_assignment_prompt_criteria
 from autoclaw.runtime.capabilities import resolve_effective_capabilities_for_node
 from autoclaw.runtime.contracts.capabilities import EffectiveCapabilitySet
 from autoclaw.runtime.contracts.primitives import TaskRootPaths
@@ -115,6 +116,11 @@ async def read_ordinary_dispatch_snapshot(
         session,
         assignment_id=context.assignment.assignment_id,
     )
+    prompt_criteria = await read_assignment_prompt_criteria(
+        session,
+        flow_revision_id=context.assignment.flow_revision_id,
+        criteria_refs=context.assignment.criteria_json,
+    )
     capabilities = await resolve_effective_capabilities_for_node(session, node=context.node)
     provider = resolve_provider_route(
         provider=provider_selection_from_kind(context.node.provider_kind),
@@ -137,6 +143,7 @@ async def read_ordinary_dispatch_snapshot(
         capabilities=capabilities,
         work_plan=work_plan,
         children=children,
+        criteria_json=prompt_criteria,
     )
     return OrdinaryDispatchSnapshot(
         basis=basis,
@@ -270,6 +277,7 @@ def build_ordinary_prompt_snapshot(
     capabilities: EffectiveCapabilitySet,
     work_plan: WorkPlanRead | None,
     children: tuple[FlowNodeModel, ...],
+    criteria_json: tuple[dict[str, object], ...],
 ) -> OrdinaryPromptSnapshot:
     task = context.task
     flow = context.flow
@@ -303,7 +311,7 @@ def build_ordinary_prompt_snapshot(
         node_instruction=node.node_instruction,
         assignment_summary=assignment.summary,
         assignment_instruction=assignment.instruction,
-        criteria_json=tuple(assignment.criteria_json),
+        criteria_json=criteria_json,
         consumes_json=tuple(assignment.consumes_json),
         produces_json=tuple(assignment.produces_json),
         child_assignment_limit=assignment.child_assignment_limit,

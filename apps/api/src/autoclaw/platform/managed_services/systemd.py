@@ -7,6 +7,11 @@ from collections.abc import Callable
 from pathlib import Path
 
 from autoclaw.platform.managed_services.resources import get_systemd_service_template
+from autoclaw.platform.provider_environment import (
+    ensure_private_environment_file,
+    provider_environment_file_path,
+    read_provider_secret_environment,
+)
 
 from .contracts import (
     ManagedServiceCommandError,
@@ -15,8 +20,8 @@ from .contracts import (
     ServiceUninstallRequest,
 )
 
-DEFAULT_SERVICE_ENV_TEXT = """# Optional overrides for the AutoClaw user service.
-# Add environment-only overrides here if you need them.
+DEFAULT_SERVICE_ENV_TEXT = """# AutoClaw-managed provider credentials.
+# Use `autoclaw setup` or `autoclaw providers login`; do not add other settings.
 """
 SYSTEMD_TEMPLATE_RESOURCE = ("systemd", "autoclaw.service")
 
@@ -27,30 +32,27 @@ class SystemdUserServiceManager:
         *,
         python_bin: Path,
         config_path: Path,
-        data_dir: Path,
-        env_file: Path,
     ) -> str:
         return render_systemd_service_unit(
             python_bin=python_bin,
             config_path=config_path,
-            data_dir=data_dir,
-            env_file=env_file,
         )
 
     def install(self, request: ServiceInstallRequest) -> None:
         require_supported_systemd()
         unit_dir = request.unit_dir or get_linux_user_unit_dir()
         unit_path = unit_dir / build_service_unit_name(request.service_name)
+        env_file = provider_environment_file_path(request.config_path)
         unit_dir.mkdir(parents=True, exist_ok=True)
-        request.env_file.parent.mkdir(parents=True, exist_ok=True)
-        if request.should_force or not request.env_file.exists():
-            request.env_file.write_text(DEFAULT_SERVICE_ENV_TEXT, encoding="utf-8")
+        ensure_private_environment_file(
+            env_file,
+            initial_text=DEFAULT_SERVICE_ENV_TEXT,
+        )
+        read_provider_secret_environment(env_file)
         unit_path.write_text(
             render_systemd_service_unit(
                 python_bin=Path(sys.executable),
                 config_path=request.config_path,
-                data_dir=request.data_dir,
-                env_file=request.env_file,
             ),
             encoding="utf-8",
         )
@@ -79,7 +81,7 @@ class SystemdUserServiceManager:
         )
         unit_path.unlink(missing_ok=True)
         if request.should_remove_env_file:
-            request.env_file.unlink(missing_ok=True)
+            provider_environment_file_path(request.config_path).unlink(missing_ok=True)
         execute_systemctl("daemon-reload")
 
     def start(self, service_name: str) -> ManagedServiceStatus:
@@ -106,16 +108,15 @@ def render_systemd_service_unit(
     *,
     python_bin: Path,
     config_path: Path,
-    data_dir: Path,
-    env_file: Path,
 ) -> str:
     template_path = get_systemd_service_template()
     rendered = template_path.read_text(encoding="utf-8")
     replacements = {
-        "@AUTOCLAW_PYTHON@": str(python_bin),
-        "@AUTOCLAW_CONFIG@": str(config_path),
-        "@AUTOCLAW_DATA_DIR@": str(data_dir),
-        "@AUTOCLAW_ENV_FILE@": str(env_file),
+        "@AUTOCLAW_PYTHON@": _escape_systemd_quoted_value(str(python_bin)),
+        "@AUTOCLAW_CONFIG@": _escape_systemd_quoted_value(str(config_path)),
+        "@AUTOCLAW_ENV_FILE@": _escape_systemd_unquoted_path(
+            str(provider_environment_file_path(config_path))
+        ),
     }
     for placeholder, value in replacements.items():
         rendered = rendered.replace(placeholder, value)
@@ -150,7 +151,7 @@ def read_systemd_status(service_name: str) -> ManagedServiceStatus:
         is_installed=installed,
         is_enabled=enabled,
         is_running=running,
-        is_healthy=running,
+        is_healthy=None,
         fragment_path=fragment_path,
         active_state=active_state,
         sub_state=sub_state,
@@ -211,6 +212,17 @@ def _bounded_command_detail(value: str, *, limit: int = 600) -> str | None:
     if len(normalized) <= limit:
         return normalized
     return f"{normalized[: limit - 1]}…"
+
+
+def _escape_systemd_quoted_value(value: str) -> str:
+    if "\x00" in value or "\n" in value or "\r" in value:
+        raise ValueError("managed service paths must fit on one line")
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%")
+
+
+def _escape_systemd_unquoted_path(value: str) -> str:
+    escaped = _escape_systemd_quoted_value(value)
+    return escaped.replace(" ", "\\x20").replace("\t", "\\x09")
 
 
 __all__ = [

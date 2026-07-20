@@ -11,6 +11,7 @@ import autoclaw.interfaces.cli as cli
 import pytest
 from autoclaw.config import DEFAULT_API_PORT, get_settings
 from autoclaw.persistence.session import dispose_db_engine
+from autoclaw.platform.provider_environment import ProviderEnvironmentError
 
 from .cli_test_support import (
     build_cli_init_args,
@@ -44,18 +45,13 @@ def test_service_install_and_status_use_systemd_user_surface(
         install_result = cli.cmd_service_install(
             argparse.Namespace(
                 config=str(config_path),
-                data_dir=None,
-                env_file=str(env_file),
                 name="autoclaw",
                 unit_dir=str(unit_dir),
                 port=19123,
-                force=True,
                 no_start=True,
             )
         )
-        status_result = cli.cmd_service_status(
-            argparse.Namespace(config=str(config_path), name="autoclaw", json=True)
-        )
+        status_result = cli.cmd_service_status(argparse.Namespace(name="autoclaw", json=True))
     finally:
         get_settings.cache_clear()
         asyncio.run(dispose_db_engine())
@@ -71,6 +67,7 @@ def test_service_install_and_status_use_systemd_user_surface(
     assert payload["manager"] == "systemd-user"
     assert payload["installed"] is True
     assert payload["running"] is True
+    assert payload["healthy"] is None
     assert "OpenClaw" not in captured.err
     assert "Checking local API bind target" in captured.err
     assert "Running" in captured.err
@@ -101,12 +98,9 @@ def test_service_install_fails_before_unit_write_when_requested_port_is_busy(
             result = cli.cmd_service_install(
                 argparse.Namespace(
                     config=str(config_path),
-                    data_dir=None,
-                    env_file=str(env_file),
                     name="autoclaw",
                     unit_dir=str(unit_dir),
                     port=busy_port,
-                    force=True,
                     no_start=True,
                 )
             )
@@ -123,7 +117,37 @@ def test_service_install_fails_before_unit_write_when_requested_port_is_busy(
     assert not env_file.exists()
 
 
-def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
+def test_service_install_rejects_unowned_environment_assignments(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    unit_dir = tmp_path / "systemd-user"
+    env_file = tmp_path / "autoclaw.env"
+    env_file.write_text("CUSTOM_FLAG=1\n", encoding="utf-8")
+
+    try:
+        init_args = build_cli_init_args(config_path, data_dir)
+        init_args.port = find_available_loopback_port()
+        asyncio.run(cli.cmd_init(init_args))
+        with pytest.raises(ProviderEnvironmentError, match="does not support CUSTOM_FLAG"):
+            cli.cmd_service_install(
+                argparse.Namespace(
+                    config=str(config_path),
+                    name="autoclaw",
+                    unit_dir=str(unit_dir),
+                    port=None,
+                    no_start=True,
+                )
+            )
+    finally:
+        get_settings.cache_clear()
+        asyncio.run(dispose_db_engine())
+
+    assert not unit_dir.joinpath("autoclaw.service").exists()
+
+
+def test_service_install_reconciles_unit_without_overwriting_private_env_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -134,7 +158,7 @@ def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
     systemctl_log = tmp_path / "systemctl-reconcile.log"
     systemctl_bin = tmp_path / "systemctl-reconcile"
     unit_dir.mkdir(parents=True, exist_ok=True)
-    env_file.write_text("CUSTOM_FLAG=1\n", encoding="utf-8")
+    env_file.write_text("# Existing provider credentials stay here.\n", encoding="utf-8")
     unit_dir.joinpath("autoclaw.service").write_text("stale unit\n", encoding="utf-8")
     write_systemctl_show_script(
         systemctl_bin,
@@ -151,12 +175,9 @@ def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
         result = cli.cmd_service_install(
             argparse.Namespace(
                 config=str(config_path),
-                data_dir=None,
-                env_file=str(env_file),
                 name="autoclaw",
                 unit_dir=str(unit_dir),
                 port=None,
-                force=False,
                 no_start=True,
             )
         )
@@ -165,8 +186,55 @@ def test_service_install_reconciles_existing_unit_without_overwriting_env_file(
         asyncio.run(dispose_db_engine())
 
     assert result == 0
-    assert env_file.read_text(encoding="utf-8") == "CUSTOM_FLAG=1\n"
+    assert env_file.read_text(encoding="utf-8") == "# Existing provider credentials stay here.\n"
+    assert env_file.stat().st_mode & 0o777 == 0o600
     assert "ExecStart=" in unit_dir.joinpath("autoclaw.service").read_text(encoding="utf-8")
+
+
+def test_service_install_reconciles_a_running_service_without_a_false_port_conflict(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config_path = tmp_path / "autoclaw-config.toml"
+    data_dir = tmp_path / "autoclaw-data"
+    unit_dir = tmp_path / "systemd-user"
+    systemctl_log = tmp_path / "systemctl-running.log"
+    systemctl_bin = tmp_path / "systemctl-running"
+    write_systemctl_show_script(
+        systemctl_bin,
+        systemctl_log,
+        active_state="active",
+        sub_state="running",
+    )
+    monkeypatch.setenv("AUTOCLAW_SYSTEMCTL_BIN", str(systemctl_bin))
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as busy_socket:
+        busy_socket.bind(("127.0.0.1", 0))
+        busy_socket.listen(1)
+        busy_port = int(busy_socket.getsockname()[1])
+        try:
+            init_args = build_cli_init_args(config_path, data_dir)
+            init_args.port = busy_port
+            asyncio.run(cli.cmd_init(init_args))
+            capsys.readouterr()
+            result = cli.cmd_service_install(
+                argparse.Namespace(
+                    config=str(config_path),
+                    name="autoclaw",
+                    unit_dir=str(unit_dir),
+                    port=None,
+                    no_start=True,
+                )
+            )
+        finally:
+            get_settings.cache_clear()
+            asyncio.run(dispose_db_engine())
+
+    output = capsys.readouterr()
+    assert result == 0
+    assert "Reusing the bind target owned by the running managed service" in output.err
+    assert unit_dir.joinpath("autoclaw.service").exists()
 
 
 @pytest.mark.asyncio
@@ -190,13 +258,9 @@ async def test_service_start_and_status_use_managed_service_surface(
     try:
         await cli.cmd_init(build_cli_init_args(config_path, data_dir))
         capsys.readouterr()
-        result = cli.cmd_service_start(
-            argparse.Namespace(config=str(config_path), name="autoclaw", json=False)
-        )
+        result = cli.cmd_service_start(argparse.Namespace(name="autoclaw", json=False))
         start_output = capsys.readouterr()
-        status_result = cli.cmd_service_status(
-            argparse.Namespace(config=str(config_path), name="autoclaw", json=True)
-        )
+        status_result = cli.cmd_service_status(argparse.Namespace(name="autoclaw", json=True))
     finally:
         get_settings.cache_clear()
         await dispose_db_engine()
@@ -207,6 +271,7 @@ async def test_service_start_and_status_use_managed_service_surface(
     assert status_payload["manager"] == "systemd-user"
     assert status_payload["installed"] is True
     assert status_payload["running"] is True
+    assert status_payload["healthy"] is None
     assert "systemctl --user start autoclaw.service" in start_output.err
     log_lines = systemctl_log.read_text(encoding="utf-8").splitlines()
     assert any("start autoclaw.service" in line for line in log_lines)
@@ -231,12 +296,8 @@ async def test_service_stop_and_restart_use_managed_service_surface(
 
     try:
         await cli.cmd_init(build_cli_init_args(config_path, data_dir))
-        stop_result = cli.cmd_service_stop(
-            argparse.Namespace(config=str(config_path), name="autoclaw", json=False)
-        )
-        restart_result = cli.cmd_service_restart(
-            argparse.Namespace(config=str(config_path), name="autoclaw", json=False)
-        )
+        stop_result = cli.cmd_service_stop(argparse.Namespace(name="autoclaw", json=False))
+        restart_result = cli.cmd_service_restart(argparse.Namespace(name="autoclaw", json=False))
     finally:
         get_settings.cache_clear()
         await dispose_db_engine()

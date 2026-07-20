@@ -27,7 +27,7 @@ Everything else that agents read later is runtime projection:
 - checkpoint history
 - pinned consumed refs
 - durable artifact current pointers
-- transient refs and task-memory search hints
+- transient refs
 - manifest and monitoring files
 
 There are no authored workflow `inputs`, `outputs.handoffs`, handoff packets, review gates, or closure gates in v1.

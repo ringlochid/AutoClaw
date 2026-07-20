@@ -11,11 +11,20 @@ from claude_agent_sdk.types import EffortLevel, McpHttpServerConfig, SandboxSett
 
 from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
 from autoclaw.definitions.contracts.workflow import ProviderKind
+from autoclaw.integrations.claude.native_identity import (
+    ClaudeAuthenticationState,
+    read_claude_authentication,
+)
+from autoclaw.platform.provider_environment import (
+    ANTHROPIC_API_KEY,
+    provider_subprocess_environment_overrides,
+)
 from autoclaw.runtime.contracts.provider_resolution import ClaudeProviderRoute
 from autoclaw.runtime.providers.contracts import (
     MANAGED_NODE_MCP_SERVER_NAME,
     DispatchStartRequest,
     ManagedNodeMcpConnection,
+    ProviderCheckAxisStatus,
     ProviderCheckResult,
     ProviderCheckStatus,
     ProviderStartAccepted,
@@ -70,8 +79,10 @@ class ClaudeAdapter:
         self,
         *,
         client_factory: Callable[[ClaudeAgentOptions], ClaudeSDKClient] = ClaudeSDKClient,
+        authentication_reader: Callable[[], ClaudeAuthenticationState] = read_claude_authentication,
     ) -> None:
         self._client_factory = client_factory
+        self._authentication_reader = authentication_reader
         self._executions: dict[str, _ClaudeExecution] = {}
         self._consumer_tasks: set[asyncio.Task[None]] = set()
         self._starting_dispatches: set[str] = set()
@@ -143,32 +154,32 @@ class ClaudeAdapter:
                 status=ProviderCheckStatus.UNAVAILABLE,
                 code="claude_adapter_inactive",
             )
-        client = self._client_factory(
-            ClaudeAgentOptions(
-                tools=[],
-                permission_mode="dontAsk",
-                setting_sources=["user", "project", "local"],
-            )
-        )
         try:
-            await client.connect()
-            server_info = await client.get_server_info()
+            state = await asyncio.to_thread(self._authentication_reader)
         except Exception:
             return ProviderCheckResult(
                 kind=self.kind,
                 status=ProviderCheckStatus.UNAVAILABLE,
                 code="claude_check_failed",
             )
-        finally:
-            await _disconnect_client(client)
+        if not state.is_authenticated:
+            authentication = (
+                ProviderCheckAxisStatus.FAILED
+                if state.code.startswith("claude_authentication_")
+                else ProviderCheckAxisStatus.NOT_CHECKED
+            )
+            return ProviderCheckResult(
+                kind=self.kind,
+                status=ProviderCheckStatus.UNAVAILABLE,
+                code=state.code,
+                authentication=authentication,
+            )
         return ProviderCheckResult(
             kind=self.kind,
-            status=(
-                ProviderCheckStatus.AVAILABLE
-                if server_info is not None
-                else ProviderCheckStatus.LIMITED
-            ),
-            code="claude_available" if server_info is not None else "claude_info_unavailable",
+            status=ProviderCheckStatus.AVAILABLE,
+            code=state.code,
+            authentication=ProviderCheckAxisStatus.PASSED,
+            authentication_method=state.method,
         )
 
     @asynccontextmanager
@@ -301,6 +312,7 @@ def _build_claude_options(
         setting_sources=["user", "project", "local"],
         sandbox=_build_sandbox(request.network_access),
         effort=_resolve_effort(route.effort_override),
+        env=provider_subprocess_environment_overrides(allowed_keys=frozenset({ANTHROPIC_API_KEY})),
     )
 
 

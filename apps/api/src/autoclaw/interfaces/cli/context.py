@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 from dataclasses import dataclass
 
 from rich.console import Console
 
 from .theme import build_rich_theme
+
+MAX_RICH_CONSOLE_WIDTH = 110
 
 
 @dataclass(frozen=True)
@@ -49,6 +52,9 @@ class CliContext:
             no_color=not is_rich,
             theme=build_rich_theme(),
             soft_wrap=False,
+            width=(
+                min(shutil.get_terminal_size().columns, MAX_RICH_CONSOLE_WIDTH) if is_rich else None
+            ),
         )
 
 

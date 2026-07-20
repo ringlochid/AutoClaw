@@ -545,7 +545,6 @@ Required semantic fields:
 - `consumes`
 - `produces`
 - `transient_refs` | optional
-- `task_memory_search_hints` | optional
 - `current_attempt_id` | nullable
 - `created_at`
 - `superseded_at` | nullable
@@ -553,7 +552,7 @@ Required semantic fields:
 Rules:
 
 - the child definition owns the baseline durable semantics for `criteria`, `consumes`, and `produces`
-- parent/root may add only assignment-local wording, supplemental durable artifact/criteria slot selectors, explicit `transient_refs`, and optional search hints
+- parent/root may add only assignment-local wording, supplemental durable artifact/criteria slot selectors, and explicit `transient_refs`
 - runtime resolves `consumes` from controller truth after validation
 - runtime projects `produces` as requirements only; assignment rows do not invent final durable ref metadata for outputs
 
@@ -625,7 +624,6 @@ Required semantic fields:
 - `produced_artifacts` as reduced durable artifact claims (`kind`, `slot`, `path`) | optional
 - `artifact_refs` as controller-resolved shared `evidence_ref` values | optional
 - `transient_refs` as shared `evidence_ref` values with `kind: transient` | optional
-- `task_memory_search_hints` | optional
 - `recorded_at`
 
 Rules:

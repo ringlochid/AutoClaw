@@ -16,7 +16,6 @@ Review/QA/audit nodes use the same assignment surface as any other node:
 - `consumes`
 - `produces`
 - optional `transient_refs`
-- optional `task_memory_search_hints`
 
 The review node consumes only what the current assignment explicitly surfaces.
 
@@ -25,7 +24,7 @@ That usually includes:
 - the reviewed artifacts
 - current criteria
 - any prior checkpoint refs the review must understand
-- any curated supporting docs surfaced through `consumes` or task memory hints
+- any curated supporting docs surfaced through `consumes`
 
 In ordinary review assignments:
 

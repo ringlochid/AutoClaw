@@ -7,7 +7,13 @@ from pathlib import Path
 
 import click
 
-from autoclaw.config import DEFAULT_LOG_LEVEL, Settings, format_loopback_authority, load_settings
+from autoclaw.config import (
+    DEFAULT_LOG_LEVEL,
+    OpenClawGatewayAuthMode,
+    Settings,
+    format_loopback_authority,
+    load_settings,
+)
 from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.interfaces.cli.bootstrap.config import read_config_sections
 from autoclaw.interfaces.cli.commands.bootstrap import cmd_init, ensure_database_ready
@@ -21,17 +27,27 @@ from autoclaw.interfaces.cli.commands.guided_presentation import (
     emit_warning,
     emit_wizard_header,
 )
+from autoclaw.interfaces.cli.commands.provider_authentication import (
+    existing_credential_prompt,
+    prompt_authentication_method,
+    prompt_provider_secret,
+    prompt_shell_secret_import,
+    provider_display_name,
+    read_shell_authentication_method,
+)
 from autoclaw.interfaces.cli.commands.providers import (
     provider_configuration_request_from_args,
 )
 from autoclaw.interfaces.cli.progress import CliProgress
 from autoclaw.interfaces.cli.providers import (
     ProviderConfigurationRequest,
+    authentication_method_label,
     collect_provider_check,
     collect_provider_statuses,
     configure_provider,
     invoke_provider_identity_action,
     set_default_provider,
+    set_openclaw_gateway_auth_mode,
 )
 from autoclaw.interfaces.cli.providers.contracts import (
     ProviderCheckOutcome,
@@ -40,8 +56,17 @@ from autoclaw.interfaces.cli.providers.contracts import (
 )
 from autoclaw.interfaces.cli.providers.inspection import PROVIDER_ORDER
 from autoclaw.interfaces.cli.providers.presentation import emit_provider_check
-from autoclaw.interfaces.cli.support import coerce_path, command_env
+from autoclaw.interfaces.cli.support import (
+    coerce_path,
+    command_env,
+    service_provider_check_env,
+    service_provider_identity_env,
+)
 from autoclaw.paths import default_data_dir, default_database_url
+from autoclaw.runtime.providers import (
+    ProviderAuthenticationMethod,
+    ProviderCheckAxisStatus,
+)
 
 _INIT_ACTIONS = click.Choice(("keep", "replace", "cancel"), case_sensitive=False)
 _PROVIDER_CHOICES = click.Choice(
@@ -136,7 +161,7 @@ def guide_provider_setup(args: argparse.Namespace) -> int:
         return _emit_cancelled()
 
     check_results: dict[ProviderKind, ProviderCheckSnapshot] = {}
-    primary_request = _provider_request_for_selection(args, primary)
+    primary_request = _provider_request_for_selection(args, primary, settings)
     check_results[primary] = _configure_and_check_provider(
         config_path,
         primary_request,
@@ -152,15 +177,29 @@ def guide_provider_setup(args: argparse.Namespace) -> int:
                 type=click.Choice(tuple(provider.value for provider in remaining)),
             )
         )
+        settings = _load_config_settings(config_path)
         check_results[extra] = _configure_and_check_provider(
             config_path,
-            ProviderConfigurationRequest(provider=extra),
+            _provider_request_for_selection(
+                _clone_namespace(
+                    args,
+                    provider=extra.value,
+                    model=None,
+                    effort=None,
+                    cli_path=None,
+                    gateway_url=None,
+                    gateway_profile=None,
+                    gateway_auth_mode=None,
+                ),
+                extra,
+                settings,
+            ),
             make_default=False,
         )
         remaining.remove(extra)
 
     _emit_setup_summary(config_path, check_results)
-    return 0
+    return 0 if all(check.is_ready is True for check in check_results.values()) else 1
 
 
 def _prompt_existing_init_action(config_path: Path) -> str:
@@ -272,48 +311,119 @@ def _configure_and_check_provider(
     snapshot = configure_provider(config_path, request)
     if make_default and snapshot.default_provider != request.provider:
         set_default_provider(config_path, request.provider)
-    emit_success(f"Configured provider: {request.provider.value}")
+    emit_success(f"Saved provider route: {request.provider.value}")
     if request.provider == ProviderKind.OPENCLAW:
         emit_warning(
-            "OpenClaw is experimental; its Gateway identity and compatibility MCP "
+            "OpenClaw is experimental; the Gateway process and compatibility MCP "
             "configuration remain user-managed."
         )
-    return _check_provider_with_identity(config_path, request.provider)
+    preferred_method = None
+    if request.gateway_auth_mode is not None:
+        preferred_method = ProviderAuthenticationMethod(request.gateway_auth_mode.value)
+    return _check_provider_with_identity(
+        config_path,
+        request.provider,
+        preferred_method=preferred_method,
+    )
 
 
 def _check_provider_with_identity(
     config_path: Path,
     provider: ProviderKind,
+    *,
+    preferred_method: ProviderAuthenticationMethod | None,
 ) -> ProviderCheckSnapshot:
     emit_step(f"Checking {provider.value}")
-    check = collect_provider_check(_load_config_settings(config_path), provider)
+    check = _collect_provider_check(config_path, provider)
     emit_provider_check(check, is_compact=True)
-    if (
-        provider == ProviderKind.CODEX
-        and check.outcome == ProviderCheckOutcome.AUTHENTICATION_FAILED
-    ):
-        if click.confirm("Sign in to Codex now?", default=True):
-            identity = invoke_provider_identity_action(
-                provider,
-                "login",
-                is_json_output=False,
-            )
-            if identity.outcome == ProviderIdentityOutcome.SUCCEEDED:
-                emit_success("Codex login completed")
-            else:
-                emit_warning(f"Codex login: {identity.outcome.value}")
-            if identity.outcome == ProviderIdentityOutcome.SUCCEEDED:
-                check = collect_provider_check(_load_config_settings(config_path), provider)
-                emit_provider_check(check, is_compact=True)
+    can_configure_identity = check.is_ready is True or check.outcome in {
+        ProviderCheckOutcome.AUTHENTICATION_FAILED,
+        ProviderCheckOutcome.LOCAL_PREREQUISITES_READY,
+    }
+    if not can_configure_identity:
         return check
-    if provider != ProviderKind.CODEX and check.is_ready is not True:
-        identity = invoke_provider_identity_action(provider, "login", is_json_output=False)
-        emit_warning(f"Identity setup: {identity.detail}")
+
+    method = preferred_method or prompt_authentication_method(
+        provider,
+        default_method=(check.authentication_method or read_shell_authentication_method(provider)),
+    )
+    if check.is_ready is True and check.authentication_method is method:
+        should_reuse = click.confirm(
+            existing_credential_prompt(provider, method),
+            default=True,
+        )
+        if should_reuse:
+            emit_success(f"Using existing {provider.value} {authentication_method_label(method)}")
+            return check
+
+    secret = prompt_shell_secret_import(config_path, provider, method)
+    if secret is None:
+        secret = prompt_provider_secret(provider, method)
+    with service_provider_identity_env():
+        identity = invoke_provider_identity_action(
+            provider,
+            "login",
+            is_json_output=False,
+            config_path=config_path,
+            authentication_method=method,
+            secret=secret,
+        )
+    if identity.outcome != ProviderIdentityOutcome.SUCCEEDED:
+        emit_warning(f"{provider_display_name(provider)} authentication: {identity.detail}")
+        return check.model_copy(
+            update={
+                "outcome": ProviderCheckOutcome.AUTHENTICATION_FAILED,
+                "is_ready": False,
+                "authentication": ProviderCheckAxisStatus.FAILED,
+                "authentication_method": method,
+                "detail": "selected_provider_authentication_failed",
+            }
+        )
+    if provider is ProviderKind.OPENCLAW:
+        set_openclaw_gateway_auth_mode(
+            config_path,
+            OpenClawGatewayAuthMode(method.value),
+        )
+    return _recheck_effective_authentication(config_path, provider, method)
+
+
+def _recheck_effective_authentication(
+    config_path: Path,
+    provider: ProviderKind,
+    method: ProviderAuthenticationMethod,
+) -> ProviderCheckSnapshot:
+    label = authentication_method_label(method)
+    emit_success(f"{provider_display_name(provider)} {label} completed")
+    emit_step(f"Checking effective {provider.value} credential")
+    check = _collect_provider_check(config_path, provider)
+    emit_provider_check(check, is_compact=True)
+    if check.is_ready is True and check.authentication_method is not method:
+        effective_method = (
+            authentication_method_label(check.authentication_method)
+            if check.authentication_method is not None
+            else "another credential"
+        )
+        emit_warning(
+            f"{provider_display_name(provider)} {effective_method} remains effective; "
+            "the selected "
+            f"{label} did not take effect. An environment variable or native credential "
+            "store may take precedence."
+        )
+        return check.model_copy(
+            update={
+                "outcome": ProviderCheckOutcome.CHECK_FAILED,
+                "is_ready": False,
+                "detail": "selected_authentication_method_not_effective",
+            }
+        )
+    if check.is_ready is True:
+        emit_success(f"{provider_display_name(provider)} {label} is ready")
     return check
 
 
 def _emit_provider_state(config_path: Path, settings: Settings) -> None:
-    statuses = collect_provider_statuses(settings)
+    with service_provider_identity_env():
+        statuses = collect_provider_statuses(settings)
     effective_providers = {status.kind for status in statuses if status.is_configured}
     persisted_providers = _persisted_provider_kinds(config_path)
     rows = [
@@ -345,7 +455,8 @@ def _emit_setup_summary(
     checks: dict[ProviderKind, ProviderCheckSnapshot],
 ) -> None:
     settings = _load_config_settings(config_path)
-    statuses = collect_provider_statuses(settings)
+    with service_provider_identity_env():
+        statuses = collect_provider_statuses(settings)
     effective_providers = {status.kind for status in statuses if status.is_configured}
     configured = _persisted_provider_kinds(config_path)
     default = _persisted_default_provider(config_path)
@@ -366,22 +477,52 @@ def _emit_setup_summary(
     for provider, check in checks.items():
         state = "ready" if check.is_ready is True else check.outcome.value
         rows.append((provider.value, state))
-    next_default = effective_default or default
-    next_action = "autoclaw serve"
-    if next_default is not None and checks.get(next_default, None) is not None:
-        if checks[next_default].is_ready is not True:
-            next_action = f"autoclaw providers check {next_default.value}"
-    elif effective_default != default and effective_default is not None:
-        next_action = f"autoclaw providers check {effective_default.value}"
-    emit_completion("Provider configuration complete", rows, next_action=next_action)
+    first_nonready = next(
+        (provider for provider, check in checks.items() if check.is_ready is not True),
+        None,
+    )
+    next_action = (
+        f"autoclaw providers check {first_nonready.value}"
+        if first_nonready is not None
+        else "autoclaw serve"
+    )
+    if first_nonready is not None:
+        emit_warning("Provider setup is saved, but at least one selected route is not ready.")
+    emit_completion("Provider setup summary", rows, next_action=next_action)
 
 
 def _provider_request_for_selection(
     args: argparse.Namespace,
     provider: ProviderKind,
+    settings: Settings,
 ) -> ProviderConfigurationRequest:
     selected_args = _clone_namespace(args, provider=provider.value)
+    if provider is ProviderKind.OPENCLAW:
+        selected_args.gateway_url = click.prompt(
+            "Gateway URL",
+            default=getattr(args, "gateway_url", None) or settings.openclaw.gateway_url,
+        )
+        selected_args.gateway_profile = click.prompt(
+            "Gateway profile",
+            default=(getattr(args, "gateway_profile", None) or settings.openclaw.gateway_profile),
+        )
+        selected_args.gateway_auth_mode = click.prompt(
+            "Gateway authentication",
+            type=click.Choice(("token", "password")),
+            default=(
+                getattr(args, "gateway_auth_mode", None)
+                or settings.openclaw.gateway_auth_mode.value
+            ),
+        )
     return provider_configuration_request_from_args(selected_args)
+
+
+def _collect_provider_check(
+    config_path: Path,
+    provider: ProviderKind,
+) -> ProviderCheckSnapshot:
+    with service_provider_check_env(config_path=config_path):
+        return collect_provider_check(load_settings(), provider)
 
 
 def _persisted_provider_kinds(config_path: Path) -> set[ProviderKind]:

@@ -8,14 +8,14 @@ Status: Accepted
 
 AutoClaw V2 keeps one small task-relative file namespace. Provider-native tools edit `workspace/`; the shared node MCP surface reads controller context and task files through `get_current_context`, `list_files`, and `read_file`. Artifact publication continues through checkpoints and controller copying.
 
-V2 removes the unused `context/` family, task-memory search hints, and the four dispatch monitoring projections. It does not add MCP file writes, search, resource references, or a remote filesystem abstraction.
+V2 removes the unused `context/` family, its retrieval-hint mechanism, and the four dispatch monitoring projections. It does not add MCP file writes, search, resource references, or a remote filesystem abstraction.
 
 ## Context
 
 ADR-0005 established task-owned roots and controller-generated projections, but it retained several V1 surfaces that are no longer useful to the current product strategy:
 
 - `context/` and `context/wiki/` were created and modeled without becoming a meaningful worker workflow
-- task-memory hints taught agents to search a directory that ordinary work did not use
+- retrieval hints taught agents to search a directory that ordinary work did not use
 - dispatch delivery, continuity, watchdog, and provider-event files projected provider-shaped support state that is no longer part of runtime correctness
 - agents were told to recover controller context by reading generated files with provider-native filesystem tools
 
@@ -104,7 +104,7 @@ MCP transport state, ping, protocol progress notifications, provider streams, an
 This ADR supersedes ADR-0005's decisions to retain:
 
 - `context/` and `context/wiki/`
-- task-memory search hints tied to those directories
+- retrieval hints tied to those directories
 - `_runtime/dispatch/<dispatch_id>/delivery-state.json`
 - `_runtime/dispatch/<dispatch_id>/continuity-state.json`
 - `_runtime/dispatch/<dispatch_id>/watchdog-state.json`

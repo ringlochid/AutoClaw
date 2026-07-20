@@ -113,7 +113,6 @@ Later agents should reread:
 - surfaced durable artifact refs
 - surfaced criteria refs
 - optional `transient_refs`
-- optional `task_memory_search_hints`
 
 This is the real handoff model:
 

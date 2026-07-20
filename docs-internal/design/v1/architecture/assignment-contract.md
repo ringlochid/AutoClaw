@@ -36,7 +36,6 @@ The parent/root may add only:
 - assignment-specific `summary` and `instruction` wording
 - supplemental durable context sharing by semantic slot selector for `artifact` and `criteria` only
 - explicit `transient_refs`
-- optional `task_memory_search_hints`
 
 The runtime then resolves the durable requirements into controller-owned truth and projects the assignment files from that truth.
 
@@ -89,7 +88,6 @@ The parent/root may stage one child assignment instance by specifying:
 - optional bounded `instruction`
 - which additional authored artifact slots or criteria slots should be shared durably for this assignment
 - which transient files should be surfaced explicitly, if any
-- which search hints should be surfaced explicitly, if any
 
 The parent/root does not get to redefine:
 
@@ -132,7 +130,6 @@ Minimum canonical projection fields:
 - `consumes`
 - `produces`
 - `transient_refs` | optional
-- `task_memory_search_hints` | optional
 
 Recommended shape:
 
@@ -162,8 +159,6 @@ assignment:
           slot: null
           path: string
           description: string
-    task_memory_search_hints:
-        - string
 ```
 
 Rules:
@@ -213,8 +208,6 @@ assign_child:
           description: Optional transient repro notes surfaced for this assignment.
         - path: <task_root>/tmp/transfers/auth-refresh-open-question.md
           description: Temporary parent note about the unresolved token-expiry proof lane.
-    task_memory_search_hints:
-        - auth refresh
 ```
 
 Exact semantic payload shape:
@@ -234,8 +227,6 @@ assign_child:
     transient_surfaces:
         - path: string
           description: string
-    task_memory_search_hints:
-        - string
 ```
 
 Rules:
@@ -243,7 +234,7 @@ Rules:
 - `assignment_intent` is semantic mission staging only
 - `assignment_intent` is for parent/root -> child staging only; it is not the launch-time root-assignment source
 - `supplemental_durable_context` is slot-based durable context sharing only
-- `supplemental_durable_context.artifact_slots` must not target a slot produced by the same child node; pass previous same-node context through `transient_surfaces` or task memory instead
+- `supplemental_durable_context.artifact_slots` must not target a slot produced by the same child node; pass previous same-node material through explicit `transient_surfaces` instead
 - `transient_surfaces` is a JSON array/YAML sequence of `{ path, description }` objects for explicit non-durable carryover only
 - the parent/root does not submit materialized `criteria`, concrete durable `consumes`, or projected `produces`
 - runtime resolves concrete durable refs and then projects the final `assignment.*`

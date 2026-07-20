@@ -6,7 +6,7 @@ CLI commands validate local inputs before starting their owned mutation. A faile
 
 Commands with `--json` print one machine-readable result and no human progress text. Human output stays short and names the next useful command. `--debug` may appear before or after a subcommand and adds a traceback for runtime failures. Expected parse errors never dump Click internals.
 
-Passive commands do not turn missing checks into success. Provider authentication and reachability remain `not_checked` in machine output until a bounded provider diagnostic directly proves them. Human output renders the same states as confirmed, failed, or not tested.
+Passive commands do not turn missing checks into success. Provider authentication and reachability remain `not_checked` in machine output until a bounded provider diagnostic inspects them. Human output says whether a supported credential was found and whether the provider was reached, without implying that an unmade model request succeeded.
 
 ## Safe boundaries
 

@@ -10,14 +10,151 @@ from rich.text import Text
 
 from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.interfaces.cli.context import CliContext
-from autoclaw.runtime.providers import ProviderCheckAxisStatus
+from autoclaw.interfaces.cli.providers.identity import authentication_method_label
+from autoclaw.runtime.providers import ProviderAuthenticationMethod, ProviderCheckAxisStatus
 
 from .contracts import (
     ProviderCheckOutcome,
     ProviderCheckSnapshot,
+    ProviderConfigurationSnapshot,
+    ProviderDefinitionSnapshot,
+    ProviderIdentityOutcome,
+    ProviderIdentitySnapshot,
     ProviderProductStatus,
     ProviderStatusSnapshot,
 )
+
+
+def emit_provider_definitions(
+    definitions: Sequence[ProviderDefinitionSnapshot],
+    *,
+    context: CliContext | None = None,
+) -> None:
+    runtime = context or CliContext()
+    if not runtime.rich_enabled():
+        print("AutoClaw provider integrations")
+        for definition in definitions:
+            availability = "available" if definition.is_integration_available else "unavailable"
+            print(
+                f"{definition.kind.value}: {definition.product_status.value}; "
+                f"{availability}; setup owner: {definition.setup_owner}"
+            )
+        return
+
+    table = Table(box=box.SIMPLE_HEAD, header_style="heading", pad_edge=False)
+    table.add_column("Provider", style="bold", no_wrap=True)
+    table.add_column("Lane", no_wrap=True)
+    table.add_column("Local", no_wrap=True)
+    table.add_column("Ownership", overflow="fold")
+    for definition in definitions:
+        table.add_row(
+            provider_display_name(definition.kind),
+            _product_status_text(definition.product_status),
+            _styled_state(
+                "Available" if definition.is_integration_available else "Unavailable",
+                "success" if definition.is_integration_available else "error",
+            ),
+            _setup_owner_label(definition.setup_owner),
+        )
+    runtime.console().print(
+        Panel(
+            table,
+            title="Provider integrations",
+            title_align="left",
+            border_style="accent",
+            padding=(0, 1),
+        )
+    )
+
+
+def emit_provider_configuration(
+    snapshot: ProviderConfigurationSnapshot,
+    *,
+    context: CliContext | None = None,
+) -> None:
+    runtime = context or CliContext()
+    if not runtime.rich_enabled():
+        print(f"Configured provider: {snapshot.provider.value}")
+        print(f"Default provider: {snapshot.default_provider.value}")
+        print(f"Default changed: {str(snapshot.is_default_changed).lower()}")
+        if snapshot.product_status is ProviderProductStatus.EXPERIMENTAL:
+            print("Product status: experimental selectable lane")
+        return
+    facts = Table.grid(padding=(0, 2))
+    facts.add_column(style="muted", no_wrap=True)
+    facts.add_column(overflow="fold")
+    facts.add_row("Provider", provider_display_name(snapshot.provider))
+    facts.add_row("Default", provider_display_name(snapshot.default_provider))
+    facts.add_row("Default changed", "Yes" if snapshot.is_default_changed else "No")
+    facts.add_row("Lane", _product_status_text(snapshot.product_status))
+    runtime.console().print(
+        Panel(
+            Group(Text("✓  Route saved", style="bold success"), Text(), facts),
+            title="Provider configuration",
+            title_align="left",
+            border_style="success",
+            padding=(0, 1),
+        )
+    )
+
+
+def emit_provider_identity(
+    snapshot: ProviderIdentitySnapshot,
+    *,
+    context: CliContext | None = None,
+) -> None:
+    runtime = context or CliContext()
+    if not runtime.rich_enabled():
+        print(f"Provider {snapshot.action}: {snapshot.provider.value}")
+        print(f"Outcome: {snapshot.outcome.value}")
+        print(f"Detail: {snapshot.detail}")
+        if snapshot.authentication_method is not None:
+            print(
+                "Authentication: "
+                f"{_display_authentication_method_label(snapshot.authentication_method)}"
+            )
+        print(f"Identity: {snapshot.service_identity}")
+        print(f"Native home: {snapshot.native_home}")
+        if snapshot.outcome is ProviderIdentityOutcome.SUCCEEDED and snapshot.action == "login":
+            print(f"Next: autoclaw providers check {snapshot.provider.value}")
+        return
+
+    style = {
+        ProviderIdentityOutcome.SUCCEEDED: "success",
+        ProviderIdentityOutcome.PARTIAL: "warn",
+        ProviderIdentityOutcome.NOT_INSTALLED: "error",
+        ProviderIdentityOutcome.FAILED: "error",
+    }[snapshot.outcome]
+    facts = Table.grid(padding=(0, 2))
+    facts.add_column(style="muted", no_wrap=True)
+    facts.add_column(overflow="fold")
+    facts.add_row("Provider", provider_display_name(snapshot.provider))
+    facts.add_row("Action", snapshot.action.title())
+    facts.add_row("Result", snapshot.outcome.value.replace("_", " ").title())
+    if snapshot.authentication_method is not None:
+        facts.add_row(
+            "Method",
+            _display_authentication_method_label(snapshot.authentication_method),
+        )
+    facts.add_row("Runtime identity", snapshot.service_identity)
+    facts.add_row("Native home", snapshot.native_home)
+    facts.add_row("Detail", snapshot.detail)
+    runtime.console().print(
+        Panel(
+            facts,
+            title=f"{provider_display_name(snapshot.provider)} provider {snapshot.action}",
+            title_align="left",
+            border_style=style,
+            padding=(0, 1),
+        )
+    )
+    if snapshot.outcome is ProviderIdentityOutcome.SUCCEEDED and snapshot.action == "login":
+        runtime.console().print(
+            Text.assemble(
+                ("Next  ", "muted"),
+                (f"autoclaw providers check {snapshot.provider.value}", "accent"),
+            )
+        )
 
 
 def emit_provider_status(
@@ -151,8 +288,10 @@ def _emit_rich_provider_check(
     facts = Table.grid(padding=(0, 2))
     facts.add_column(style="muted", no_wrap=True)
     facts.add_column(overflow="fold")
-    facts.add_row("Authentication", _axis_text(snapshot.authentication))
-    facts.add_row("Reachability", _axis_text(snapshot.reachability))
+    facts.add_row("Credential", _credential_axis_text(snapshot.authentication))
+    if snapshot.authentication_method is not None:
+        facts.add_row("Method", _authentication_method_text(snapshot.authentication_method))
+    facts.add_row("Reachability", _reachability_axis_text(snapshot.reachability))
     if not is_compact:
         facts.add_row("Runtime identity", Text(snapshot.service_identity))
         facts.add_row("Native home", Text(snapshot.native_home))
@@ -183,8 +322,10 @@ def _emit_plain_provider_check(
     result_text, _, _ = _check_result_style(snapshot)
     print(f"{provider_display_name(snapshot.kind)} provider check")
     print(f"  Result: {result_text.casefold()}")
-    print(f"  Authentication: {_axis_label(snapshot.authentication)}")
-    print(f"  Reachability: {_axis_label(snapshot.reachability)}")
+    print(f"  Credential: {_credential_axis_label(snapshot.authentication)}")
+    if snapshot.authentication_method is not None:
+        print(f"  Method: {_display_authentication_method_label(snapshot.authentication_method)}")
+    print(f"  Reachability: {_reachability_axis_label(snapshot.reachability)}")
     if is_compact:
         return
     print(f"  Runtime identity: {snapshot.service_identity}")
@@ -198,7 +339,7 @@ def _emit_plain_provider_check(
     if next_step is not None:
         print(f"Next: {next_step}")
     elif _has_unchecked_axis(snapshot):
-        print("A not tested axis was not directly verified; this check never starts an agent.")
+        print("No model request was sent; live provider access is exercised by the first task.")
 
 
 def _rich_check_followup(snapshot: ProviderCheckSnapshot) -> Group | None:
@@ -220,7 +361,7 @@ def _rich_check_followup(snapshot: ProviderCheckSnapshot) -> Group | None:
             parts.append(Text())
         parts.append(
             Text(
-                "A not tested axis was not directly verified; this check never starts an agent.",
+                "No model request was sent; live provider access is exercised by the first task.",
                 style="muted",
             )
         )
@@ -235,21 +376,47 @@ def _check_result_style(snapshot: ProviderCheckSnapshot) -> tuple[str, str, str]
     return "Needs attention", "error", "error"
 
 
-def _axis_text(status: ProviderCheckAxisStatus) -> Text:
+def _credential_axis_text(status: ProviderCheckAxisStatus) -> Text:
     style = {
         ProviderCheckAxisStatus.PASSED: "success",
         ProviderCheckAxisStatus.FAILED: "error",
         ProviderCheckAxisStatus.NOT_CHECKED: "muted",
     }[status]
-    return Text(_axis_label(status).title(), style=style)
+    return Text(_credential_axis_label(status).title(), style=style)
 
 
-def _axis_label(status: ProviderCheckAxisStatus) -> str:
+def _reachability_axis_text(status: ProviderCheckAxisStatus) -> Text:
+    style = {
+        ProviderCheckAxisStatus.PASSED: "success",
+        ProviderCheckAxisStatus.FAILED: "error",
+        ProviderCheckAxisStatus.NOT_CHECKED: "muted",
+    }[status]
+    return Text(_reachability_axis_label(status).title(), style=style)
+
+
+def _credential_axis_label(status: ProviderCheckAxisStatus) -> str:
     return {
-        ProviderCheckAxisStatus.PASSED: "confirmed",
-        ProviderCheckAxisStatus.FAILED: "failed",
+        ProviderCheckAxisStatus.PASSED: "found",
+        ProviderCheckAxisStatus.FAILED: "missing or rejected",
+        ProviderCheckAxisStatus.NOT_CHECKED: "not inspected",
+    }[status]
+
+
+def _reachability_axis_label(status: ProviderCheckAxisStatus) -> str:
+    return {
+        ProviderCheckAxisStatus.PASSED: "reachable",
+        ProviderCheckAxisStatus.FAILED: "unreachable",
         ProviderCheckAxisStatus.NOT_CHECKED: "not tested",
     }[status]
+
+
+def _authentication_method_text(method: ProviderAuthenticationMethod) -> Text:
+    return Text(_display_authentication_method_label(method), style="accent")
+
+
+def _display_authentication_method_label(method: ProviderAuthenticationMethod) -> str:
+    label = authentication_method_label(method)
+    return f"{label[0].upper()}{label[1:]}"
 
 
 def _product_status_text(status: ProviderProductStatus) -> Text:
@@ -263,6 +430,14 @@ def _product_status_label(status: ProviderProductStatus) -> str:
     return "managed"
 
 
+def _setup_owner_label(owner: str) -> str:
+    if owner == "shared":
+        return "AutoClaw route; user-managed provider runtime"
+    if owner == "user":
+        return "User managed"
+    return "AutoClaw managed"
+
+
 def _styled_state(label: str, style: str) -> Text:
     return Text(label, style=style)
 
@@ -274,6 +449,8 @@ def _provider_check_next_step(snapshot: ProviderCheckSnapshot) -> str | None:
     if snapshot.outcome is ProviderCheckOutcome.NOT_CONFIGURED:
         return f"autoclaw providers configure {snapshot.kind.value}"
     if snapshot.outcome is ProviderCheckOutcome.AUTHENTICATION_FAILED:
+        return f"autoclaw providers login {snapshot.kind.value}"
+    if snapshot.outcome is ProviderCheckOutcome.LOCAL_PREREQUISITES_READY:
         return f"autoclaw providers login {snapshot.kind.value}"
     if snapshot.outcome is ProviderCheckOutcome.NOT_INSTALLED:
         if snapshot.kind is ProviderKind.OPENCLAW:
@@ -295,6 +472,9 @@ def _has_unchecked_axis(snapshot: ProviderCheckSnapshot) -> bool:
 
 __all__ = [
     "emit_provider_check",
+    "emit_provider_configuration",
+    "emit_provider_definitions",
+    "emit_provider_identity",
     "emit_provider_status",
     "provider_display_name",
 ]

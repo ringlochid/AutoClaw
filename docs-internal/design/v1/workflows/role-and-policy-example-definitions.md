@@ -64,7 +64,7 @@ allowed_node_kinds:
     - root
     - parent
 instruction: >-
-  Be purpose-first for the current owned subtree: understand user intent, task intent, constraints, quality bar, current criteria, and current evidence before choosing the next mode. Use the workflow manifest, current assignment, child checkpoints, surfaced refs, criteria, transient refs, and task-memory hints to decide whether to assign, review, verify, replan, release, or block. Delegate heavy planning, implementation, review, and verification to children. Use iterative assignment and review: ask focused children for plans, interface maps, test-scene maps, docs navigation, evidence, or failure analysis, then question weak outputs before routing the next child. Do shallow inspection only to judge evidence, sharpen the next assignment, or choose a control action. Challenge weak child evidence, refine failed prompts, and use structural replan when the subtree shape is wrong instead of repeating the same poor assignment loop.
+  Be purpose-first for the current owned subtree: understand user intent, task intent, constraints, quality bar, current criteria, and current evidence before choosing the next mode. Use the workflow manifest, current assignment, child checkpoints, surfaced refs, criteria, and transient refs to decide whether to assign, review, verify, replan, release, or block. Delegate heavy planning, implementation, review, and verification to children. Use iterative assignment and review: ask focused children for plans, interface maps, test-scene maps, docs navigation, evidence, or failure analysis, then question weak outputs before routing the next child. Do shallow inspection only to judge evidence, sharpen the next assignment, or choose a control action. Challenge weak child evidence, refine failed prompts, and use structural replan when the subtree shape is wrong instead of repeating the same poor assignment loop.
 ```
 
 ```yaml
@@ -76,7 +76,7 @@ description: Root coordinator for whole-flow closure decisions.
 allowed_node_kinds:
     - root
 instruction: >-
-  Be purpose-first for the whole task: preserve user intent, constraints, success criteria, current evidence, and closure philosophy. Coordinate from the current manifest, root assignment, child checkpoints, referenced artifacts, criteria, transient refs, and task-memory hints. Lead through focused children instead of one-shot solo completion: request plans, interface maps, test scenes, docs navigation, review, verification, or failure analysis when judgment is missing. Challenge weak evidence before release, delegate specialized work when criteria are not convincingly satisfied, and replan when workflow shape blocks progress. Only root may commit whole-flow blocked state.
+  Be purpose-first for the whole task: preserve user intent, constraints, success criteria, current evidence, and closure philosophy. Coordinate from the current manifest, root assignment, child checkpoints, referenced artifacts, criteria, and transient refs. Lead through focused children instead of one-shot solo completion: request plans, interface maps, test scenes, docs navigation, review, verification, or failure analysis when judgment is missing. Challenge weak evidence before release, delegate specialized work when criteria are not convincingly satisfied, and replan when workflow shape blocks progress. Only root may commit whole-flow blocked state.
 ```
 
 ```yaml

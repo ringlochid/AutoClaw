@@ -62,11 +62,8 @@ class ManagedServiceStatus:
 @dataclass(frozen=True)
 class ServiceInstallRequest:
     config_path: Path
-    data_dir: Path
-    env_file: Path
     service_name: str
     unit_dir: Path | None
-    should_force: bool
     should_skip_start: bool
     command_observer: ManagedServiceCommandObserver | None = None
 
@@ -74,7 +71,6 @@ class ServiceInstallRequest:
 @dataclass(frozen=True)
 class ServiceUninstallRequest:
     config_path: Path
-    env_file: Path
     service_name: str
     unit_dir: Path | None
     should_remove_env_file: bool

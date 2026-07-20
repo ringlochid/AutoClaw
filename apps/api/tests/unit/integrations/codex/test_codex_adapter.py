@@ -14,6 +14,7 @@ from autoclaw.runtime.contracts.provider_resolution import CodexProviderRoute
 from autoclaw.runtime.providers.contracts import (
     DispatchStartRequest,
     ManagedNodeMcpConnection,
+    ProviderAuthenticationMethod,
     ProviderCheckAxisStatus,
     ProviderCheckStatus,
     ProviderStartError,
@@ -105,19 +106,27 @@ def _request() -> DispatchStartRequest:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("account", "requires_openai_auth", "expected_status", "expected_authentication"),
+    (
+        "account",
+        "requires_openai_auth",
+        "expected_status",
+        "expected_authentication",
+        "expected_method",
+    ),
     (
         (
             SimpleNamespace(root=SimpleNamespace(type="chatgpt")),
             False,
             ProviderCheckStatus.AVAILABLE,
             ProviderCheckAxisStatus.PASSED,
+            ProviderAuthenticationMethod.SUBSCRIPTION,
         ),
         (
             SimpleNamespace(root=SimpleNamespace(type="apiKey")),
             True,
             ProviderCheckStatus.AVAILABLE,
             ProviderCheckAxisStatus.PASSED,
+            ProviderAuthenticationMethod.API_KEY,
         ),
         (
             SimpleNamespace(
@@ -129,18 +138,21 @@ def _request() -> DispatchStartRequest:
             False,
             ProviderCheckStatus.AVAILABLE,
             ProviderCheckAxisStatus.NOT_CHECKED,
+            None,
         ),
         (
             None,
             False,
             ProviderCheckStatus.AVAILABLE,
             ProviderCheckAxisStatus.NOT_CHECKED,
+            None,
         ),
         (
             None,
             True,
             ProviderCheckStatus.UNAVAILABLE,
             ProviderCheckAxisStatus.FAILED,
+            None,
         ),
     ),
 )
@@ -149,6 +161,7 @@ async def test_codex_check_reports_only_missing_required_authentication(
     requires_openai_auth: bool,
     expected_status: ProviderCheckStatus,
     expected_authentication: ProviderCheckAxisStatus,
+    expected_method: ProviderAuthenticationMethod | None,
 ) -> None:
     fake = _FakeAvailabilityCodex(
         account=account,
@@ -163,6 +176,7 @@ async def test_codex_check_reports_only_missing_required_authentication(
 
     assert result.status is expected_status
     assert result.authentication is expected_authentication
+    assert result.authentication_method is expected_method
     assert result.reachability is ProviderCheckAxisStatus.NOT_CHECKED
     assert fake.was_closed is True
 

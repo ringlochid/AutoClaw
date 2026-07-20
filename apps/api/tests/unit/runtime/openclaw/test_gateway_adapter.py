@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from autoclaw.config import OpenClawSettings
+from autoclaw.config import OpenClawGatewayAuthMode, OpenClawSettings
 from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
 from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.integrations.openclaw.gateway import OpenClawGatewayAdapter, cli_transport
@@ -21,6 +21,7 @@ from autoclaw.runtime.contracts.provider_resolution import OpenClawProviderRoute
 from autoclaw.runtime.providers.contracts import (
     CompatibilityNodeMcpConnection,
     DispatchStartRequest,
+    ProviderAuthenticationMethod,
     ProviderCheckAxisStatus,
     ProviderCheckStatus,
     ProviderStartError,
@@ -54,10 +55,9 @@ def build_start_request(
     )
 
 
-def test_gateway_command_uses_profile_url_and_never_waits_for_final() -> None:
+def test_gateway_command_uses_profile_and_never_puts_url_or_secret_on_argv() -> None:
     command = build_openclaw_gateway_command(
         profile="experimental",
-        gateway_url="ws://127.0.0.1:18789",
         method="agent",
         params={
             "message": "input",
@@ -75,14 +75,13 @@ def test_gateway_command_uses_profile_url_and_never_waits_for_final() -> None:
         "agent",
     )
     assert command[6:] == (
-        "--url",
-        "ws://127.0.0.1:18789",
         "--params",
         '{"message":"input","extraSystemPrompt":"instructions"}',
         "--json",
         "--timeout",
         "7500",
     )
+    assert "ws://127.0.0.1:18789" not in command
     assert "--expect-final" not in command
 
 
@@ -105,10 +104,13 @@ async def test_gateway_transport_returns_one_bounded_json_response(
         return FakeProcess()
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", create_process)
+    monkeypatch.setenv("OPENCLAW_GATEWAY_TOKEN", "private-token")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "must-not-reach-openclaw")
 
     response = await call_openclaw_gateway(
         profile="experimental",
         gateway_url="ws://127.0.0.1:18789",
+        gateway_auth_mode=OpenClawGatewayAuthMode.TOKEN,
         method="agent",
         params={"message": "input"},
         working_directory=tmp_path,
@@ -119,12 +121,36 @@ async def test_gateway_transport_returns_one_bounded_json_response(
     assert response == {"status": "accepted", "runId": "private-run"}
     assert spawned_args[-3:] == ("--json", "--timeout", "10000")
     assert "--expect-final" not in spawned_args
-    assert spawned_kwargs == {
-        "cwd": str(tmp_path),
-        "stdin": asyncio.subprocess.DEVNULL,
-        "stdout": asyncio.subprocess.PIPE,
-        "stderr": asyncio.subprocess.PIPE,
-    }
+    assert spawned_kwargs["cwd"] == str(tmp_path)
+    assert spawned_kwargs["stdin"] is asyncio.subprocess.DEVNULL
+    assert spawned_kwargs["stdout"] is asyncio.subprocess.PIPE
+    assert spawned_kwargs["stderr"] is asyncio.subprocess.PIPE
+    child_environment = cast(dict[str, str], spawned_kwargs["env"])
+    assert child_environment["OPENCLAW_GATEWAY_URL"] == "ws://127.0.0.1:18789"
+    assert child_environment["OPENCLAW_GATEWAY_TOKEN"] == "private-token"
+    assert "OPENCLAW_GATEWAY_PASSWORD" not in child_environment
+    assert "ANTHROPIC_API_KEY" not in child_environment
+    assert "private-token" not in spawned_args
+
+
+@pytest.mark.asyncio
+async def test_gateway_transport_rejects_missing_selected_credential_before_spawn(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPENCLAW_GATEWAY_TOKEN", raising=False)
+    monkeypatch.delenv("OPENCLAW_GATEWAY_PASSWORD", raising=False)
+
+    with pytest.raises(OpenClawGatewayCliError) as caught:
+        await call_openclaw_gateway(
+            profile="default",
+            gateway_url="ws://127.0.0.1:18789",
+            gateway_auth_mode=OpenClawGatewayAuthMode.TOKEN,
+            method="health",
+            params={},
+        )
+
+    assert caught.value.code is OpenClawGatewayFailureCode.AUTHENTICATION_FAILED
+    assert caught.value.is_acceptance_uncertain is False
 
 
 @pytest.mark.asyncio
@@ -154,7 +180,9 @@ async def test_start_preserves_two_request_lanes_and_stop_aborts_once(
     params = first_call["params"]
 
     assert first_call["profile"] == "experimental"
+    assert first_call["executable"] == "openclaw"
     assert first_call["gateway_url"] == "ws://127.0.0.1:18789"
+    assert first_call["gateway_auth_mode"] is OpenClawGatewayAuthMode.TOKEN
     assert first_call["working_directory"] == tmp_path
     assert isinstance(params, Mapping)
     assert params["message"] == "Exact dispatch input"
@@ -164,7 +192,9 @@ async def test_start_preserves_two_request_lanes_and_stop_aborts_once(
 
     assert await adapter.stop("dispatch-1") is ProviderStopOutcome.STOPPED
     assert calls[1]["method"] == "sessions.abort"
+    assert calls[1]["executable"] == "openclaw"
     assert calls[1]["profile"] == "experimental"
+    assert calls[1]["gateway_auth_mode"] is OpenClawGatewayAuthMode.TOKEN
     assert calls[1]["params"] == {
         "key": params["sessionKey"],
         "runId": "private-run",
@@ -250,16 +280,37 @@ async def test_check_is_non_agent_and_reports_experimental_limit(
 
     assert result.status is ProviderCheckStatus.LIMITED
     assert result.code == "openclaw_experimental"
-    assert result.authentication is ProviderCheckAxisStatus.NOT_CHECKED
+    assert result.authentication is ProviderCheckAxisStatus.PASSED
+    assert result.authentication_method is ProviderAuthenticationMethod.TOKEN
     assert result.reachability is ProviderCheckAxisStatus.PASSED
     assert calls == [
         {
+            "executable": "openclaw",
             "profile": "default",
             "gateway_url": "ws://127.0.0.1:18789",
+            "gateway_auth_mode": OpenClawGatewayAuthMode.TOKEN,
             "method": "health",
             "params": {},
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_check_rejects_an_unsuccessful_health_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def call_gateway(**_kwargs: object) -> dict[str, object]:
+        return {"ok": False, "error": "not-ready"}
+
+    monkeypatch.setattr(adapter_module, "call_openclaw_gateway", call_gateway)
+    adapter = OpenClawGatewayAdapter(config=OpenClawSettings(enabled=True))
+
+    result = await adapter.read_availability()
+
+    assert result.status is ProviderCheckStatus.UNAVAILABLE
+    assert result.code == "openclaw_gateway_rejected"
+    assert result.authentication is ProviderCheckAxisStatus.PASSED
+    assert result.reachability is ProviderCheckAxisStatus.PASSED
 
 
 @pytest.mark.asyncio

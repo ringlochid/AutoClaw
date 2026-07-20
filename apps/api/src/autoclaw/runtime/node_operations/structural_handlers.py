@@ -14,6 +14,8 @@ from autoclaw.persistence.models import (
 )
 from autoclaw.runtime.assignment import (
     AssignmentBudgetSnapshot,
+    AssignmentDurableInputs,
+    resolve_child_assignment_durable_inputs,
     snapshot_assignment_budget,
 )
 from autoclaw.runtime.clock import utc_now
@@ -105,11 +107,19 @@ async def _assign_child(
         policy_revision_no=target.policy_revision_no,
     )
     budget = snapshot_assignment_budget(pinned_policy)
+    durable_inputs = await resolve_child_assignment_durable_inputs(
+        session,
+        task_id=authority.task_id,
+        flow_id=authority.flow_id,
+        flow_revision_id=authority.flow_revision_id,
+        target=target,
+    )
     assignment, attempt = _build_child_assignment(
         authority,
         request,
         target,
         budget=budget,
+        durable_inputs=durable_inputs,
     )
     await _consume_child_assignment_budget(session, authority)
     await _claim_child_node(session, authority, target, assignment.assignment_id)
@@ -225,6 +235,7 @@ def _build_child_assignment(
     target: FlowNodeModel,
     *,
     budget: AssignmentBudgetSnapshot,
+    durable_inputs: AssignmentDurableInputs,
 ) -> tuple[AssignmentModel, AttemptModel]:
     suffix = uuid4().hex
     assignment_id = f"assignment.{authority.task_id}.{target.node_key}.{suffix}"
@@ -240,8 +251,8 @@ def _build_child_assignment(
         parent_assignment_id=authority.assignment_id,
         summary=request.payload.assignment_intent.summary,
         instruction=request.payload.assignment_intent.instruction,
-        criteria_json=list(target.criteria_json),
-        consumes_json=_flatten_slots(target.consumes_json),
+        criteria_json=list(durable_inputs.criteria),
+        consumes_json=list(durable_inputs.consumes),
         produces_json=_flatten_slots(target.produces_json),
         current_attempt_id=attempt_id,
         work_plan_revision=0,

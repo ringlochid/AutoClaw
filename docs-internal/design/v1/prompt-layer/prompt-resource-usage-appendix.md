@@ -30,9 +30,8 @@ The live section order is:
 7. `latest_checkpoint_context`
 8. `consumed_durable_refs`
 9. `transient_refs`
-10. `task_memory`
-11. `allowed_actions_now`
-12. `publication_rule`
+10. `allowed_actions_now`
+11. `publication_rule`
 
 ## Current read order
 
@@ -43,7 +42,6 @@ The prompt should teach this read order:
 3. `latest_relevant_checkpoint_path` when present, otherwise the current attempt-local `_runtime/attempts/<attempt_id>/latest-checkpoint.*`
 4. surfaced `consumed_durable_refs`, built from the current assignment durable claims plus surfaced current-relevant durable refs
 5. optional `transient_refs`
-6. `task_memory_search_hints`, then `context/wiki/` and other curated docs under `context/` if needed
 
 ## Filesystem guidance
 
@@ -51,8 +49,6 @@ The prompt layer should consistently teach:
 
 - `workspace/` = mutable current-assignment work
 - `_runtime/criteria/` = explicit criteria projections
-- `context/wiki/` = curated task-memory pages
-- other curated files under `context/` = source/reference material
 - `outputs/artifacts/` = durable published outputs and evidence
 - `tmp/transfers/` = optional transient carryover
 - `_runtime/` = controller-generated projections and monitoring
@@ -79,7 +75,6 @@ Render:
 - `consumes`
 - `produces`
 - optional `transient_refs`
-- optional `task_memory_search_hints`
 
 ### Checkpoint
 
@@ -94,7 +89,6 @@ Render:
 - optional `risks`
 - optional `produced_artifacts`
 - optional `transient_refs`
-- optional `task_memory_search_hints`
 
 ### Consumed durable refs
 

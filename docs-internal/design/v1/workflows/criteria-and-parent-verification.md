@@ -113,7 +113,6 @@ Parent/root should begin from:
 - child latest checkpoints
 - current surfaced evidence refs resolved from authored selectors
 - optional surfaced `transient_refs`
-- optional `task_memory_search_hints` when curated docs or wiki pages are needed for drilldown
 
 Parent/root should:
 

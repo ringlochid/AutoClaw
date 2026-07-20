@@ -25,13 +25,13 @@ Use `autoclaw <command> --help` for exact options. Removed command families such
 
 ## Provider behavior
 
-Codex and Claude are managed integrations. OpenClaw is an experimental, user-managed compatibility integration; it remains selectable and may be the default.
+Codex and Claude are managed integrations. OpenClaw is an experimental compatibility integration over an independently managed Gateway; it remains selectable and may be the default.
 
 Guided setup asks for the primary/default provider and explicitly selects it. Adding providers in that flow preserves the chosen primary. Direct `providers configure` sets the default only when none exists; later direct configuration preserves it. Use `autoclaw providers set-default <provider>` for an explicit direct change.
 
-When Codex needs authentication, guided setup offers its native login flow and checks again. Claude and OpenClaw retain their user-managed identity instructions. Setup steps commit independently: cancellation preserves completed explicit steps, and rerunning reads current config rather than a setup journal.
+Guided setup always offers Codex/Claude subscription or API key. A detected working method is the method prompt default. Selecting that method opens a separate `Existing <Provider> <method> found. Use it? [Y/n]` confirmation. Yes reuses it; no runs a fresh same-method login. Choosing the other method runs its login directly. A compatible Claude or OpenClaw secret found only in the invoking shell can be stored for the AutoClaw service after a separate confirmation. The next service-scoped check must report the selected method as effective or setup fails with credential-precedence guidance. OpenClaw setup collects its URL, profile, and token/password mode, then confirms reuse of a working stored credential or asks for one. Setup steps commit independently: cancellation preserves completed explicit steps, and rerunning reads current config rather than a setup journal.
 
-`providers status` is passive. `providers check` performs the explicit bounded diagnostic and never runs an agent task. Human output says confirmed, failed, or not tested; JSON retains `passed`, `failed`, or `not_checked`. A ready result can still leave an axis not tested when the bounded check did not directly verify it. Codex login and logout use its native CLI. Claude and OpenClaw return user-owned identity instructions rather than changing those products.
+`providers status` is passive. `providers check` performs the explicit bounded diagnostic and never runs an agent task. Human output says whether a supported credential was found and whether reachability was tested, then names the non-secret method; JSON retains stable values. Ready requires a supported effective credential source. Codex/Claude reachability may remain not tested because the check sends no model request; OpenClaw health accepts the configured credential and reaches the Gateway.
 
 Interactive setup and status use structured, colored terminal output. Redirected output and `NO_COLOR` remain readable plain text, and JSON is never decorated.
 
@@ -41,6 +41,6 @@ The HTTP API and browser console do not mutate provider configuration or identit
 
 `--config` selects the TOML file for one command. Otherwise AutoClaw uses `AUTOCLAW_CONFIG`, then the platform default path.
 
-For individual settings, explicit constructor values win, followed by `AUTOCLAW_*` environment values, TOML, file secrets, and built-in defaults. Nested environment names use `__`. AutoClaw does not load an implicit `.env` file.
+For individual settings, explicit constructor values win, followed by `AUTOCLAW_*` environment values, TOML, and built-in defaults. Nested environment names use `__`. AutoClaw does not load an implicit `.env` file. Foreground execution loads the canonical private `autoclaw.env` beside the selected config, and an already exported supported provider credential takes precedence. The file accepts only supported Claude/OpenClaw credential assignments. Guided setup and provider checks use its exact credentials and the service account's default provider-native homes. Passive status does not read secrets but reports those same homes. Unrelated local commands do not read the file.
 
 The API host must be `127.0.0.1`, `localhost`, or `::1`. The default port is `18125`. SQLite is the default database. PostgreSQL requires its own non-system schema.

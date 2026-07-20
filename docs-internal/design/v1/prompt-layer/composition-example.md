@@ -99,9 +99,6 @@ prompt_request_json:
         - transient_refs:
           - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
             description: Optional repro commands from the prior attempt.
-        - task_memory_search_hints:
-          - auth refresh
-          - cookie rotation note
 
         ### Latest Checkpoint Context
         - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.implement_fix.01/latest-checkpoint.md
@@ -109,8 +106,6 @@ prompt_request_json:
         - outcome: retry
         - summary: Prior attempt fixed the primary path but missed one recovery branch.
         - next_step: Keep the same assignment and repair the missed branch.
-        - task_memory_search_hints:
-          - recovery branch note
 
         ### Consumed Durable Refs
         - kind: criteria
@@ -122,9 +117,6 @@ prompt_request_json:
           version: 2
           path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
           description: Current findings for the scoped fix.
-        - kind: wiki
-          path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
-          description: Curated task-memory page for earlier auth-refresh attempts.
     content_hash: sha256:...
     transport_request_hash: sha256:...
     rendered_at: 2026-05-05T12:40:11+00:00
@@ -191,9 +183,6 @@ prompt_request_json:
         - transient_refs:
           - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
             description: Optional transient comparison grid for the current root decision.
-        - task_memory_search_hints:
-          - refresh token expiry branch
-          - cookie rotation note
 
         ### Latest Checkpoint Context
         - path: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
@@ -201,8 +190,6 @@ prompt_request_json:
         - outcome: null
         - summary: One implementation child assignment is already staged and the current checkpoint explains why this child is next.
         - next_step: If the handoff is sufficient, emit yield.
-        - task_memory_search_hints:
-          - refresh token expiry branch
 
         ### Consumed Durable Refs
         - kind: criteria
@@ -214,9 +201,6 @@ prompt_request_json:
           version: 2
           path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
           description: Current investigation findings for the auth-refresh regression.
-        - kind: wiki
-          path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
-          description: Curated task-memory note about cookie rotation.
     content_hash: sha256:...
     transport_request_hash: sha256:...
     rendered_at: 2026-05-05T12:41:03+00:00
@@ -224,7 +208,7 @@ prompt_request_json:
 
 ## Checkpoint publication excerpt
 
-When a checkpoint surfaces durable output claims, the rendered field names are `produced_artifacts`, `transient_refs`, and `task_memory_search_hints`.
+When a checkpoint surfaces durable output claims, the rendered field names are `produced_artifacts` and `transient_refs`.
 
 ```text
 ### Latest Checkpoint Context
@@ -247,8 +231,6 @@ When a checkpoint surfaces durable output claims, the rendered field names are `
 - transient_refs:
   - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/browser-rerun-notes.md
     description: optional transient browser rerun notes that do not become durable truth
-- task_memory_search_hints:
-  - browser rerun follow-up
 ```
 
 ## Exact prompt-layer validation messages
@@ -302,7 +284,7 @@ Before accepting a new rendered prompt example, verify:
 2. the prompt family is `worker_dispatch_prompt` or `parent_root_dispatch_prompt`
 3. `workflow_manifest` renders the current node anchor
 4. every `Current Assignment` and `Latest Checkpoint Context` example renders a `- path:` line
-5. `produced_artifacts`, `transient_refs`, and `task_memory_search_hints` use the live checkpoint field names when present
+5. `produced_artifacts` and `transient_refs` use the live checkpoint field names when present
 6. `Consumed Durable Refs` de-duplicates the checkpoint already rendered in `Latest Checkpoint Context`
 7. `path` and `version` do not leak into current-assignment `criteria`, `consumes`, or `produces`
 8. monitoring files are not treated as normal assignment truth

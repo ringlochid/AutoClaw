@@ -74,7 +74,6 @@ Machine artifacts must keep these splits explicit:
 - `consumed_durable_refs` carries the exact current durable refs the runtime resolved for this turn
 - `latest_checkpoint_context` mirrors durable handoff written through `record_checkpoint`
 - `latest_checkpoint_context` must not teach or surface `control_effects`
-- `task_memory_search_hints` stay retrieval-oriented rather than generic tagging
 
 ## Live Exact Block Registry
 
@@ -99,7 +98,6 @@ The live catalog must register these exact reusable prompt blocks:
 - `runtime_read_order_rule_v1`
 - `current_task_state_frame_v1`
 - `artifact_render_rule_v1`
-- `task_memory_rule_v1`
 - `monitoring_not_task_truth_v1`
 - `worker_runtime_opening_example_v1`
 - `parent_root_runtime_opening_example_v1`
@@ -140,7 +138,6 @@ Conditionally required sections:
 
 - `latest_checkpoint_context` when a prior relevant checkpoint is part of the current execution or retry handover
 - `transient_refs` when explicit transient carryover is surfaced
-- `task_memory` when task-memory hints are surfaced
 
 ### `parent_root_dispatch_prompt`
 
@@ -162,7 +159,6 @@ Conditionally required sections:
 - `latest_checkpoint_context` when the current decision depends on surfaced checkpoint evidence
 - `consumed_durable_refs` when surfaced durable evidence is part of the current decision
 - `transient_refs` when explicit transient carryover is surfaced
-- `task_memory` when task-memory hints are surfaced
 
 ## Validator Rules
 

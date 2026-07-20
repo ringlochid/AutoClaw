@@ -36,7 +36,6 @@ Write only the decision-relevant delta that the next reader should not have to r
 | `handoff.risks`            | Only risks that affect routing, quality, or release confidence.                                              |
 | `produced_artifacts`       | Exact durable claims you are making now: one `artifact` claim per produced slot plus the produced file path. |
 | `transient_surfaces`       | Array/list of temporary `{ path, description }` objects that genuinely help the next turn start faster.      |
-| `task_memory_search_hints` | Semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread.                 |
 
 Rules:
 
@@ -44,8 +43,6 @@ Rules:
 - Author `transient_surfaces` as a list of `{ path, description }` objects; omit the field when there is no temporary carryover.
 - A terminal `green` checkpoint must include or already have every required durable publication for the current assignment.
 - Before boundary closure, a later terminal checkpoint may supersede an earlier terminal checkpoint; use that only to correct the latest terminal outcome, not as a progress log.
-- Use `task_memory_search_hints` as semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread.
-- Do not use generic search hints like `retry`, `fix`, or `bug`.
 - If prose mentions an older artifact path or prior version for a slot that also appears in surfaced current refs later, that older mention is history only, not current truth.
 
 Bad checkpoint:
@@ -56,9 +53,6 @@ Bad checkpoint:
       handoff:
         summary: Made progress, still checking.
         next_step: Continue.
-      task_memory_search_hints:
-        - fix
-        - retry
 
 Better progress checkpoint:
 
@@ -77,9 +71,6 @@ Better progress checkpoint:
           description: Browser observation note for the reproduced 390px overflow.
         - path: tmp/transfers/task-start-candidate-proof-scenes.md
           description: Temporary notes about which responsive scenes should verify the fix.
-      task_memory_search_hints:
-        - task start header overflow 390px cta min-width
-        - task start nav wrap rejection
 
 Better terminal checkpoint:
 
@@ -105,9 +96,6 @@ Better terminal checkpoint:
           description: Local browser observation that should help review but is not durable output.
         - path: tmp/transfers/task-start-review-caveat.md
           description: Temporary caveat explaining why visual proof should be rerun by the parent.
-      task_memory_search_hints:
-        - task start cta min-width patch green
-        - task start 390px nav verification
 ```
 
 ## `runtime_concept_glossary_v1`
@@ -130,7 +118,6 @@ Use these terms exactly in this dispatch.
 | `produces`                 | Required output slots for this assignment. They are requirements until published through checkpoint/artifact metadata.                                                                                                                                               |
 | `consumed_durable_refs`    | Exact current refs resolved by runtime. If these disagree with older prose, these current refs win.                                                                                                                                                                  |
 | `transient_refs`           | Short-lived carryover for this turn. Useful, but not durable truth.                                                                                                                                                                                                  |
-| `task_memory_search_hints` | Retrieval prompts for prior defects, rejected approaches, root causes, or artifact threads. They are not generic tags and not implicit consumes.                                                                                                                     |
 | `checkpoint`               | Durable handoff memory written through `record_checkpoint`; later nodes use it instead of hidden transcript memory.                                                                                                                                                  |
 | `boundary`                 | Dispatch ingress or node egress. `yield`, `green`, `retry`, and `blocked` change runtime control flow and are not casual status words.                                                                                                                               |
 ```
@@ -153,7 +140,7 @@ Then operate in the assigned mode instead of redesigning the whole workflow.
 
 Rules:
 
-- Use workspace reads, surfaced refs, and task-memory search hints to acquire enough truth for this assignment.
+- Use workspace reads and surfaced refs to acquire enough truth for this assignment.
 - Inspect additional workspace, context, or source files.
 - Treat definition revision, upload, and provenance proof as controller/operator-owned; worker evidence comes from assignment-scoped reads, produced artifacts, tests, checkpoints, and runtime tool results.
 - Do not rely on hidden chat memory or broad directory scanning.
@@ -226,7 +213,6 @@ When you call `record_checkpoint`, author:
 - optional `handoff.risks`
 - reduced durable output claims as `produced_artifacts { kind: artifact, slot, path }`
 - explicit temporary carryover only as `transient_surfaces { path, description }`
-- optional `task_memory_search_hints`
 
 If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 ```
@@ -244,7 +230,7 @@ Start from:
 
 1. Current workflow manifest.
 2. Current assignment summary and instruction.
-3. Current criteria, consumes, produces, transient refs, and task-memory hints.
+3. Current criteria, consumes, produces, and transient refs.
 4. Latest relevant checkpoint or continuation context when surfaced.
 
 Use shallow inspection only to answer the parent/root decision questions:
@@ -297,7 +283,6 @@ Inspect additional workspace, context, or source files only until you can answer
 | `supplemental_durable_context.artifact_slots` | Durable artifact slots the child should trust or compare against.                                                                                                 |
 | `supplemental_durable_context.criteria_slots` | Acceptance or guardrail criteria that must govern the child's decisions.                                                                                          |
 | `transient_surfaces`                          | Array/list of short-lived `{ path, description }` objects that runtime projects to the child as `transient_refs`.                                                 |
-| `task_memory_search_hints`                    | Semantic retrieval prompts for prior defects, rejected approaches, root causes, or artifact names.                                                                |
 
 Write the child brief as an acquisition plan, not just loose assignment prose.
 
@@ -311,21 +296,15 @@ Use:
 
 - `artifact_slots` and `criteria_slots` to tell runtime which current durable refs to surface to the child.
 - `transient_surfaces` as a list of `{ path, description }` objects for short-lived notes or local context that help this turn but should not become durable truth.
-- `task_memory_search_hints` for semantic retrieval prompts, not generic tags.
 
 Do not pass a child its own produced artifact slot through `supplemental_durable_context.artifact_slots`.
-If the same child needs prior notes or a rolling ledger, pass that material as `transient_surfaces`
-or task memory instead.
+If the same child needs prior notes or a rolling ledger, pass that material as explicit `transient_surfaces`.
 
 Runtime projects accepted `transient_surfaces` to the child as `transient_refs`; do not author projected `transient_refs` directly in `assign_child`.
 
 JSON shape is an array of objects: `[{ "path": "...", "description": "..." }, { "path": "...", "description": "..." }]`.
 
 In `instruction`, tell the child which surfaced durable refs and transient refs to read first, what question to answer, and what evidence or recommendation to return.
-
-Use `task_memory_search_hints` as semantic retrieval prompts for prior defects, rejected approaches, root causes, or artifact names.
-
-Avoid generic hints like `ui`, `bug`, or `page`.
 
 Bad child brief:
 
@@ -334,9 +313,6 @@ Bad child brief:
       assignment_intent:
         summary: Check the page and fix issues.
         instruction: null
-      task_memory_search_hints:
-        - task start
-        - bug
 
 Better child assignment:
 
@@ -357,9 +333,6 @@ Better child assignment:
           description: Browser note showing 390px header overflow after latest review artifact.
         - path: tmp/transfers/task-start-viewport-note.md
           description: Exact viewport notes for desktop and mobile review scenes.
-      task_memory_search_hints:
-        - task start prior CTA rejection state
-        - task start nav artifact leak guardrail
 
 Question-style child assignment:
 
@@ -380,9 +353,6 @@ Question-style child assignment:
           description: Parent's current uncertainty about whether CTA width or nav wrap owns the failure.
         - path: tmp/transfers/task-start-proof-lanes.md
           description: Candidate proof lanes the parent wants compared before implementation.
-      task_memory_search_hints:
-        - task start prior responsive overflow cause
-        - task start proof lane rejection history
 ```
 
 ## `human_request_use_guide_v1`
@@ -443,7 +413,6 @@ If you use `assign_child`, author only semantic staging fields:
 - optional `supplemental_durable_context.artifact_slots`
 - optional `supplemental_durable_context.criteria_slots`
 - explicit `transient_surfaces`
-- optional `task_memory_search_hints`
 
 Rules:
 
@@ -512,7 +481,6 @@ Retry durable handover comes from:
 - the prior terminal checkpoint written through `record_checkpoint`
 - current surfaced `consumed_durable_refs`
 - optional `transient_refs`
-- relevant `task_memory_search_hints`
 ```
 
 ## `runtime_read_order_rule_v1`
@@ -527,7 +495,6 @@ Read runtime surfaces in this order unless the current prompt explicitly narrows
 3. The current relevant `_runtime/attempts/<attempt_id>/latest-checkpoint.*` when one is surfaced or when this turn depends on prior checkpoint evidence.
 4. Surfaced `consumed_durable_refs` for exact current durable refs, including criteria, artifacts, checkpoints, and explicit doc/wiki refs.
 5. Optional `transient_refs`.
-6. `task_memory_search_hints`, then direct search in `context/wiki/` and other curated docs under `context/` if needed.
 
 Do not recover current truth from transcript memory, folder scans, raw provider transport state, or unstated assumptions.
 ```
@@ -547,7 +514,6 @@ Current Task State must expose:
 - reduced `criteria`, reduced `consumes`, and `produces` requirements from the semantic assignment
 - exact surfaced `consumed_durable_refs` rendered separately from the semantic assignment
 - optional `transient_refs`
-- `task_memory_search_hints`, with the rule that they point first to `context/wiki/` and then to other curated files under `context/`
 - a note that `_runtime/dispatch/...` monitoring files are observability only, not normal assignment truth
 ```
 
@@ -572,21 +538,6 @@ Rules:
 - Do not inline controller-only pointer fields such as currentness history, assignment lineage, or attempt lineage.
 - Do not ask the node to infer meaning from filenames like `latest.md` or from directory scans.
 - Do not turn semantic assignment `produces` requirements into fake published refs.
-```
-
-## `task_memory_rule_v1`
-
-```text
-### Task Memory Search Hints
-
-`task_memory_search_hints` are retrieval prompts, not generic tags and not implicit consumes.
-
-Use them this way:
-
-- Write hints as semantic search prompts for prior defects, rejected approaches, root causes, or artifact names.
-- Prefer phrases that can recover the right prior context later, not broad labels such as `retry`, `fix`, `bug`, `ui`, or `page`.
-- Search `context/wiki/` first, then other curated files under `context/`, when the current assignment needs extra context.
-- Do not silently promote all task-memory files into current `consumes`.
 ```
 
 ## `monitoring_not_task_truth_v1`

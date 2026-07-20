@@ -12,7 +12,7 @@ flowchart TD
     D["referenced durable artifacts"] --> P
     E["current criteria"] --> P
     F["optional transient refs"] --> P
-    G["task-memory search hints and curated docs"] --> P
+    G["surfaced durable and transient refs"] --> P
     H["current structural_edit_palette"] --> P
     P --> Q["assign_child"]
     P --> R["add_child / update_child / remove_child"]

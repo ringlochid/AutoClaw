@@ -17,7 +17,7 @@ The current runtime direction is:
 - public boundaries are `dispatch` ingress and `yield | green | retry | blocked` egress
 - parent/root control uses explicit tools such as `assign_child` and `release_green`
 - `criteria`, `consumes`, and `produces` are the live assignment contract family
-- workflow-manifest, assignment, checkpoint, artifact, transient, and task-memory surfaces are controller-derived projections
+- workflow-manifest, assignment, checkpoint, artifact, and transient surfaces are controller-derived projections
 - surfaced refs are path-only in v1
 - worker reread is filesystem-first
 - callback is write-only, task-scoped, and resolved from trusted controller-owned session authority
@@ -115,7 +115,7 @@ If you are asking:
 - OpenClaw adapter normalization
 - validator versus compiler
 - criteria consumes produces
-- context wiki and task memory
+- curated context reference files
 
 ## Key surfaces
 

@@ -5,6 +5,8 @@ from pathlib import Path
 import autoclaw.runtime.node_operations.structural_handlers as structural_handlers
 import pytest
 from autoclaw.persistence.models import (
+    ArtifactCurrentPointerModel,
+    ArtifactPublicationModel,
     AssignmentDecisionModel,
     AssignmentModel,
     FlowNodeModel,
@@ -84,6 +86,127 @@ async def test_assign_child_consumes_budget_once_and_publishes_exact_attempt(
         assert duplicate.value.code == OperationFailureCode.ILLEGAL_STATE
         assert parent is not None and parent.child_assignments_remaining == 0
         assert len(publisher.signals) == 1
+
+
+async def test_assign_child_pins_current_artifact_consume_ref(tmp_path: Path) -> None:
+    async with seeded_executor(tmp_path, suffix="child-artifact-input") as (
+        executor,
+        session_factory,
+        ids,
+        _activity_signals,
+    ):
+        await _prepare_assignable_child(session_factory, ids, remaining=1)
+        await _set_child_artifact_selector(
+            session_factory,
+            ids,
+            is_required=True,
+        )
+        await _publish_root_input(session_factory, ids)
+
+        response = await executor.execute(
+            scope=NodeOperationScope(
+                task_id=ids.task_id,
+                dispatch_id=ids.current_dispatch_id,
+            ),
+            operation_name="assign_child",
+            arguments=_assign_child_arguments(ids.flow_revision_id),
+        )
+
+        async with session_factory() as session:
+            assignment = await session.scalar(
+                select(AssignmentModel).where(
+                    AssignmentModel.assignment_key == response.model_dump()["target_assignment_key"]
+                )
+            )
+
+    assert assignment is not None
+    assert assignment.consumes_json == [
+        {
+            "kind": "artifact",
+            "slot": "input",
+            "version": 1,
+            "path": "outputs/artifacts/root/input/input.v01.md",
+            "description": "Root output consumed by child.",
+        }
+    ]
+
+
+async def test_assign_child_omits_missing_optional_artifact_consume(tmp_path: Path) -> None:
+    async with seeded_executor(tmp_path, suffix="child-optional-input") as (
+        executor,
+        session_factory,
+        ids,
+        _activity_signals,
+    ):
+        await _prepare_assignable_child(session_factory, ids, remaining=1)
+        await _set_child_artifact_selector(
+            session_factory,
+            ids,
+            is_required=False,
+        )
+
+        response = await executor.execute(
+            scope=NodeOperationScope(
+                task_id=ids.task_id,
+                dispatch_id=ids.current_dispatch_id,
+            ),
+            operation_name="assign_child",
+            arguments=_assign_child_arguments(ids.flow_revision_id),
+        )
+
+        async with session_factory() as session:
+            assignment = await session.scalar(
+                select(AssignmentModel).where(
+                    AssignmentModel.assignment_key == response.model_dump()["target_assignment_key"]
+                )
+            )
+
+    assert assignment is not None and assignment.consumes_json == []
+
+
+async def test_assign_child_missing_required_artifact_commits_nothing(
+    tmp_path: Path,
+) -> None:
+    async with seeded_executor(tmp_path, suffix="child-required-input") as (
+        executor,
+        session_factory,
+        ids,
+        _activity_signals,
+    ):
+        assignment_count = await _prepare_assignable_child(
+            session_factory,
+            ids,
+            remaining=1,
+        )
+        await _set_child_artifact_selector(
+            session_factory,
+            ids,
+            is_required=True,
+        )
+
+        with pytest.raises(RuntimeOperationError) as missing:
+            await executor.execute(
+                scope=NodeOperationScope(
+                    task_id=ids.task_id,
+                    dispatch_id=ids.current_dispatch_id,
+                ),
+                operation_name="assign_child",
+                arguments=_assign_child_arguments(ids.flow_revision_id),
+            )
+
+        async with session_factory() as session:
+            parent = await session.get(AssignmentModel, ids.root_assignment_id)
+            child = await session.get(FlowNodeModel, ids.child_node_id)
+            final_assignment_count = await session.scalar(
+                select(func.count()).select_from(AssignmentModel)
+            )
+            decision = await session.scalar(select(AssignmentDecisionModel))
+
+    assert missing.value.code == OperationFailureCode.MISSING_REQUIRED_PUBLICATION
+    assert parent is not None and parent.child_assignments_remaining == 1
+    assert child is not None and child.current_assignment_id is None
+    assert final_assignment_count == assignment_count
+    assert decision is None
 
 
 async def test_assign_child_zero_budget_commits_nothing(tmp_path: Path) -> None:
@@ -194,6 +317,60 @@ async def _prepare_assignable_child(
         assignment_count = await session.scalar(select(func.count()).select_from(AssignmentModel))
         await session.commit()
     return int(assignment_count or 0)
+
+
+async def _set_child_artifact_selector(
+    session_factory: SessionFactory,
+    ids: RuntimeIds,
+    *,
+    is_required: bool,
+) -> None:
+    async with session_factory() as session:
+        child = await session.get(FlowNodeModel, ids.child_node_id)
+        assert child is not None
+        child.consumes_json = {
+            "artifacts": [{"slot": "input", "required": is_required}],
+            "criteria": [],
+        }
+        await session.commit()
+
+
+async def _publish_root_input(
+    session_factory: SessionFactory,
+    ids: RuntimeIds,
+) -> None:
+    publication_id = f"artifact-publication.{ids.suffix}.root.input.1"
+    async with session_factory() as session:
+        session.add(
+            ArtifactPublicationModel(
+                artifact_publication_id=publication_id,
+                task_id=ids.task_id,
+                flow_id=ids.flow_id,
+                assignment_id=ids.root_assignment_id,
+                attempt_id=ids.root_attempt_id,
+                checkpoint_id=ids.root_checkpoint_id,
+                slot="input",
+                version=1,
+                logical_path="outputs/artifacts/root/input/input.v01.md",
+                description="Root output consumed by child.",
+                supersedes_publication_id=None,
+                supersedes_version=None,
+            )
+        )
+        session.add(
+            ArtifactCurrentPointerModel(
+                artifact_current_pointer_id=(f"artifact-current-pointer.{ids.suffix}.root.input"),
+                task_id=ids.task_id,
+                flow_id=ids.flow_id,
+                assignment_id=ids.root_assignment_id,
+                slot="input",
+                current_publication_id=publication_id,
+                current_version=1,
+                attempt_id=ids.root_attempt_id,
+                checkpoint_id=ids.root_checkpoint_id,
+            )
+        )
+        await session.commit()
 
 
 def _assign_child_arguments(flow_revision_id: str) -> dict[str, object]:

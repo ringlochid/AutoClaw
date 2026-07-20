@@ -11,7 +11,7 @@ Scenario:
 - current node: `root`
 - send mode: `full_prompt`
 - current lineage: root decides the next bounded child step from current surfaced evidence
-- representative surfaced refs include a child checkpoint and curated wiki memory
+- representative surfaced refs include a child checkpoint and current artifact evidence
 
 ```text
 # AutoClaw Dispatch Prompt
@@ -77,7 +77,6 @@ Use these terms exactly in this dispatch.
 | `produces`                 | Required output slots for this assignment. They are requirements until published through checkpoint/artifact metadata.                                                                                                                                               |
 | `consumed_durable_refs`    | Exact current refs resolved by runtime. If these disagree with older prose, these current refs win.                                                                                                                                                                  |
 | `transient_refs`           | Short-lived carryover for this turn. Useful, but not durable truth.                                                                                                                                                                                                  |
-| `task_memory_search_hints` | Retrieval prompts for prior defects, rejected approaches, root causes, or artifact threads. They are not generic tags and not implicit consumes.                                                                                                                     |
 | `checkpoint`               | Durable handoff memory written through `record_checkpoint`; later nodes use it instead of hidden transcript memory.                                                                                                                                                  |
 | `boundary`                 | Dispatch ingress or node egress. `yield`, `green`, `retry`, and `blocked` change runtime control flow and are not casual status words.                                                                                                                               |
 
@@ -91,7 +90,6 @@ Read runtime surfaces in this order unless the current prompt explicitly narrows
 3. The current relevant `_runtime/attempts/<attempt_id>/latest-checkpoint.*` when one is surfaced or when this turn depends on prior checkpoint evidence.
 4. Surfaced `consumed_durable_refs` for exact current durable refs, including criteria, artifacts, checkpoints, and explicit doc/wiki refs.
 5. Optional `transient_refs`.
-6. `task_memory_search_hints`, then direct search in `context/wiki/` and other curated docs under `context/` if needed.
 
 Do not recover current truth from transcript memory, folder scans, raw provider transport state, or unstated assumptions.
 
@@ -114,18 +112,6 @@ Rules:
 - Do not inline controller-only pointer fields such as currentness history, assignment lineage, or attempt lineage.
 - Do not ask the node to infer meaning from filenames like `latest.md` or from directory scans.
 - Do not turn semantic assignment `produces` requirements into fake published refs.
-
-
-### Task Memory Search Hints
-
-`task_memory_search_hints` are retrieval prompts, not generic tags and not implicit consumes.
-
-Use them this way:
-
-- Write hints as semantic search prompts for prior defects, rejected approaches, root causes, or artifact names.
-- Prefer phrases that can recover the right prior context later, not broad labels such as `retry`, `fix`, `bug`, `ui`, or `page`.
-- Search `context/wiki/` first, then other curated files under `context/`, when the current assignment needs extra context.
-- Do not silently promote all task-memory files into current `consumes`.
 
 
 ### Monitoring Is Not Task Truth
@@ -225,7 +211,6 @@ Start from:
 
 1. Current workflow manifest.
 2. Current assignment summary and instruction.
-3. Current criteria, consumes, produces, transient refs, and task-memory hints.
 4. Latest relevant checkpoint or continuation context when surfaced.
 
 Use shallow inspection only to answer the parent/root decision questions:
@@ -275,7 +260,6 @@ Inspect additional workspace, context, or source files only until you can answer
 | `supplemental_durable_context.artifact_slots` | Durable artifact slots the child should trust or compare against.                                                                                                 |
 | `supplemental_durable_context.criteria_slots` | Acceptance or guardrail criteria that must govern the child's decisions.                                                                                          |
 | `transient_surfaces`                          | Array/list of short-lived `{ path, description }` objects that runtime projects to the child as `transient_refs`.                                                 |
-| `task_memory_search_hints`                    | Semantic retrieval prompts for prior defects, rejected approaches, root causes, or artifact names.                                                                |
 
 Write the child brief as an acquisition plan, not just loose assignment prose.
 
@@ -289,21 +273,15 @@ Use:
 
 - `artifact_slots` and `criteria_slots` to tell runtime which current durable refs to surface to the child.
 - `transient_surfaces` as a list of `{ path, description }` objects for short-lived notes or local context that help this turn but should not become durable truth.
-- `task_memory_search_hints` for semantic retrieval prompts, not generic tags.
 
 Do not pass a child its own produced artifact slot through `supplemental_durable_context.artifact_slots`.
-If the same child needs prior notes or a rolling ledger, pass that material as `transient_surfaces`
-or task memory instead.
+If the same child needs prior notes or a rolling ledger, pass that material as explicit `transient_surfaces`.
 
 Runtime projects accepted `transient_surfaces` to the child as `transient_refs`; do not author projected `transient_refs` directly in `assign_child`.
 
 JSON shape is an array of objects: `[{ "path": "...", "description": "..." }, { "path": "...", "description": "..." }]`.
 
 In `instruction`, tell the child which surfaced durable refs and transient refs to read first, what question to answer, and what evidence or recommendation to return.
-
-Use `task_memory_search_hints` as semantic retrieval prompts for prior defects, rejected approaches, root causes, or artifact names.
-
-Avoid generic hints like `ui`, `bug`, or `page`.
 
 Bad child brief:
 
@@ -312,9 +290,6 @@ Bad child brief:
       assignment_intent:
         summary: Check the page and fix issues.
         instruction: null
-      task_memory_search_hints:
-        - task start
-        - bug
 
 Better child assignment:
 
@@ -335,9 +310,6 @@ Better child assignment:
           description: Browser note showing 390px header overflow after latest review artifact.
         - path: tmp/transfers/task-start-viewport-note.md
           description: Exact viewport notes for desktop and mobile review scenes.
-      task_memory_search_hints:
-        - task start prior CTA rejection state
-        - task start nav artifact leak guardrail
 
 Question-style child assignment:
 
@@ -358,9 +330,6 @@ Question-style child assignment:
           description: Parent's current uncertainty about whether CTA width or nav wrap owns the failure.
         - path: tmp/transfers/task-start-proof-lanes.md
           description: Candidate proof lanes the parent wants compared before implementation.
-      task_memory_search_hints:
-        - task start prior responsive overflow cause
-        - task start proof lane rejection history
 
 
 ### Checkpoint Authoring Guide
@@ -379,7 +348,6 @@ Write only the decision-relevant delta that the next reader should not have to r
 | `handoff.risks`            | Only risks that affect routing, quality, or release confidence.                                              |
 | `produced_artifacts`       | Exact durable claims you are making now: one `artifact` claim per produced slot plus the produced file path. |
 | `transient_surfaces`       | Array/list of temporary `{ path, description }` objects that genuinely help the next turn start faster.      |
-| `task_memory_search_hints` | Semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread.                 |
 
 Rules:
 
@@ -387,8 +355,6 @@ Rules:
 - Author `transient_surfaces` as a list of `{ path, description }` objects; omit the field when there is no temporary carryover.
 - A terminal `green` checkpoint must include or already have every required durable publication for the current assignment.
 - Before boundary closure, a later terminal checkpoint may supersede an earlier terminal checkpoint; use that only to correct the latest terminal outcome, not as a progress log.
-- Use `task_memory_search_hints` as semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread.
-- Do not use generic search hints like `retry`, `fix`, or `bug`.
 - If prose mentions an older artifact path or prior version for a slot that also appears in surfaced current refs later, that older mention is history only, not current truth.
 
 Bad checkpoint:
@@ -399,9 +365,6 @@ Bad checkpoint:
       handoff:
         summary: Made progress, still checking.
         next_step: Continue.
-      task_memory_search_hints:
-        - fix
-        - retry
 
 Better progress checkpoint:
 
@@ -420,9 +383,6 @@ Better progress checkpoint:
           description: Browser observation note for the reproduced 390px overflow.
         - path: tmp/transfers/task-start-candidate-proof-scenes.md
           description: Temporary notes about which responsive scenes should verify the fix.
-      task_memory_search_hints:
-        - task start header overflow 390px cta min-width
-        - task start nav wrap rejection
 
 Better terminal checkpoint:
 
@@ -448,9 +408,6 @@ Better terminal checkpoint:
           description: Local browser observation that should help review but is not durable output.
         - path: tmp/transfers/task-start-review-caveat.md
           description: Temporary caveat explaining why visual proof should be rerun by the parent.
-      task_memory_search_hints:
-        - task start cta min-width patch green
-        - task start 390px nav verification
 
 
 ### Runtime Boundary Rules
@@ -486,7 +443,6 @@ If you use `assign_child`, author only semantic staging fields:
 - optional `supplemental_durable_context.artifact_slots`
 - optional `supplemental_durable_context.criteria_slots`
 - explicit `transient_surfaces`
-- optional `task_memory_search_hints`
 
 Rules:
 
@@ -583,7 +539,6 @@ Rules:
     - standard-parent-planning (applies_to: parent): Default planning policy for bounded parent coordination.
     - standard-review (applies_to: worker): Default review policy for worker evidence checks.
 - surfaced runtime file: C:/tasks/task_2026_0042/_runtime/attempts/attempt.investigate_issue.02/latest-checkpoint.md
-- surfaced path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
 
 ### Current Assignment
 
@@ -606,9 +561,6 @@ Rules:
 - transient_refs:
   - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
     description: Optional transient comparison grid for the current root decision.
-- task_memory_search_hints:
-  - refresh token expiry branch
-  - cookie rotation note
 
 ### Latest Checkpoint Context
 
@@ -617,15 +569,12 @@ Rules:
 - outcome: null
 - summary: One implementation child assignment is already staged and the current checkpoint explains why this child is next.
 - next_step: If the handoff is sufficient, emit yield.
-- task_memory_search_hints:
-  - refresh token expiry branch
 
 ### Boundary Follow-Up Guidance
 
 - use this section to interpret why the current dispatch exists now
 - read it together with Latest Checkpoint Context, Current Assignment, and Consumed Durable Refs
 - boundary context: initial or ordinary current dispatch without a terminal handoff outcome
-- start from manifest, assignment, current refs, and surfaced task-memory hints before acting
 
 ### Consumed Durable Refs
 
@@ -638,9 +587,6 @@ Rules:
   version: 2
   path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
   description: Current investigation findings for the auth-refresh regression.
-- kind: wiki
-  path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
-  description: Curated task-memory note about cookie rotation.
 
 ### Transient Refs
 
@@ -648,26 +594,11 @@ Rules:
 - path: C:/tasks/task_2026_0042/tmp/transfers/root/investigation-compare-grid.md
   description: Optional transient comparison grid for the current root decision.
 
-### Task Memory
-
-- search hints:
-  - refresh token expiry branch
-  - cookie rotation note
-- search hints are retrieval prompts for prior defects, rejected approaches, root causes, or artifact names; they are not generic tags
-- surfaced curated refs:
-  - kind: wiki
-    path: C:/tasks/task_2026_0042/context/wiki/cookie-rotation-note.md
-    description: Curated task-memory note about cookie rotation.
-- `context/wiki/` contains curated task-memory pages
-- other curated docs under `context/` are source/reference material
-- direct file/path search is the v1 retrieval model
-
 ### Allowed Actions Now
 
 - tools: `autoclaw-node__assign_child`, `autoclaw-node__add_child`, `autoclaw-node__update_child`, `autoclaw-node__remove_child`, `autoclaw-node__release_green`, `autoclaw-node__release_blocked`, `autoclaw-node__record_checkpoint`
 - use `autoclaw-node__assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
 - make the child brief specific about: the exact objective or question, scope boundaries and what not to touch, the key surfaced refs and constraints, what to read or compare before acting, and what evidence or outputs to return
-- use `task_memory_search_hints` as retrieval prompts for prior defects, rejected approaches, root causes, or artifact names; do not use generic tags
 - if the same issue class repeats, choose explicitly between: reassign the same child for another bounded delta when the same role still fits; assign a different specialist child when the work type changed; or use structural edits when the subtree shape itself is wrong
 - for structural edits, reread the current manifest first, start with role/policy names from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
 - if the surfaced structural edit palette is still insufficient after reread, use the current-only `autoclaw-node__search_definitions` / `autoclaw-node__get_definition` read-only lookup lane before guessing
@@ -763,7 +694,6 @@ Use these terms exactly in this dispatch.
 | `produces`                 | Required output slots for this assignment. They are requirements until published through checkpoint/artifact metadata.                                                                                                                                               |
 | `consumed_durable_refs`    | Exact current refs resolved by runtime. If these disagree with older prose, these current refs win.                                                                                                                                                                  |
 | `transient_refs`           | Short-lived carryover for this turn. Useful, but not durable truth.                                                                                                                                                                                                  |
-| `task_memory_search_hints` | Retrieval prompts for prior defects, rejected approaches, root causes, or artifact threads. They are not generic tags and not implicit consumes.                                                                                                                     |
 | `checkpoint`               | Durable handoff memory written through `record_checkpoint`; later nodes use it instead of hidden transcript memory.                                                                                                                                                  |
 | `boundary`                 | Dispatch ingress or node egress. `yield`, `green`, `retry`, and `blocked` change runtime control flow and are not casual status words.                                                                                                                               |
 
@@ -777,7 +707,6 @@ Read runtime surfaces in this order unless the current prompt explicitly narrows
 3. The current relevant `_runtime/attempts/<attempt_id>/latest-checkpoint.*` when one is surfaced or when this turn depends on prior checkpoint evidence.
 4. Surfaced `consumed_durable_refs` for exact current durable refs, including criteria, artifacts, checkpoints, and explicit doc/wiki refs.
 5. Optional `transient_refs`.
-6. `task_memory_search_hints`, then direct search in `context/wiki/` and other curated docs under `context/` if needed.
 
 Do not recover current truth from transcript memory, folder scans, raw provider transport state, or unstated assumptions.
 
@@ -800,18 +729,6 @@ Rules:
 - Do not inline controller-only pointer fields such as currentness history, assignment lineage, or attempt lineage.
 - Do not ask the node to infer meaning from filenames like `latest.md` or from directory scans.
 - Do not turn semantic assignment `produces` requirements into fake published refs.
-
-
-### Task Memory Search Hints
-
-`task_memory_search_hints` are retrieval prompts, not generic tags and not implicit consumes.
-
-Use them this way:
-
-- Write hints as semantic search prompts for prior defects, rejected approaches, root causes, or artifact names.
-- Prefer phrases that can recover the right prior context later, not broad labels such as `retry`, `fix`, `bug`, `ui`, or `page`.
-- Search `context/wiki/` first, then other curated files under `context/`, when the current assignment needs extra context.
-- Do not silently promote all task-memory files into current `consumes`.
 
 
 ### Monitoring Is Not Task Truth
@@ -911,7 +828,6 @@ Start from:
 
 1. Current workflow manifest.
 2. Current assignment summary and instruction.
-3. Current criteria, consumes, produces, transient refs, and task-memory hints.
 4. Latest relevant checkpoint or continuation context when surfaced.
 
 Use shallow inspection only to answer the parent/root decision questions:
@@ -961,7 +877,6 @@ Inspect additional workspace, context, or source files only until you can answer
 | `supplemental_durable_context.artifact_slots` | Durable artifact slots the child should trust or compare against.                                                                                                 |
 | `supplemental_durable_context.criteria_slots` | Acceptance or guardrail criteria that must govern the child's decisions.                                                                                          |
 | `transient_surfaces`                          | Array/list of short-lived `{ path, description }` objects that runtime projects to the child as `transient_refs`.                                                 |
-| `task_memory_search_hints`                    | Semantic retrieval prompts for prior defects, rejected approaches, root causes, or artifact names.                                                                |
 
 Write the child brief as an acquisition plan, not just loose assignment prose.
 
@@ -975,21 +890,15 @@ Use:
 
 - `artifact_slots` and `criteria_slots` to tell runtime which current durable refs to surface to the child.
 - `transient_surfaces` as a list of `{ path, description }` objects for short-lived notes or local context that help this turn but should not become durable truth.
-- `task_memory_search_hints` for semantic retrieval prompts, not generic tags.
 
 Do not pass a child its own produced artifact slot through `supplemental_durable_context.artifact_slots`.
-If the same child needs prior notes or a rolling ledger, pass that material as `transient_surfaces`
-or task memory instead.
+If the same child needs prior notes or a rolling ledger, pass that material as explicit `transient_surfaces`.
 
 Runtime projects accepted `transient_surfaces` to the child as `transient_refs`; do not author projected `transient_refs` directly in `assign_child`.
 
 JSON shape is an array of objects: `[{ "path": "...", "description": "..." }, { "path": "...", "description": "..." }]`.
 
 In `instruction`, tell the child which surfaced durable refs and transient refs to read first, what question to answer, and what evidence or recommendation to return.
-
-Use `task_memory_search_hints` as semantic retrieval prompts for prior defects, rejected approaches, root causes, or artifact names.
-
-Avoid generic hints like `ui`, `bug`, or `page`.
 
 Bad child brief:
 
@@ -998,9 +907,6 @@ Bad child brief:
       assignment_intent:
         summary: Check the page and fix issues.
         instruction: null
-      task_memory_search_hints:
-        - task start
-        - bug
 
 Better child assignment:
 
@@ -1021,9 +927,6 @@ Better child assignment:
           description: Browser note showing 390px header overflow after latest review artifact.
         - path: tmp/transfers/task-start-viewport-note.md
           description: Exact viewport notes for desktop and mobile review scenes.
-      task_memory_search_hints:
-        - task start prior CTA rejection state
-        - task start nav artifact leak guardrail
 
 Question-style child assignment:
 
@@ -1044,9 +947,6 @@ Question-style child assignment:
           description: Parent's current uncertainty about whether CTA width or nav wrap owns the failure.
         - path: tmp/transfers/task-start-proof-lanes.md
           description: Candidate proof lanes the parent wants compared before implementation.
-      task_memory_search_hints:
-        - task start prior responsive overflow cause
-        - task start proof lane rejection history
 
 
 ### Checkpoint Authoring Guide
@@ -1065,7 +965,6 @@ Write only the decision-relevant delta that the next reader should not have to r
 | `handoff.risks`            | Only risks that affect routing, quality, or release confidence.                                              |
 | `produced_artifacts`       | Exact durable claims you are making now: one `artifact` claim per produced slot plus the produced file path. |
 | `transient_surfaces`       | Array/list of temporary `{ path, description }` objects that genuinely help the next turn start faster.      |
-| `task_memory_search_hints` | Semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread.                 |
 
 Rules:
 
@@ -1073,8 +972,6 @@ Rules:
 - Author `transient_surfaces` as a list of `{ path, description }` objects; omit the field when there is no temporary carryover.
 - A terminal `green` checkpoint must include or already have every required durable publication for the current assignment.
 - Before boundary closure, a later terminal checkpoint may supersede an earlier terminal checkpoint; use that only to correct the latest terminal outcome, not as a progress log.
-- Use `task_memory_search_hints` as semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread.
-- Do not use generic search hints like `retry`, `fix`, or `bug`.
 - If prose mentions an older artifact path or prior version for a slot that also appears in surfaced current refs later, that older mention is history only, not current truth.
 
 Bad checkpoint:
@@ -1085,9 +982,6 @@ Bad checkpoint:
       handoff:
         summary: Made progress, still checking.
         next_step: Continue.
-      task_memory_search_hints:
-        - fix
-        - retry
 
 Better progress checkpoint:
 
@@ -1106,9 +1000,6 @@ Better progress checkpoint:
           description: Browser observation note for the reproduced 390px overflow.
         - path: tmp/transfers/task-start-candidate-proof-scenes.md
           description: Temporary notes about which responsive scenes should verify the fix.
-      task_memory_search_hints:
-        - task start header overflow 390px cta min-width
-        - task start nav wrap rejection
 
 Better terminal checkpoint:
 
@@ -1134,9 +1025,6 @@ Better terminal checkpoint:
           description: Local browser observation that should help review but is not durable output.
         - path: tmp/transfers/task-start-review-caveat.md
           description: Temporary caveat explaining why visual proof should be rerun by the parent.
-      task_memory_search_hints:
-        - task start cta min-width patch green
-        - task start 390px nav verification
 
 
 ### Runtime Boundary Rules
@@ -1172,7 +1060,6 @@ If you use `assign_child`, author only semantic staging fields:
 - optional `supplemental_durable_context.artifact_slots`
 - optional `supplemental_durable_context.criteria_slots`
 - explicit `transient_surfaces`
-- optional `task_memory_search_hints`
 
 Rules:
 
@@ -1289,9 +1176,6 @@ Rules:
 - produces:
   - slot: parent_handoff
     description: Durable parent handoff if this node closes blocked.
-- task_memory_search_hints:
-  - recovery fixture ownership
-  - blocked parent handoff
 
 ### Latest Checkpoint Context
 
@@ -1302,8 +1186,6 @@ Rules:
 - next_step: Return control to the root parent with a blocked handoff; do not use root-only release_blocked from this non-root parent dispatch.
 - blockers:
   - fixture owner decision is outside the current parent scope
-- task_memory_search_hints:
-  - blocked parent handoff
 
 ### Boundary Follow-Up Guidance
 
@@ -1329,22 +1211,11 @@ Rules:
   path: C:/tasks/task_2026_0042/outputs/artifacts/repro_fixture/repro_report/repro_report.v03.md
   description: Current repro evidence showing the parent cannot continue.
 
-### Task Memory
-
-- search hints:
-  - recovery fixture ownership
-  - blocked parent handoff
-- search hints are retrieval prompts for prior defects, rejected approaches, root causes, or artifact names; they are not generic tags
-- `context/wiki/` contains curated task-memory pages
-- other curated docs under `context/` are source/reference material
-- direct file/path search is the v1 retrieval model
-
 ### Allowed Actions Now
 
 - tools: `autoclaw-node__assign_child`, `autoclaw-node__add_child`, `autoclaw-node__update_child`, `autoclaw-node__remove_child`, `autoclaw-node__release_green`, `autoclaw-node__record_checkpoint`
 - use `autoclaw-node__assign_child` with semantic `assignment_intent`, `supplemental_durable_context`, and explicit `transient_surfaces` only; do not author final durable ref metadata for the child
 - make the child brief specific about: the exact objective or question, scope boundaries and what not to touch, the key surfaced refs and constraints, what to read or compare before acting, and what evidence or outputs to return
-- use `task_memory_search_hints` as retrieval prompts for prior defects, rejected approaches, root causes, or artifact names; do not use generic tags
 - if the same issue class repeats, choose explicitly between: reassign the same child for another bounded delta when the same role still fits; assign a different specialist child when the work type changed; or use structural edits when the subtree shape itself is wrong
 - for structural edits, reread the current manifest first, start with role/policy names from the surfaced structural edit palette in this prompt or manifest, and reread the regenerated manifest after the edit before deciding whether one child assignment should be staged
 - if the surfaced structural edit palette is still insufficient after reread, use the current-only `autoclaw-node__search_definitions` / `autoclaw-node__get_definition` read-only lookup lane before guessing
@@ -1373,7 +1244,7 @@ Scenario:
 - send mode: `full_prompt`
 - current lineage: retry created a new attempt on the same assignment
 - durable reminder: read the prior terminal checkpoint as retry handoff
-- representative surfaced refs include curated wiki memory and checkpoint hints
+- representative surfaced refs include current criteria, artifact, and checkpoint evidence
 
 ```text
 # AutoClaw Dispatch Prompt
@@ -1439,7 +1310,6 @@ Use these terms exactly in this dispatch.
 | `produces`                 | Required output slots for this assignment. They are requirements until published through checkpoint/artifact metadata.                                                                                                                                               |
 | `consumed_durable_refs`    | Exact current refs resolved by runtime. If these disagree with older prose, these current refs win.                                                                                                                                                                  |
 | `transient_refs`           | Short-lived carryover for this turn. Useful, but not durable truth.                                                                                                                                                                                                  |
-| `task_memory_search_hints` | Retrieval prompts for prior defects, rejected approaches, root causes, or artifact threads. They are not generic tags and not implicit consumes.                                                                                                                     |
 | `checkpoint`               | Durable handoff memory written through `record_checkpoint`; later nodes use it instead of hidden transcript memory.                                                                                                                                                  |
 | `boundary`                 | Dispatch ingress or node egress. `yield`, `green`, `retry`, and `blocked` change runtime control flow and are not casual status words.                                                                                                                               |
 
@@ -1453,7 +1323,6 @@ Read runtime surfaces in this order unless the current prompt explicitly narrows
 3. The current relevant `_runtime/attempts/<attempt_id>/latest-checkpoint.*` when one is surfaced or when this turn depends on prior checkpoint evidence.
 4. Surfaced `consumed_durable_refs` for exact current durable refs, including criteria, artifacts, checkpoints, and explicit doc/wiki refs.
 5. Optional `transient_refs`.
-6. `task_memory_search_hints`, then direct search in `context/wiki/` and other curated docs under `context/` if needed.
 
 Do not recover current truth from transcript memory, folder scans, raw provider transport state, or unstated assumptions.
 
@@ -1476,18 +1345,6 @@ Rules:
 - Do not inline controller-only pointer fields such as currentness history, assignment lineage, or attempt lineage.
 - Do not ask the node to infer meaning from filenames like `latest.md` or from directory scans.
 - Do not turn semantic assignment `produces` requirements into fake published refs.
-
-
-### Task Memory Search Hints
-
-`task_memory_search_hints` are retrieval prompts, not generic tags and not implicit consumes.
-
-Use them this way:
-
-- Write hints as semantic search prompts for prior defects, rejected approaches, root causes, or artifact names.
-- Prefer phrases that can recover the right prior context later, not broad labels such as `retry`, `fix`, `bug`, `ui`, or `page`.
-- Search `context/wiki/` first, then other curated files under `context/`, when the current assignment needs extra context.
-- Do not silently promote all task-memory files into current `consumes`.
 
 
 ### Monitoring Is Not Task Truth
@@ -1548,7 +1405,6 @@ Then operate in the assigned mode instead of redesigning the whole workflow.
 
 Rules:
 
-- Use workspace reads, surfaced refs, and task-memory search hints to acquire enough truth for this assignment.
 - Inspect additional workspace, context, or source files.
 - Treat definition revision, upload, and provenance proof as controller/operator-owned; worker evidence comes from assignment-scoped reads, produced artifacts, tests, checkpoints, and runtime tool results.
 - Do not rely on hidden chat memory or broad directory scanning.
@@ -1573,7 +1429,6 @@ Write only the decision-relevant delta that the next reader should not have to r
 | `handoff.risks`            | Only risks that affect routing, quality, or release confidence.                                              |
 | `produced_artifacts`       | Exact durable claims you are making now: one `artifact` claim per produced slot plus the produced file path. |
 | `transient_surfaces`       | Array/list of temporary `{ path, description }` objects that genuinely help the next turn start faster.      |
-| `task_memory_search_hints` | Semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread.                 |
 
 Rules:
 
@@ -1581,8 +1436,6 @@ Rules:
 - Author `transient_surfaces` as a list of `{ path, description }` objects; omit the field when there is no temporary carryover.
 - A terminal `green` checkpoint must include or already have every required durable publication for the current assignment.
 - Before boundary closure, a later terminal checkpoint may supersede an earlier terminal checkpoint; use that only to correct the latest terminal outcome, not as a progress log.
-- Use `task_memory_search_hints` as semantic retrieval prompts for this exact defect, rejection, root cause, or artifact thread.
-- Do not use generic search hints like `retry`, `fix`, or `bug`.
 - If prose mentions an older artifact path or prior version for a slot that also appears in surfaced current refs later, that older mention is history only, not current truth.
 
 Bad checkpoint:
@@ -1593,9 +1446,6 @@ Bad checkpoint:
       handoff:
         summary: Made progress, still checking.
         next_step: Continue.
-      task_memory_search_hints:
-        - fix
-        - retry
 
 Better progress checkpoint:
 
@@ -1614,9 +1464,6 @@ Better progress checkpoint:
           description: Browser observation note for the reproduced 390px overflow.
         - path: tmp/transfers/task-start-candidate-proof-scenes.md
           description: Temporary notes about which responsive scenes should verify the fix.
-      task_memory_search_hints:
-        - task start header overflow 390px cta min-width
-        - task start nav wrap rejection
 
 Better terminal checkpoint:
 
@@ -1642,9 +1489,6 @@ Better terminal checkpoint:
           description: Local browser observation that should help review but is not durable output.
         - path: tmp/transfers/task-start-review-caveat.md
           description: Temporary caveat explaining why visual proof should be rerun by the parent.
-      task_memory_search_hints:
-        - task start cta min-width patch green
-        - task start 390px nav verification
 
 
 ### Runtime Boundary Rules
@@ -1690,7 +1534,6 @@ When you call `record_checkpoint`, author:
 - optional `handoff.risks`
 - reduced durable output claims as `produced_artifacts { kind: artifact, slot, path }`
 - explicit temporary carryover only as `transient_surfaces { path, description }`
-- optional `task_memory_search_hints`
 
 If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 
@@ -1759,7 +1602,6 @@ If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 - path: C:/tasks/task_2026_0042/_runtime/workflow-manifest.md
 - description: whole-workflow visible contract for the current task
 - current node anchor: implement_fix
-- surfaced path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
 
 ### Current Assignment
 
@@ -1780,9 +1622,6 @@ If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 - transient_refs:
   - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
     description: Optional repro commands from the prior attempt.
-- task_memory_search_hints:
-  - auth refresh
-  - cookie rotation note
 
 ### Latest Checkpoint Context
 
@@ -1791,8 +1630,6 @@ If no durable output exists yet, omit `produced_artifacts` rather than guessing.
 - outcome: retry
 - summary: Prior attempt fixed the primary path but missed one recovery branch.
 - next_step: Keep the same assignment and repair the missed branch.
-- task_memory_search_hints:
-  - recovery branch note
 
 ### Boundary Follow-Up Guidance
 
@@ -1813,30 +1650,12 @@ If no durable output exists yet, omit `produced_artifacts` rather than guessing.
   version: 2
   path: C:/tasks/task_2026_0042/outputs/artifacts/investigate_issue/findings_report/findings_report.v02.md
   description: Current findings for the scoped fix.
-- kind: wiki
-  path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
-  description: Curated task-memory page for earlier auth-refresh attempts.
 
 ### Transient Refs
 
 - transient refs are optional carryover only; they are not durable truth
 - path: C:/tasks/task_2026_0042/tmp/transfers/implement_fix/repro-commands.txt
   description: Optional repro commands from the prior attempt.
-
-### Task Memory
-
-- search hints:
-  - auth refresh
-  - cookie rotation note
-  - recovery branch note
-- search hints are retrieval prompts for prior defects, rejected approaches, root causes, or artifact names; they are not generic tags
-- surfaced curated refs:
-  - kind: wiki
-    path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-history.md
-    description: Curated task-memory page for earlier auth-refresh attempts.
-- `context/wiki/` contains curated task-memory pages
-- other curated docs under `context/` are source/reference material
-- direct file/path search is the v1 retrieval model
 
 ### Allowed Actions Now
 

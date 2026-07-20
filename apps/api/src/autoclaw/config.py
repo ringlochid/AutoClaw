@@ -4,6 +4,7 @@ import ipaddress
 import os
 import re
 import tomllib
+from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any
@@ -48,12 +49,19 @@ class ClaudeSettings(BaseModel):
     effort: ProviderConfigText | None = None
 
 
+class OpenClawGatewayAuthMode(StrEnum):
+    TOKEN = "token"
+    PASSWORD = "password"
+
+
 class OpenClawSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     enabled: bool = False
+    cli_path: ProviderConfigText = "openclaw"
     gateway_url: ProviderConfigText = "ws://127.0.0.1:18789"
     gateway_profile: ProviderConfigText = "default"
+    gateway_auth_mode: OpenClawGatewayAuthMode = OpenClawGatewayAuthMode.TOKEN
 
 
 class RuntimeSettings(BaseModel):
@@ -312,6 +320,7 @@ __all__ = [
     "ClaudeSettings",
     "CodexSettings",
     "Environment",
+    "OpenClawGatewayAuthMode",
     "OpenClawSettings",
     "RuntimeSettings",
     "Settings",

@@ -288,8 +288,10 @@ gateway_profile = "tested-local"
     }
     assert settings.openclaw.model_dump(mode="json") == {
         "enabled": True,
+        "cli_path": "openclaw",
         "gateway_url": "ws://127.0.0.1:18789",
         "gateway_profile": "tested-local",
+        "gateway_auth_mode": "token",
     }
 
 

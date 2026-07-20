@@ -7,6 +7,7 @@ OpenClaw is an experimental, user-managed compatibility provider. It is installe
 - strict provider selection and the committed dispatch route
 - the exact `instructions.md` and `input.md` request pair
 - a bounded Gateway `agent` acceptance call and best-effort abort
+- the non-secret Gateway URL/profile/authentication-mode route and its private adapter credential
 - controller state, Node operation legality, checkpoints, boundaries, waits, and task events
 - the loopback compatibility Node MCP endpoint at `/node/mcp`
 
@@ -14,7 +15,7 @@ AutoClaw does not wait for `agent.wait`, provider output, final text, or Gateway
 
 ## The user owns
 
-- installing, authenticating, and running OpenClaw and its Gateway
+- installing, securing, issuing credentials for, and running OpenClaw and its Gateway
 - `openclaw.json`
 - the compatibility MCP server entry and OpenClaw tool policy
 - choosing an OpenClaw profile that can use the required Node tools

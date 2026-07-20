@@ -373,7 +373,6 @@ Prompts should teach this read order:
 3. `latest_relevant_checkpoint_path` when present, otherwise the current attempt-local `latest-checkpoint.*` for durable handoff
 4. surfaced `consumed_durable_refs` for exact current criteria, artifacts, docs, and wiki refs
 5. optional `transient_refs`
-6. `task_memory_search_hints`, then search `context/wiki/` and other curated docs under `context/` if needed
 
 Every parent/root/worker dispatch should surface at least:
 

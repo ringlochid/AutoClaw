@@ -160,6 +160,13 @@ class ProviderCheckAxisStatus(StrEnum):
     FAILED = "failed"
 
 
+class ProviderAuthenticationMethod(StrEnum):
+    SUBSCRIPTION = "subscription"
+    API_KEY = "api_key"
+    TOKEN = "token"
+    PASSWORD = "password"
+
+
 class ProviderCheckResult(BaseModel):
     """Bounded non-secret result for an explicit non-agent provider check."""
 
@@ -169,6 +176,7 @@ class ProviderCheckResult(BaseModel):
     status: ProviderCheckStatus
     code: str = Field(min_length=1, max_length=96, pattern=r"^[a-z0-9_]+$")
     authentication: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED
+    authentication_method: ProviderAuthenticationMethod | None = None
     reachability: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED
 
 
@@ -191,6 +199,7 @@ __all__ = [
     "DispatchStartRequest",
     "ManagedNodeMcpConnection",
     "ProviderAdapter",
+    "ProviderAuthenticationMethod",
     "ProviderCheckAxisStatus",
     "ProviderCheckResult",
     "ProviderCheckStatus",

@@ -61,8 +61,6 @@ record_checkpoint:
   transient_surfaces:
     - path: string
       description: string
-  task_memory_search_hints:
-    - string
 ```
 
 Rules:
@@ -148,8 +146,6 @@ latest_checkpoint:
       version: null
       path: string
       description: string
-  task_memory_search_hints:
-    - string
 ```
 
 Rules:

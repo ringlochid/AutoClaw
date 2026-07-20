@@ -6,13 +6,16 @@ Use OpenClaw only when you accept its experimental compatibility boundary.
 
 ```bash
 autoclaw providers configure openclaw \
+  --cli-path /absolute/path/to/openclaw \
   --gateway-url ws://127.0.0.1:18789 \
-  --gateway-profile default
+  --gateway-profile default \
+  --gateway-auth-mode token
+autoclaw providers login openclaw --method token
 autoclaw providers set-default openclaw
 autoclaw providers check openclaw
 ```
 
-Omit `set-default` when another provider should stay the default. The first configured provider becomes the default automatically when none exists.
+The login command prompts for the Gateway token without echoing it; use `--method password` and `--gateway-auth-mode password` for password authentication. AutoClaw keeps the selected secret in its owner-readable service environment and never places it in `config.toml` or command arguments. Omit `set-default` when another provider should stay the default. The first configured provider becomes the default automatically when none exists.
 
 ## Configure OpenClaw
 

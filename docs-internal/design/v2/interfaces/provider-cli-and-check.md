@@ -16,7 +16,7 @@ autoclaw setup
 autoclaw providers list
 autoclaw providers status [provider]
 autoclaw providers check <provider>
-autoclaw providers login <provider>
+autoclaw providers login <provider> [--method <method>]
 autoclaw providers logout <provider>
 autoclaw providers configure <provider>
 autoclaw providers set-default <provider>
@@ -70,7 +70,9 @@ Interactive human output uses terminal-aware structure and semantic color for se
 
 `autoclaw init` guides AutoClaw-local initialization only. A fresh run shows the recommended config path, data path, database, and loopback API settings, allows the user to review alternatives, and confirms before writing. When config already exists, rerunning offers to keep and verify it, explicitly replace it, or cancel; it never overwrites or resets state merely because the command was rerun. The shipped database path still creates an empty current schema or verifies an exact current schema. Schema replacement remains the separate destructive `autoclaw db reset` operation. `init` does not log in to providers, mutate provider selection, install OpenClaw, or start an agent turn.
 
-`autoclaw setup` guides provider setup. It shows current provider/default state, asks for the primary/default provider when one was not supplied, configures that route, explicitly selects it as the default, performs the bounded provider check, offers the supported provider-native login flow when authentication is required, and asks whether to configure additional providers. Additional providers do not replace the selected primary default. OpenClaw remains selectable, including as the default, while its experimental and user-managed configuration status is disclosed.
+`autoclaw setup` guides provider setup. It shows current provider/default state, asks for the primary/default provider when one was not supplied, saves that route, explicitly selects it as the default, and performs the bounded provider check. For Codex and Claude, setup always presents the supported authentication methods. A detected ready method is only the method prompt default. After the user selects that same method, setup separately asks `Existing <Provider> <method> found. Use it? [Y/n]`. Accepting the default reuses it; declining runs a fresh login for that same method. Choosing another method runs that login directly. For a Claude API key or OpenClaw Gateway credential found only in the invoking shell, setup instead offers to store it in AutoClaw's private service environment; it does not call the managed route ready until the user accepts that write and the service-scoped recheck succeeds. The following check must report both readiness and the selected effective method. A different winning credential source fails setup with precedence guidance instead of presenting the requested change as successful. OpenClaw presents its token/password choice with the Gateway route and confirms reuse of a working stored credential. Setup then asks whether to configure additional providers. Additional providers do not replace the selected primary default. A saved route is never presented as ready until the fresh check confirms a supported credential source. Setup exits unsuccessfully when any selected route still needs attention or an explicitly selected authentication change fails. Interrupting the guide states that already completed steps were kept.
+
+Codex and Claude each offer `subscription` and `api-key`. Codex delegates both methods to its SDK-bundled native CLI. Claude delegates subscription login to the SDK-bundled Claude Code CLI and stores an entered API key as `ANTHROPIC_API_KEY` in AutoClaw's owner-only service environment file. OpenClaw records the resolved non-secret CLI path, asks for Gateway URL, profile, and `token | password`, stores only the selected credential in that same private environment file, and keeps its experimental label. AutoClaw still does not install or supervise the Gateway or patch `openclaw.json`.
 
 Every accepted setup step commits independently through its owning operation. Cancellation therefore preserves completed explicit steps, and rerunning derives the next prompts from current config instead of a setup journal. Setup is not one all-or-nothing transaction and does not silently repair provider, database, or service state.
 
@@ -80,7 +82,7 @@ Guidance distinguishes effective environment overrides from provider enablement 
 
 `providers list` reports installed integration definitions and their product status: managed target, experimental, unsupported, or unavailable.
 
-`providers status` is passive. It resolves the same service identity and provider home that runtime launch will use, then reports local facts such as executable/library presence, configured route, selected native home, and whether required local fields are present. It does not prove authentication or reachability unless those facts are directly readable without a provider operation.
+`providers status` is passive. It resolves the same service identity and provider home that runtime launch will use, then reports local facts such as executable/library presence, configured route, selected native home, and whether required local fields are present. Managed Codex and Claude availability requires both the SDK library and its bundled native CLI. A configured OpenClaw route uses its recorded CLI path rather than whichever executable a later shell happens to find. Status does not prove authentication or reachability unless those facts are directly readable without a provider operation.
 
 ## Provider check
 
@@ -102,27 +104,28 @@ It must not:
 - write a persistent readiness cache; or
 - substitute for pinned release conformance tests.
 
-Stable outcome categories distinguish at least `ready`, `not_configured`, `not_installed`, `authentication_failed`, `unreachable`, `incompatible`, `policy_blocked`, and `check_failed`.
+Stable outcome categories distinguish at least `ready`, `local_prerequisites_ready`, `not_configured`, `not_installed`, `authentication_failed`, `unreachable`, `incompatible`, `policy_blocked`, and `check_failed`. `ready` requires the provider's bounded native diagnostic to identify a supported effective credential source. An otherwise available integration with an unverified credential source reports `local_prerequisites_ready`, returns a nonzero command status, and is not called ready.
 
-Authentication and reachability are separate `not_checked | passed | failed` axes. An adapter changes an axis from `not_checked` only when its bounded diagnostic directly proves that fact. A successful overall check therefore does not imply that both axes were inspected.
+Authentication and reachability are separate `not_checked | passed | failed` machine axes. For Codex and Claude, `authentication: passed` means the documented native diagnostic found a supported effective credential source; it does not mean that AutoClaw sent a model request or remotely validated remaining quota. An adapter changes an axis from `not_checked` only when its bounded diagnostic directly supports that fact. A successful overall check therefore does not imply that both axes were inspected.
 
-Human output renders those axes as `confirmed`, `failed`, or `not tested`; machine output retains the stable enum values. A Codex `account/read` response with a typed ChatGPT or API-key account directly confirms authentication. Missing required OpenAI authentication reports failure. Credential sources whose validity is not proved by that response, including managed cloud credentials, remain `not_checked`. The account read does not prove remote model reachability.
+Human output renders the credential axis as `found`, `missing or rejected`, or `not inspected`, and reachability as `reachable`, `unreachable`, or `not tested`; machine output retains the stable enum values. It also reports the non-secret method as `subscription`, `api_key`, `token`, or `password`. A Codex `account/read` response identifies a typed ChatGPT or API-key account source. Claude's native `auth status --json` identifies the effective subscription or API-key source without retaining account details; `apiKeySource` takes precedence over the broader native authentication label. An authenticated OpenClaw `health` call accepts the selected Gateway credential and reaches the Gateway. Codex and Claude checks intentionally send no model request, so remote model reachability remains `not_checked` and human output explains that live provider access is exercised by the first task.
 
 ## Login and logout
 
-Provider identity remains provider-owned. `providers login` and `providers logout` may invoke the provider's supported native command or SDK flow, but AutoClaw does not parse, copy, normalize, encrypt, or store the resulting credential.
+Provider identity remains provider-owned, but AutoClaw owns the local onboarding operation. `providers login` and `providers logout` use only the methods supported by the selected integration. Codex and Claude accept `subscription | api-key`; OpenClaw accepts `token | password`. Interactive commands prompt with hidden input. Noninteractive login requires an explicit method. API-key, token, and password automation also requires `--secret-stdin`; subscription login requires a terminal because the provider-native browser or device flow must remain visible. Secrets never appear in command arguments, JSON, human output, or logs.
 
 The command must identify the operating-system service account and native provider home that runtime will use. A login performed under another user or home does not make the AutoClaw service ready.
 
-Codex uses its native `CODEX_HOME` behavior. Claude uses supported API/cloud or vendor-native configuration. OpenClaw owns its Gateway identity and user configuration.
+Codex uses the service account's default native credential store. Claude subscription login uses the service account's default Claude home; a Claude API key uses `ANTHROPIC_API_KEY`. OpenClaw uses the service account's default state home and exactly one of `OPENCLAW_GATEWAY_TOKEN` or `OPENCLAW_GATEWAY_PASSWORD` according to the non-secret configured authentication mode. Shell-only `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, and `OPENCLAW_STATE_DIR` overrides do not silently change the managed route.
 
 ## Provider configuration boundary
 
-AutoClaw stores provider selection and non-secret route settings only. It does not maintain a second provider profile or credential store.
+`config.toml` stores provider selection and non-secret route settings only. AutoClaw does not maintain a second provider profile or copy native subscription credential stores. Its one canonical sibling `autoclaw.env` file may contain only an operator-entered Claude API key or OpenClaw Gateway token/password. Custom service-environment paths and unrelated assignments are not supported. The file is owner-only, is loaded by foreground and managed-service execution, survives service-unit reconciliation, and is never a controller/runtime truth or readback surface. Foreground execution preserves an explicitly exported supported credential over the file value. Guided setup and `providers check` deliberately evaluate the exact private credentials available to the managed service instead; setup offers to copy a compatible shell-only secret into the private file with explicit confirmation.
 
 The CLI never:
 
 - copies provider token caches;
+- writes provider secrets into `config.toml`, task files, controller rows, prompts, command arguments, or readbacks;
 - writes dispatch MCP credentials into provider config;
 - patches `openclaw.json`;
 - weakens OpenClaw bind, sandbox, tools, exec, approval, or deny lists;
@@ -193,8 +196,12 @@ Focused subsystem diagnostics may retain a read-only `check` command. Repair rem
 - setup/status/check/runtime resolve the same service identity and native provider home;
 - interactive init preserves existing state by default, confirms replacement, and never resets a mismatched schema;
 - non-TTY, `--non-interactive`, and `--json` invocation never waits for input;
+- noninteractive provider login requires an explicit method and secret input where applicable;
 - guided setup and direct commands share provider configuration, default-selection, identity, and check operations;
-- guided setup offers supported native login when authentication is required and preserves the chosen primary default while adding providers;
+- guided setup always offers the Codex/Claude subscription or API-key choice, separately confirms reuse of a selected ready method, verifies that fresh login made the selected method effective, offers OpenClaw token or password with its route, and preserves the chosen primary default while adding providers;
+- route-saved and readiness results remain distinct, and unverified authentication never yields a successful ready check;
+- private environment writes are owner-only, redact all values, keep token/password mutually exclusive, and survive service reconciliation;
+- the private environment has one config-relative path, rejects unrelated assignments, and cannot override provider-native homes;
 - first successful configuration fills only an empty default, later configuration preserves it, and only set-default replaces it;
 - configure/check/authentication/start failures never mutate the default or trigger fallback;
 - explicit provider routes never fall back;

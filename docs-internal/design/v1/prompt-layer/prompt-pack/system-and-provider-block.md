@@ -100,7 +100,7 @@ AutoClaw-owned `instructions_text` should assemble:
 
 1. common system/runtime block
 2. runtime concept glossary block
-3. shared read-order, artifact-ref, task-memory, and monitoring-truth blocks
+3. shared read-order, artifact-ref, and monitoring-truth blocks
 4. provider continuity block
 5. current family opening block
 6. worker assignment doctrine block or parent/root orchestration doctrine block

@@ -12,11 +12,11 @@ An explicit custom runtime may be added only as an advanced override that passes
 
 ## Authentication boundary
 
-The supported product setup uses an Anthropic API credential or a supported cloud provider such as Bedrock or Vertex. AutoClaw stores no raw credential.
+The supported local product setup offers either Claude subscription login or an Anthropic API key. Subscription login is delegated to the Claude Code CLI bundled with the pinned Agent SDK and remains in Claude's native credential home. An entered API key is stored as `ANTHROPIC_API_KEY` in AutoClaw's owner-only service environment, never in `config.toml`, controller rows, task files, prompts, command arguments, or readbacks.
 
-An externally managed Claude.ai login may be observable through native diagnostics, but AutoClaw does not offer or broker Claude.ai Free, Pro, or Max subscription authentication without Anthropic approval.
+The pinned CLI technically exposes this subscription flow, but [Anthropic's current published policy](https://code.claude.com/docs/en/legal-and-compliance) says third-party products using the Agent SDK should use API-key or supported cloud-provider authentication unless Anthropic has approved Claude.ai login. The target subscription option therefore has an unresolved release-conformance gate: obtain that approval or narrow the shipped Claude setup to permitted methods. Unknown or externally managed cloud authentication may remain usable provider-native configuration, but the product check does not call it ready unless the pinned native diagnostic classifies it as one of the supported methods.
 
-Status, check, and runtime must resolve the same service identity, `HOME`, `CLAUDE_CONFIG_DIR`, and cloud-provider environment.
+Status, check, login, and runtime resolve the same service identity and default Claude home. A shell-only `CLAUDE_CONFIG_DIR` override does not redirect the managed route. Supported cloud-provider environment remains provider-native.
 
 ## Configuration inheritance
 
@@ -60,14 +60,14 @@ Full native-tool access does not imply Node role elevation, controller command-r
 
 Passive status may report enabled/default state, installed SDK/runtime versions, custom runtime path, effective config directory/setting sources, and credential-source presence without secret contents.
 
-`autoclaw providers check claude` may perform documented non-agent installation, configuration, authentication/reachability, policy, and deterministic MCP prerequisite checks. It creates no session/query, task, dispatch, binding, or Node call.
+`autoclaw providers check claude` runs the SDK-bundled `claude auth status --json`, retains only whether a supported effective credential source exists and whether that source is a subscription or API key, and creates no session/query, task, dispatch, binding, or Node call. The native `apiKeySource` field wins when an environment API key overrides a native subscription session. The check does not claim that the credential was remotely accepted or that the model is reachable because it sends no query.
 
 ## Required proof
 
 - dynamic programmatic MCP attachment with a server-scoped role allowlist;
 - exact two-lane delivery for fresh and continuity-assisted starts;
 - no hidden `AskUserQuestion` or approval wait;
-- supported API/cloud authentication boundary;
+- supported subscription/API-key authentication boundary;
 - acceptance and definite/uncertain failure classification;
 - bounded interrupt without a runtime drain gate or client reuse violation;
 - service-identity/native-home consistency; and
@@ -79,6 +79,8 @@ Passive status may report enabled/default state, installed SDK/runtime versions,
 - [Claude Agent SDK Python reference](https://code.claude.com/docs/en/agent-sdk/python)
 - [Claude Agent SDK MCP](https://code.claude.com/docs/en/agent-sdk/mcp)
 - [Claude Agent SDK user input](https://code.claude.com/docs/en/agent-sdk/user-input)
+- [Use the Claude Agent SDK with your Claude plan](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan)
+- [Claude Code authentication](https://code.claude.com/docs/en/authentication)
 
 ## Related contracts
 

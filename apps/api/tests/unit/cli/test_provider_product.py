@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import subprocess
+import os
 import tomllib
 from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
@@ -22,11 +22,13 @@ from autoclaw.interfaces.cli.providers.configuration import (
     set_default_provider,
 )
 from autoclaw.interfaces.cli.providers.contracts import (
+    ProviderCheckOutcome,
+    ProviderCheckSnapshot,
     ProviderConfigurationSnapshot,
-    ProviderIdentityOutcome,
 )
-from autoclaw.interfaces.cli.providers.inspection import invoke_provider_identity_action
+from autoclaw.platform.provider_environment import ANTHROPIC_API_KEY, persist_provider_secret
 from autoclaw.runtime.providers import (
+    ProviderAuthenticationMethod,
     ProviderCheckAxisStatus,
     ProviderCheckResult,
     ProviderCheckStatus,
@@ -69,6 +71,7 @@ def test_openclaw_is_configurable_and_default_eligible(tmp_path: Path) -> None:
         config_path,
         ProviderConfigurationRequest(
             provider=ProviderKind.OPENCLAW,
+            cli_path="/opt/openclaw/bin/openclaw",
             gateway_url="ws://127.0.0.1:18789",
             gateway_profile="user-maintained",
         ),
@@ -84,9 +87,31 @@ def test_openclaw_is_configurable_and_default_eligible(tmp_path: Path) -> None:
     assert payload["runtime"]["default_provider"] == "openclaw"
     assert payload["openclaw"] == {
         "enabled": True,
+        "cli_path": "/opt/openclaw/bin/openclaw",
         "gateway_url": "ws://127.0.0.1:18789",
         "gateway_profile": "user-maintained",
+        "gateway_auth_mode": "token",
     }
+
+
+def test_openclaw_configuration_records_the_discovered_cli_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "config.toml"
+    executable = tmp_path / "openclaw"
+    monkeypatch.setattr(
+        "autoclaw.interfaces.cli.providers.configuration.shutil.which",
+        lambda _command: str(executable),
+    )
+
+    configure_provider(
+        config_path,
+        ProviderConfigurationRequest(provider=ProviderKind.OPENCLAW),
+    )
+
+    payload = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    assert payload["openclaw"]["cli_path"] == str(executable)
 
 
 def test_failed_configuration_preserves_previous_bytes_and_default(tmp_path: Path) -> None:
@@ -136,9 +161,13 @@ def test_bare_and_status_are_passive_with_zero_providers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config_path = tmp_path / "config.toml"
+    (tmp_path / "autoclaw.env").write_text(
+        'ANTHROPIC_API_KEY="invalid-unclosed-value\n',
+        encoding="utf-8",
+    )
     monkeypatch.setenv("AUTOCLAW_CONFIG", str(config_path))
     monkeypatch.setattr(
-        "autoclaw.interfaces.cli.providers.inspection.subprocess.run",
+        "autoclaw.interfaces.cli.providers.identity.subprocess.run",
         lambda *_args, **_kwargs: pytest.fail("passive status invoked a provider command"),
     )
     runner = CliRunner()
@@ -149,7 +178,9 @@ def test_bare_and_status_are_passive_with_zero_providers(
 
     assert bare.exit_code == 0
     assert status.exit_code == 0
-    assert "default provider: not configured" in bare.output
+    assert "Default provider: Not configured" in bare.output
+    assert "authentication not_checked" not in bare.output
+    assert "Local configuration only" in bare.output
     payload = json.loads(status.output)
     assert payload["default_provider"] is None
     assert all(not provider["configured"] for provider in payload["providers"])
@@ -175,6 +206,29 @@ def test_status_redacts_database_password(tmp_path: Path) -> None:
     assert json.loads(result.output)["database"]["configured_url"] == (
         "postgresql+asyncpg://operator:***@localhost/autoclaw"
     )
+
+
+def test_bare_status_reports_the_managed_service_native_home(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "config.toml"
+    configure_provider(
+        config_path,
+        ProviderConfigurationRequest(provider=ProviderKind.CODEX),
+    )
+    expected_home = str(Path.home() / ".codex")
+    monkeypatch.setenv("CODEX_HOME", "/tmp/shell-only-codex-home")
+
+    result = CliRunner().invoke(
+        build_parser(),
+        ["status", "--config", str(config_path), "--json"],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    codex = next(provider for provider in payload["providers"] if provider["kind"] == "codex")
+    assert codex["native_home"] == expected_home
 
 
 def test_provider_list_and_status_are_passive_and_mark_openclaw_experimental(
@@ -212,11 +266,24 @@ default_provider = "openclaw"
         provider for provider in list_payload["providers"] if provider["kind"] == "openclaw"
     )
     assert openclaw_definition["product_status"] == "experimental"
-    assert openclaw_definition["setup_owner"] == "user"
+    assert openclaw_definition["setup_owner"] == "shared"
     assert status_payload["providers"][0]["authentication"] == "not_checked"
     assert status_payload["providers"][0]["reachability"] == "not_checked"
     assert "user:secret" not in status.output
     assert config_path.read_bytes() == previous_bytes
+
+
+def test_managed_integration_availability_requires_the_bundled_cli(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(provider_inspection, "module_is_available", lambda _module: True)
+
+    def missing_cli() -> Path:
+        raise FileNotFoundError
+
+    monkeypatch.setattr(provider_inspection, "bundled_codex_path", missing_cli)
+
+    assert provider_inspection.is_provider_integration_available(ProviderKind.CODEX) is False
 
 
 def test_provider_check_runs_bounded_diagnostic_without_mutation(
@@ -239,6 +306,8 @@ def test_provider_check_runs_bounded_diagnostic_without_mutation(
             kind=provider,
             status=ProviderCheckStatus.AVAILABLE,
             code="codex_available",
+            authentication=ProviderCheckAxisStatus.PASSED,
+            authentication_method=ProviderAuthenticationMethod.SUBSCRIPTION,
         ),
     )
 
@@ -256,12 +325,98 @@ def test_provider_check_runs_bounded_diagnostic_without_mutation(
     payload = json.loads(result.output)
     assert payload["outcome"] == "ready"
     assert payload["is_ready"] is True
-    assert payload["authentication"] == "not_checked"
+    assert payload["authentication"] == "passed"
+    assert payload["authentication_method"] == "subscription"
     assert payload["reachability"] == "not_checked"
-    assert "Authentication: not tested" in human_result.output
+    assert "Credential: found" in human_result.output
+    assert "Method: Subscription login" in human_result.output
     assert "Reachability: not tested" in human_result.output
     assert "not_checked" not in human_result.output
     assert config_path.read_bytes() == previous_bytes
+
+
+def test_provider_check_uses_the_managed_service_secret_instead_of_the_shell(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "config.toml"
+    configure_provider(
+        config_path,
+        ProviderConfigurationRequest(provider=ProviderKind.CLAUDE),
+    )
+    persist_provider_secret(
+        tmp_path / "autoclaw.env",
+        key=ANTHROPIC_API_KEY,
+        value="stored-api-key",
+    )
+    monkeypatch.setenv(ANTHROPIC_API_KEY, "shell-api-key")
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", "/tmp/shell-only-claude-home")
+    observed_keys: list[str | None] = []
+    observed_homes: list[str | None] = []
+
+    def inspect_service_environment(
+        _settings: Settings,
+        provider: ProviderKind,
+    ) -> ProviderCheckSnapshot:
+        observed_keys.append(os.environ.get(ANTHROPIC_API_KEY))
+        observed_homes.append(os.environ.get("CLAUDE_CONFIG_DIR"))
+        return ProviderCheckSnapshot(
+            kind=provider,
+            outcome=ProviderCheckOutcome.READY,
+            is_ready=True,
+            service_identity="tester",
+            native_home="/tmp/claude",
+            authentication=ProviderCheckAxisStatus.PASSED,
+            authentication_method=ProviderAuthenticationMethod.API_KEY,
+            detail="claude_available",
+        )
+
+    monkeypatch.setattr(provider_commands, "collect_provider_check", inspect_service_environment)
+
+    result = CliRunner().invoke(
+        build_parser(),
+        ["providers", "check", "claude", "--config", str(config_path), "--json"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert observed_keys == ["stored-api-key"]
+    assert observed_homes == [None]
+    assert os.environ[ANTHROPIC_API_KEY] == "shell-api-key"
+    assert os.environ["CLAUDE_CONFIG_DIR"] == "/tmp/shell-only-claude-home"
+
+
+def test_provider_check_does_not_call_unverified_authentication_ready(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "config.toml"
+    configure_provider(
+        config_path,
+        ProviderConfigurationRequest(provider=ProviderKind.CODEX),
+    )
+    monkeypatch.setattr(
+        "autoclaw.interfaces.cli.providers.inspection.module_is_available",
+        lambda _module: True,
+    )
+    monkeypatch.setattr(
+        "autoclaw.interfaces.cli.providers.inspection.execute_provider_diagnostic",
+        lambda _settings, provider: ProviderCheckResult(
+            kind=provider,
+            status=ProviderCheckStatus.AVAILABLE,
+            code="codex_available",
+        ),
+    )
+
+    result = CliRunner().invoke(
+        build_parser(),
+        ["providers", "check", "codex", "--config", str(config_path), "--json"],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["ok"] is False
+    assert payload["outcome"] == "local_prerequisites_ready"
+    assert payload["is_ready"] is None
 
 
 def test_provider_status_keeps_passive_diagnostics_out_of_human_output(
@@ -284,6 +439,28 @@ def test_provider_status_keeps_passive_diagnostics_out_of_human_output(
     assert "Local configuration only" in result.output
     assert "autoclaw providers check codex" in result.output
     assert "not_checked" not in result.output
+
+
+def test_provider_status_reports_the_managed_service_native_home(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "config.toml"
+    configure_provider(
+        config_path,
+        ProviderConfigurationRequest(provider=ProviderKind.CODEX),
+    )
+    expected_home = str(Path.home() / ".codex")
+    monkeypatch.setenv("CODEX_HOME", "/tmp/shell-only-codex-home")
+
+    result = CliRunner().invoke(
+        build_parser(),
+        ["providers", "status", "codex", "--config", str(config_path), "--json"],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["providers"][0]["native_home"] == expected_home
 
 
 def test_provider_check_maps_authentication_failure(
@@ -368,6 +545,20 @@ def test_setup_uses_the_shared_configuration_operation(
         return original(path, request)
 
     monkeypatch.setattr(provider_commands, "configure_provider", recording_configure)
+    monkeypatch.setattr(
+        provider_commands,
+        "collect_provider_check",
+        lambda _settings, provider: ProviderCheckSnapshot(
+            kind=provider,
+            outcome=ProviderCheckOutcome.READY,
+            is_ready=True,
+            service_identity="tester",
+            native_home="/tmp/claude",
+            authentication=ProviderCheckAxisStatus.PASSED,
+            authentication_method=ProviderAuthenticationMethod.SUBSCRIPTION,
+            detail="claude_available",
+        ),
+    )
 
     result = provider_commands.cmd_setup(
         argparse.Namespace(
@@ -377,6 +568,7 @@ def test_setup_uses_the_shared_configuration_operation(
             effort=None,
             gateway_url=None,
             gateway_profile=None,
+            gateway_auth_mode=None,
             json=True,
         )
     )
@@ -476,47 +668,3 @@ def test_json_setup_guide_configures_environment_only_provider_before_default(
     assert payload["default_provider"] is None
     assert payload["next_actions"] == ["autoclaw providers configure codex"]
     assert not config_path.exists()
-
-
-def test_codex_identity_delegates_without_reading_or_storing_credentials(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    native_calls: list[tuple[list[str], dict[str, object]]] = []
-
-    def native_runner(
-        command: list[str],
-        **options: object,
-    ) -> subprocess.CompletedProcess[str]:
-        native_calls.append((command, options))
-        return subprocess.CompletedProcess(command, 0)
-
-    bundled_binary = tmp_path / "codex"
-    monkeypatch.setattr(
-        "autoclaw.interfaces.cli.providers.inspection.bundled_codex_path",
-        lambda: bundled_binary,
-    )
-
-    snapshot = invoke_provider_identity_action(
-        ProviderKind.CODEX,
-        "login",
-        is_json_output=True,
-        command_runner=native_runner,
-    )
-
-    assert snapshot.outcome == ProviderIdentityOutcome.SUCCEEDED
-    assert native_calls[0][0] == [str(bundled_binary), "login"]
-    assert native_calls[0][1]["stdout"] == subprocess.DEVNULL
-    assert native_calls[0][1]["stderr"] == subprocess.DEVNULL
-
-
-@pytest.mark.parametrize("provider", [ProviderKind.CLAUDE, ProviderKind.OPENCLAW])
-def test_non_codex_identity_remains_user_managed(provider: ProviderKind) -> None:
-    snapshot = invoke_provider_identity_action(
-        provider,
-        "logout",
-        is_json_output=True,
-    )
-
-    assert snapshot.outcome == ProviderIdentityOutcome.USER_MANAGED
-    assert "user-managed" in snapshot.detail

@@ -86,8 +86,10 @@ enabled = false
 
 [openclaw]
 enabled = false
+cli_path = "/absolute/path/to/openclaw"
 gateway_url = "ws://127.0.0.1:18789"
 gateway_profile = "default"
+gateway_auth_mode = "token" # token | password
 ```
 
 Rules:
@@ -98,10 +100,13 @@ Rules:
 - the watchdog inactivity timeout defaults to 900 seconds (15 minutes) and its same-attempt replacement cap defaults to two;
 - target runtime config has no watchdog poll interval, bootstrap timeout, per-tick limit, auto-recover toggle, or separate execution-stale threshold;
 - OpenClaw may be enabled and explicitly/default selected even though its product status remains experimental;
-- provider sections own only AutoClaw enablement, non-secret connection fields, sparse explicit overrides, and resolved machine policy;
+- provider sections own only AutoClaw enablement, non-secret executable/connection fields and authentication-mode selection, sparse explicit overrides, and resolved machine policy;
 - Codex and Claude inherit provider-native homes, authentication, project/user settings, skills, model catalogs, and compaction;
+- the configured OpenClaw CLI path is resolved to an absolute executable when available so checks and service runtime do not depend on a later shell's `PATH`;
 - an OpenClaw gateway profile resolves the exact lawful client identity, handshake, delivery, agent, and compatibility-MCP expectations for one tested installed version; and
-- no provider credential is stored in AutoClaw runtime config.
+- no provider credential is stored in AutoClaw runtime config;
+- Codex and Claude subscription credentials remain in their native homes, while an operator-entered Claude API key or OpenClaw Gateway credential may be stored only in the separate owner-only `autoclaw.env` service environment; and
+- a shell-supplied supported credential takes precedence for foreground execution without changing either source, while guided setup and provider checks evaluate the managed service environment and can import a compatible shell-only secret only after explicit confirmation.
 
 ### Default establishment
 
@@ -156,7 +161,7 @@ Neither axis silently controls Node MCP, human requests, controller `command_run
 
 Codex and Claude are managed same-host adapters. AutoClaw, the provider runtime, the private Node MCP endpoint, and the task workspace share one compatible OS/filesystem namespace and service identity.
 
-Provider-native configuration and authentication must be visible through the service identity's normal environment such as `HOME`, `CODEX_HOME`, or `CLAUDE_CONFIG_DIR`. A login/configuration in another host, container, WSL distribution, user, or home is not implicitly visible.
+Provider-native configuration and authentication must be visible through the service identity's default home and normal service environment. Shell-only alternate-home variables do not redirect managed routes. A login/configuration in another host, container, WSL distribution, user, or home is not implicitly visible.
 
 OpenClaw is externally managed. Its worker must reach the compatibility Node MCP endpoint and the configured local workspace through the user's OpenClaw integration. AutoClaw does not mutate that provider configuration.
 

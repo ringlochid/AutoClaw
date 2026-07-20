@@ -2,7 +2,7 @@
 
 ## Does AutoClaw require OpenClaw?
 
-No. Codex, Claude, and OpenClaw are selectable providers. OpenClaw remains an experimental, user-managed lane.
+No. Codex, Claude, and OpenClaw are selectable providers. OpenClaw remains experimental, and the user still owns its Gateway, agent/tool policy, and compatibility MCP configuration.
 
 ## Which provider becomes the default?
 

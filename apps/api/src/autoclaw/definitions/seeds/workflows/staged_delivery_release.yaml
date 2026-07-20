@@ -8,7 +8,7 @@ root:
     policy_id: standard-root
     description: Preserve the task purpose, coordinate staged delivery work, and decide final closure from current evidence.
     instruction: >-
-      Read manifest, root assignment, child checkpoints, surfaced refs, criteria, and task-memory hints. Assign one stage at a time and challenge weak evidence before release.
+      Read manifest, root assignment, child checkpoints, surfaced refs, and criteria. Assign one stage at a time and challenge weak evidence before release.
     criteria:
         - slot: root_delivery_rules
           description: Shared delivery rules before final closure.

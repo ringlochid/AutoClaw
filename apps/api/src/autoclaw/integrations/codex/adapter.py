@@ -9,6 +9,7 @@ from openai_codex import (
     ApprovalMode,
     AsyncCodex,
     AsyncTurnHandle,
+    CodexConfig,
     CodexRpcError,
     InvalidParamsError,
     Sandbox,
@@ -19,11 +20,13 @@ from openai_codex.models import JsonObject
 
 from autoclaw.definitions.contracts.registry import NetworkAccess, ProviderNativeAccess
 from autoclaw.definitions.contracts.workflow import ProviderKind
+from autoclaw.platform.provider_environment import provider_subprocess_environment_overrides
 from autoclaw.runtime.contracts.provider_resolution import CodexProviderRoute
 from autoclaw.runtime.providers.contracts import (
     MANAGED_NODE_MCP_SERVER_NAME,
     DispatchStartRequest,
     ManagedNodeMcpConnection,
+    ProviderAuthenticationMethod,
     ProviderCheckAxisStatus,
     ProviderCheckResult,
     ProviderCheckStatus,
@@ -46,8 +49,8 @@ class CodexAdapter:
 
     kind = ProviderKind.CODEX
 
-    def __init__(self, *, codex_factory: Callable[[], AsyncCodex] = AsyncCodex) -> None:
-        self._codex_factory = codex_factory
+    def __init__(self, *, codex_factory: Callable[[], AsyncCodex] | None = None) -> None:
+        self._codex_factory = codex_factory or _build_codex
         self._codex: AsyncCodex | None = None
         self._executions: dict[str, _CodexExecution] = {}
         self._consumer_tasks: set[asyncio.Task[None]] = set()
@@ -158,9 +161,15 @@ class CodexAdapter:
                 authentication=ProviderCheckAxisStatus.FAILED,
             )
         account_type = getattr(getattr(account.account, "root", None), "type", None)
+        if account_type == "apiKey":
+            authentication_method = ProviderAuthenticationMethod.API_KEY
+        elif account_type == "chatgpt":
+            authentication_method = ProviderAuthenticationMethod.SUBSCRIPTION
+        else:
+            authentication_method = None
         authentication = (
             ProviderCheckAxisStatus.PASSED
-            if account_type in {"apiKey", "chatgpt"}
+            if authentication_method is not None
             else ProviderCheckAxisStatus.NOT_CHECKED
         )
         return ProviderCheckResult(
@@ -168,6 +177,7 @@ class CodexAdapter:
             status=ProviderCheckStatus.AVAILABLE,
             code="codex_available",
             authentication=authentication,
+            authentication_method=authentication_method,
         )
 
     @asynccontextmanager
@@ -239,6 +249,12 @@ class CodexAdapter:
             await asyncio.gather(*consumers, return_exceptions=True)
         if codex is not None:
             await codex.close()
+
+
+def _build_codex() -> AsyncCodex:
+    return AsyncCodex(
+        CodexConfig(env=provider_subprocess_environment_overrides()),
+    )
 
 
 def _validate_codex_request(

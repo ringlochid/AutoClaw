@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from io import StringIO
 
 import pytest
@@ -59,7 +60,7 @@ def test_provider_status_and_check_use_rich_semantic_panels(
     assert "Provider status" in rendered
     assert "Codex provider check" in rendered
     assert "Configured" in rendered
-    assert "Confirmed" in rendered
+    assert "Found" in rendered
     assert "Not Tested" in rendered
     assert "╭" in rendered
 
@@ -79,6 +80,18 @@ def test_guided_setup_uses_rich_hierarchy(
     assert "Managed" in rendered
     assert "Experimental" in rendered
     assert "╭" in rendered
+
+
+def test_rich_console_width_is_bounded_on_wide_terminals(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(CliContext, "rich_enabled", lambda _self: True)
+    monkeypatch.setattr(
+        "autoclaw.interfaces.cli.context.shutil.get_terminal_size",
+        lambda: os.terminal_size((240, 40)),
+    )
+
+    assert CliContext().console().width == 110
 
 
 def _force_rich_console(monkeypatch: pytest.MonkeyPatch) -> StringIO:

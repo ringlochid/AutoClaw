@@ -10,6 +10,7 @@ This page maps the supported Claude Agent SDK into the minimal AutoClaw provider
 - `ClaudeSDKClient` supports multi-turn work, resume, and interruption: [Claude Agent SDK Python reference](https://code.claude.com/docs/en/agent-sdk/python).
 - The SDK supports programmatic Streamable HTTP MCP servers and server-scoped allowed tools: [Claude Agent SDK MCP](https://code.claude.com/docs/en/agent-sdk/mcp).
 - Native user questions and permission callbacks require an explicit embedding policy: [Claude Agent SDK user input](https://code.claude.com/docs/en/agent-sdk/user-input).
+- The current pinned SDK may use a Claude plan through native Claude Code login: [Use the Claude Agent SDK with your Claude plan](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan).
 
 ## Adapter mapping
 
@@ -63,7 +64,7 @@ Raw SDK messages, provider output, credentials, environment values, binding mate
 
 ## Authentication boundary
 
-The supported product integration uses Anthropic API or supported cloud-provider authentication. AutoClaw does not broker Claude.ai subscription credentials without Anthropic approval.
+The target product integration accepts Claude subscription login or an Anthropic API key. Subscription login is delegated to the SDK-bundled Claude Code CLI, subject to the unresolved Anthropic approval gate owned by [Claude support and compatibility](../../interfaces/claude-support-and-compatibility.md). API-key input is kept only in AutoClaw's owner-only provider-secret environment as `ANTHROPIC_API_KEY`. The adapter inherits the effective provider environment and never returns or logs credential contents. The bounded check reads native authentication status without creating a query; model reachability remains unproved until a dispatch starts.
 
 ## Required conformance
 

@@ -5,7 +5,6 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import raiseload
 
 from autoclaw.persistence.models import DispatchTurnModel, FlowModel
 from autoclaw.runtime.post_commit import WatchdogDeadlineChanged, WatchdogDue
@@ -29,42 +28,58 @@ def create_watchdog_deadline_changed_handler(
     ) -> None:
         row = (
             await session.execute(
-                select(DispatchTurnModel, FlowModel)
-                .options(raiseload("*"))
+                select(
+                    DispatchTurnModel.dispatch_id,
+                    DispatchTurnModel.status,
+                    DispatchTurnModel.node_activity_revision,
+                    DispatchTurnModel.adapter_started_at,
+                    DispatchTurnModel.last_node_activity_at,
+                    FlowModel.status,
+                    FlowModel.current_dispatch_id,
+                )
                 .join(FlowModel, FlowModel.flow_id == DispatchTurnModel.flow_id)
                 .where(DispatchTurnModel.dispatch_id == signal.dispatch_id)
             )
         ).one_or_none()
-        await session.rollback()
         if row is None:
+            await session.rollback()
             scheduler.cancel_source(WatchdogDue, signal.dispatch_id)
             return
 
-        dispatch, flow = row
+        (
+            dispatch_id,
+            dispatch_status,
+            activity_revision,
+            adapter_started_at,
+            last_node_activity_at,
+            flow_status,
+            current_dispatch_id,
+        ) = row
+        await session.rollback()
         if (
-            dispatch.status != "open"
-            or flow.status != "running"
-            or flow.current_dispatch_id != dispatch.dispatch_id
+            dispatch_status != "open"
+            or flow_status != "running"
+            or current_dispatch_id != dispatch_id
         ):
             scheduler.cancel_source(WatchdogDue, signal.dispatch_id)
             return
-        if dispatch.node_activity_revision != signal.activity_revision:
+        if activity_revision != signal.activity_revision:
             return
-        if dispatch.adapter_started_at is None:
+        if adapter_started_at is None:
             scheduler.cancel_source(WatchdogDue, signal.dispatch_id)
             return
 
         due_at = calculate_watchdog_due_at(
-            adapter_started_at=dispatch.adapter_started_at,
-            last_node_activity_at=dispatch.last_node_activity_at,
+            adapter_started_at=adapter_started_at,
+            last_node_activity_at=last_node_activity_at,
             inactivity_timeout_seconds=inactivity_timeout_seconds,
         )
         if _as_utc(signal.due_at) != due_at:
             return
         scheduler.register(
             WatchdogDue(
-                dispatch_id=dispatch.dispatch_id,
-                activity_revision=dispatch.node_activity_revision,
+                dispatch_id=dispatch_id,
+                activity_revision=activity_revision,
                 due_at=due_at,
             )
         )

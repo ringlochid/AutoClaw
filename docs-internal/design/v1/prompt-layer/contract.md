@@ -38,7 +38,7 @@ If you need copy-ready prompt text instead of just the semantic contract, assemb
 
 1. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_system_block_v1`
 2. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_concept_glossary_v1`
-3. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_read_order_rule_v1`, `artifact_render_rule_v1`, `task_memory_rule_v1`, and `monitoring_not_task_truth_v1`
+3. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `runtime_read_order_rule_v1`, `artifact_render_rule_v1`, and `monitoring_not_task_truth_v1`
 4. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `autoclaw_provider_continuity_block_v1` when send-mode wording is relevant; keep it aligned to the v1 truth that dispatch control emits `full_prompt` today
 5. [System And Provider Block](prompt-pack/system-and-provider-block.md) -> `worker_dispatch_opening_v1` or `parent_root_dispatch_opening_v1`
 6. [Runtime Rule Blocks](prompt-pack/runtime-rule-blocks.md) -> `worker_assignment_doctrine_v1` for worker prompts or `parent_root_orchestration_doctrine_v1` for parent/root prompts
@@ -74,9 +74,8 @@ Every full prompt renders sections in this order:
 9. `boundary_followup_guidance`
 10. `consumed_durable_refs`
 11. `transient_refs`
-12. `task_memory`
-13. `allowed_actions_now`
-14. `publication_rule`
+12. `allowed_actions_now`
+13. `publication_rule`
 
 ## Transport Continuity Exclusions
 
@@ -118,10 +117,9 @@ Every prompt should teach all of the following in ordinary language:
 - parent/root may do bounded research to understand the task, choose the right refs, and tighten the next child assignment
 - that research serves better delegation rather than quietly doing the child's implementation in place
 - parent/root should read its own current assignment as the scope contract for its owned subtree before writing any child assignment
-- parent/root should translate child-directed research into: a crisp owned objective, an acquisition-order instruction, the right supplemental durable slots, minimal transient carryover, and retrieval-oriented `task_memory_search_hints`
+- parent/root should translate child-directed research into a crisp owned objective, an acquisition-order instruction, the right supplemental durable slots, and minimal transient carryover
 - when repeated loops or review findings suggest the current structure is weak, parent/root should inspect current available roles/policies and prefer reassignment, specialist lanes, or structural edits over repeating the same assignment shape
-- `task_memory_search_hints` should be retrieval prompts for prior defects, rejected approaches, root causes, or artifact names, not generic tags
-- `record_checkpoint` writes the durable handoff through checkpoint `summary`, `next_step`, blockers, risks, surfaced artifact refs, surfaced transient refs, and task-memory hints
+- `record_checkpoint` writes the durable handoff through checkpoint `summary`, `next_step`, blockers, risks, surfaced artifact refs, and surfaced transient refs
 - checkpoints should preserve the decision-relevant delta rather than diary-style progress notes, and should omit `produced_artifacts` when no durable output exists yet
 - higher parent -> current parent context comes from the current assignment plus surfaced refs
 - current parent/root -> child context comes from semantic assignment handoff
@@ -135,9 +133,7 @@ Every prompt should teach all of the following in ordinary language:
 - `release_green` and root `release_blocked` are terminal preconditions, not `yield` basis
 - parent/root structural edits start from the compact `structural_edit_palette` already surfaced in the current prompt or manifest context; current-only `search_definitions` / `get_definition` reads are the legal read-only escalation path before commit when the palette is still insufficient, and runtime revalidates committed names on commit
 - parent/root does not use definition revision history, upload proof, or registry provenance as normal planning input
-- if surfaced context is still insufficient after reread and hinted file search, publish the gap durably or choose a legal current-node boundary instead of guessing
-- `context/wiki/` contains curated task-memory pages
-- other curated files under `context/` are source/reference material such as user docs, PDFs, screenshots, and notes
+- if surfaced context is still insufficient after reread and bounded inspection, publish the gap durably or choose a legal current-node boundary instead of guessing
 - do not guess hidden files or scan arbitrary directories instead of the surfaced paths and curated search roots
 - role/policy names for structural edits must come from the surfaced `structural_edit_palette` or, when the current dispatch explicitly surfaces that read-only lane, current-only definition lookup; do not guess them from transcript memory
 - surfaced refs are path-only in v1
@@ -157,7 +153,6 @@ The prompt should teach this read order:
 3. current relevant `_runtime/attempts/<attempt_id>/latest-checkpoint.*` when one is surfaced or when the current turn depends on prior checkpoint evidence
 4. surfaced `consumed_durable_refs`
 5. optional `transient_refs`
-6. `task_memory_search_hints`, then search `context/wiki/` and other curated docs under `context/` if needed
 
 The prompt should make this precedence explicit:
 
@@ -185,8 +180,8 @@ The prompt should also make the surfaced read roots explicit:
 
 | Prompt                        | Audience                                      | Core action surface                                                                                                                                           | Must include                                                                                                                                                                          |
 | ----------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `worker_dispatch_prompt`      | worker, review, QA, release, audit leaf nodes | do the current assignment, use `record_checkpoint`, close with `green`, `retry`, or `blocked`                                                                 | manifest ref, assignment ref, latest relevant checkpoint ref when surfaced, consumed durable refs, optional transient refs, task-memory search hints, result/boundary reminder        |
-| `parent_root_dispatch_prompt` | parent and root nodes                         | use control tools, use `record_checkpoint` when reasoning must persist, close non-terminal turns with `yield`, close terminal turns with `green` or `blocked` | manifest ref, assignment ref, latest relevant checkpoint ref when surfaced, surfaced durable refs when relevant, task-memory search hints when relevant, tool list, boundary reminder |
+| `worker_dispatch_prompt`      | worker, review, QA, release, audit leaf nodes | do the current assignment, use `record_checkpoint`, close with `green`, `retry`, or `blocked`                                                                 | manifest ref, assignment ref, latest relevant checkpoint ref when surfaced, consumed durable refs, optional transient refs, result/boundary reminder        |
+| `parent_root_dispatch_prompt` | parent and root nodes                         | use control tools, use `record_checkpoint` when reasoning must persist, close non-terminal turns with `yield`, close terminal turns with `green` or `blocked` | manifest ref, assignment ref, latest relevant checkpoint ref when surfaced, surfaced durable refs when relevant, tool list, boundary reminder |
 
 ## Worked Family Intent
 

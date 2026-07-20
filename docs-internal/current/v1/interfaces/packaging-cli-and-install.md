@@ -28,7 +28,7 @@ This proof catches source-tree imports and missing package data that editable in
 
 ## User service
 
-Linux installations may use the shipped systemd user service. `autoclaw service install` writes or reconciles the selected config and environment paths in the generated unit and can start it. Reconciliation preserves an existing environment file unless `--force` is explicit. The render, start, stop, restart, status, uninstall, and root `make install-user-service` surfaces use the same managed-service support. A failed lifecycle command preserves bounded `systemctl` detail and reports the exact status, journal, and reconciliation commands.
+Linux installations may use the shipped systemd user service. `autoclaw service install` writes or reconciles the selected config and its canonical sibling `autoclaw.env` path in the generated unit and can start it. The selected TOML file remains the only data-directory source. Reconciliation preserves the provider-secret file and enforces owner-only permissions. The render, start, stop, restart, status, uninstall, and root `make install-user-service` surfaces use the same managed-service support. Lifecycle commands operate on the named unit and do not accept a misleading config override. Service status reports systemd process state; API health remains `not checked` until an HTTP health probe is actually run. A failed lifecycle command preserves bounded `systemctl` detail and reports the exact status, journal, and reconciliation commands.
 
 The repository installer invokes `autoclaw init --non-interactive` with resolved paths so automation never waits for terminal input.
 

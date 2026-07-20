@@ -43,7 +43,7 @@ If `gather_evidence` is the current worker, its assignment should surface:
 - `instruction`
 - `criteria` refs for `discovery_requirements`
 - any authored `consumes`
-- optional task-memory hints toward `context/wiki/` or curated docs
+- optional curated docs surfaced through explicit durable refs
 
 It should not receive hidden ancestor bundles, invisible scope summaries, or criteria projected from beyond its direct parent.
 

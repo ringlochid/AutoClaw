@@ -20,7 +20,7 @@ These are the live reusable wording owners for:
 - public boundary model
 - tool usage and closure rules
 - retry wording
-- filesystem/task-memory wording
+- filesystem and surfaced-ref wording
 - provider transport wording
 - reject wording and worked `boundary_precondition_failed` examples
 
@@ -47,7 +47,6 @@ Use these exact block ids when you need copy-ready shared wording. Load the ship
 | parent/root legality block                    | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `runtime_legality_block_parent_v1`                  |
 | current-task-state framing block              | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `current_task_state_frame_v1`                       |
 | artifact compact-render reminder              | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `artifact_render_rule_v1`                           |
-| task-memory guidance block                    | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `task_memory_rule_v1`                               |
 | monitoring-is-not-task-truth reminder         | [Runtime Rule Blocks](runtime-rule-blocks.md) -> `monitoring_not_task_truth_v1`                      |
 | exact reject wording and stale-guard examples | [Validation And Reject Blocks](validation-and-reject-blocks.md)                                      |
 

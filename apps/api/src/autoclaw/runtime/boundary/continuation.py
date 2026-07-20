@@ -23,6 +23,7 @@ from autoclaw.persistence.models import (
     WorkflowRevisionModel,
     WorkspaceBindingModel,
 )
+from autoclaw.runtime.assignment import read_assignment_prompt_criteria
 from autoclaw.runtime.boundary.opening_commit import (
     commit_boundary_dispatch_if_current,
     pause_failed_boundary_continuation,
@@ -346,6 +347,11 @@ async def _read_target_snapshot(
     workflow = await _read_pinned_workflow(session, compiled_plan)
     children = await _read_target_children(session, flow=flow, node=node)
     work_plan = await read_assignment_work_plan(session, assignment_id=assignment.assignment_id)
+    prompt_criteria = await read_assignment_prompt_criteria(
+        session,
+        flow_revision_id=flow.active_flow_revision_id,
+        criteria_refs=assignment.criteria_json,
+    )
     capabilities = await resolve_effective_capabilities_for_node(session, node=node)
     provider = resolve_provider_route(
         provider=provider_selection_from_kind(node.provider_kind),
@@ -370,6 +376,7 @@ async def _read_target_snapshot(
         capabilities=capabilities,
         work_plan=work_plan,
         children=children,
+        criteria_json=prompt_criteria,
     )
     return _BoundaryOpeningSnapshot(
         source_committed_at=boundary.committed_at,
@@ -493,6 +500,7 @@ def _build_boundary_prompt(
     capabilities: EffectiveCapabilitySet,
     work_plan: WorkPlanRead | None,
     children: tuple[FlowNodeModel, ...],
+    criteria_json: tuple[dict[str, object], ...],
 ) -> BoundaryPromptSnapshot:
     task = context.task
     compiled_plan = context.compiled_plan
@@ -525,7 +533,7 @@ def _build_boundary_prompt(
         node_instruction=node.node_instruction,
         assignment_summary=assignment.summary,
         assignment_instruction=assignment.instruction,
-        criteria_json=tuple(assignment.criteria_json),
+        criteria_json=criteria_json,
         consumes_json=tuple(assignment.consumes_json),
         produces_json=tuple(assignment.produces_json),
         child_assignment_limit=assignment.child_assignment_limit,

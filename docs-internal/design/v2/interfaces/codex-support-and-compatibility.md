@@ -14,7 +14,7 @@ An explicit custom runtime may be added only as an advanced override that passes
 
 Codex authentication remains provider-owned. `autoclaw providers login codex` delegates to the supported native login flow for ChatGPT or API authentication. Codex stores and refreshes credentials under its own home or OS credential store; AutoClaw never reads, copies, prints, normalizes, or persists the credential payload.
 
-Status, check, login, and runtime must resolve the same service identity, `HOME`, and `CODEX_HOME`. A login under a different user/home does not make the runtime route ready.
+Status, check, login, and runtime resolve the same service identity and default Codex home. A shell-only `CODEX_HOME` override does not redirect the managed route. A login under a different user/home does not make the runtime route ready.
 
 ## Configuration inheritance
 

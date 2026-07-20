@@ -38,7 +38,7 @@ Within that task root:
 
 - `workspace/` is mutable current-assignment work
 - `_runtime/criteria/` is the explicit generated criteria root
-- `context/wiki/` is curated task-memory
+- `context/wiki/` is curated reusable reference material
 - other curated files under `context/` are source/reference material
 - `outputs/artifacts/` holds durable published outputs plus `current.json` pointers
 - `tmp/transfers/` is the optional transient carryover lane

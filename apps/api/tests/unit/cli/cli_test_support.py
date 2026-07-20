@@ -6,7 +6,17 @@ import sqlite3
 from pathlib import Path
 
 from autoclaw.config import DEFAULT_API_PORT, DEFAULT_LOG_LEVEL
+from autoclaw.definitions.contracts.workflow import ProviderKind
 from autoclaw.definitions.seeds import resolve_packaged_seed_definitions_root
+from autoclaw.interfaces.cli.bootstrap.config import settings_to_config_text
+from autoclaw.interfaces.cli.providers.contracts import (
+    ProviderCheckOutcome,
+    ProviderCheckSnapshot,
+)
+from autoclaw.runtime.providers import (
+    ProviderAuthenticationMethod,
+    ProviderCheckAxisStatus,
+)
 
 SEED_KIND_TO_TABLE = {
     "roles": "role_definitions",
@@ -35,6 +45,50 @@ def build_cli_init_args(config_path: Path, data_dir: Path) -> argparse.Namespace
         force=True,
         skip_db_upgrade=False,
         json=True,
+    )
+
+
+def write_local_cli_config(tmp_path: Path) -> Path:
+    config_path = tmp_path / "config.toml"
+    data_dir = tmp_path / "data"
+    config_path.write_text(
+        settings_to_config_text(
+            data_dir=data_dir,
+            database_url=f"sqlite+aiosqlite:///{data_dir / 'autoclaw.persistence'}",
+            host="127.0.0.1",
+            port=18125,
+            log_level="WARNING",
+        ),
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def build_provider_check_snapshot(
+    provider: ProviderKind,
+    *,
+    outcome: ProviderCheckOutcome,
+    is_ready: bool,
+    detail: str,
+    authentication: ProviderCheckAxisStatus = ProviderCheckAxisStatus.NOT_CHECKED,
+    authentication_method: ProviderAuthenticationMethod | None = None,
+) -> ProviderCheckSnapshot:
+    if is_ready and authentication_method is None:
+        authentication_method = (
+            ProviderAuthenticationMethod.TOKEN
+            if provider is ProviderKind.OPENCLAW
+            else ProviderAuthenticationMethod.SUBSCRIPTION
+        )
+    return ProviderCheckSnapshot(
+        kind=provider,
+        outcome=outcome,
+        is_ready=is_ready,
+        service_identity="tester",
+        native_home=f"/tmp/{provider.value}-home",
+        authentication=authentication,
+        authentication_method=authentication_method,
+        reachability=ProviderCheckAxisStatus.NOT_CHECKED,
+        detail=detail,
     )
 
 

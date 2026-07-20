@@ -25,7 +25,7 @@ For a built release, install the wheel into a dedicated virtual environment inst
 .venv/bin/autoclaw providers status
 ```
 
-On a terminal, `init` confirms local paths and database settings. `setup` asks for the primary/default provider, checks it, offers supported native login when needed, and asks whether to add providers. OpenClaw remains selectable and default-eligible while its experimental, user-managed setup is disclosed.
+On a terminal, `init` confirms local paths and database settings. `setup` asks for the primary/default provider, checks it, always offers the Codex/Claude subscription or API-key choice, and offers OpenClaw token or password with its route before asking whether to add providers. An existing Codex/Claude method is the method prompt default rather than an implicit selection. Selecting it opens a separate reuse confirmation; declining runs a fresh same-method login. Setup checks that a newly selected method actually became effective. OpenClaw remains selectable and default-eligible while its experimental, externally managed Gateway/MCP boundary is disclosed.
 
 For scripts, add `--non-interactive` and provide resolved inputs. Non-interactive provider setup configures the selected route; login and checking remain explicit commands.
 
@@ -44,7 +44,7 @@ Or install the Linux user service:
 .venv/bin/autoclaw service status
 ```
 
-Rerun `service install` after an AutoClaw upgrade to reconcile the generated unit. It preserves the existing service environment file unless `--force` is explicit. If start fails, follow the printed `systemctl status` and `journalctl` commands; validation errors identify obsolete fields without printing their values.
+Rerun `service install` after an AutoClaw upgrade to reconcile the generated unit. It always preserves the canonical config-relative provider-secret environment and enforces owner-only file permissions. The unit reads its data-directory setting from the selected TOML file rather than a second service-only override. Installation checks a new or stopped service's bind target, while a running named unit may reclaim its own configured target during reconciliation. If start fails, follow the printed `systemctl status` and `journalctl` commands; validation errors identify obsolete fields without printing their values.
 
 The default API is `http://127.0.0.1:18125`. The packaged console is on the same origin.
 

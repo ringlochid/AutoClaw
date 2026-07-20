@@ -48,7 +48,6 @@ Must support:
 
 - current assignment execution
 - durable publication
-- optional task-memory search
 - terminal closure by `green | retry | blocked`
 
 ### `parent_root_dispatch_prompt`

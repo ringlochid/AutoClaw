@@ -9,6 +9,7 @@ This page maps an externally managed OpenClaw Gateway into the minimal AutoClaw 
 - Gateway `agent` accepts work before the run completes: [OpenClaw agent loop](https://docs.openclaw.ai/agent-loop).
 - Gateway exposes session/run cancellation and keeps handshake mode separate from delivery channel: [OpenClaw Gateway protocol](https://docs.openclaw.ai/gateway/protocol).
 - Reserved trusted identities must not be impersonated by third-party automation: [OpenClaw trusted proxy authentication](https://docs.openclaw.ai/gateway/trusted-proxy).
+- Explicit remote Gateway calls require an explicit token or password source: [OpenClaw remote Gateway credentials](https://docs.openclaw.ai/gateway/remote).
 
 ## Adapter boundary
 
@@ -34,6 +35,8 @@ Handshake client mode and agent delivery channel remain distinct fields inside t
 
 AutoClaw must not claim a reserved internal `gateway-client` identity to obtain privileged behavior.
 
+The adapter launches the OpenClaw CLI with `OPENCLAW_GATEWAY_URL` and exactly one selected `OPENCLAW_GATEWAY_TOKEN` or `OPENCLAW_GATEWAY_PASSWORD` in the child environment. It omits the URL and credential from command arguments, removes the unselected credential from that child, and fails before process launch when the selected source is absent. This avoids relying on implicit profile credentials for an explicit remote URL and keeps secrets out of process listings and command diagnostics.
+
 ## Stop and connection lifetime
 
 When supported, `stop(dispatch_id)` opens or uses a control connection, issues one bounded `sessions.abort` for the private session/run identity, and returns a successful result only on the documented abort acknowledgement. Runtime proceeds when the result is unsupported, failed, ambiguous, or timed out.
@@ -56,6 +59,7 @@ For each exact supported version/profile, conformance evidence records:
 - compatibility Node calls with full current IDs;
 - worker versus parent/root profile behavior;
 - legal client identity and independent delivery channel;
+- token or password transport through mutually exclusive child-environment sources with no secret argument, log, or readback exposure;
 - disconnect-after-acceptance behavior;
 - one bounded fresh-connection abort when supported;
 - no invisible native approval/question wait; and

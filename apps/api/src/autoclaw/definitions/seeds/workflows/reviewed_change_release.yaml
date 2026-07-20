@@ -8,7 +8,7 @@ root:
     policy_id: standard-root
     description: Preserve the task purpose, verify scoped implementation and review evidence, and close from current controller truth.
     instruction: >-
-      Read manifest, assignment, child checkpoints, surfaced refs, criteria, and task-memory hints before release. Route weak scope, implementation, verification, or review evidence back through the subtree before closure.
+      Read manifest, assignment, child checkpoints, surfaced refs, and criteria before release. Route weak scope, implementation, verification, or review evidence back through the subtree before closure.
     criteria:
         - slot: root_delivery_rules
           description: Root acceptance criteria.

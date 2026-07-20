@@ -16,7 +16,6 @@ What survives is a smaller current-node read surface:
 - one surfaced relevant checkpoint path when parent/root redispatch needs a different durable handoff
 - the exact consumed durable refs that matter now
 - optional explicit transient refs
-- optional task-memory search hints
 
 Assignment field ownership lives in [Assignment contract](assignment-contract.md). Checkpoint field ownership lives in [Checkpoint contract](checkpoint-contract.md).
 
@@ -31,7 +30,6 @@ The current worker reads:
 3. `latest_relevant_checkpoint_path` when present, otherwise the current attempt-local `_runtime/attempts/<attempt_id>/latest-checkpoint.md`
 4. consumed durable refs surfaced in assignment
 5. optional `transient_refs`
-6. optional `task_memory_search_hints`, then direct search in `context/wiki/` and other curated docs under `context/`
 
 The worker does not recover its context from:
 
@@ -52,7 +50,6 @@ Concrete reading sequence:
 3. open `latest_relevant_checkpoint_path` when present, otherwise the current attempt-local `latest-checkpoint.md`, only to understand what already happened and what should happen next
 4. open each consumed durable ref by its surfaced `path`
 5. inspect optional transient refs only if they help this assignment
-6. search `context/wiki/` or other curated `context/` files only when the surfaced `task_memory_search_hints` suggest it
 
 ## Current worker read surface
 
@@ -66,7 +63,6 @@ The canonical worker context is the combination of:
 - the surfaced relevant checkpoint path when parent/root redispatch needs a different durable handoff
 - surfaced durable refs from assignment or manifest
 - optional surfaced `transient_refs`
-- optional `task_memory_search_hints`
 
 The prompt should surface the exact file paths and descriptions needed for that reread. Callback remains a write-only semantic lane.
 
@@ -91,7 +87,6 @@ worker_read_surface:
   latest_relevant_checkpoint_path: string | null
   consumed_refs: [worker_consumed_ref, ...]
   transient_refs: [worker_transient_ref, ...] | optional
-  task_memory_search_hints: [string, ...] | optional
 ```
 
 Supporting shape:
@@ -140,7 +135,6 @@ Rules:
 - when a parent/root turn depends on current child durable publications, surfaced `consumed_refs` may also include the exact current child artifact refs resolved from controller-owned current-pointer truth
 - when a parent/root release reread depends on deeper descendant evidence, surfaced `consumed_refs` may instead come from controller-staged descendant checkpoint and artifact refs for that release turn
 - `transient_refs` is optional explicit carryover only. It is not durable truth.
-- `task_memory_search_hints` is optional search guidance only. It does not silently promote task memory into required consumes.
 
 ## Manifest, assignment, and checkpoint roles
 
@@ -174,7 +168,6 @@ At minimum, the worker reads:
 - runtime-resolved `consumes`
 - `produces` requirements
 - optional explicit `transient_refs`
-- optional `task_memory_search_hints`
 
 The assignment is forward-looking. It is not history.
 
@@ -191,7 +184,6 @@ At minimum, the worker reads:
 - `handoff`
 - optional runtime-resolved `produced_artifacts` derived from accepted reduced durable artifact claims
 - optional explicit `transient_refs`
-- optional `task_memory_search_hints`
 
 The checkpoint is backward-looking handoff, not a provider trace log.
 
@@ -230,14 +222,6 @@ Short rule of thumb:
 - checkpoint answers "what happened already and what should happen next?"
 - surfaced artifact or criteria paths answer "what exact evidence or rules do I need to inspect?"
 - callback answers "how do I publish semantic writes back to the controller?" and not "what should I read?"
-
-## Task-memory rule
-
-- `context/wiki/` contains curated task-memory wiki pages and synthesized task memory for this task.
-- `_runtime/criteria/` contains controller-generated explicit criteria projections.
-- Other curated files under `context/` are source/reference material such as user docs, PDFs, screenshots, and notes.
-- In v1, workers search these files directly by path.
-- Vector database or embedding retrieval is a v2 enhancement, not a v1 dependency.
 
 ## What is not part of the live v1 worker context
 
@@ -288,9 +272,6 @@ worker_read_surface:
           slot: null
           path: C:/tasks/task_2026_0042/tmp/transfers/auth-refresh-repro-steps.md
           description: Optional transient repro notes surfaced for this assignment.
-    task_memory_search_hints:
-        - auth refresh screenshot
-        - rollback fixture
 ```
 
 ## Related contracts

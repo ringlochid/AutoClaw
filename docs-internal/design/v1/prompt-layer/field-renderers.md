@@ -15,7 +15,6 @@ This page defines renderer authority for the frozen v1 prompt sections.
 - `latest_checkpoint_context`
 - `consumed_durable_refs`
 - `transient_refs`
-- `task_memory`
 - `allowed_actions_now`
 - `publication_rule`
 
@@ -170,7 +169,6 @@ Render the assignment fields in this order:
 5. `consumes`
 6. `produces`
 7. `transient_refs` when present
-8. `task_memory_search_hints` when present
 
 Good render:
 
@@ -205,7 +203,6 @@ Render in this order when a checkpoint exists:
 7. `risks` when present
 8. `produced_artifacts` when present
 9. `transient_refs` when present
-10. `task_memory_search_hints` when present
 
 Good render:
 
@@ -264,33 +261,6 @@ Render each transient ref as:
 
 and explicitly say transient refs are optional carryover only and not durable truth.
 
-### `task_memory`
-
-Render:
-
-- current search hints
-- surfaced curated wiki/task-memory refs when the runtime surfaced them for this turn
-- `context/wiki/` as curated task-memory pages
-- other curated docs under `context/` as source/reference material
-- v1 retrieval is direct file/path search only
-
-Good render:
-
-```text
-## Task Memory
-- search hints:
-  - auth refresh
-  - checkpoint follow-up
-- surfaced curated refs:
-  - kind: wiki
-    slot: auth_refresh_notes
-    path: C:/tasks/task_2026_0042/context/wiki/auth-refresh-notes.md
-    description: curated auth refresh notes for the current fix
-- `context/wiki/` contains curated task-memory pages
-- other curated docs under `context/` are source/reference material
-- direct file/path search is the v1 retrieval model
-```
-
 ### `allowed_actions_now`
 
 Render only the bounded action surface that is legal now:
@@ -341,7 +311,7 @@ Render:
 Renderer output must stay consistent with:
 
 - [Runtime Boundary And Controller Loop Contract](../architecture/runtime-boundary-and-controller-loop-contract.md) for boundary names and closure preconditions
-- [Worker Context Contract](../architecture/worker-context-contract.md) for manifest/assignment/checkpoint/task-memory read rules
+- [Worker Context Contract](../architecture/worker-context-contract.md) for manifest, assignment, checkpoint, and surfaced-ref read rules
 - [API Schema Appendix](../interfaces/api-schema-appendix.md) for assignment/checkpoint field shapes and surfaced ref carriers
 
 If a rendered example, section renderer, and validation carrier disagree, the runtime should not invent a third phrasing. Fix the drift so prompt wording, schema shape, and boundary legality stay identical.

@@ -426,6 +426,17 @@ describe("TaskDetailPage", () => {
                 actionBodies.push(
                     (await request.json()) as components["schemas"]["RuntimeFlowControlRequest"],
                 );
+                if (actionBodies.length === 2) {
+                    return HttpResponse.json(
+                        createOperationFailureBody({
+                            code: "illegal_state",
+                            field_path: null,
+                            retryable: false,
+                            summary: "The retained continuation cannot be prepared.",
+                        }),
+                        { status: 409 },
+                    );
+                }
                 return HttpResponse.json(
                     createOperationFailureBody({
                         field_path: "expected_active_flow_revision_id",
@@ -450,9 +461,13 @@ describe("TaskDetailPage", () => {
         });
 
         await user.click(screen.getByRole("button", { name: "Continue" }));
+        expect(await screen.findByText("Action failed")).toBeVisible();
+        expect(screen.getByText("The retained continuation cannot be prepared.")).toBeVisible();
+
+        await user.click(screen.getByRole("button", { name: "Continue" }));
         expect(await screen.findByText("Stale action")).toBeVisible();
         expect(screen.getByText("The active flow revision is stale.")).toBeVisible();
-        expect(actionBodies[1]).toEqual({
+        expect(actionBodies[2]).toEqual({
             expected_active_flow_revision_id: "flow-revision-task-detail-2",
             expected_control_revision: 2,
         });

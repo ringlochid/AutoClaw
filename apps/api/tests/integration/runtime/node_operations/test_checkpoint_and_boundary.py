@@ -82,7 +82,7 @@ async def test_record_checkpoint_persists_exact_source_and_keeps_dispatch_open(
         assert [signal.activity_revision for signal in signals] == [1]
 
 
-def test_checkpoint_and_assignment_schemas_reject_removed_task_memory_hints() -> None:
+def test_checkpoint_and_assignment_schemas_reject_unknown_fields() -> None:
     checkpoint_descriptor = get_node_operation_descriptor("record_checkpoint")
     assignment_descriptor = get_node_operation_descriptor("assign_child")
 
@@ -94,28 +94,28 @@ def test_checkpoint_and_assignment_schemas_reject_removed_task_memory_hints() ->
         assignment_descriptor.request_model,
     )
     for schema_model in schema_models:
-        assert "task_memory_search_hints" not in str(schema_model.model_json_schema())
-    with pytest.raises(ValidationError, match="task_memory_search_hints"):
+        assert schema_model.model_json_schema()["additionalProperties"] is False
+    with pytest.raises(ValidationError, match="unexpected_field"):
         checkpoint_descriptor.request_model.model_validate(
             {
                 "checkpoint": {
                     "checkpoint_kind": "progress",
                     "handoff": {
-                        "summary": "Legacy checkpoint payload.",
-                        "next_step": "Reject the removed field.",
+                        "summary": "Checkpoint payload with an unknown field.",
+                        "next_step": "Reject the unknown field.",
                     },
-                    "task_memory_search_hints": ["legacy hint"],
+                    "unexpected_field": ["unexpected value"],
                 }
             }
         )
-    with pytest.raises(ValidationError, match="task_memory_search_hints"):
+    with pytest.raises(ValidationError, match="unexpected_field"):
         assignment_descriptor.request_model.model_validate(
             {
                 "expected_structural_revision_id": "revision.current",
                 "payload": {
                     "child_node_key": "child",
-                    "assignment_intent": {"summary": "Legacy child assignment."},
-                    "task_memory_search_hints": ["legacy hint"],
+                    "assignment_intent": {"summary": "Child assignment."},
+                    "unexpected_field": ["unexpected value"],
                 },
             }
         )

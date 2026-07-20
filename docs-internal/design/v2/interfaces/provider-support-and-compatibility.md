@@ -10,7 +10,7 @@ This page owns the shared local support contract for the `codex`, `claude`, and 
 | --- | --- | --- | --- |
 | Codex | managed local SDK/app-server | AutoClaw owns invocation resources | managed target |
 | Claude | managed local Agent SDK | AutoClaw owns invocation resources | managed target |
-| OpenClaw | external Gateway + compatibility MCP | user owns install/config/service; AutoClaw owns only its adapter calls | experimental selectable lane |
+| OpenClaw | external Gateway + compatibility MCP | user owns Gateway/config/service; AutoClaw owns its route, client credential, and adapter calls | experimental selectable lane |
 
 `Target` freezes the V2 contract; it does not claim the implementation has shipped.
 
@@ -57,11 +57,11 @@ Adapters may privately consume provider streams for SDK/process health. AutoClaw
 
 ## Authentication and native configuration
 
-- Codex uses provider-owned ChatGPT or API authentication and its native home/configuration.
-- Claude uses supported Anthropic API or cloud-provider authentication and its native setting sources.
-- OpenClaw uses its externally managed Gateway identity and configuration.
+- Codex uses provider-owned ChatGPT subscription or API-key authentication and its native home/configuration.
+- Claude uses Claude subscription login in its native home or `ANTHROPIC_API_KEY` supplied through the process environment.
+- OpenClaw uses its externally managed Gateway with an AutoClaw-selected token or password client credential.
 
-AutoClaw stores no raw provider credential. Passive status reports local facts; explicit checks may verify documented non-agent prerequisites without running a model turn.
+AutoClaw never copies provider credentials into runtime config or controller storage. Codex and Claude subscription credentials stay provider-native. The one owner-only, config-relative `autoclaw.env` file may contain only an operator-entered Claude API key or OpenClaw Gateway credential; it is not a controller truth or readback. Passive status reports local facts, while explicit checks verify documented non-agent prerequisites without running a model turn.
 
 ## Independent readiness
 
