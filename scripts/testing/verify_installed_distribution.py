@@ -721,8 +721,17 @@ def verify_user_service_installer(
     unit_text = unit_path.read_text(encoding="utf-8")
     if str(venv_python(venv_path)) not in unit_text:
         raise AssertionError("installed unit does not use the dedicated virtual environment")
+    status_call = (
+        "--user show autoclaw.service "
+        "--property=LoadState,UnitFileState,ActiveState,SubState,FragmentPath"
+    )
     systemctl_calls = systemctl_log.read_text(encoding="utf-8").splitlines()
-    if systemctl_calls != ["--user daemon-reload", "--user enable autoclaw.service"]:
+    expected_install_calls = [
+        status_call,
+        "--user daemon-reload",
+        "--user enable autoclaw.service",
+    ]
+    if systemctl_calls != expected_install_calls:
         raise AssertionError(f"unexpected install systemctl calls: {systemctl_calls}")
 
     installed_executable = venv_executable(venv_path, "autoclaw")
@@ -774,11 +783,8 @@ def verify_user_service_installer(
     if unit_path.exists() or env_file.exists():
         raise AssertionError("service uninstall left managed files behind")
     final_calls = systemctl_log.read_text(encoding="utf-8").splitlines()
-    status_call = (
-        "--user show autoclaw.service "
-        "--property=LoadState,UnitFileState,ActiveState,SubState,FragmentPath"
-    )
     expected_calls = [
+        status_call,
         "--user daemon-reload",
         "--user enable autoclaw.service",
         "--user start autoclaw.service",

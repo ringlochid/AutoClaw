@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autoclaw"
-version = "0.1.8"
-description = "Local-first orchestration tool for delegated AI work"
+version = "0.1.9"
+description = "Archived experimental predecessor to Banksia; no longer maintained"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -14,6 +14,9 @@ authors = [
 ]
 maintainers = [
   { name = "Leo Zhang", email = "yzha0012@uni.sydney.edu.au" },
+]
+classifiers = [
+  "Development Status :: 7 - Inactive",
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -33,6 +36,10 @@ dependencies = [
   "openai-codex==0.144.4",
   "claude-agent-sdk==0.2.122",
 ]
+
+[project.urls]
+Banksia = "https://github.com/ringlochid/banksia"
+"Archived source" = "https://github.com/ringlochid/AutoClaw"
 
 [project.optional-dependencies]
 postgres = [
